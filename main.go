@@ -5,11 +5,14 @@ import (
 	"crypto/x509"
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"time"
 
 	log "github.com/taigrr/log-socket/logger"
 
+	"github.com/gogrlx/grlx/api"
 	certs "github.com/gogrlx/grlx/certs"
+	. "github.com/gogrlx/grlx/types"
 	"github.com/nats-io/nats-server/v2/server"
 	nats_server "github.com/nats-io/nats-server/v2/server"
 	nats "github.com/nats-io/nats.go"
@@ -17,6 +20,7 @@ import (
 )
 
 var DefaultTestOptions nats_server.Options
+var BuildInfo Version
 
 var certFile = "./configs/certs/client-cert.pem"
 var keyFile = "./configs/certs/client-key.pem"
@@ -38,7 +42,8 @@ func main() {
 		DisableShortFirstPing: true,
 	}
 	certs.GenCert([]string{"grlx"})
-	RunServer(&DefaultTestOptions)
+	RunNATSServer(&DefaultTestOptions)
+	StartAPIServer()
 	go ConnectFarmer()
 	select {}
 
@@ -55,8 +60,25 @@ func main() {
 
 }
 
-// RunServer starts a new Go routine based server
-func RunServer(opts *server.Options) {
+func StartAPIServer() {
+	r := api.NewRouter(BuildInfo, certFile)
+	srv := http.Server{
+		Addr:         "0.0.0.0:5405",
+		WriteTimeout: time.Second * 120,
+		ReadTimeout:  time.Second * 120,
+		IdleTimeout:  time.Second * 120,
+		Handler:      r,
+	}
+	go func() {
+		if err := srv.ListenAndServeTLS(certFile, keyFile); err != nil {
+			log.Fatalf(err.Error())
+		}
+	}()
+
+}
+
+// RunNATSServer starts a new Go routine based server
+func RunNATSServer(opts *server.Options) {
 	opts = &DefaultTestOptions
 	// Optionally override for individual debugging of tests
 	err := opts.ProcessConfigFile("config.json")
@@ -114,7 +136,7 @@ func ConnectFarmer() {
 	if err != nil {
 		log.Errorf("Got an error on Connect with Secure Options: %+v\n", err)
 	}
-	log.Debugf("Successfully joined Farmer to NATS bus.")
+	log.Debugf("Successfully joined Farmer to NATS bus")
 
 	//	nc, err := nats.Connect(serverUrl, opt)
 	//	if err != nil {
