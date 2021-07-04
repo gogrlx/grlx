@@ -2,6 +2,8 @@ module github.com/gogrlx/grlx
 
 go 1.16
 
+replace github.com/nats-io/nats-server/v2 v2.3.1 => github.com/gogrlx/nats-server/v2 v2.3.1-ReloadOptions
+
 require (
 	github.com/gorilla/mux v1.8.0
 	github.com/nats-io/nats-server/v2 v2.3.1

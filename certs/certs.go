@@ -15,14 +15,11 @@ import (
 	"os"
 	"time"
 
+	. "github.com/gogrlx/grlx/config"
 	log "github.com/taigrr/log-socket/logger"
 )
 
-var (
-	host      = flag.String("host", "", "Comma-separated hostnames and IPs to generate a certificate for")
-	validFrom = flag.String("start-date", "", "Creation date formatted as Jan 1 15:04:05 2011")
-	validFor  = flag.Duration("duration", 365*24*time.Hour, "Duration that certificate is valid for")
-)
+var ()
 
 func publicKey(priv interface{}) interface{} {
 	switch k := priv.(type) {
@@ -59,7 +56,8 @@ func GenCert(hostnames []string) {
 		keyUsage |= x509.KeyUsageKeyEncipherment
 	}
 	notBefore = time.Now()
-	notAfter := notBefore.Add(*validFor)
+	validFor := CertificateValidTime
+	notAfter := notBefore.Add(validFor)
 	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
 	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
 	if err != nil {

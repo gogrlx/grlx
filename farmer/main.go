@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"time"
 
 	log "github.com/taigrr/log-socket/logger"
@@ -22,6 +23,7 @@ import (
 
 func init() {
 	log.SetLogLevel(log.LTrace)
+	createConfigRoot()
 }
 
 func main() {
@@ -43,6 +45,19 @@ func main() {
 	// Cli accept key, add to config file
 	// Update auth users via api
 
+}
+
+func createConfigRoot() {
+	_, err := os.Stat(ConfigRoot)
+	if err == nil {
+		return
+	}
+	if os.IsNotExist(err) {
+		err = os.MkdirAll(ConfigRoot, os.ModePerm)
+		if err != nil {
+			log.Panicf(err.Error())
+		}
+	}
 }
 
 func StartAPIServer() {
@@ -75,7 +90,9 @@ func RunNATSServer(opts *server.Options) {
 	if err != nil || s == nil {
 		log.Panicf("No NATS Server object returned: %v", err)
 	}
-
+	if err != nil || s == nil {
+		log.Panicf("No NATS Server object returned: %v", err)
+	}
 	// Run server in Go routine.
 	go s.Start()
 
@@ -83,6 +100,7 @@ func RunNATSServer(opts *server.Options) {
 	if !s.ReadyForConnections(10 * time.Second) {
 		log.Panicf("Unable to start NATS Server in Go Routine")
 	}
+	s.ReloadOptions(opts)
 }
 
 func ConnectFarmer() {
@@ -99,7 +117,7 @@ func ConnectFarmer() {
 	}
 	ok := certPool.AppendCertsFromPEM(rootPEM)
 	if !ok {
-		log.Errorf("nats: failed to parse root certificate from %q", certFile)
+		log.Errorf("nats: failed to parse root certificate from %q", CertFile)
 	}
 	config := &tls.Config{
 		ServerName: "localhost",
