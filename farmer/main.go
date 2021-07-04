@@ -3,7 +3,6 @@ package main
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"time"
@@ -12,20 +11,14 @@ import (
 
 	"github.com/gogrlx/grlx/api"
 	certs "github.com/gogrlx/grlx/certs"
-	. "github.com/gogrlx/grlx/types"
+	. "github.com/gogrlx/grlx/config"
+
+	// . "github.com/gogrlx/grlx/types"
 	"github.com/nats-io/nats-server/v2/server"
 	nats_server "github.com/nats-io/nats-server/v2/server"
 	nats "github.com/nats-io/nats.go"
 	"github.com/nats-io/nkeys"
 )
-
-var DefaultTestOptions nats_server.Options
-var BuildInfo Version
-
-var certFile = "./configs/certs/client-cert.pem"
-var keyFile = "./configs/certs/client-key.pem"
-
-const serverUrl = "localhost:4222"
 
 func init() {
 	log.SetLogLevel(log.LTrace)
@@ -33,14 +26,6 @@ func init() {
 
 func main() {
 	defer log.Flush()
-	DefaultTestOptions = nats_server.Options{
-		Host:                  "0.0.0.0",
-		Port:                  4443,
-		NoLog:                 false,
-		NoSigs:                true,
-		MaxControlLine:        4096,
-		DisableShortFirstPing: true,
-	}
 	certs.GenCert([]string{"grlx"})
 	RunNATSServer(&DefaultTestOptions)
 	StartAPIServer()
@@ -61,7 +46,7 @@ func main() {
 }
 
 func StartAPIServer() {
-	r := api.NewRouter(BuildInfo, certFile)
+	r := api.NewRouter(BuildInfo, CertFile)
 	srv := http.Server{
 		Addr:         "0.0.0.0:5405",
 		WriteTimeout: time.Second * 120,
@@ -70,7 +55,7 @@ func StartAPIServer() {
 		Handler:      r,
 	}
 	go func() {
-		if err := srv.ListenAndServeTLS(certFile, keyFile); err != nil {
+		if err := srv.ListenAndServeTLS(CertFile, KeyFile); err != nil {
 			log.Fatalf(err.Error())
 		}
 	}()
@@ -83,12 +68,12 @@ func RunNATSServer(opts *server.Options) {
 	// Optionally override for individual debugging of tests
 	err := opts.ProcessConfigFile("config.json")
 	if err != nil {
-		panic(fmt.Sprintf("Error configuring server: %v", err))
+		log.Panicf("Error configuring server: %v", err)
 	}
 
 	s, err := nats_server.NewServer(opts)
 	if err != nil || s == nil {
-		panic(fmt.Sprintf("No NATS Server object returned: %v", err))
+		log.Panicf("No NATS Server object returned: %v", err)
 	}
 
 	// Run server in Go routine.
@@ -96,7 +81,7 @@ func RunNATSServer(opts *server.Options) {
 
 	// Wait for accept loop(s) to be started
 	if !s.ReadyForConnections(10 * time.Second) {
-		panic("Unable to start NATS Server in Go Routine")
+		log.Panicf("Unable to start NATS Server in Go Routine")
 	}
 }
 
@@ -105,17 +90,16 @@ func ConnectFarmer() {
 	opt, err := nats.NkeyOptionFromSeed("seed.txt")
 	if err != nil {
 		//TODO: handle error
-		panic(err)
+		log.Panic(err)
 	}
 	certPool := x509.NewCertPool()
-	rootPEM, err := ioutil.ReadFile(certFile)
+	rootPEM, err := ioutil.ReadFile(CertFile)
 	if err != nil || rootPEM == nil {
-		log.Errorf("nats: error loading or parsing rootCA file: %v", err)
-		panic(err)
+		log.Panicf("nats: error loading or parsing rootCA file: %v", err)
 	}
 	ok := certPool.AppendCertsFromPEM(rootPEM)
 	if !ok {
-		//	fmt.Errorf("nats: failed to parse root certificate from %q", certFile)
+		log.Errorf("nats: failed to parse root certificate from %q", certFile)
 	}
 	config := &tls.Config{
 		ServerName: "localhost",
