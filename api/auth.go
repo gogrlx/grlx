@@ -2,10 +2,12 @@ package api
 
 import (
 	"net/http"
+
+	. "github.com/gogrlx/grlx/config"
 )
 
 func GetCertificate(w http.ResponseWriter, r *http.Request) {
-	http.ServeFile(w, r, certFile)
+	http.ServeFile(w, r, RootCA)
 }
 
 func SubmitNKey(w http.ResponseWriter, r *http.Request) {
