@@ -17,3 +17,8 @@ type Version struct {
 	Package_  string `json:"package"`
 	Tag       string `json:"tag"`
 }
+
+type KeySubmission struct {
+	NKey       string `json:"nkey"`
+	SeedlingID string `json:"seedling_id"`
+}

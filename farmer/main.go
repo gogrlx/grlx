@@ -13,30 +13,29 @@ import (
 	"github.com/gogrlx/grlx/api"
 	certs "github.com/gogrlx/grlx/certs"
 	. "github.com/gogrlx/grlx/config"
+	"github.com/gogrlx/grlx/pki"
 
 	// . "github.com/gogrlx/grlx/types"
 	"github.com/nats-io/nats-server/v2/server"
 	nats_server "github.com/nats-io/nats-server/v2/server"
 	nats "github.com/nats-io/nats.go"
-	"github.com/nats-io/nkeys"
 )
 
 func init() {
 	log.SetLogLevel(log.LTrace)
 	createConfigRoot()
+	pki.SetupPKIFarmer()
 }
 
 func main() {
 	defer log.Flush()
 	certs.GenCert([]string{"grlx"})
+	certs.GenNKey()
 	RunNATSServer(&DefaultTestOptions)
 	StartAPIServer()
 	go ConnectFarmer()
 	select {}
 
-	// Create ca + cert
-	// Spin up mux server
-	// Serve ca + cert over insecure tls
 	// Load cert into keychain
 	// Generate nkey and save or read existing
 	// Post user struct to mux
@@ -57,6 +56,9 @@ func createConfigRoot() {
 		if err != nil {
 			log.Panicf(err.Error())
 		}
+	} else {
+		//TODO: work out what the other errors could be here
+		log.Panicf(err.Error())
 	}
 }
 
@@ -95,7 +97,6 @@ func RunNATSServer(opts *server.Options) {
 	}
 	// Run server in Go routine.
 	go s.Start()
-
 	// Wait for accept loop(s) to be started
 	if !s.ReadyForConnections(10 * time.Second) {
 		log.Panicf("Unable to start NATS Server in Go Routine")
@@ -105,7 +106,7 @@ func RunNATSServer(opts *server.Options) {
 
 func ConnectFarmer() {
 	var connectionAttempts = 0
-	opt, err := nats.NkeyOptionFromSeed("seed.txt")
+	opt, err := nats.NkeyOptionFromSeed(NKeyPrivFile)
 	if err != nil {
 		//TODO: handle error
 		log.Panic(err)
@@ -147,7 +148,5 @@ func ConnectFarmer() {
 	//	}
 	ec, _ := nats.NewEncodedConn(nc, nats.JSON_ENCODER)
 	defer ec.Close()
-	// pull in nkeys dep for later
-	nkeys.FromSeed([]byte(""))
 	select {}
 }

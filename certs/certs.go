@@ -9,13 +9,13 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
-	"flag"
 	"math/big"
 	"net"
 	"os"
 	"time"
 
 	. "github.com/gogrlx/grlx/config"
+	"github.com/nats-io/nkeys"
 	log "github.com/taigrr/log-socket/logger"
 )
 
@@ -38,7 +38,6 @@ var notBefore time.Time
 var Organization string
 
 func GenCert(hostnames []string) {
-	flag.Parse()
 	hosts := []string{"localhost", "127.0.0.1", "farmer"}
 	var priv interface{}
 	var err error
@@ -49,12 +48,7 @@ func GenCert(hostnames []string) {
 	// ECDSA, ED25519 and RSA subject keys should have the DigitalSignature
 	// KeyUsage bits set in the x509.Certificate template
 	keyUsage := x509.KeyUsageDigitalSignature
-	// Only RSA subject keys should have the KeyEncipherment KeyUsage bits set. In
-	// the context of TLS this KeyUsage is particular to RSA key exchange and
-	// authentication.
-	if _, isRSA := priv.(*rsa.PrivateKey); isRSA {
-		keyUsage |= x509.KeyUsageKeyEncipherment
-	}
+	keyUsage |= x509.KeyUsageCertSign
 	notBefore = time.Now()
 	validFor := CertificateValidTime
 	notAfter := notBefore.Add(validFor)
@@ -88,7 +82,7 @@ func GenCert(hostnames []string) {
 	if err != nil {
 		log.Fatalf("Failed to create certificate: %v", err)
 	}
-	certOut, err := os.Create("./configs/certs/client-cert.pem")
+	certOut, err := os.Create(CertFile)
 	if err != nil {
 		log.Fatalf("Failed to open cert.pem for writing: %v", err)
 	}
@@ -99,7 +93,7 @@ func GenCert(hostnames []string) {
 		log.Fatalf("Error closing cert.pem: %v", err)
 	}
 	log.Debug("wrote cert.pem")
-	keyOut, err := os.OpenFile("./configs/certs/client-key.pem", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	keyOut, err := os.OpenFile(KeyFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		log.Fatalf("Failed to open key.pem for writing: %v", err)
 		return
@@ -115,4 +109,46 @@ func GenCert(hostnames []string) {
 		log.Fatalf("Error closing key.pem: %v", err)
 	}
 	log.Debug("wrote key.pem")
+}
+func GenNKey() {
+	_, err := os.Stat(NKeyPrivFile)
+	if err == nil {
+		return
+	}
+	if os.IsNotExist(err) {
+		kp, err := nkeys.CreateUser()
+		if err != nil {
+			log.Panic(err.Error())
+		}
+		pubKey, err := os.OpenFile(NKeyPubFile,
+			os.O_WRONLY|os.O_TRUNC|os.O_CREATE,
+			0600,
+		)
+		if err != nil {
+			log.Panic(err.Error())
+		}
+		defer pubKey.Close()
+		key, err := kp.PublicKey()
+		_, err = pubKey.Write([]byte(key))
+		if err != nil {
+			log.Panic(err.Error())
+		}
+
+		privKey, err := os.OpenFile(NKeyPrivFile,
+			os.O_WRONLY|os.O_TRUNC|os.O_CREATE,
+			0600,
+		)
+		if err != nil {
+			log.Panic(err.Error())
+		}
+		defer privKey.Close()
+		pkey, err := kp.Seed()
+		_, err = privKey.Write(pkey)
+		if err != nil {
+			log.Panic(err.Error())
+		}
+		return
+	}
+	log.Panic(err)
+
 }
