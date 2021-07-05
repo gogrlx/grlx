@@ -29,7 +29,7 @@ func init() {
 
 func main() {
 	defer log.Flush()
-	certs.GenCert([]string{"grlx"})
+	certs.GenCert()
 	certs.GenNKey()
 	RunNATSServer(&DefaultTestOptions)
 	StartAPIServer()
@@ -112,7 +112,7 @@ func ConnectFarmer() {
 		log.Panic(err)
 	}
 	certPool := x509.NewCertPool()
-	rootPEM, err := ioutil.ReadFile(CertFile)
+	rootPEM, err := ioutil.ReadFile(RootCA)
 	if err != nil || rootPEM == nil {
 		log.Panicf("nats: error loading or parsing rootCA file: %v", err)
 	}
