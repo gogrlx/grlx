@@ -36,7 +36,6 @@ func main() {
 	go ConnectFarmer()
 	select {}
 
-	// Load cert into keychain
 	// Generate nkey and save or read existing
 	// Post user struct to mux
 	// Attempt nats auth
