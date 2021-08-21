@@ -118,7 +118,7 @@ func ConnectFarmer() {
 	}
 	ok := certPool.AppendCertsFromPEM(rootPEM)
 	if !ok {
-		log.Errorf("nats: failed to parse root certificate from %q", CertFile)
+		log.Errorf("nats: failed to parse root certificate from %q", RootCA)
 	}
 	config := &tls.Config{
 		ServerName: "localhost",

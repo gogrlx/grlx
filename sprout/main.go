@@ -25,11 +25,14 @@ func init() {
 func main() {
 	defer log.Flush()
 	certs.GenNKey(false)
-	for err := pki.FetchRootCA(); err != nil; err = pki.FetchRootCA() {
+	for err := pki.LoadRootCA(); err != nil; err = pki.LoadRootCA() {
 		log.Debugf("Error with RootCA: %v", err)
 		time.Sleep(time.Minute * 5)
 	}
-
+	for err := pki.PutNKey(); err != nil; err = pki.PutNKey() {
+		log.Debugf("Error submitting NKey: %v", err)
+		time.Sleep(time.Minute * 5)
+	}
 	go ConnectSprout()
 	select {}
 

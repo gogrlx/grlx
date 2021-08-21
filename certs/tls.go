@@ -38,6 +38,13 @@ func publicKey(priv interface{}) interface{} {
 var notBefore = time.Now()
 
 func genCACert() {
+	_, err := os.Stat(RootCAPriv)
+	if !os.IsNotExist(err) {
+		_, err = os.Stat(RootCAPriv)
+		if !os.IsNotExist(err) {
+			return
+		}
+	}
 	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
 	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
 	caCert := x509.Certificate{
@@ -97,6 +104,8 @@ func genCACert() {
 	}
 }
 func GenCert() {
+	// check if certificates already exist first
+
 	genCACert()
 	file, err := os.Open(RootCA)
 	if err != nil {

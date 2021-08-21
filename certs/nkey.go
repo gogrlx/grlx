@@ -8,6 +8,17 @@ import (
 	log "github.com/taigrr/log-socket/logger"
 )
 
+func GetPubNKey(isFarmer bool) (string, error) {
+	pubFile := NKeySproutPubFile
+	if isFarmer {
+		pubFile = NKeyFarmerPubFile
+	}
+	pubKeyBytes, err := os.ReadFile(pubFile)
+	if err != nil {
+		return "", err
+	}
+	return string(pubKeyBytes), nil
+}
 func GenNKey(isFarmer bool) {
 	privFile := NKeySproutPrivFile
 	pubFile := NKeySproutPubFile
