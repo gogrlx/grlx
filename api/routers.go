@@ -56,4 +56,10 @@ var routes = Routes{
 		Pattern:     "/pki/putnkey",
 		HandlerFunc: handlers.PutNKey,
 	},
+	Route{
+		Name: "AcceptID",
+		Method: http.MethodPost,
+		Pattern: "/pki/acceptnkey",
+		HandlerFunc: handlers.AcceptNKey,
+	}
 }

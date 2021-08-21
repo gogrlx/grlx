@@ -21,15 +21,16 @@ func PutNKey(w http.ResponseWriter, r *http.Request) {
 		log.Trace("An invalid NKey request was made. Ignoring.")
 		return
 	}
-	// verify it's a valid NKey
-	if !nkeys.IsValidPublicUserKey(submission.NKey) {
-		log.Trace("An invalid NKey was submitted. Ignoring.")
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
+
 	// verify our sprout id is valid
 	if !pki.IsValidSproutID(submission.SproutID) {
 		log.Trace("An invalid Sprout ID was submitted. Ignoring.")
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	// verify it's a valid NKey
+	if !nkeys.IsValidPublicUserKey(submission.NKey) {
+		log.Trace("An invalid NKey was submitted. Ignoring.")
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}

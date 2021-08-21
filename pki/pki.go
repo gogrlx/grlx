@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	log "github.com/taigrr/log-socket/logger"
 
@@ -97,6 +98,9 @@ func CreateSproutID() string {
 }
 
 func IsValidSproutID(id string) bool {
+	if len(id) > 253 {
+		return false
+	}
 	if strings.Contains(id, "_") {
 		return false
 	}
@@ -109,10 +113,8 @@ func IsValidSproutID(id string) bool {
 	if !sproutMatcher.MatchString(id) {
 		return false
 	}
-	if len(id) < 254 {
-		return true
-	}
-	return false
+
+	return true
 }
 func AcceptNKey(id string) error {
 	defer config.ReloadNKeys()
@@ -258,7 +260,7 @@ func fetchRootCA() error {
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
-	client := &http.Client{Transport: tr}
+	client := &http.Client{Transport: tr, Timeout: time.Second * 10}
 	r, err := client.Get("https://" + FarmerInterface + ":" + FarmerAPIPort + "/auth/cert/")
 	if err != nil {
 		os.Remove(SproutRootCA)
@@ -288,6 +290,7 @@ func LoadRootCA() error {
 		RootCAs:    certPool,
 		MinVersion: tls.VersionTLS12,
 	}
+	http.DefaultClient.Timeout = time.Second * 10
 	return nil
 }
 func PutNKey() error {

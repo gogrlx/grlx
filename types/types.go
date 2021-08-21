@@ -22,6 +22,9 @@ type KeySubmission struct {
 	NKey     string `json:"nkey"`
 	SproutID string `json:"sprout_id"`
 }
+type KeyManager struct {
+	SproutID string `json:"sprout_id"`
+}
 type Inline200 struct {
 	Success bool `json:"success"`
 }

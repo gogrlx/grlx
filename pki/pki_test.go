@@ -19,6 +19,7 @@ func TestIsValidSproutID(t *testing.T) {
 		{id: strings.Repeat("a", 300), shouldSucceed: false, testID: "300 long string"},
 		{id: strings.Repeat("a", 253), shouldSucceed: true, testID: "253 long string"},
 		{id: "0132-465798qwertyuiopasdfghjklzxcv.bnm", shouldSucceed: true, testID: "keyboard smash"},
+		{id: "te\nst", shouldSucceed: false, testID: "multiline"},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.testID, func(t *testing.T) {
