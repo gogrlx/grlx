@@ -8,8 +8,14 @@ import (
 	log "github.com/taigrr/log-socket/logger"
 )
 
-func GenNKey() {
-	_, err := os.Stat(NKeyPrivFile)
+func GenNKey(isFarmer bool) {
+	privFile := NKeySproutPrivFile
+	pubFile := NKeySproutPubFile
+	if isFarmer {
+		privFile = NKeyFarmerPrivFile
+		pubFile = NKeyFarmerPubFile
+	}
+	_, err := os.Stat(privFile)
 	if err == nil {
 		return
 	}
@@ -18,7 +24,7 @@ func GenNKey() {
 		if err != nil {
 			log.Panic(err.Error())
 		}
-		pubKey, err := os.OpenFile(NKeyPubFile,
+		pubKey, err := os.OpenFile(pubFile,
 			os.O_WRONLY|os.O_TRUNC|os.O_CREATE,
 			0600,
 		)
@@ -32,7 +38,7 @@ func GenNKey() {
 			log.Panic(err.Error())
 		}
 
-		privKey, err := os.OpenFile(NKeyPrivFile,
+		privKey, err := os.OpenFile(privFile,
 			os.O_WRONLY|os.O_TRUNC|os.O_CREATE,
 			0600,
 		)

@@ -9,4 +9,5 @@ var (
 	ErrAlreadyDenied     = errors.New("This Sprout ID was already denied.")
 	ErrAlreadyUnaccepted = errors.New("This Sprout ID was already unaccepted.")
 	ErrAlreadyRejected   = errors.New("This Sprout ID was already rejected.")
+	ErrAPIRouteNotFound  = errors.New("API Route not found.")
 )

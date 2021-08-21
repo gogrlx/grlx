@@ -3,6 +3,7 @@ package api
 import (
 	"net/http"
 
+	"github.com/gogrlx/grlx/api/handlers"
 	. "github.com/gogrlx/grlx/types"
 	"github.com/gorilla/mux"
 	"github.com/taigrr/log-socket/browser"
@@ -47,12 +48,12 @@ var routes = Routes{
 		Name:        "GetCertificate",
 		Method:      http.MethodGet,
 		Pattern:     "/auth/cert/",
-		HandlerFunc: GetCertificate,
+		HandlerFunc: handlers.GetCertificate,
 	},
 	Route{
 		Name:        "PutNKey",
 		Method:      http.MethodPut,
 		Pattern:     "/pki/putnkey",
-		HandlerFunc: PutNKey,
+		HandlerFunc: handlers.PutNKey,
 	},
 }

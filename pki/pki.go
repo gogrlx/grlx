@@ -1,8 +1,11 @@
 package pki
 
 import (
+	"crypto/tls"
+	"io"
 	"io/fs"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -239,4 +242,34 @@ func NKeyExists(id string, nkey string) (Registered bool, Matches bool) {
 	}
 	content := string(file)
 	return true, content == nkey
+}
+
+func FetchRootCA() error {
+	_, err := os.Stat(SproutRootCA)
+	if err == nil {
+		return err
+	}
+	if !os.IsNotExist(err) {
+		return err
+	}
+	file, err := os.Create(SproutRootCA)
+	//TODO: sort out this panic
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	client := &http.Client{Transport: tr}
+	r, err := client.Get("https://" + FarmerInterface + ":" + FarmerAPIPort + "/auth/cert/")
+	if err != nil {
+		os.Remove(SproutRootCA)
+		return err
+	}
+	_, err = io.Copy(file, r.Body)
+	if err != nil {
+		os.Remove(SproutRootCA)
+	}
+	return err
 }

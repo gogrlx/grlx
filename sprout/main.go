@@ -4,36 +4,33 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"io/ioutil"
-	"net/http"
 	"os"
 	"time"
 
 	log "github.com/taigrr/log-socket/logger"
 
-	"github.com/gogrlx/grlx/api"
 	certs "github.com/gogrlx/grlx/certs"
 	. "github.com/gogrlx/grlx/config"
 	"github.com/gogrlx/grlx/pki"
 
-	// . "github.com/gogrlx/grlx/types"
-	"github.com/nats-io/nats-server/v2/server"
-	nats_server "github.com/nats-io/nats-server/v2/server"
 	nats "github.com/nats-io/nats.go"
 )
 
 func init() {
 	log.SetLogLevel(log.LTrace)
 	createConfigRoot()
-	pki.SetupPKIFarmer()
+	pki.SetupPKISprout()
 }
 
 func main() {
 	defer log.Flush()
-	certs.GenCert()
-	certs.GenNKey(true)
-	RunNATSServer(&DefaultTestOptions)
-	StartAPIServer()
-	go ConnectFarmer()
+	certs.GenNKey(false)
+	for err := pki.FetchRootCA(); err != nil; err = pki.FetchRootCA() {
+		log.Debugf("Error with RootCA: %v", err)
+		time.Sleep(time.Minute * 5)
+	}
+
+	go ConnectSprout()
 	select {}
 
 	// Generate nkey and save or read existing
@@ -61,58 +58,15 @@ func createConfigRoot() {
 	}
 }
 
-func StartAPIServer() {
-	r := api.NewRouter(BuildInfo, CertFile)
-	srv := http.Server{
-		//TODO: add all below settings to configuration
-		Addr:         "0.0.0.0:5405",
-		WriteTimeout: time.Second * 120,
-		ReadTimeout:  time.Second * 120,
-		IdleTimeout:  time.Second * 120,
-		Handler:      r,
-	}
-	go func() {
-		if err := srv.ListenAndServeTLS(CertFile, KeyFile); err != nil {
-			log.Fatalf(err.Error())
-		}
-	}()
-
-}
-
-// RunNATSServer starts a new Go routine based server
-func RunNATSServer(opts *server.Options) {
-	opts = &DefaultTestOptions
-	// Optionally override for individual debugging of tests
-	err := opts.ProcessConfigFile("config.json")
-	if err != nil {
-		log.Panicf("Error configuring server: %v", err)
-	}
-
-	s, err := nats_server.NewServer(opts)
-	if err != nil || s == nil {
-		log.Panicf("No NATS Server object returned: %v", err)
-	}
-	if err != nil || s == nil {
-		log.Panicf("No NATS Server object returned: %v", err)
-	}
-	// Run server in Go routine.
-	go s.Start()
-	// Wait for accept loop(s) to be started
-	if !s.ReadyForConnections(10 * time.Second) {
-		log.Panicf("Unable to start NATS Server in Go Routine")
-	}
-	s.ReloadOptions(opts)
-}
-
-func ConnectFarmer() {
+func ConnectSprout() {
 	var connectionAttempts = 0
-	opt, err := nats.NkeyOptionFromSeed(NKeyFarmerPrivFile)
+	opt, err := nats.NkeyOptionFromSeed(NKeySproutPrivFile)
 	if err != nil {
 		//TODO: handle error
 		log.Panic(err)
 	}
 	certPool := x509.NewCertPool()
-	rootPEM, err := ioutil.ReadFile(RootCA)
+	rootPEM, err := ioutil.ReadFile(SproutRootCA)
 	if err != nil || rootPEM == nil {
 		log.Panicf("nats: error loading or parsing rootCA file: %v", err)
 	}

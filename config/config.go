@@ -13,13 +13,18 @@ var BuildInfo Version
 var ConfigRoot = "./etc/grlx/"
 var FarmerPKI = ConfigRoot + "pki/farmer/"
 var SproutPKI = ConfigRoot + "pki/sprout/"
+var SproutRootCA = SproutPKI + "tls-rootca.pem"
 var RootCA = FarmerPKI + "tls-rootca.pem"
 var RootCAPriv = FarmerPKI + "tls-rootca-key.pem"
 var CertFile = FarmerPKI + "tls-cert.pem"
 var KeyFile = FarmerPKI + "tls-key.pem"
-var NKeyPubFile = FarmerPKI + "farmer.nkey.pub"
-var NKeyPrivFile = FarmerPKI + "farmer.nkey"
+var NKeyFarmerPubFile = FarmerPKI + "farmer.nkey.pub"
+var NKeyFarmerPrivFile = FarmerPKI + "farmer.nkey"
+var NKeySproutPubFile = SproutPKI + "sprout.nkey.pub"
+var NKeySproutPrivFile = SproutPKI + "sprout.nkey"
 var Organization = "GRLX Development"
+var FarmerInterface = "localhost"
+var FarmerAPIPort = "5405"
 
 var CertificateValidTime = 365 * 24 * time.Hour
 
@@ -37,6 +42,7 @@ func init() {
 	}
 }
 
+//TODO
 func ReloadNKeys() error {
 	return nil
 }
