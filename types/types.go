@@ -19,6 +19,9 @@ type Version struct {
 }
 
 type KeySubmission struct {
-	NKey       string `json:"nkey"`
-	SeedlingID string `json:"seedling_id"`
+	NKey     string `json:"nkey"`
+	SproutID string `json:"sprout_id"`
+}
+type Inline200 struct {
+	Success bool `json:"success"`
 }

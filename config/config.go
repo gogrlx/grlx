@@ -36,3 +36,7 @@ func init() {
 		Debug:                 true,
 	}
 }
+
+func ReloadNKeys() error {
+	return nil
+}

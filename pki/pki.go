@@ -1,12 +1,16 @@
 package pki
 
 import (
+	"io/fs"
 	"log"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 
+	"github.com/gogrlx/grlx/config"
 	. "github.com/gogrlx/grlx/config"
+	. "github.com/gogrlx/grlx/types"
 )
 
 var sproutMatcher *regexp.Regexp
@@ -108,4 +112,131 @@ func IsValidSproutID(id string) bool {
 		return true
 	}
 	return false
+}
+func AcceptNKey(id string) error {
+	defer config.ReloadNKeys()
+	newDest := FarmerPKI + "accepted/" + id
+	fname, err := findNKey(id)
+	if err != nil {
+		return err
+	}
+	if fname == newDest {
+		return ErrAlreadyAccepted
+	}
+	return os.Rename(fname, newDest)
+}
+func DeleteNKey(id string) error {
+	defer config.ReloadNKeys()
+	fname, err := findNKey(id)
+	if err != nil {
+		return err
+	}
+	return os.Remove(fname)
+}
+func DenyNKey(id string) error {
+	defer config.ReloadNKeys()
+	newDest := FarmerPKI + "denied/" + id
+	fname, err := findNKey(id)
+	if err != nil {
+		return err
+	}
+	if fname == newDest {
+		return ErrAlreadyDenied
+	}
+	return os.Rename(fname, newDest)
+
+}
+func UnacceptNKey(id string, nkey string) error {
+
+	defer config.ReloadNKeys()
+	newDest := FarmerPKI + "unaccepted/" + id
+	fname, err := findNKey(id)
+	if nkey != "" && err == ErrSproutIDNotFound {
+		file, err := os.Create(newDest)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+		_, err = file.WriteString(nkey)
+		return err
+	}
+	if err != nil {
+		return err
+	}
+	if fname == newDest {
+		return ErrAlreadyUnaccepted
+	}
+	return os.Rename(fname, newDest)
+
+}
+func RejectNKey(id string, nkey string) error {
+	defer config.ReloadNKeys()
+	newDest := FarmerPKI + "rejected/" + id
+	fname, err := findNKey(id)
+	if nkey != "" && err == ErrSproutIDNotFound {
+		file, err := os.Create(newDest)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+		_, err = file.WriteString(nkey)
+		return err
+	}
+	if err != nil {
+		return err
+	}
+	if fname == newDest {
+		return ErrAlreadyRejected
+	}
+	return os.Rename(fname, newDest)
+}
+func findNKey(id string) (string, error) {
+	filename := ""
+	filepath.WalkDir(FarmerPKI, func(path string, d fs.DirEntry, err error) error {
+		switch path {
+		case FarmerPKI + "unaccepted/" + id:
+			fallthrough
+		case FarmerPKI + "accepted/" + id:
+			fallthrough
+		case FarmerPKI + "denied/" + id:
+			fallthrough
+		case FarmerPKI + "rejected/" + id:
+			filename = path
+			return ErrSproutIDFound
+		default:
+		}
+		return nil
+	})
+	if filename == "" {
+		return "", ErrSproutIDNotFound
+	}
+	return filename, nil
+}
+func NKeyExists(id string, nkey string) (Registered bool, Matches bool) {
+	filename := ""
+	filepath.WalkDir(FarmerPKI, func(path string, d fs.DirEntry, err error) error {
+		switch path {
+		case FarmerPKI + "unaccepted/" + id:
+			fallthrough
+		case FarmerPKI + "accepted/" + id:
+			fallthrough
+		case FarmerPKI + "denied/" + id:
+			fallthrough
+		case FarmerPKI + "rejected/" + id:
+			filename = path
+			return ErrSproutIDFound
+		default:
+		}
+		return nil
+	})
+	if filename == "" {
+		return false, false
+	}
+	file, err := os.ReadFile(filename)
+	if err != nil {
+		//TODO determine how we could get an error here!
+		log.Fatalf("Error reading in %s: %v", filename, err)
+	}
+	content := string(file)
+	return true, content == nkey
 }

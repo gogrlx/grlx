@@ -49,4 +49,10 @@ var routes = Routes{
 		Pattern:     "/auth/cert/",
 		HandlerFunc: GetCertificate,
 	},
+	Route{
+		Name:        "PutNKey",
+		Method:      http.MethodPut,
+		Pattern:     "/pki/putnkey",
+		HandlerFunc: PutNKey,
+	},
 }
