@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 
+	. "github.com/gogrlx/grlx/config"
 	"github.com/gogrlx/grlx/pki"
 	. "github.com/gogrlx/grlx/types"
 	"github.com/nats-io/nkeys"
@@ -23,7 +25,7 @@ func PutNKey(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// verify our sprout id is valid
-	if !pki.IsValidSproutID(submission.SproutID) {
+	if !pki.IsValidSproutID(submission.SproutID) || strings.Contains(submission.SproutID, "_") {
 		log.Trace("An invalid Sprout ID was submitted. Ignoring.")
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -82,4 +84,209 @@ func PutNKey(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusServiceUnavailable)
 	w.Write(jw)
 	return
+}
+
+func GetCertificate(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, RootCA)
+}
+
+//TODO: enable client authentication
+func AcceptNKey(w http.ResponseWriter, r *http.Request) {
+	var km KeyManager
+	err := json.NewDecoder(r.Body).Decode(&km)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	err = pki.AcceptNKey(km.SproutID)
+	switch err {
+	case ErrSproutIDNotFound:
+		w.WriteHeader(http.StatusNotFound)
+		jw, _ := json.Marshal(Inline200{Success: false})
+		w.Write(jw)
+		return
+	case nil:
+		w.WriteHeader(http.StatusOK)
+		jw, _ := json.Marshal(Inline200{Success: true})
+		w.Write(jw)
+		return
+	default:
+		w.WriteHeader(http.StatusServiceUnavailable)
+		jw, _ := json.Marshal(Inline200{Success: false})
+		w.Write(jw)
+		return
+	}
+}
+func GetNKey(w http.ResponseWriter, r *http.Request) {
+	var km KeyManager
+	// Auth first as user
+	// 401 for unauthorized
+	err := json.NewDecoder(r.Body).Decode(&km)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	pubKey, err := pki.GetNKey(km.SproutID)
+	// 404 for key not found
+	switch err {
+	case ErrSproutIDInvalid:
+		w.WriteHeader(http.StatusBadRequest)
+		jw, _ := json.Marshal(Inline200{Success: false})
+		w.Write(jw)
+		return
+	case ErrSproutIDNotFound:
+		w.WriteHeader(http.StatusNotFound)
+		jw, _ := json.Marshal(Inline200{Success: false})
+		w.Write(jw)
+		return
+	case nil:
+		w.WriteHeader(http.StatusOK)
+		jw, _ := json.Marshal(KeySubmission{NKey: pubKey, SproutID: km.SproutID})
+		w.Write(jw)
+		return
+	default:
+		w.WriteHeader(http.StatusServiceUnavailable)
+		jw, _ := json.Marshal(Inline200{Success: false})
+		w.Write(jw)
+		return
+	}
+}
+func RejectNKey(w http.ResponseWriter, r *http.Request) {
+	var km KeyManager
+	// Auth first as user
+	// 401 for unauthorized
+	err := json.NewDecoder(r.Body).Decode(&km)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	err = pki.RejectNKey(km.SproutID, "")
+	switch err {
+	case ErrSproutIDInvalid:
+		w.WriteHeader(http.StatusBadRequest)
+		jw, _ := json.Marshal(Inline200{Success: false})
+		w.Write(jw)
+		return
+	case ErrSproutIDNotFound:
+		w.WriteHeader(http.StatusNotFound)
+		jw, _ := json.Marshal(Inline200{Success: false})
+		w.Write(jw)
+		return
+	case nil:
+		w.WriteHeader(http.StatusOK)
+		jw, _ := json.Marshal(Inline200{Success: true})
+		w.Write(jw)
+		return
+	default:
+		w.WriteHeader(http.StatusServiceUnavailable)
+		jw, _ := json.Marshal(Inline200{Success: false})
+		w.Write(jw)
+		return
+	}
+}
+func ListNKey(w http.ResponseWriter, r *http.Request) {
+	keyList := pki.ListNKeysByType()
+	jw, _ := json.Marshal(keyList)
+	w.WriteHeader(http.StatusOK)
+	w.Write(jw)
+	return
+}
+func DenyNKey(w http.ResponseWriter, r *http.Request) {
+	var km KeyManager
+	// Auth first as user
+	// 401 for unauthorized
+	err := json.NewDecoder(r.Body).Decode(&km)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	err = pki.DenyNKey(km.SproutID)
+	switch err {
+	case ErrSproutIDInvalid:
+		w.WriteHeader(http.StatusBadRequest)
+		jw, _ := json.Marshal(Inline200{Success: false})
+		w.Write(jw)
+		return
+	case ErrSproutIDNotFound:
+		w.WriteHeader(http.StatusNotFound)
+		jw, _ := json.Marshal(Inline200{Success: false})
+		w.Write(jw)
+		return
+	case nil:
+		w.WriteHeader(http.StatusOK)
+		jw, _ := json.Marshal(Inline200{Success: true})
+		w.Write(jw)
+		return
+	default:
+		w.WriteHeader(http.StatusServiceUnavailable)
+		jw, _ := json.Marshal(Inline200{Success: false})
+		w.Write(jw)
+		return
+	}
+}
+func UnacceptNKey(w http.ResponseWriter, r *http.Request) {
+	var km KeyManager
+	// Auth first as user
+	// 401 for unauthorized
+	err := json.NewDecoder(r.Body).Decode(&km)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	err = pki.UnacceptNKey(km.SproutID, "")
+	switch err {
+	case ErrSproutIDInvalid:
+		w.WriteHeader(http.StatusBadRequest)
+		jw, _ := json.Marshal(Inline200{Success: false})
+		w.Write(jw)
+		return
+	case ErrSproutIDNotFound:
+		w.WriteHeader(http.StatusNotFound)
+		jw, _ := json.Marshal(Inline200{Success: false})
+		w.Write(jw)
+		return
+	case nil:
+		w.WriteHeader(http.StatusOK)
+		jw, _ := json.Marshal(Inline200{Success: true})
+		w.Write(jw)
+		return
+	default:
+		w.WriteHeader(http.StatusServiceUnavailable)
+		jw, _ := json.Marshal(Inline200{Success: false})
+		w.Write(jw)
+		return
+	}
+}
+func DeleteNKey(w http.ResponseWriter, r *http.Request) {
+	var km KeyManager
+	// Auth first as user
+	// 401 for unauthorized
+	err := json.NewDecoder(r.Body).Decode(&km)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	err = pki.DeleteNKey(km.SproutID)
+	switch err {
+	case ErrSproutIDInvalid:
+		w.WriteHeader(http.StatusBadRequest)
+		jw, _ := json.Marshal(Inline200{Success: false})
+		w.Write(jw)
+		return
+	case ErrSproutIDNotFound:
+		w.WriteHeader(http.StatusNotFound)
+		jw, _ := json.Marshal(Inline200{Success: false})
+		w.Write(jw)
+		return
+	case nil:
+		w.WriteHeader(http.StatusOK)
+		jw, _ := json.Marshal(Inline200{Success: true})
+		w.Write(jw)
+		return
+	default:
+		w.WriteHeader(http.StatusServiceUnavailable)
+		jw, _ := json.Marshal(Inline200{Success: false})
+		w.Write(jw)
+		return
+	}
 }

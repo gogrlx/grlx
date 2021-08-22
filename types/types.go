@@ -20,10 +20,19 @@ type Version struct {
 
 type KeySubmission struct {
 	NKey     string `json:"nkey"`
-	SproutID string `json:"sprout_id"`
+	SproutID string `json:"id"`
 }
 type KeyManager struct {
-	SproutID string `json:"sprout_id"`
+	SproutID string `json:"id"`
+}
+type KeySet struct {
+	Sprouts []KeyManager `json:"sprouts"`
+}
+type KeysByType struct {
+	Accepted   KeySet `json:"accepted"`
+	Denied     KeySet `json:"denied"`
+	Rejected   KeySet `json:"rejected"`
+	Unaccepted KeySet `json:"unaccepted"`
 }
 type Inline200 struct {
 	Success bool `json:"success"`

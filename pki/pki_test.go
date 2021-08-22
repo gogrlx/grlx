@@ -13,7 +13,7 @@ func TestIsValidSproutID(t *testing.T) {
 	}{
 		{id: "test", shouldSucceed: true, testID: "test"},
 		{id: "-test", shouldSucceed: false, testID: "leading hyphen"},
-		{id: "te_st", shouldSucceed: false, testID: "embedded underscore"},
+		{id: "te_st", shouldSucceed: true, testID: "embedded underscore"},
 		{id: "grlxNode", shouldSucceed: false, testID: "capital letter"},
 		{id: "t.est", shouldSucceed: true, testID: "embedded dot"},
 		{id: strings.Repeat("a", 300), shouldSucceed: false, testID: "300 long string"},

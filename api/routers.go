@@ -57,9 +57,45 @@ var routes = Routes{
 		HandlerFunc: handlers.PutNKey,
 	},
 	Route{
-		Name: "AcceptID",
-		Method: http.MethodPost,
-		Pattern: "/pki/acceptnkey",
+		Name:        "GetID",
+		Method:      http.MethodPost,
+		Pattern:     "/pki/getnkey",
+		HandlerFunc: handlers.GetNKey,
+	},
+	Route{
+		Name:        "AcceptID",
+		Method:      http.MethodPost,
+		Pattern:     "/pki/acceptnkey",
 		HandlerFunc: handlers.AcceptNKey,
-	}
+	},
+	Route{
+		Name:        "RejectID",
+		Method:      http.MethodPost,
+		Pattern:     "/pki/rejectnkey",
+		HandlerFunc: handlers.RejectNKey,
+	},
+	Route{
+		Name:        "ListID",
+		Method:      http.MethodPost,
+		Pattern:     "/pki/listnkey",
+		HandlerFunc: handlers.ListNKey,
+	},
+	Route{
+		Name:        "DenyID",
+		Method:      http.MethodPost,
+		Pattern:     "/pki/denynkey",
+		HandlerFunc: handlers.DenyNKey,
+	},
+	Route{
+		Name:        "UnacceptID",
+		Method:      http.MethodPost,
+		Pattern:     "/pki/unacceptnkey",
+		HandlerFunc: handlers.UnacceptNKey,
+	},
+	Route{
+		Name:        "DeleteID",
+		Method:      http.MethodPost,
+		Pattern:     "/pki/deletenkey",
+		HandlerFunc: handlers.DeleteNKey,
+	},
 }

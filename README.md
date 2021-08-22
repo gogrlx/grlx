@@ -25,8 +25,8 @@ All binaries are built without `CGO`, and should therefore be compatible with as
 Nodes running `grlx-sprout` subscribe to messages over the bus.
 Both the API server and the messaging bus use TLS encryption (elliptic curve by default), and sprouts authenticate using public-key cryptography.
 
-Jobs can be created with the `grlx` command-line interface, and typically come in the form of stateful targets, called 'recipies'.
-Recipies  are yaml documents which describe the desired state of a sprout after the recipie is applied (`cook`ed).
+Jobs can be created with the `grlx` command-line interface, and typically come in the form of stateful targets, called 'recipes'.
+Recipies  are yaml documents which describe the desired state of a sprout after the recipe is applied (`cook`ed).
 Because the `farmer` exposes an API, `grlx` is by no means the only way to create or manage jobs, but it is the only supported method at the beginning.
 
 ## Roadmap

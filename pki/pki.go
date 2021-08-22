@@ -25,7 +25,7 @@ import (
 var sproutMatcher *regexp.Regexp
 
 func init() {
-	sproutMatcher = regexp.MustCompile(`^[0-9a-z\.][-0-9a-z\.]*$`)
+	sproutMatcher = regexp.MustCompile(`^[0-9a-z\.][-0-9_a-z\.]*$`)
 
 }
 
@@ -80,7 +80,6 @@ func SetupPKISprout() {
 // if multiple sprouts claim the same id, the first one gets the id,
 // following sprouts get id_n where n is their place in the queue
 // sprout ids must be valid *nix hostnames: [0-9a-z\.][-0-9a-z\.]
-// sprout ids cannot have underscores in their names, sprout daemons
 // should automatically convert any found underscores to hyphens, unless
 // the hostname starts with an underscore, in which case it is removed.
 // maximum length is 253 characters
@@ -101,7 +100,7 @@ func IsValidSproutID(id string) bool {
 	if len(id) > 253 {
 		return false
 	}
-	if strings.Contains(id, "_") {
+	if strings.HasPrefix(id, "_") {
 		return false
 	}
 	if strings.HasPrefix(id, "-") {
@@ -118,11 +117,12 @@ func IsValidSproutID(id string) bool {
 }
 func AcceptNKey(id string) error {
 	defer config.ReloadNKeys()
-	newDest := filepath.Join(FarmerPKI + "sprouts/accepted/" + id)
 	fname, err := findNKey(id)
 	if err != nil {
 		return err
 	}
+	id = strings.SplitN(id, "_", 2)[0]
+	newDest := filepath.Join(FarmerPKI + "sprouts/accepted/" + id)
 	if fname == newDest {
 		return ErrAlreadyAccepted
 	}
@@ -171,6 +171,34 @@ func UnacceptNKey(id string, nkey string) error {
 	return os.Rename(fname, newDest)
 
 }
+func ListNKeysByType() KeysByType {
+	var allKeys KeysByType
+	allKeys.Accepted = KeySet{}
+	allKeys.Denied = KeySet{}
+	allKeys.Rejected = KeySet{}
+	allKeys.Unaccepted = KeySet{}
+
+	allKeys.Accepted.Sprouts = []KeyManager{}
+	allKeys.Denied.Sprouts = []KeyManager{}
+	allKeys.Rejected.Sprouts = []KeyManager{}
+	allKeys.Unaccepted.Sprouts = []KeyManager{}
+
+	filepath.WalkDir(FarmerPKI+"sprouts/", func(path string, d fs.DirEntry, err error) error {
+		_, id := filepath.Split(path)
+		switch path {
+		case filepath.Join(FarmerPKI + "sprouts/unaccepted/" + id):
+			allKeys.Unaccepted.Sprouts = append(allKeys.Unaccepted.Sprouts, KeyManager{SproutID: id})
+		case filepath.Join(FarmerPKI + "sprouts/accepted/" + id):
+			allKeys.Accepted.Sprouts = append(allKeys.Accepted.Sprouts, KeyManager{SproutID: id})
+		case filepath.Join(FarmerPKI + "sprouts/denied/" + id):
+			allKeys.Denied.Sprouts = append(allKeys.Denied.Sprouts, KeyManager{SproutID: id})
+		case filepath.Join(FarmerPKI + "sprouts/rejected/" + id):
+			allKeys.Rejected.Sprouts = append(allKeys.Rejected.Sprouts, KeyManager{SproutID: id})
+		}
+		return nil
+	})
+	return allKeys
+}
 func RejectNKey(id string, nkey string) error {
 	defer config.ReloadNKeys()
 	newDest := filepath.Join(FarmerPKI + "sprouts/rejected/" + id)
@@ -192,7 +220,36 @@ func RejectNKey(id string, nkey string) error {
 	}
 	return os.Rename(fname, newDest)
 }
+func GetNKey(id string) (string, error) {
+	if !IsValidSproutID(id) {
+		return "", ErrSproutIDInvalid
+	}
+	filename := ""
+	filepath.WalkDir(FarmerPKI+"sprouts", func(path string, d fs.DirEntry, err error) error {
+		switch path {
+		case filepath.Join(FarmerPKI + "sprouts/unaccepted/" + id):
+			fallthrough
+		case filepath.Join(FarmerPKI + "sprouts/accepted/" + id):
+			fallthrough
+		case filepath.Join(FarmerPKI + "sprouts/denied/" + id):
+			fallthrough
+		case filepath.Join(FarmerPKI + "sprouts/rejected/" + id):
+			filename = path
+			return ErrSproutIDFound
+		default:
+		}
+		return nil
+	})
+	if filename == "" {
+		return "", ErrSproutIDNotFound
+	}
+	file, err := os.ReadFile(filename)
+	return string(file), err
+}
 func findNKey(id string) (string, error) {
+	if !IsValidSproutID(id) {
+		return "", ErrSproutIDInvalid
+	}
 	filename := ""
 	filepath.WalkDir(FarmerPKI+"sprouts", func(path string, d fs.DirEntry, err error) error {
 		switch path {
@@ -271,6 +328,13 @@ func fetchRootCA() error {
 		os.Remove(SproutRootCA)
 	}
 	return err
+}
+func RootCACached() bool {
+	_, err := os.Stat(SproutRootCA)
+	if err == nil {
+		return true
+	}
+	return false
 }
 func LoadRootCA() error {
 	if err := fetchRootCA(); err != nil {
