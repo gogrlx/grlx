@@ -121,6 +121,9 @@ func AcceptNKey(id string) error {
 	if err != nil {
 		return err
 	}
+	if len(strings.SplitN(id, "_", 2)) > 1 {
+		DeleteNKey(strings.SplitN(id, "_", 2)[0])
+	}
 	id = strings.SplitN(id, "_", 2)[0]
 	newDest := filepath.Join(FarmerPKI + "sprouts/accepted/" + id)
 	if fname == newDest {
@@ -357,6 +360,8 @@ func LoadRootCA() error {
 	http.DefaultClient.Timeout = time.Second * 10
 	return nil
 }
+
+//TODO handle return body
 func PutNKey() error {
 	nkey, err := GetPubNKey(false)
 	if err != nil {
@@ -365,7 +370,7 @@ func PutNKey() error {
 	keySub := KeySubmission{NKey: nkey, SproutID: GetSproutID()}
 
 	jw, _ := json.Marshal(keySub)
-	url := "https://" + FarmerInterface + ":" + FarmerAPIPort + "/pki/putnkey"
+	url := FarmerURL + "/pki/putnkey"
 	req, err := http.NewRequest(http.MethodPut, url, bytes.NewBuffer(jw))
 	if err != nil {
 		// handle error

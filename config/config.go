@@ -26,6 +26,7 @@ var Organization = "GRLX Development"
 var FarmerInterface = "localhost"
 var FarmerAPIPort = "5405"
 var SproutID = ""
+var FarmerURL = "https://" + FarmerInterface + ":" + FarmerAPIPort
 
 var CertificateValidTime = 365 * 24 * time.Hour
 
