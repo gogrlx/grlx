@@ -99,8 +99,8 @@ func ReloadNKeys() error {
 		sproutPermissions.Publish = &account_publish
 		sproutPermissions.Subscribe = &account_subscribe
 		sproutUser := nats_server.NkeyUser{}
-		sproutUser.Permissions = &farmerPermissions
-		sproutUser.Nkey = farmerKey
+		sproutUser.Permissions = &sproutPermissions
+		sproutUser.Nkey = key
 		//farmerUser.Account = &farmerAccount
 		nkeyUsers = append(nkeyUsers, &sproutUser)
 	}
