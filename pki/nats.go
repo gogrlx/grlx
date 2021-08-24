@@ -19,12 +19,12 @@ func ConfigureNats() {
 		DisableShortFirstPing: true,
 		Trace:                 true,
 		Debug:                 true,
-		TLSCert:               CertFile,
-		TLSKey:                KeyFile,
-		TLS:                   true,
-		AllowNonTLS:           false,
-		LogFile:               "nats.log",
-		AuthTimeout:           10,
+		//	TLSCert:               CertFile,
+		//		TLSKey:                KeyFile,
+		TLS:         true,
+		AllowNonTLS: false,
+		LogFile:     "nats.log",
+		AuthTimeout: 10,
 		//TLSCaCert:             RootCA,
 	}
 }
@@ -36,7 +36,7 @@ func SetNATSServer(s *nats_server.Server) {
 //TODO
 func ReloadNKeys() error {
 	//AuthorizedKeys
-	//authorizedKeys := GetNKeysByType("authorized")
+	//authorizedKeys := GetNKeysByType("accepted")
 	farmerKey, err := GetPubNKey(true)
 	log.Tracef("Loaded farmer's public key: %s", farmerKey)
 	if err != nil {
@@ -58,6 +58,8 @@ func ReloadNKeys() error {
 	DefaultTestOptions.Nkeys = nkeyUsers
 	//DefaultTestOptions.Accounts = append(DefaultTestOptions.Accounts, &farmerAccount)
 	//DefaultTestOptions.Accounts
-	//	err = NatsServer.ReloadOptions(&DefaultTestOptions)
+	if NatsServer != nil {
+		err = NatsServer.ReloadOptions(&DefaultTestOptions)
+	}
 	return err
 }

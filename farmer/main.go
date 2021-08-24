@@ -139,6 +139,7 @@ func RunNATSServer() {
 	}
 	//s.ReloadOptions(opts)
 	pki.SetNATSServer(s)
+	pki.ReloadNKeys()
 }
 
 func ConnectFarmer() {
