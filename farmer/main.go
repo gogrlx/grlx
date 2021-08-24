@@ -1,7 +1,6 @@
 package main
 
 import (
-	"crypto/tls"
 	"crypto/x509"
 	"io/ioutil"
 	"net/http"
@@ -25,7 +24,10 @@ func init() {
 	log.SetLogLevel(log.LTrace)
 	createConfigRoot()
 	pki.SetupPKIFarmer()
+	pki.ConfigureNats()
 }
+
+var s *nats_server.Server
 
 func main() {
 	defer log.Flush()
@@ -81,14 +83,15 @@ func StartAPIServer() {
 
 // RunNATSServer starts a new Go routine based server
 func RunNATSServer(opts *server.Options) {
+	pki.ReloadNKeys()
 	opts = &DefaultTestOptions
 	// Optionally override for individual debugging of tests
-	err := opts.ProcessConfigFile("config.json")
-	if err != nil {
-		log.Panicf("Error configuring server: %v", err)
-	}
-
-	s, err := nats_server.NewServer(opts)
+	// err := opts.ProcessConfigFile("config.json")
+	//if err != nil {
+	//		log.Panicf("Error configuring server: %v", err)
+	//	}
+	var err error
+	s, err = nats_server.NewServer(opts)
 	if err != nil || s == nil {
 		log.Panicf("No NATS Server object returned: %v", err)
 	}
@@ -102,10 +105,12 @@ func RunNATSServer(opts *server.Options) {
 		log.Panicf("Unable to start NATS Server in Go Routine")
 	}
 	s.ReloadOptions(opts)
+	pki.SetNATSServer(s)
 }
 
 func ConnectFarmer() {
-	var connectionAttempts = 0
+	var connectionAttempts = 1
+	var maxFarmerReconnect = 30
 	opt, err := nats.NkeyOptionFromSeed(NKeyFarmerPrivFile)
 	if err != nil {
 		//TODO: handle error
@@ -120,22 +125,33 @@ func ConnectFarmer() {
 	if !ok {
 		log.Errorf("nats: failed to parse root certificate from %q", RootCA)
 	}
-	config := &tls.Config{
-		ServerName: "localhost",
-		RootCAs:    certPool,
-		MinVersion: tls.VersionTLS12,
-	}
-
-	nc, err := nats.Connect("nats://localhost:4443", nats.Secure(config), opt,
+	//config := &tls.Config{
+	//	ServerName: "localhost",
+	//	RootCAs:    certPool,
+	//	MinVersion: tls.VersionTLS12,
+	//}
+	log.Tracef("NKey public key used by client: %v", opt)
+	log.Debug("Attempting to pair Farmer to NATS bus.")
+	nc, err := nats.Connect("tls://localhost:4443", nats.RootCAs(RootCA),
+		//nats.Secure(config),
+		opt,
 		nats.RetryOnFailedConnect(true),
-		nats.MaxReconnects(1),
+		nats.MaxReconnects(maxFarmerReconnect),
 		nats.ReconnectWait(time.Second),
-
-		nats.ReconnectHandler(func(_ *nats.Conn) {
+		nats.DisconnectHandler(func(_ *nats.Conn) {
 			connectionAttempts++
 			log.Warnf("WARN: Reconnecting Farmer to NATS bus, attempt: %d\n", connectionAttempts)
 		}),
 	)
+	for !nc.IsConnected() {
+		connectionAttempts++
+		log.Debugf("Attempting to pair Farmer to NATS bus (attempt %d/%d).", connectionAttempts, maxFarmerReconnect)
+		if connectionAttempts >= maxFarmerReconnect {
+			log.Fatalf("Failed to connect Farmer to NATS %d times, exiting.", connectionAttempts)
+		}
+		time.Sleep(time.Second)
+	}
+	connectionAttempts = 0
 	if err != nil {
 		log.Errorf("Got an error on Connect with Secure Options: %+v\n", err)
 	}

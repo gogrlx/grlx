@@ -9,6 +9,10 @@ type Route struct {
 	HandlerFunc http.HandlerFunc
 }
 type Routes []Route
+type Startup struct {
+	Version  Version `json:"version"`
+	SproutID string  `json:"id"`
+}
 type Version struct {
 	Authors   string `json:"authors"`
 	BuildNo   string `json:"build_no"`

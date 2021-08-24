@@ -31,20 +31,3 @@ var FarmerURL = "https://" + FarmerInterface + ":" + FarmerAPIPort
 var CertificateValidTime = 365 * 24 * time.Hour
 
 var CertHosts = []string{"localhost", "127.0.0.1", "farmer", "grlx"}
-
-func init() {
-	DefaultTestOptions = nats_server.Options{
-		Host:                  "0.0.0.0",
-		Port:                  4443,
-		NoSigs:                true,
-		MaxControlLine:        4096,
-		DisableShortFirstPing: true,
-		Trace:                 true,
-		Debug:                 true,
-	}
-}
-
-//TODO
-func ReloadNKeys() error {
-	return nil
-}

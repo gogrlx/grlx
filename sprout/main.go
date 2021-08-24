@@ -18,9 +18,20 @@ import (
 
 func init() {
 	log.SetLogLevel(log.LTrace)
+	sproutID = pki.GetSproutID()
 	createConfigRoot()
 	pki.SetupPKISprout()
 }
+
+var (
+	Authors   string
+	BuildNo   string
+	BuildTime string
+	GitCommit string
+	Package   string
+	Tag       string
+	sproutID  string
+)
 
 func main() {
 	defer log.Flush()
@@ -29,7 +40,7 @@ func main() {
 		log.Debugf("Error with RootCA: %v", err)
 		time.Sleep(time.Minute * 5)
 	}
-	for err := pki.PutNKey(); err != nil; err = pki.PutNKey() {
+	for err := pki.PutNKey(sproutID); err != nil; err = pki.PutNKey(sproutID) {
 		log.Debugf("Error submitting NKey: %v", err)
 		time.Sleep(time.Minute * 5)
 	}
@@ -63,7 +74,8 @@ func createConfigRoot() {
 
 func ConnectSprout() {
 	var connectionAttempts = 0
-	opt, err := nats.NkeyOptionFromSeed(NKeySproutPrivFile)
+	var err error
+	//	opt, err := nats.NkeyOptionFromSeed(NKeySproutPrivFile)
 	if err != nil {
 		//TODO: handle error
 		log.Panic(err)
@@ -82,17 +94,19 @@ func ConnectSprout() {
 		RootCAs:    certPool,
 		MinVersion: tls.VersionTLS12,
 	}
-
-	nc, err := nats.Connect("nats://localhost:4443", nats.Secure(config), opt,
+	nc, err := nats.Connect("tls://localhost:4443", nats.Secure(config), //opt,
 		nats.RetryOnFailedConnect(true),
 		nats.MaxReconnects(1),
 		nats.ReconnectWait(time.Second),
-
-		nats.ReconnectHandler(func(_ *nats.Conn) {
+		nats.DisconnectHandler(func(_ *nats.Conn) {
 			connectionAttempts++
-			log.Warnf("WARN: Reconnecting Farmer to NATS bus, attempt: %d\n", connectionAttempts)
+			log.Debugf("Reconnecting Farmer to NATS bus, attempt: %d\n", connectionAttempts)
 		}),
 	)
+	for !nc.IsConnected() {
+		log.Debug("Attempting to connect to Farmer...")
+		time.Sleep(time.Second)
+	}
 	if err != nil {
 		log.Errorf("Got an error on Connect with Secure Options: %+v\n", err)
 	}
@@ -104,6 +118,7 @@ func ConnectSprout() {
 	//		panic(err)
 	//	}
 	ec, _ := nats.NewEncodedConn(nc, nats.JSON_ENCODER)
+	natsInit(ec)
 	defer ec.Close()
 	select {}
 }
