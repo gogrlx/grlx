@@ -2,7 +2,7 @@ package pki
 
 import (
 	. "github.com/gogrlx/grlx/config"
-	log "github.com/taigrr/log-socket/logger"
+	log "github.com/taigrr/log-socket/log"
 
 	//	. "github.com/gogrlx/grlx/types"
 	nats_server "github.com/nats-io/nats-server/v2/server"
@@ -22,7 +22,10 @@ func ConfigureNats() {
 		TLSCert:               CertFile,
 		TLSKey:                KeyFile,
 		TLS:                   true,
-		TLSCaCert:             RootCA,
+		AllowNonTLS:           false,
+		LogFile:               "nats.log",
+		AuthTimeout:           10,
+		//TLSCaCert:             RootCA,
 	}
 }
 
@@ -55,6 +58,6 @@ func ReloadNKeys() error {
 	DefaultTestOptions.Nkeys = nkeyUsers
 	//DefaultTestOptions.Accounts = append(DefaultTestOptions.Accounts, &farmerAccount)
 	//DefaultTestOptions.Accounts
-	// err = NatsServer.ReloadOptions(&DefaultTestOptions)
+	//	err = NatsServer.ReloadOptions(&DefaultTestOptions)
 	return err
 }

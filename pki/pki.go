@@ -15,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	log "github.com/taigrr/log-socket/logger"
+	log "github.com/taigrr/log-socket/log"
 
 	. "github.com/gogrlx/grlx/config"
 	. "github.com/gogrlx/grlx/types"

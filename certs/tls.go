@@ -17,10 +17,8 @@ import (
 	"time"
 
 	. "github.com/gogrlx/grlx/config"
-	log "github.com/taigrr/log-socket/logger"
+	log "github.com/taigrr/log-socket/log"
 )
-
-var ()
 
 func publicKey(priv interface{}) interface{} {
 	switch k := priv.(type) {
@@ -42,6 +40,7 @@ func genCACert() {
 	if !os.IsNotExist(err) {
 		_, err = os.Stat(RootCAPriv)
 		if !os.IsNotExist(err) {
+			log.Trace("Found a RootCA keypair, not generating a new one...")
 			return
 		}
 	}
@@ -105,6 +104,14 @@ func genCACert() {
 }
 func GenCert() {
 	// check if certificates already exist first
+	_, err := os.Stat(CertFile)
+	if !os.IsNotExist(err) {
+		_, err = os.Stat(KeyFile)
+		if !os.IsNotExist(err) {
+			log.Trace("Found a TLS keypair, not generating a new one...")
+			return
+		}
+	}
 
 	genCACert()
 	file, err := os.Open(RootCA)

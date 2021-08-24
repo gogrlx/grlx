@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	log "github.com/taigrr/log-socket/logger"
+	log "github.com/taigrr/log-socket/log"
 
 	certs "github.com/gogrlx/grlx/certs"
 	. "github.com/gogrlx/grlx/config"
@@ -75,7 +75,7 @@ func createConfigRoot() {
 func ConnectSprout() {
 	var connectionAttempts = 0
 	var err error
-	//	opt, err := nats.NkeyOptionFromSeed(NKeySproutPrivFile)
+	opt, err := nats.NkeyOptionFromSeed(NKeySproutPrivFile)
 	if err != nil {
 		//TODO: handle error
 		log.Panic(err)
@@ -87,14 +87,14 @@ func ConnectSprout() {
 	}
 	ok := certPool.AppendCertsFromPEM(rootPEM)
 	if !ok {
-		log.Errorf("nats: failed to parse root certificate from %q", CertFile)
+		log.Errorf("nats: failed to parse root certificate from %q", SproutRootCA)
 	}
 	config := &tls.Config{
 		ServerName: "localhost",
 		RootCAs:    certPool,
 		MinVersion: tls.VersionTLS12,
 	}
-	nc, err := nats.Connect("tls://localhost:4443", nats.Secure(config), //opt,
+	nc, err := nats.Connect("tls://localhost:4222", nats.Secure(config), opt,
 		nats.RetryOnFailedConnect(true),
 		nats.MaxReconnects(1),
 		nats.ReconnectWait(time.Second),

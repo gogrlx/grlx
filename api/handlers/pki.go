@@ -10,7 +10,7 @@ import (
 	"github.com/gogrlx/grlx/pki"
 	. "github.com/gogrlx/grlx/types"
 	"github.com/nats-io/nkeys"
-	log "github.com/taigrr/log-socket/logger"
+	log "github.com/taigrr/log-socket/log"
 )
 
 // TODO: add callback event for when new key is PUT to the server

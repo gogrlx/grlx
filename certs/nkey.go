@@ -5,7 +5,7 @@ import (
 
 	. "github.com/gogrlx/grlx/config"
 	"github.com/nats-io/nkeys"
-	log "github.com/taigrr/log-socket/logger"
+	log "github.com/taigrr/log-socket/log"
 )
 
 func GetPubNKey(isFarmer bool) (string, error) {

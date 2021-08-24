@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	log "github.com/taigrr/log-socket/logger"
+	log "github.com/taigrr/log-socket/log"
 )
 
 func Logger(inner http.Handler, name string) http.Handler {
