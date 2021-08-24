@@ -94,7 +94,7 @@ func ConnectSprout() {
 		RootCAs:    certPool,
 		MinVersion: tls.VersionTLS12,
 	}
-	nc, err := nats.Connect("tls://localhost:4222", nats.Secure(config), opt,
+	nc, err := nats.Connect("tls://localhost:4443", nats.Secure(config), opt,
 		nats.RetryOnFailedConnect(true),
 		nats.MaxReconnects(1),
 		nats.ReconnectWait(time.Second),

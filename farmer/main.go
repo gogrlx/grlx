@@ -34,6 +34,7 @@ func main() {
 	defer log.Flush()
 	certs.GenCert()
 	certs.GenNKey(true)
+	pki.ConfigureNats()
 	RunNATSServer()
 	StartAPIServer()
 	go ConnectFarmer()
@@ -91,36 +92,14 @@ func (l logger) Debugf(format string, args ...interface{}) {
 
 // RunNATSServer starts a new Go routine based server
 func RunNATSServer() {
-	pki.ReloadNKeys()
-	opts := &DefaultTestOptions
 	// Optionally override for individual debugging of tests
 	// err := opts.ProcessConfigFile("config.json")
 	//if err != nil {
 	//		log.Panicf("Error configuring server: %v", err)
 	//	}
 	var err error
-
-	certPool := x509.NewCertPool()
-	rootPEM, err := ioutil.ReadFile(RootCA)
-	if err != nil || rootPEM == nil {
-		log.Panicf("nats: error loading or parsing rootCA file: %v", err)
-	}
-	ok := certPool.AppendCertsFromPEM(rootPEM)
-	if !ok {
-		log.Errorf("nats: failed to parse root certificate from %v", RootCA)
-	}
-	certificate, err := tls.LoadX509KeyPair(CertFile, KeyFile)
-	if err != nil {
-		log.Panic(err)
-	}
-	config := &tls.Config{
-		ServerName:   "localhost",
-		RootCAs:      certPool,
-		Certificates: []tls.Certificate{certificate},
-		MinVersion:   tls.VersionTLS12,
-	}
-	opts.TLSConfig = config
-	s, err = nats_server.NewServer(opts)
+	pki.ReloadNKeys()
+	s, err = nats_server.NewServer(&DefaultTestOptions)
 	if err != nil || s == nil {
 		log.Panicf("No NATS Server object returned: %v", err)
 	}

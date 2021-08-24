@@ -129,7 +129,7 @@ var keys_list = &cobra.Command{
 			}
 			color.Yellow("Unaccepted:")
 			for _, key := range keys.Unaccepted.Sprouts {
-				fmt.Println(key.SproutID)
+				color.Yellow(key.SproutID)
 			}
 			return
 		case "yaml":

@@ -187,9 +187,12 @@ func GetNKeysByType(set string) KeySet {
 	default:
 		return keySet
 	}
-	setPath := filepath.Join(FarmerPKI + "sprouts/" + set)
+	setPath := filepath.Join(FarmerPKI + "sprouts/" + set + "/")
 	filepath.WalkDir(setPath, func(path string, d fs.DirEntry, err error) error {
 		_, id := filepath.Split(path)
+		if setPath == path {
+			return nil
+		}
 		keySet.Sprouts = append(keySet.Sprouts, KeyManager{SproutID: id})
 		return nil
 	})
