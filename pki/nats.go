@@ -93,7 +93,7 @@ func ReloadNKeys() error {
 			panic(err)
 		}
 		account_subscribe := nats_server.SubjectPermission{Allow: []string{"grlx.sprouts." + account.SproutID + ".>"}}
-		account_publish := nats_server.SubjectPermission{Allow: []string{"grlx.sprouts.announce." + account.SproutID + ".>"}}
+		account_publish := nats_server.SubjectPermission{Allow: []string{"grlx.sprouts.announce." + account.SproutID}}
 		sproutAccount.Nkey = key
 		sproutPermissions := nats_server.Permissions{}
 		sproutPermissions.Publish = &account_publish
