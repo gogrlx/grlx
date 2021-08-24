@@ -5,51 +5,67 @@ Copyright © 2021 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
+	"log"
+	"os"
 
+	"github.com/fatih/color"
+	test "github.com/gogrlx/grlx/grlx/ingredients/test"
+	. "github.com/gogrlx/grlx/types"
 	"github.com/spf13/cobra"
 )
 
 // testCmd represents the test command
 var testCmd = &cobra.Command{
 	Use:   "test",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "Various utilities to monitor and test Sprout connections",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("test called")
+		cmd.Help()
 	},
 }
 
 func init() {
+	testCmd_Ping.Flags().BoolVarP(&targetAll, "all", "A", false, "Ping all Sprouts")
 	testCmd.AddCommand(testCmd_Ping)
 	rootCmd.AddCommand(testCmd)
 
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// testCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// testCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
 
 var testCmd_Ping = &cobra.Command{
-	Use:   "ping",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Use:   "ping [key id]",
+	Short: "Determine if a given Sprout is online",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("ping called")
+		keyID := args[0]
+		ok, err := test.FPing(keyID)
+		//TODO: output error message in correct outputMode
+		if err != nil {
+			switch err {
+			case ErrSproutIDNotFound:
+				log.Fatalf("Sprout %s does not exist.", keyID)
+			case ErrAlreadyAccepted:
+				log.Fatalf("Sprout %s has already been accepted.", keyID)
+			default:
+				panic(err)
+			}
+		}
+		switch outputMode {
+		case "json":
+			jw, _ := json.Marshal(ok)
+			fmt.Println(string(jw))
+			return
+		case "":
+			fallthrough
+		case "text":
+			if ok {
+				fmt.Printf("%s: \"pong!\"\n", keyID)
+				return
+			}
+			color.Red("%s is offline!\n", keyID)
+			os.Exit(1)
+		case "yaml":
+			//TODO implement YAML
+		}
+
 	},
 }

@@ -13,6 +13,7 @@ import (
 	"github.com/gogrlx/grlx/api"
 	"github.com/gogrlx/grlx/certs"
 	. "github.com/gogrlx/grlx/config"
+	"github.com/gogrlx/grlx/ingredients/test"
 	"github.com/gogrlx/grlx/pki"
 
 	// . "github.com/gogrlx/grlx/types"
@@ -25,7 +26,6 @@ func init() {
 	log.SetLogLevel(log.LTrace)
 	createConfigRoot()
 	pki.SetupPKIFarmer()
-	pki.ConfigureNats()
 }
 
 var s *nats_server.Server
@@ -180,6 +180,7 @@ func ConnectFarmer() {
 	//		panic(err)
 	//	}
 	ec, _ := nats.NewEncodedConn(nc, nats.JSON_ENCODER)
+	test.RegisterEC(ec)
 	defer ec.Close()
 	select {}
 }

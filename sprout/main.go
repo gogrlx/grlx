@@ -11,6 +11,7 @@ import (
 
 	certs "github.com/gogrlx/grlx/certs"
 	. "github.com/gogrlx/grlx/config"
+	"github.com/gogrlx/grlx/ingredients/test"
 	"github.com/gogrlx/grlx/pki"
 
 	nats "github.com/nats-io/nats.go"
@@ -95,22 +96,29 @@ func ConnectSprout() {
 		MinVersion: tls.VersionTLS12,
 	}
 	nc, err := nats.Connect("tls://localhost:4443", nats.Secure(config), opt,
-		nats.RetryOnFailedConnect(true),
-		nats.MaxReconnects(1),
-		nats.ReconnectWait(time.Second),
+		nats.MaxReconnects(-1),
+		nats.ReconnectWait(time.Second*15),
 		nats.DisconnectHandler(func(_ *nats.Conn) {
 			connectionAttempts++
-			log.Debugf("Reconnecting Farmer to NATS bus, attempt: %d\n", connectionAttempts)
+			log.Debugf("Reconnecting to Farmer, attempt: %d\n", connectionAttempts)
 		}),
 	)
-	for !nc.IsConnected() {
-		log.Debug("Attempting to connect to Farmer...")
-		time.Sleep(time.Second)
+	for err != nil {
+		time.Sleep(time.Second * 15)
+		nc, err = nats.Connect("tls://localhost:4443", nats.Secure(config), opt,
+			nats.MaxReconnects(-1),
+			nats.ReconnectWait(time.Second*15),
+			//TODO: Add a reconnect handler
+			nats.DisconnectHandler(func(_ *nats.Conn) {
+				connectionAttempts++
+				log.Debugf("Reconnecting to Farmer, attempt: %d\n", connectionAttempts)
+			}),
+		)
 	}
 	if err != nil {
 		log.Errorf("Got an error on Connect with Secure Options: %+v\n", err)
 	}
-	log.Debugf("Successfully joined Farmer to NATS bus")
+	log.Debugf("Successfully connected to the Farmer")
 
 	//	nc, err := nats.Connect(serverUrl, opt)
 	//	if err != nil {
@@ -118,6 +126,7 @@ func ConnectSprout() {
 	//		panic(err)
 	//	}
 	ec, _ := nats.NewEncodedConn(nc, nats.JSON_ENCODER)
+	test.RegisterEC(ec)
 	natsInit(ec)
 	defer ec.Close()
 	select {}

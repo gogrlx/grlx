@@ -1,11 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
-	"time"
 
 	log "github.com/taigrr/log-socket/log"
 
+	"github.com/gogrlx/grlx/ingredients/test"
 	"github.com/gogrlx/grlx/pki"
 	. "github.com/gogrlx/grlx/types"
 
@@ -35,24 +36,12 @@ func natsInit(nc *nats.EncodedConn) error {
 	} else {
 		log.Tracef("Successfully published startup message on `%s`.", startup_event)
 	}
+	nc.Subscribe("grlx.sprouts."+sproutID+".test.ping", func(m *nats.Msg) {
+		var ping PingPong
+		json.NewDecoder(bytes.NewBuffer(m.Data)).Decode(&ping)
+		pong, _ := test.SPing(ping)
+		pongB, _ := json.Marshal(pong)
+		m.Respond(pongB)
+	})
 	return nil
-}
-
-// Simple hardcoded setup to get onto NATS.
-// Configures timeouts, and sets up logging for disconnection events
-func setupConnOptions(opts []nats.Option) []nats.Option {
-	totalWait := 10 * time.Minute
-	reconnectDelay := time.Second
-	opts = append(opts, nats.ReconnectWait(reconnectDelay))
-	opts = append(opts, nats.MaxReconnects(int(totalWait/reconnectDelay)))
-	opts = append(opts, nats.DisconnectHandler(func(nc *nats.Conn) {
-		log.Errorf("Disconnected: will attempt reconnects for %.0fm", totalWait.Minutes())
-	}))
-	opts = append(opts, nats.ReconnectHandler(func(nc *nats.Conn) {
-		log.Debugf("Reconnected [%s]", nc.ConnectedUrl())
-	}))
-	opts = append(opts, nats.ClosedHandler(func(nc *nats.Conn) {
-		log.Fatal("Exiting, no servers available")
-	}))
-	return opts
 }

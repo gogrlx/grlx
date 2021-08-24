@@ -1,6 +1,9 @@
 package types
 
-import "net/http"
+import (
+	"net/http"
+	"time"
+)
 
 type Route struct {
 	Name        string
@@ -40,4 +43,9 @@ type KeysByType struct {
 }
 type Inline200 struct {
 	Success bool `json:"success"`
+}
+
+type PingPong struct {
+	Ping time.Time `json:"ping"`
+	Pong time.Time `json:"pong"`
 }

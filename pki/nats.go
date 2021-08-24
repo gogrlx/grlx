@@ -74,7 +74,7 @@ func ReloadNKeys() error {
 	farmerAccount.Name = "Farmer"
 	farmerAccount.Nkey = farmerKey
 	nkeyUsers := []*nats_server.NkeyUser{}
-	allowAll := nats_server.SubjectPermission{Allow: []string{"grlx.>"}}
+	allowAll := nats_server.SubjectPermission{Allow: []string{"grlx.>", "_INBOX.>"}}
 	farmerPermissions := nats_server.Permissions{}
 	farmerPermissions.Publish = &allowAll
 	farmerPermissions.Subscribe = &allowAll
@@ -93,7 +93,7 @@ func ReloadNKeys() error {
 			panic(err)
 		}
 		account_subscribe := nats_server.SubjectPermission{Allow: []string{"grlx.sprouts." + account.SproutID + ".>"}}
-		account_publish := nats_server.SubjectPermission{Allow: []string{"grlx.sprouts.announce." + account.SproutID}}
+		account_publish := nats_server.SubjectPermission{Allow: []string{"grlx.sprouts.announce." + account.SproutID, "_INBOX.>"}}
 		sproutAccount.Nkey = key
 		sproutPermissions := nats_server.Permissions{}
 		sproutPermissions.Publish = &account_publish
@@ -105,20 +105,24 @@ func ReloadNKeys() error {
 		nkeyUsers = append(nkeyUsers, &sproutUser)
 	}
 	log.Tracef("Completed adding authorized clients.")
-	DefaultTestOptions.Nkeys = nkeyUsers
+	optsCopy := CopyOptions(DefaultTestOptions)
+	optsCopy.Nkeys = nkeyUsers
 	config := tls.Config{
 		ServerName:   "localhost",
 		RootCAs:      certPool,
 		Certificates: []tls.Certificate{cert},
 		MinVersion:   tls.VersionTLS12,
 	}
-	DefaultTestOptions.TLSConfig = &config
+	optsCopy.TLSConfig = &config
 
 	//DefaultTestOptions.Accounts = append(DefaultTestOptions.Accounts, &farmerAccount)
 	//DefaultTestOptions.Accounts
 	if NatsServer != nil {
-		err = NatsServer.ReloadOptions(&DefaultTestOptions)
+		err = NatsServer.ReloadOptions(&optsCopy)
 		log.Error(err)
 	}
 	return err
+}
+func CopyOptions(opts nats_server.Options) nats_server.Options {
+	return opts
 }

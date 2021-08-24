@@ -4,6 +4,8 @@ import (
 	"net/http"
 
 	"github.com/gogrlx/grlx/api/handlers"
+
+	test "github.com/gogrlx/grlx/api/handlers/ingredients/test"
 	. "github.com/gogrlx/grlx/types"
 	"github.com/gorilla/mux"
 	"github.com/taigrr/log-socket/browser"
@@ -97,5 +99,11 @@ var routes = Routes{
 		Method:      http.MethodPost,
 		Pattern:     "/pki/deletenkey",
 		HandlerFunc: handlers.DeleteNKey,
+	},
+	Route{
+		Name:        "TestPing",
+		Method:      http.MethodPost,
+		Pattern:     "/test/ping",
+		HandlerFunc: test.TestPing,
 	},
 }
