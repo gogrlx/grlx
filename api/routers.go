@@ -5,6 +5,7 @@ import (
 
 	"github.com/gogrlx/grlx/api/handlers"
 
+	cmd "github.com/gogrlx/grlx/api/handlers/ingredients/cmd"
 	test "github.com/gogrlx/grlx/api/handlers/ingredients/test"
 	. "github.com/gogrlx/grlx/types"
 	"github.com/gorilla/mux"
@@ -33,6 +34,7 @@ func NewRouter(v Version, certificate string) *mux.Router {
 	return router
 }
 
+//TODO start using subrouters
 var routes = Routes{
 	Route{
 		Name:        "GetLogSocket",
@@ -104,6 +106,12 @@ var routes = Routes{
 		Name:        "TestPing",
 		Method:      http.MethodPost,
 		Pattern:     "/test/ping",
-		HandlerFunc: test.TestPing,
+		HandlerFunc: test.HTestPing,
+	},
+	Route{
+		Name:        "CmdRun",
+		Method:      http.MethodPost,
+		Pattern:     "/cmd/run",
+		HandlerFunc: cmd.HCmdRun,
 	},
 }

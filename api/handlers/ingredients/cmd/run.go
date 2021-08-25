@@ -1,4 +1,4 @@
-package test
+package cmd
 
 import (
 	"encoding/json"
@@ -7,14 +7,14 @@ import (
 	"sync"
 
 	//. "github.com/gogrlx/grlx/config"
-	"github.com/gogrlx/grlx/ingredients/test"
+	"github.com/gogrlx/grlx/ingredients/cmd"
 	"github.com/gogrlx/grlx/pki"
 	. "github.com/gogrlx/grlx/types"
 	log "github.com/taigrr/log-socket/log"
 )
 
 // TODO: add callback event for when new key is PUT to the server
-func HTestPing(w http.ResponseWriter, r *http.Request) {
+func HCmdRun(w http.ResponseWriter, r *http.Request) {
 	var targetAction TargetedAction
 	// grab the body of the req
 	err := json.NewDecoder(r.Body).Decode(&targetAction)
@@ -23,7 +23,7 @@ func HTestPing(w http.ResponseWriter, r *http.Request) {
 		log.Trace("An invalid ping request was made.")
 		return
 	}
-	ping, ok := targetAction.Action.(PingPong)
+	command, ok := targetAction.Action.(CmdRun)
 	if !ok {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		log.Trace("An invalid ping request was made.")
@@ -49,9 +49,6 @@ func HTestPing(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// check if the id exists in any of the folders
-	// if it does, append a counter to the end, and check again
-	// if we hit 100 sprouts with the same id, kick back a StatusBadRequest
 	var results TargetedResults
 	var wg sync.WaitGroup
 	var m sync.Mutex
@@ -60,15 +57,16 @@ func HTestPing(w http.ResponseWriter, r *http.Request) {
 
 		go func(target KeyManager) {
 			defer wg.Done()
-			pong, err := test.FPing(target, ping)
+			result, err := cmd.FRun(target, command)
 			if err != nil {
-				log.Tracef("Error pinging the Sprout: %v", err)
+				log.Tracef("Error running command on the Sprout: %v", err)
 			}
 			m.Lock()
-			results.Results[target] = pong
+			results.Results[target] = result
 			m.Unlock()
 		}(target)
 	}
+	wg.Wait()
 	jw, _ := json.Marshal(results)
 	w.WriteHeader(http.StatusOK)
 	w.Write(jw)

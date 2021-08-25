@@ -7,22 +7,20 @@ import (
 )
 
 // TODO allow selector to be more than an ID
-func FPing(id string) (bool, error) {
-	topic := "grlx.sprouts." + id + ".test.ping"
-	var ping PingPong
-	ping.Ping = time.Now()
+func FPing(target KeyManager, ping PingPong) (bool, error) {
+
+	topic := "grlx.sprouts." + target.SproutID + ".test.ping"
+	ping.Ping = true
+	ping.Pong = false
 	var pong PingPong
 	err := ec.Request(topic, ping, &pong, time.Second*15)
 	if err != nil {
 		return false, err
 	}
-	if pong.Pong.After(ping.Pong) {
-		return true, nil
-	}
-	return false, nil
+	return pong.Pong, nil
 }
 
 func SPing(ping PingPong) (PingPong, error) {
-	ping.Pong = time.Now()
+	ping.Pong = true
 	return ping, nil
 }

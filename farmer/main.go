@@ -13,6 +13,7 @@ import (
 	"github.com/gogrlx/grlx/api"
 	"github.com/gogrlx/grlx/certs"
 	. "github.com/gogrlx/grlx/config"
+	"github.com/gogrlx/grlx/ingredients/cmd"
 	"github.com/gogrlx/grlx/ingredients/test"
 	"github.com/gogrlx/grlx/pki"
 
@@ -181,6 +182,7 @@ func ConnectFarmer() {
 	//	}
 	ec, _ := nats.NewEncodedConn(nc, nats.JSON_ENCODER)
 	test.RegisterEC(ec)
+	cmd.RegisterEC(ec)
 	defer ec.Close()
 	select {}
 }

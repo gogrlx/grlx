@@ -11,6 +11,7 @@ import (
 
 	certs "github.com/gogrlx/grlx/certs"
 	. "github.com/gogrlx/grlx/config"
+	"github.com/gogrlx/grlx/ingredients/cmd"
 	"github.com/gogrlx/grlx/ingredients/test"
 	"github.com/gogrlx/grlx/pki"
 
@@ -127,6 +128,7 @@ func ConnectSprout() {
 	//	}
 	ec, _ := nats.NewEncodedConn(nc, nats.JSON_ENCODER)
 	test.RegisterEC(ec)
+	cmd.RegisterEC(ec)
 	natsInit(ec)
 	defer ec.Close()
 	select {}

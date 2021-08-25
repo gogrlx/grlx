@@ -6,6 +6,7 @@ import (
 
 	log "github.com/taigrr/log-socket/log"
 
+	"github.com/gogrlx/grlx/ingredients/cmd"
 	"github.com/gogrlx/grlx/ingredients/test"
 	"github.com/gogrlx/grlx/pki"
 	. "github.com/gogrlx/grlx/types"
@@ -36,6 +37,14 @@ func natsInit(nc *nats.EncodedConn) error {
 	} else {
 		log.Tracef("Successfully published startup message on `%s`.", startup_event)
 	}
+
+	nc.Subscribe("grlx.sprouts."+sproutID+".cmd.run", func(m *nats.Msg) {
+		var cmdRun CmdRun
+		json.NewDecoder(bytes.NewBuffer(m.Data)).Decode(&cmdRun)
+		results, _ := cmd.SRun(cmdRun)
+		resultsB, _ := json.Marshal(results)
+		m.Respond(resultsB)
+	})
 	nc.Subscribe("grlx.sprouts."+sproutID+".test.ping", func(m *nats.Msg) {
 		var ping PingPong
 		json.NewDecoder(bytes.NewBuffer(m.Data)).Decode(&ping)

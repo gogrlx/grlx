@@ -46,6 +46,31 @@ type Inline200 struct {
 }
 
 type PingPong struct {
-	Ping time.Time `json:"ping"`
-	Pong time.Time `json:"pong"`
+	Ping bool `json:"ping"`
+	Pong bool `json:"pong"`
+}
+
+type CmdRun struct {
+	Command string        `json:"command"`
+	Args    []string      `json:"args"`
+	Path    string        `json:"path"` // path is prepended to the command's normal path
+	CWD     string        `json:"cwd"`
+	RunAs   string        `json:"runas"`
+	Env     EnvVar        `json:"env"`
+	Timeout time.Duration `json:"timeout"`
+
+	Stdout   string        `json:"stdout"`
+	Stderr   string        `json:"stderr"`
+	Duration time.Duration `json:"duration"`
+	ErrCode  int           `json:"errcode"`
+}
+
+type EnvVar map[string]string
+
+type TargetedAction struct {
+	Target []KeyManager `json:"target"`
+	Action interface{}  `json:"action"`
+}
+type TargetedResults struct {
+	Results map[KeyManager]interface{} `json:"results"`
 }
