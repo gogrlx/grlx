@@ -46,8 +46,9 @@ type Inline200 struct {
 }
 
 type PingPong struct {
-	Ping bool `json:"ping"`
-	Pong bool `json:"pong"`
+	Ping  bool  `json:"ping"`
+	Pong  bool  `json:"pong"`
+	Error error `json:"error"`
 }
 
 type CmdRun struct {
@@ -63,6 +64,8 @@ type CmdRun struct {
 	Stderr   string        `json:"stderr"`
 	Duration time.Duration `json:"duration"`
 	ErrCode  int           `json:"errcode"`
+
+	Error error `json:"error"`
 }
 
 type EnvVar map[string]string

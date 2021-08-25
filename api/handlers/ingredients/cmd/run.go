@@ -20,13 +20,13 @@ func HCmdRun(w http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(&targetAction)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
-		log.Trace("An invalid ping request was made.")
+		log.Trace("An invalid request was made.")
 		return
 	}
 	command, ok := targetAction.Action.(CmdRun)
 	if !ok {
 		http.Error(w, err.Error(), http.StatusBadRequest)
-		log.Trace("An invalid ping request was made.")
+		log.Trace("An invalid request was made.")
 		return
 
 	}
@@ -61,6 +61,7 @@ func HCmdRun(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				log.Tracef("Error running command on the Sprout: %v", err)
 			}
+			result.Error = err
 			m.Lock()
 			results.Results[target] = result
 			m.Unlock()

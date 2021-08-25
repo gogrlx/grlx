@@ -10,6 +10,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var environment string
+var user string
+var cwd string
+var timeout int
+var path string
+
 // cmdCmd represents the cmd command
 var cmdCmd = &cobra.Command{
 	Use:   "cmd",
@@ -25,14 +31,15 @@ to quickly create a Cobra application.`,
 	},
 }
 var cmdCmd_Run = &cobra.Command{
-	Use:   "run",
-	Short: "A brief description of your command",
+	Use:   "run ['command']",
+	Short: "Run a command remotely and see the output locally.",
 	Long: `A longer description that spans multiple lines and likely contains examples
 and usage of using your command. For example:
 
 Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
+
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("run called")
 	},
@@ -40,6 +47,11 @@ to quickly create a Cobra application.`,
 
 func init() {
 
+	cmdCmd_Run.Flags().StringVarP(&environment, "environment", "E", "", "List of space-separated key=value OS Environment Variables")
+	cmdCmd_Run.Flags().StringVarP(&user, "runas", "u", "", "If running as a sudoer, run the command as another user")
+	cmdCmd_Run.Flags().StringVarP(&cwd, "cwd", "w", "", "Current working directory to run the command in")
+	cmdCmd_Run.Flags().IntVar(&timeout, "timout", 30, "Cancel command execution and return after X seconds")
+	cmdCmd_Run.Flags().StringVarP(&path, "path", "p", "", "Prepend a folder to the PATH before execution")
 	cmdCmd.PersistentFlags().StringVarP(&sproutTarget, "target", "T", "", "list of sprouts to target")
 	cmdCmd.MarkPersistentFlagRequired("target")
 	cmdCmd.AddCommand(cmdCmd_Run)
