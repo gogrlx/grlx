@@ -71,6 +71,16 @@ XMR: [835Vpty7GkGhinCchD7uy8SXcKu8E6oY4buz45toMCF8UcrqxiLSRQsdKd4hNGL8odHUDxd7GP
 
 BTC: [bc1qafg9cqkxzfyj5adcr3l6ekp8x8fwzl30uawtgz](bitcoin:bc1qafg9cqkxzfyj5adcr3l6ekp8x8fwzl30uawtgz)
 
+GitHub: <a href="https://github.com/sponsors/taigrr?o=esb"><img src="logos/ghsponsor.png" width="116"></a>
+## Sponsors
+
+A big thank you to all of grlx's sponsors.
+It's your donations that allow development to continue so that grlx can grow.
+
+### Founders Club
+## <p align="left"><a href="https://newleafsolutions.dev"><img src="logos/newleaf.png" width="125"></a></p>
+
+
 ## License
 
 Dependencies may carry their own license agreemnts.
