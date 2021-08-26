@@ -75,5 +75,5 @@ type TargetedAction struct {
 	Action interface{}  `json:"action"`
 }
 type TargetedResults struct {
-	Results map[KeyManager]interface{} `json:"results"`
+	Results map[string]interface{} `json:"results"`
 }

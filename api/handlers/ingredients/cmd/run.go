@@ -63,7 +63,7 @@ func HCmdRun(w http.ResponseWriter, r *http.Request) {
 			}
 			result.Error = err
 			m.Lock()
-			results.Results[target] = result
+			results.Results[target.SproutID] = result
 			m.Unlock()
 		}(target)
 	}

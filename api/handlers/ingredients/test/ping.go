@@ -1,6 +1,7 @@
 package test
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
 	"strings"
@@ -19,17 +20,14 @@ func HTestPing(w http.ResponseWriter, r *http.Request) {
 	// grab the body of the req
 	err := json.NewDecoder(r.Body).Decode(&targetAction)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
 		log.Trace("An invalid ping request was made.")
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	ping, ok := targetAction.Action.(PingPong)
-	if !ok {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		log.Trace("An invalid ping request was made.")
-		return
+	jw, _ := json.Marshal(targetAction.Action)
+	var ping PingPong
+	json.NewDecoder(bytes.NewBuffer(jw)).Decode(&ping)
 
-	}
 	// verify our sprout id is valid
 	for _, target := range targetAction.Target {
 		if !pki.IsValidSproutID(target.SproutID) || strings.Contains(target.SproutID, "_") {
@@ -53,6 +51,7 @@ func HTestPing(w http.ResponseWriter, r *http.Request) {
 	// if it does, append a counter to the end, and check again
 	// if we hit 100 sprouts with the same id, kick back a StatusBadRequest
 	var results TargetedResults
+	results.Results = make(map[string]interface{})
 	var wg sync.WaitGroup
 	var m sync.Mutex
 	for _, target := range targetAction.Target {
@@ -65,13 +64,17 @@ func HTestPing(w http.ResponseWriter, r *http.Request) {
 				log.Tracef("Error pinging the Sprout: %v", err)
 			}
 			m.Lock()
-			results.Results[target] = pong
+			results.Results[target.SproutID] = pong
 			m.Unlock()
 		}(target)
 	}
-	jw, _ := json.Marshal(results)
+	wg.Wait()
+	jr, err := json.Marshal(results)
+	if err != nil {
+		log.Error(err)
+	}
 	w.WriteHeader(http.StatusOK)
-	w.Write(jw)
+	w.Write(jr)
 	return
 
 }

@@ -15,6 +15,7 @@ func FPing(target string) (TargetedResults, error) {
 	// check targets valid
 	var tr TargetedResults
 	targets, err := util.ResolveTargets(target)
+
 	if err != nil {
 		return tr, err
 	}

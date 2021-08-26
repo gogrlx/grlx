@@ -5,6 +5,7 @@ Copyright © 2021 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -37,6 +38,9 @@ var testCmd_Ping = &cobra.Command{
 	Short: "Determine if a given Sprout is online",
 	Args:  cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
+		if targetAll {
+			sproutTarget = ".*"
+		}
 		results, err := test.FPing(sproutTarget)
 		//TODO: output error message in correct outputMode
 		if err != nil {
@@ -44,7 +48,7 @@ var testCmd_Ping = &cobra.Command{
 			case ErrSproutIDNotFound:
 				log.Fatalf("A targeted Sprout does not exist or is not accepted..")
 			default:
-				panic(err)
+				log.Panic(err)
 			}
 		}
 		switch outputMode {
@@ -56,14 +60,21 @@ var testCmd_Ping = &cobra.Command{
 			fallthrough
 		case "text":
 			for keyID, result := range results.Results {
-				if value, ok := result.(PingPong); ok {
-					if !value.Pong {
-						fmt.Printf("%s: \"pong!\"\n", keyID)
-					} else {
-						color.Red("%s is offline!\n", keyID)
-					}
-				} else {
+				jw, err := json.Marshal(result)
+				if err != nil {
+					color.Red("%s: \n returned an invalid message!\n", keyID)
+					continue
+				}
+				var value PingPong
+				err = json.NewDecoder(bytes.NewBuffer(jw)).Decode(&value)
+
+				if err != nil {
 					color.Red("%s returned an invalid message!\n", keyID)
+				}
+				if value.Pong {
+					fmt.Printf("%s: \"pong!\"\n", keyID)
+				} else {
+					color.Red("%s is offline!\n", keyID)
 				}
 			}
 			return
