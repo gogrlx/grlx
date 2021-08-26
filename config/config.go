@@ -23,11 +23,11 @@ var NKeyFarmerPrivFile = FarmerPKI + "farmer.nkey"
 var NKeySproutPubFile = SproutPKI + "sprout.nkey.pub"
 var NKeySproutPrivFile = SproutPKI + "sprout.nkey"
 var Organization = "GRLX Development"
-var FarmerInterface = "localhost"
+var FarmerInterface = "192.168.2.4"
 var FarmerAPIPort = "5405"
 var SproutID = ""
 var FarmerURL = "https://" + FarmerInterface + ":" + FarmerAPIPort
 
 var CertificateValidTime = 365 * 24 * time.Hour
 
-var CertHosts = []string{"localhost", "127.0.0.1", "farmer", "grlx"}
+var CertHosts = []string{"localhost", "127.0.0.1", "farmer", "grlx", "192.168.2.4"}

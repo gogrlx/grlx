@@ -5,8 +5,16 @@ Copyright © 2021 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"log"
+	"strings"
+	"time"
 
+	"github.com/fatih/color"
+	gcmd "github.com/gogrlx/grlx/grlx/ingredients/cmd"
+	. "github.com/gogrlx/grlx/types"
 	"github.com/spf13/cobra"
 )
 
@@ -25,10 +33,66 @@ var cmdCmd = &cobra.Command{
 	},
 }
 var cmdCmd_Run = &cobra.Command{
-	Use:   "run ['command']",
+	Use:   "run command [and optional args]...",
 	Short: "Run a command remotely and see the output locally.",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("run called")
+		if len(args) < 1 {
+			cmd.Help()
+			return
+		}
+		var command CmdRun
+		command.Command = args[0]
+		if len(args) > 1 {
+			command.Args = args[1:]
+		}
+		command.CWD = cwd
+		command.Timeout = time.Second * time.Duration(timeout)
+		command.Env = make(EnvVar)
+		for _, pair := range strings.Split(environment, " ") {
+			if strings.ContainsRune(pair, '=') {
+				kv := strings.SplitN(pair, "=", 2)
+				command.Env[kv[0]] = kv[1]
+			}
+		}
+		command.Path = path
+		command.RunAs = user
+		results, err := gcmd.FRun(sproutTarget, command)
+		if err != nil {
+			switch err {
+			case ErrSproutIDNotFound:
+				log.Fatalf("A targeted Sprout does not exist or is not accepted..")
+			default:
+				log.Panic(err)
+			}
+		}
+		switch outputMode {
+		case "json":
+			jw, _ := json.Marshal(results)
+			fmt.Println(string(jw))
+			return
+		case "":
+			fallthrough
+		case "text":
+			for keyID, result := range results.Results {
+				jw, err := json.Marshal(result)
+				if err != nil {
+					color.Red("%s: \n returned an invalid message!\n", keyID)
+					continue
+				}
+				var value CmdRun
+				err = json.NewDecoder(bytes.NewBuffer(jw)).Decode(&value)
+				if err != nil {
+					color.Red("%s returned an invalid message!\n", keyID)
+					continue
+				}
+				if value.ErrCode != 0 {
+					color.Red("%s:\n", keyID)
+				} else {
+					fmt.Printf("%s:\n", keyID)
+				}
+				fmt.Printf("%s\n", value.Stdout)
+			}
+		}
 	},
 }
 

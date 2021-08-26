@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
 	"strings"
@@ -19,16 +20,17 @@ func HCmdRun(w http.ResponseWriter, r *http.Request) {
 	// grab the body of the req
 	err := json.NewDecoder(r.Body).Decode(&targetAction)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
 		log.Trace("An invalid request was made.")
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	command, ok := targetAction.Action.(CmdRun)
-	if !ok {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	jw, _ := json.Marshal(targetAction.Action)
+	var command CmdRun
+	err = json.NewDecoder(bytes.NewBuffer(jw)).Decode(&command)
+	if err != nil {
 		log.Trace("An invalid request was made.")
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
-
 	}
 	// verify our sprout id is valid
 	for _, target := range targetAction.Target {
@@ -52,6 +54,7 @@ func HCmdRun(w http.ResponseWriter, r *http.Request) {
 	var results TargetedResults
 	var wg sync.WaitGroup
 	var m sync.Mutex
+	results.Results = make(map[string]interface{})
 	for _, target := range targetAction.Target {
 		wg.Add(1)
 
@@ -68,9 +71,9 @@ func HCmdRun(w http.ResponseWriter, r *http.Request) {
 		}(target)
 	}
 	wg.Wait()
-	jw, _ := json.Marshal(results)
+	jr, _ := json.Marshal(results)
 	w.WriteHeader(http.StatusOK)
-	w.Write(jw)
+	w.Write(jr)
 	return
 
 }

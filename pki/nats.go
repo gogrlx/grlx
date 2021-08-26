@@ -20,7 +20,7 @@ var certPool *x509.CertPool
 
 func ConfigureNats() {
 	DefaultTestOptions = nats_server.Options{
-		Host:                  "0.0.0.0",
+		Host:                  FarmerInterface,
 		Port:                  4443,
 		NoSigs:                true,
 		MaxControlLine:        4096,
@@ -49,7 +49,7 @@ func ConfigureNats() {
 		log.Panic(err)
 	}
 	config := tls.Config{
-		ServerName:   "localhost",
+		ServerName:   FarmerInterface,
 		RootCAs:      certPool,
 		Certificates: []tls.Certificate{cert},
 		MinVersion:   tls.VersionTLS12,

@@ -70,7 +70,7 @@ func StartAPIServer() {
 	r := api.NewRouter(BuildInfo, CertFile)
 	srv := http.Server{
 		//TODO: add all below settings to configuration
-		Addr:         "0.0.0.0:5405",
+		Addr:         FarmerInterface + ":" + FarmerAPIPort,
 		WriteTimeout: time.Second * 120,
 		ReadTimeout:  time.Second * 120,
 		IdleTimeout:  time.Second * 120,
@@ -143,13 +143,13 @@ func ConnectFarmer() {
 	}
 
 	config := &tls.Config{
-		ServerName: "localhost",
+		ServerName: FarmerInterface,
 		RootCAs:    certPool,
 		MinVersion: tls.VersionTLS12,
 	}
 	_ = config
 	log.Debug("Attempting to pair Farmer to NATS bus.")
-	nc, err := nats.Connect("tls://localhost:4443", //nats.RootCAs(RootCA),
+	nc, err := nats.Connect("tls://"+FarmerInterface+":4443", //nats.RootCAs(RootCA),
 		nats.Secure(config),
 		opt,
 		nats.RetryOnFailedConnect(true),

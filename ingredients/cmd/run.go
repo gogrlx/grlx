@@ -24,10 +24,7 @@ func FRun(target KeyManager, cmdRun CmdRun) (CmdRun, error) {
 	topic := "grlx.sprouts." + target.SproutID + ".cmd.run"
 	var results CmdRun
 	err := ec.Request(topic, cmdRun, &results, time.Second*15+cmdRun.Duration)
-	if err != nil {
-		return cmdRun, err
-	}
-	return results, nil
+	return results, err
 }
 
 func SRun(cmd CmdRun) (CmdRun, error) {
@@ -80,8 +77,9 @@ func SRun(cmd CmdRun) (CmdRun, error) {
 	var stdoutBuf, stderrBuf bytes.Buffer
 	command.Stdout = io.MultiWriter(os.Stdout, &stdoutBuf)
 	command.Stderr = io.MultiWriter(os.Stderr, &stderrBuf)
-
+	timer := time.Now()
 	err := command.Run()
+	cmd.Duration = time.Now().Sub(timer)
 	if err != nil {
 		log.Fatalf("cmd.Run() failed with %s\n", err)
 	}

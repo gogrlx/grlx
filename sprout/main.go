@@ -92,11 +92,11 @@ func ConnectSprout() {
 		log.Errorf("nats: failed to parse root certificate from %q", SproutRootCA)
 	}
 	config := &tls.Config{
-		ServerName: "localhost",
+		ServerName: FarmerInterface,
 		RootCAs:    certPool,
 		MinVersion: tls.VersionTLS12,
 	}
-	nc, err := nats.Connect("tls://localhost:4443", nats.Secure(config), opt,
+	nc, err := nats.Connect("tls://"+FarmerInterface+":4443", nats.Secure(config), opt,
 		nats.MaxReconnects(-1),
 		nats.ReconnectWait(time.Second*15),
 		nats.DisconnectHandler(func(_ *nats.Conn) {
@@ -106,7 +106,7 @@ func ConnectSprout() {
 	)
 	for err != nil {
 		time.Sleep(time.Second * 15)
-		nc, err = nats.Connect("tls://localhost:4443", nats.Secure(config), opt,
+		nc, err = nats.Connect("tls://"+FarmerInterface+":4443", nats.Secure(config), opt,
 			nats.MaxReconnects(-1),
 			nats.ReconnectWait(time.Second*15),
 			//TODO: Add a reconnect handler
