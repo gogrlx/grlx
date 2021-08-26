@@ -19,27 +19,14 @@ var path string
 // cmdCmd represents the cmd command
 var cmdCmd = &cobra.Command{
 	Use:   "cmd",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "Collection of utilities for running commands on Sprouts on the fly",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("cmd called")
+		cmd.Help()
 	},
 }
 var cmdCmd_Run = &cobra.Command{
 	Use:   "run ['command']",
 	Short: "Run a command remotely and see the output locally.",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
-
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("run called")
 	},

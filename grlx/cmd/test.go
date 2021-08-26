@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"os"
 
 	"github.com/fatih/color"
 	test "github.com/gogrlx/grlx/grlx/ingredients/test"
@@ -27,6 +26,7 @@ var testCmd = &cobra.Command{
 
 func init() {
 	testCmd_Ping.Flags().BoolVarP(&targetAll, "all", "A", false, "Ping all Sprouts")
+	testCmd.PersistentFlags().StringVarP(&sproutTarget, "target", "T", "", "List of target Sprouts")
 	testCmd.AddCommand(testCmd_Ping)
 	rootCmd.AddCommand(testCmd)
 
@@ -35,34 +35,38 @@ func init() {
 var testCmd_Ping = &cobra.Command{
 	Use:   "ping [key id]",
 	Short: "Determine if a given Sprout is online",
+	Args:  cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
-		keyID := args[0]
-		ok, err := test.FPing(keyID)
+		results, err := test.FPing(sproutTarget)
 		//TODO: output error message in correct outputMode
 		if err != nil {
 			switch err {
 			case ErrSproutIDNotFound:
-				log.Fatalf("Sprout %s does not exist.", keyID)
-			case ErrAlreadyAccepted:
-				log.Fatalf("Sprout %s has already been accepted.", keyID)
+				log.Fatalf("A targeted Sprout does not exist or is not accepted..")
 			default:
 				panic(err)
 			}
 		}
 		switch outputMode {
 		case "json":
-			jw, _ := json.Marshal(ok)
+			jw, _ := json.Marshal(results)
 			fmt.Println(string(jw))
 			return
 		case "":
 			fallthrough
 		case "text":
-			if ok {
-				fmt.Printf("%s: \"pong!\"\n", keyID)
-				return
+			for keyID, result := range results.Results {
+				if value, ok := result.(PingPong); ok {
+					if !value.Pong {
+						fmt.Printf("%s: \"pong!\"\n", keyID)
+					} else {
+						color.Red("%s is offline!\n", keyID)
+					}
+				} else {
+					color.Red("%s returned an invalid message!\n", keyID)
+				}
 			}
-			color.Red("%s is offline!\n", keyID)
-			os.Exit(1)
+			return
 		case "yaml":
 			//TODO implement YAML
 		}
