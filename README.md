@@ -64,9 +64,6 @@ It is frankly, unacceptable for deployment until the third revision.
 
 However, if you like what you're seeing and want to bring grlx 'to market' sooner, please feel free to throw some financial encouragement my way!
 
-[Sponsor the Maintainer](https://github.com/sponsors/taigrr)
-
-
 XMR: [835Vpty7GkGhinCchD7uy8SXcKu8E6oY4buz45toMCF8UcrqxiLSRQsdKd4hNGL8odHUDxd7GPuBGYK5NxCqmUj6G7iKxsb](monero:835Vpty7GkGhinCchD7uy8SXcKu8E6oY4buz45toMCF8UcrqxiLSRQsdKd4hNGL8odHUDxd7GPuBGYK5NxCqmUj6G7iKxsb)
 
 BTC: [bc1qafg9cqkxzfyj5adcr3l6ekp8x8fwzl30uawtgz](bitcoin:bc1qafg9cqkxzfyj5adcr3l6ekp8x8fwzl30uawtgz)
