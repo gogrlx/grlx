@@ -5,14 +5,12 @@ go 1.17
 require (
 	github.com/fatih/color v1.7.0
 	github.com/gorilla/mux v1.8.0
-	github.com/nats-io/gnatsd v1.4.1
 	github.com/nats-io/nats-server/v2 v2.3.4
 	github.com/nats-io/nats.go v1.11.1-0.20210623165838-4b75fc59ae30
 	github.com/nats-io/nkeys v0.3.0
 	github.com/spf13/cobra v1.2.1
 	github.com/spf13/viper v1.8.1
 	github.com/taigrr/log-socket v0.1.12
-	golang.org/x/net v0.0.0-20210405180319-a5a99cb37ef4
 )
 
 require (

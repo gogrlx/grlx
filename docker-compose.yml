@@ -1,0 +1,32 @@
+version: "3.3"
+services:
+  farmer:
+    container_name: farmer
+    build:
+      context: .
+      dockerfile: docker/farmer.dockerfile
+    volumes:
+      - .:/app
+      - go-modules:/go/pkg/mod
+    image: grlx/farmer:latest
+    restart: unless-stopped
+    ports:
+      - "4443:4443"
+      - "5405:5405"
+
+  sprout_a:
+    image: grlx/sprout:latest
+    build:
+      context: .
+      dockerfile: docker/sprout.dockerfile
+    volumes:
+      - .:/app
+      - go-modules:/go/pkg/mod
+  sprout_b:
+    image: grlx/sprout:latest
+  sprout_c:
+    image: grlx/sprout:latest
+  sprout_d:
+    image: grlx/sprout:latest
+volumes:
+  go-modules:

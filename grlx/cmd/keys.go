@@ -51,10 +51,14 @@ func init() {
 }
 
 var keys_accept = &cobra.Command{
-	Use:   "accept [key id]",
+	Use:   "accept 'key_id'",
 	Short: "Accept a Sprout key by id.",
 	Long:  `Allows a user to accept one or many keys by id.`,
 	Run: func(cmd *cobra.Command, args []string) {
+		if len(args) < 1 {
+			cmd.Help()
+			return
+		}
 		keyID := args[0]
 		if !noConfirm {
 			fmt.Printf("Accept %s ", keyID)

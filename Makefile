@@ -76,12 +76,13 @@ clean:
 install: clean main
 	mv $(FNAME) "$$GOPATH/bin/$(PKG)"
 
-vet: 
-	@echo "Running go vet..."
-	@go vet || (printf "\e[31mGo vet failed, exit code $$?\e[39m\n"; exit 1)
-	@printf "\e[32mGo vet success!\e[39m\n"
+docker:
+	docker build -t grlx/farmer . -f docker/farmer.dockerfile
+	docker build -t grlx/sprout . -f docker/sprout.dockerfile
 
-test: clean vet main
+test: clean 
+	docker-compose build
+	docker-compose up -d
 	@printf "\e[31mNo tests defined!\e[39m\n"
 	@exit 1
 
@@ -94,3 +95,5 @@ run: main
 .PHONY: farmer
 .PHONY: grlx
 .PHONY: sprout
+.PHONY: docker
+.PHONY: update

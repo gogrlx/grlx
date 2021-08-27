@@ -1,6 +1,6 @@
 bin/*
 config.jso*
 configs/
-etc
-commander.yaml
-.env
+etc/
+docker/
+
