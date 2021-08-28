@@ -8,10 +8,12 @@ import (
 	"os"
 	"time"
 
+	"github.com/spf13/viper"
 	log "github.com/taigrr/log-socket/log"
 
 	"github.com/gogrlx/grlx/api"
 	"github.com/gogrlx/grlx/certs"
+	"github.com/gogrlx/grlx/config"
 	. "github.com/gogrlx/grlx/config"
 	"github.com/gogrlx/grlx/ingredients/cmd"
 	"github.com/gogrlx/grlx/ingredients/test"
@@ -24,18 +26,19 @@ import (
 )
 
 func init() {
+	config.LoadConfig("farmer")
 	log.SetLogLevel(log.LTrace)
-	createConfigRoot()
-	pki.SetupPKIFarmer()
 }
 
 var s *nats_server.Server
 
 func main() {
+	config.LoadConfig("farmer")
 	defer log.Flush()
+	createConfigRoot()
+	pki.SetupPKIFarmer()
 	certs.GenCert()
 	certs.GenNKey(true)
-	pki.ConfigureNats()
 	RunNATSServer()
 	StartAPIServer()
 	go ConnectFarmer()
@@ -51,6 +54,7 @@ func main() {
 }
 
 func createConfigRoot() {
+	ConfigRoot := viper.GetString("ConfigRoot")
 	_, err := os.Stat(ConfigRoot)
 	if err == nil {
 		return
@@ -67,6 +71,10 @@ func createConfigRoot() {
 }
 
 func StartAPIServer() {
+	CertFile := viper.GetString("CertFile")
+	FarmerInterface := viper.GetString("FarmerInterface")
+	FarmerAPIPort := viper.GetString("FarmerAPIPort")
+	KeyFile := viper.GetString("KeyFile")
 	r := api.NewRouter(BuildInfo, CertFile)
 	srv := http.Server{
 		//TODO: add all below settings to configuration
@@ -100,7 +108,8 @@ func RunNATSServer() {
 	//	}
 	var err error
 	pki.ReloadNKeys()
-	s, err = nats_server.NewServer(&DefaultTestOptions)
+	opts := pki.ConfigureNats()
+	s, err = nats_server.NewServer(&opts)
 	if err != nil || s == nil {
 		log.Panicf("No NATS Server object returned: %v", err)
 	}
@@ -125,8 +134,10 @@ func RunNATSServer() {
 func ConnectFarmer() {
 	var connectionAttempts = 1
 	var maxFarmerReconnect = 30
+	RootCA := viper.GetString("RootCA")
+	FarmerInterface := viper.GetString("FarmerInterface")
 	var err error
-	opt, err := nats.NkeyOptionFromSeed(NKeyFarmerPrivFile)
+	opt, err := nats.NkeyOptionFromSeed(viper.GetString("NKeyFarmerPrivFile"))
 	_ = opt
 	if err != nil {
 		//TODO: handle error

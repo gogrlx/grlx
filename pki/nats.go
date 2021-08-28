@@ -5,7 +5,7 @@ import (
 	"crypto/x509"
 	"io/ioutil"
 
-	. "github.com/gogrlx/grlx/config"
+	"github.com/spf13/viper"
 	log "github.com/taigrr/log-socket/log"
 
 	//	. "github.com/gogrlx/grlx/types"
@@ -18,7 +18,12 @@ var NatsOpts *nats_server.Options
 var cert tls.Certificate
 var certPool *x509.CertPool
 
-func ConfigureNats() {
+func ConfigureNats() nats_server.Options {
+	var DefaultTestOptions nats_server.Options
+	FarmerInterface := viper.GetString("FarmerInterface")
+	RootCA := viper.GetString("RootCA")
+	CertFile := viper.GetString("CertFile")
+	KeyFile := viper.GetString("KeyFile")
 	DefaultTestOptions = nats_server.Options{
 		Host:                  FarmerInterface,
 		Port:                  4443,
@@ -55,6 +60,7 @@ func ConfigureNats() {
 		MinVersion:   tls.VersionTLS12,
 	}
 	DefaultTestOptions.TLSConfig = &config
+	return DefaultTestOptions
 }
 
 func SetNATSServer(s *nats_server.Server) {
@@ -105,7 +111,7 @@ func ReloadNKeys() error {
 		nkeyUsers = append(nkeyUsers, &sproutUser)
 	}
 	log.Tracef("Completed adding authorized clients.")
-	optsCopy := CopyOptions(DefaultTestOptions)
+	optsCopy := ConfigureNats()
 	optsCopy.Nkeys = nkeyUsers
 	config := tls.Config{
 		ServerName:   "localhost",
@@ -122,7 +128,4 @@ func ReloadNKeys() error {
 		log.Error(err)
 	}
 	return err
-}
-func CopyOptions(opts nats_server.Options) nats_server.Options {
-	return opts
 }

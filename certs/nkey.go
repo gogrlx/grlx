@@ -3,15 +3,15 @@ package certs
 import (
 	"os"
 
-	. "github.com/gogrlx/grlx/config"
 	"github.com/nats-io/nkeys"
+	"github.com/spf13/viper"
 	log "github.com/taigrr/log-socket/log"
 )
 
 func GetPubNKey(isFarmer bool) (string, error) {
-	pubFile := NKeySproutPubFile
+	pubFile := viper.GetString("NKeySproutPubFile")
 	if isFarmer {
-		pubFile = NKeyFarmerPubFile
+		pubFile = viper.GetString("NKeyFarmerPubFile")
 	}
 	pubKeyBytes, err := os.ReadFile(pubFile)
 	if err != nil {
@@ -20,11 +20,11 @@ func GetPubNKey(isFarmer bool) (string, error) {
 	return string(pubKeyBytes), nil
 }
 func GenNKey(isFarmer bool) {
-	privFile := NKeySproutPrivFile
-	pubFile := NKeySproutPubFile
+	privFile := viper.GetString("NKeySproutPrivFile")
+	pubFile := viper.GetString("NKeySproutPubFile")
 	if isFarmer {
-		privFile = NKeyFarmerPrivFile
-		pubFile = NKeyFarmerPubFile
+		privFile = viper.GetString("NKeyFarmerPrivFile")
+		pubFile = viper.GetString("NKeyFarmerPubFile")
 	}
 	_, err := os.Stat(privFile)
 	if err == nil {

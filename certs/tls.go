@@ -16,7 +16,7 @@ import (
 	"os"
 	"time"
 
-	. "github.com/gogrlx/grlx/config"
+	"github.com/spf13/viper"
 	log "github.com/taigrr/log-socket/log"
 )
 
@@ -36,6 +36,8 @@ func publicKey(priv interface{}) interface{} {
 var notBefore = time.Now()
 
 func genCACert() {
+	RootCAPriv := viper.GetString("RootCAPriv")
+	RootCA := viper.GetString("RootCA")
 	_, err := os.Stat(RootCAPriv)
 	if !os.IsNotExist(err) {
 		_, err = os.Stat(RootCAPriv)
@@ -49,10 +51,10 @@ func genCACert() {
 	caCert := x509.Certificate{
 		SerialNumber: serialNumber,
 		Subject: pkix.Name{
-			Organization: []string{Organization},
+			Organization: viper.GetStringSlice("Organization"),
 		},
 		NotBefore:             notBefore,
-		NotAfter:              notBefore.Add(CertificateValidTime),
+		NotAfter:              notBefore.Add(viper.GetDuration("CertificateValidTime")),
 		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
 		BasicConstraintsValid: true,
@@ -104,6 +106,9 @@ func genCACert() {
 }
 func GenCert() {
 	// check if certificates already exist first
+	CertFile := viper.GetString("CertFile")
+	KeyFile := viper.GetString("KeyFile")
+	RootCA := viper.GetString("RootCA")
 	_, err := os.Stat(CertFile)
 	if !os.IsNotExist(err) {
 		_, err = os.Stat(KeyFile)
@@ -132,7 +137,7 @@ func GenCert() {
 	if err != nil {
 		log.Panic(err.Error())
 	}
-	file2, err := os.Open(RootCAPriv)
+	file2, err := os.Open(viper.GetString("RootCAPriv"))
 	if err != nil {
 		log.Panic(err)
 	}
@@ -150,7 +155,7 @@ func GenCert() {
 	if err != nil {
 		log.Panic(err.Error())
 	}
-	hosts := CertHosts
+	hosts := viper.GetStringSlice("CertHosts")
 	var priv interface{}
 	priv, err = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
@@ -168,10 +173,10 @@ func GenCert() {
 	template := x509.Certificate{
 		SerialNumber: serialNumber,
 		Subject: pkix.Name{
-			Organization: []string{Organization},
+			Organization: viper.GetStringSlice("Organization"),
 		},
 		NotBefore:             notBefore,
-		NotAfter:              notBefore.Add(CertificateValidTime),
+		NotAfter:              notBefore.Add(viper.GetDuration("CertificateValidTime")),
 		KeyUsage:              keyUsage,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 		BasicConstraintsValid: true,

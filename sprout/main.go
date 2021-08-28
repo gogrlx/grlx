@@ -7,10 +7,11 @@ import (
 	"os"
 	"time"
 
+	"github.com/spf13/viper"
 	log "github.com/taigrr/log-socket/log"
 
 	certs "github.com/gogrlx/grlx/certs"
-	. "github.com/gogrlx/grlx/config"
+	"github.com/gogrlx/grlx/config"
 	"github.com/gogrlx/grlx/ingredients/cmd"
 	"github.com/gogrlx/grlx/ingredients/test"
 	"github.com/gogrlx/grlx/pki"
@@ -19,6 +20,7 @@ import (
 )
 
 func init() {
+	config.LoadConfig("sprout")
 	log.SetLogLevel(log.LTrace)
 	sproutID = pki.GetSproutID()
 	createConfigRoot()
@@ -36,9 +38,10 @@ var (
 )
 
 func main() {
+	config.LoadConfig("sprout")
 	defer log.Flush()
 	certs.GenNKey(false)
-	for err := pki.LoadRootCA(); err != nil; err = pki.LoadRootCA() {
+	for err := pki.LoadRootCA("sprout"); err != nil; err = pki.LoadRootCA("sprout") {
 		log.Debugf("Error with RootCA: %v", err)
 		time.Sleep(time.Minute * 5)
 	}
@@ -59,6 +62,7 @@ func main() {
 }
 
 func createConfigRoot() {
+	ConfigRoot := viper.GetString("ConfigRoot")
 	_, err := os.Stat(ConfigRoot)
 	if err == nil {
 		return
@@ -77,7 +81,9 @@ func createConfigRoot() {
 func ConnectSprout() {
 	var connectionAttempts = 0
 	var err error
-	opt, err := nats.NkeyOptionFromSeed(NKeySproutPrivFile)
+	SproutRootCA := viper.GetString("SproutRootCA")
+	FarmerInterface := viper.GetString("FarmerInterface")
+	opt, err := nats.NkeyOptionFromSeed(viper.GetString("NKeySproutPrivFile"))
 	if err != nil {
 		//TODO: handle error
 		log.Panic(err)

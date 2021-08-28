@@ -6,10 +6,10 @@ import (
 	"strconv"
 	"strings"
 
-	. "github.com/gogrlx/grlx/config"
 	"github.com/gogrlx/grlx/pki"
 	. "github.com/gogrlx/grlx/types"
 	"github.com/nats-io/nkeys"
+	"github.com/spf13/viper"
 	log "github.com/taigrr/log-socket/log"
 )
 
@@ -87,7 +87,7 @@ func PutNKey(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetCertificate(w http.ResponseWriter, r *http.Request) {
-	http.ServeFile(w, r, RootCA)
+	http.ServeFile(w, r, viper.GetString("RootCA"))
 }
 
 //TODO: enable client authentication

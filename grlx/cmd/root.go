@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/fatih/color"
+	"github.com/gogrlx/grlx/config"
 	"github.com/gogrlx/grlx/grlx/util"
 	"github.com/gogrlx/grlx/pki"
 	"github.com/spf13/cobra"
@@ -31,7 +32,8 @@ func Execute() {
 }
 
 func init() {
-	cobra.OnInitialize(initConfig)
+	initConfig()
+	//cobra.OnInitialize(initConfig)
 
 	// Here you will define your flags and configuration settings.
 	// Cobra supports persistent flags, which, if defined here,
@@ -55,7 +57,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.grlx.yaml)")
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
-	if !pki.RootCACached() {
+	if !pki.RootCACached("grlx") {
 		fmt.Print("The TLS certificate for this farmer is unknown. Would you like to download and trust it? ")
 		shouldDownload, err := util.UserConfirmWithDefault(true)
 		for err != nil {
@@ -67,9 +69,10 @@ func init() {
 			os.Exit(1)
 		}
 	}
-	err := pki.LoadRootCA()
+	err := pki.LoadRootCA("grlx")
 	if err != nil {
-		color.Red("The RootCA could not be loaded. Exiting!")
+		fmt.Printf("%v", err)
+		color.Red("The RootCA could not be loaded from %s. Exiting!", viper.GetString("GrlxRootCA"))
 		os.Exit(1)
 	}
 }
@@ -80,20 +83,8 @@ func initConfig() {
 		// Use config file from the flag.
 		viper.SetConfigFile(cfgFile)
 	} else {
-		// Find home directory.
-		home, err := os.UserHomeDir()
-		cobra.CheckErr(err)
-
-		// Search config in home directory with name ".grlx" (without extension).
-		viper.AddConfigPath(home)
-		viper.SetConfigType("yaml")
-		viper.SetConfigName(".grlx")
+		config.LoadConfig("grlx")
 	}
-
 	viper.AutomaticEnv() // read in environment variables that match
 
-	// If a config file is found, read it in.
-	if err := viper.ReadInConfig(); err == nil {
-		fmt.Fprintln(os.Stderr, "Using config file:", viper.ConfigFileUsed())
-	}
 }

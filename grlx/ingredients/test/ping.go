@@ -5,11 +5,16 @@ import (
 	"encoding/json"
 	"net/http"
 
-	. "github.com/gogrlx/grlx/config"
 	"github.com/gogrlx/grlx/grlx/util"
 	. "github.com/gogrlx/grlx/types"
+	"github.com/spf13/viper"
 )
 
+var FarmerURL string
+
+func init() {
+	FarmerURL = viper.GetString("FarmerURL")
+}
 func FPing(target string) (TargetedResults, error) {
 	// util target split
 	// check targets valid
