@@ -62,6 +62,8 @@ var cmdCmd_Run = &cobra.Command{
 			case ErrSproutIDNotFound:
 				log.Fatalf("A targeted Sprout does not exist or is not accepted..")
 			default:
+				//TODO: handle endpoint timeouts here
+				//TODO: Error running command on the Sprout: nats: no responders available for request  run.go:65
 				log.Panic(err)
 			}
 		}

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"io"
-	"log"
 	"os"
 	"os/exec"
 	"os/user"
@@ -15,6 +14,7 @@ import (
 	"time"
 
 	. "github.com/gogrlx/grlx/types"
+	"github.com/taigrr/log-socket/log"
 )
 
 var envMutex sync.Mutex
@@ -36,6 +36,8 @@ func SRun(cmd CmdRun) (CmdRun, error) {
 	if val, ok := cmd.Env["PATH"]; cmd.Path == "" && (!ok || (ok && val == "")) {
 		_, err := exec.LookPath(cmd.Command)
 		if err != nil {
+			envMutex.Unlock()
+			cmd.Error = err
 			return cmd, err
 		}
 	} else {
@@ -81,7 +83,7 @@ func SRun(cmd CmdRun) (CmdRun, error) {
 	err := command.Run()
 	cmd.Duration = time.Now().Sub(timer)
 	if err != nil {
-		log.Fatalf("cmd.Run() failed with %s\n", err)
+		log.Errorf("cmd.Run() failed with %s\n", err)
 	}
 	cmd.Stdout = stdoutBuf.String()
 	cmd.Stderr = stderrBuf.String()
