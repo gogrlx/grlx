@@ -11,16 +11,11 @@ import (
 	"github.com/spf13/viper"
 )
 
-var FarmerURL string
-
-func init() {
-	FarmerURL = viper.GetString("FarmerURL")
-}
-
 func FRun(target string, command CmdRun) (TargetedResults, error) {
 	// util target split
 	// check targets valid
 	var tr TargetedResults
+	FarmerURL := viper.GetString("FarmerURL")
 	targets, err := util.ResolveTargets(target)
 
 	if err != nil {

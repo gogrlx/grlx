@@ -53,7 +53,7 @@ func LoadConfig(binary string) {
 			certPath := filepath.Join(dirname, ".config/grlx/tls-rootca.pem")
 			viper.Set("GrlxRootCA", certPath)
 		case "farmer":
-			viper.SetDefault("CertHosts", []string{"localhost", "127.0.0.1", "farmer", "grlx", "192.168.2.4"})
+			viper.SetDefault("CertHosts", []string{"localhost", "127.0.0.1", "farmer", "grlx", viper.GetString("FarmerInterface")})
 			viper.SetDefault("CertificateValidTime", 365*24*time.Hour)
 			viper.Set("CertFile", "/etc/grlx/pki/farmer/tls-cert.pem")
 			viper.Set("FarmerPKI", "/etc/grlx/pki/farmer/")

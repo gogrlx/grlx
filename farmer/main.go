@@ -137,6 +137,9 @@ func ConnectFarmer() {
 	var maxFarmerReconnect = 30
 	RootCA := viper.GetString("RootCA")
 	FarmerInterface := viper.GetString("FarmerInterface")
+	if FarmerInterface == "0.0.0.0" {
+		FarmerInterface = "localhost"
+	}
 	var err error
 	opt, err := nats.NkeyOptionFromSeed(viper.GetString("NKeyFarmerPrivFile"))
 	_ = opt

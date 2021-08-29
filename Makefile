@@ -88,6 +88,7 @@ docker:
 dcu:
 	docker-compose down || true
 	docker-compose rm
+	rm -f ~/.config/grlx/tls-rootca.pem
 	docker-compose up
 
 test: clean 

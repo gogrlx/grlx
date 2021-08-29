@@ -161,6 +161,8 @@ var keys_list = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		keys, err := gpki.ListKeys()
 		//TODO: output error message in correct outputMode
+		// for example, invalid cert for interface
+		// or 'unsigned'
 		if err != nil {
 			panic(err)
 		}
