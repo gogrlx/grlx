@@ -10,10 +10,10 @@
 Grlx (pronounced "garlic" is a pure-[Go](http://golang.org) alternative to other DevOps automation engines, such as Salt or Ansible.
 ## Installation
 
-Grlx is made up of three components: the `grlx-farmer`, one or many `grlx-sprout`s, and a CLI utility, `grlx`. 
-The `grlx-farmer` binary runs as a daemon on a management server (referred to as the 'farmer'), and is controlled via the `grlx` cli.
+Grlx is made up of three components: the `farmer`, one or many `sprout`s, and a CLI utility, `grlx`. 
+The `farmer` binary runs as a daemon on a management server (referred to as the 'farmer'), and is controlled via the `grlx` cli.
 `grlx` can be run both locally on the management sever or remotely over a secure-by-default, TLS-encrypted API.
-The `grlx-sprout` binary should be installed as a daemon on systems that are to be managed.
+The `sprout` binary should be installed as a daemon on systems that are to be managed.
 Managed systems are referred to as 'sprouts.'
 
 
@@ -21,8 +21,8 @@ All binaries are built without `CGO`, and should therefore be compatible with as
 
 ## Architecture
 
-`grlx-farmer` contains an embedded messaging Pub-Sub server ([NATS](https://github.com/nats-io/nats-server)), and an api server.
-Nodes running `grlx-sprout` subscribe to messages over the bus.
+`farmer` contains an embedded messaging Pub-Sub server ([NATS](https://github.com/nats-io/nats-server)), and an api server.
+Nodes running `sprout` subscribe to messages over the bus.
 Both the API server and the messaging bus use TLS encryption (elliptic curve by default), and sprouts authenticate using public-key cryptography.
 
 Jobs can be created with the `grlx` command-line interface, and typically come in the form of stateful targets, called 'recipes'.
@@ -33,8 +33,8 @@ Because the `farmer` exposes an API, `grlx` is by no means the only way to creat
 
 Some features (not yet ordered) that are coming to grlx:
 
+- [x] Command execution
 - [ ] BSD + Windows support (`grlx` client support already exists, but management does not)
-- [ ] Command execution
 - [ ] Encrypted secrets management
 - [ ] Environments
 - [ ] External TLS certificates (i.e. LetsEncrypt, or self-signed)
