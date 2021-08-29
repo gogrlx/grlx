@@ -55,6 +55,59 @@ var keys_accept = &cobra.Command{
 	Short: "Accept a Sprout key by id.",
 	Long:  `Allows a user to accept one or many keys by id.`,
 	Run: func(cmd *cobra.Command, args []string) {
+		if targetAll {
+			keyList, err := gpki.ListKeys()
+			//TODO: utility function for switched output mode errors
+			if err != nil {
+				switch outputMode {
+				case "":
+					fallthrough
+				case "text":
+					color.Red("Error: %v", err)
+				case "json":
+				case "yaml":
+				}
+				return
+			}
+			if !noConfirm {
+				fmt.Printf("Accept all unaccepted keys? ")
+				confirm, err := util.UserConfirmWithDefault(true)
+				for err != nil {
+					confirm, err = util.UserConfirmWithDefault(true)
+				}
+				if !confirm {
+					return
+				}
+			}
+			accepted := KeySet{Sprouts: []KeyManager{}}
+			for _, id := range keyList.Unaccepted.Sprouts {
+				ok, err := gpki.AcceptKey(id.SproutID)
+				if ok {
+					accepted.Sprouts = append(accepted.Sprouts, id)
+				} else {
+					switch outputMode {
+					case "":
+						fallthrough
+					case "text":
+						color.Red("Error: %v", err)
+					case "json":
+					case "yaml":
+					}
+					return
+				}
+			}
+			switch outputMode {
+			case "":
+				fallthrough
+			case "text":
+				for _, id := range accepted.Sprouts {
+					fmt.Printf("Key %s accepted.\n", id.SproutID)
+				}
+			case "json":
+			case "yaml":
+			}
+			return
+		}
 		if len(args) < 1 {
 			cmd.Help()
 			return

@@ -424,7 +424,9 @@ func GetPubNKey(isFarmer bool) (string, error) {
 func GetSproutID() string {
 	SproutID := viper.GetString("SproutID")
 	if SproutID == "" {
-		return createSproutID()
+		SproutID = createSproutID()
+		viper.Set("SproutID", SproutID)
+		viper.WriteConfig()
 	}
 	return SproutID
 }

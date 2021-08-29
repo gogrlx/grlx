@@ -1,0 +1,11 @@
+configroot: /etc/grlx/
+farmerapiport: "5405"
+farmerbusinterface: ""
+farmerbusport: "5406"
+farmerinterface: farmer
+farmerurl: https://farmer:5405
+nkeysproutprivfile: /etc/grlx/pki/sprout/sprout.nkey
+nkeysproutpubfile: /etc/grlx/pki/sprout/sprout.nkey.pub
+sproutid: sprout-a
+sproutpki: /etc/grlx/pki/sprout/
+sproutrootca: /etc/grlx/pki/sprout/tls-rootca.pem

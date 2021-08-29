@@ -75,5 +75,6 @@ func LoadConfig(binary string) {
 			viper.SetDefault("FarmerBusInterface", viper.GetString("FarmerURL"))
 		}
 		viper.Set("FarmerURL", "https://"+viper.GetString("FarmerInterface")+":"+viper.GetString("FarmerAPIPort"))
+		viper.WriteConfig()
 	})
 }

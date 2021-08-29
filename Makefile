@@ -1,7 +1,7 @@
 UNAME:=$(shell uname|sed 's/.*/\u&/')
 OS:=$(shell echo $(GOOS)| sed 's/.*/\u&/')
 PKG=$(shell basename $$(pwd))
-
+colon := :
 ifeq  ($(BITBUCKET_BUILD_NUMBER),)
 TYPE:="Local"
 else
@@ -71,6 +71,11 @@ endif
 
 clean:  
 	@printf "Cleaning up \e[32mmain\e[39m...\n"
+	docker-compose down || true
+	yes| docker-compose rm || true
+	docker rmi grlx/sprout:latest
+	docker rmi grlx/farmer:latest
+	rm -f ~/.config/grlx/tls-rootca.pem
 	rm -f main $(FNAME) || rm -rf main $(FNAME)
 
 install: clean main
@@ -79,6 +84,11 @@ install: clean main
 docker:
 	docker build -t grlx/farmer . -f docker/farmer.dockerfile
 	docker build -t grlx/sprout . -f docker/sprout.dockerfile
+
+dcu:
+	docker-compose down || true
+	docker-compose rm
+	docker-compose up
 
 test: clean 
 	docker-compose build

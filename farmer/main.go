@@ -90,6 +90,7 @@ func StartAPIServer() {
 		}
 	}()
 
+	log.Tracef("API Server started on %s\n", FarmerInterface+":"+FarmerAPIPort)
 }
 
 type logger struct {

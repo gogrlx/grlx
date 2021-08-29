@@ -1,0 +1,21 @@
+certfile: /etc/grlx/pki/farmer/tls-cert.pem
+certhosts:
+- localhost
+- 127.0.0.1
+- farmer
+- grlx
+- 192.168.2.4
+certificatevalidtime: 8760h0m0s
+configroot: /etc/grlx/
+farmerapiport: "5405"
+farmerbusinterface: ""
+farmerbusport: "5406"
+farmerinterface: farmer
+farmerpki: /etc/grlx/pki/farmer/
+farmerurl: https://farmer:5405
+keyfile: /etc/grlx/pki/farmer/tls-key.pem
+nkeyfarmerprivfile: /etc/grlx/pki/farmer/farmer.nkey
+nkeyfarmerpubfile: /etc/grlx/pki/farmer/farmer.nkey.pub
+organization: GRLX Development
+rootca: /etc/grlx/pki/farmer/tls-rootca.pem
+rootcapriv: /etc/grlx/pki/farmer/tls-rootca-key.pem
