@@ -2,6 +2,7 @@ package util
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"os"
 	"regexp"
@@ -9,6 +10,7 @@ import (
 
 	gpki "github.com/gogrlx/grlx/grlx/pki"
 	. "github.com/gogrlx/grlx/types"
+	"gopkg.in/yaml.v2"
 )
 
 func UserChoice(first string, second string, options ...string) (string, error) {
@@ -178,4 +180,34 @@ func listIntersection(a *[]string, b *[]string) []string {
 		}
 	}
 	return overlap
+}
+func WriteYAML(i interface{}) {
+	jy, _ := yaml.Marshal(i)
+	fmt.Println(string(jy))
+}
+func WriteJSON(i interface{}) {
+	jw, _ := json.Marshal(i)
+	fmt.Println(string(jw))
+}
+func WriteJSONErr(err error) {
+	errWriter := Inline{Success: false, Error: err}
+	jw, _ := json.Marshal(errWriter)
+	fmt.Println(string(jw))
+}
+func WriteYAMLErr(err error) {
+	errWriter := Inline{Success: false, Error: err}
+	yw, _ := yaml.Marshal(errWriter)
+	fmt.Println(string(yw))
+}
+func WriteOutput(i interface{}, mode string) {
+	switch mode {
+	case "json":
+		WriteJSON(i)
+	case "yaml":
+		WriteYAML(i)
+	case "":
+		fallthrough
+	case "text":
+		fmt.Println(i)
+	}
 }

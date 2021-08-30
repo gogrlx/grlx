@@ -65,7 +65,9 @@ var keys_accept = &cobra.Command{
 				case "text":
 					color.Red("Error: %v", err)
 				case "json":
+					util.WriteJSONErr(err)
 				case "yaml":
+					util.WriteYAMLErr(err)
 				}
 				return
 			}
@@ -352,33 +354,29 @@ var keys_deny = &cobra.Command{
 		}
 		ok, err := gpki.DenyKey(keyID)
 		//TODO: output error message in correct outputMode
-		if err != nil {
-			switch err {
-			case ErrSproutIDNotFound:
-				log.Fatalf("Sprout %s does not exist.", keyID)
-			case ErrAlreadyDenied:
-				log.Fatalf("Sprout %s has already been denied.", keyID)
 
-			default:
-				panic(err)
-			}
-		}
 		switch outputMode {
-		case "json":
-			jw, _ := json.Marshal(ok)
-			fmt.Println(string(jw))
-			return
 		case "":
 			fallthrough
 		case "text":
+			if err != nil {
+				switch err {
+				case ErrSproutIDNotFound:
+					log.Fatalf("Sprout %s does not exist.", keyID)
+				case ErrAlreadyDenied:
+					log.Fatalf("Sprout %s has already been denied.", keyID)
+				default:
+					log.Fatal(err)
+				}
+			}
 			if ok {
 				fmt.Printf("%s Denied.\n", keyID)
 				return
 			}
 			color.Red("%s could not be Denied!\n", keyID)
-			os.Exit(1)
-		case "yaml":
-			//TODO implement YAML
+		default:
+			util.WriteOutput(Inline{Success: ok, Error: err}, outputMode)
 		}
+		os.Exit(1)
 	},
 }
