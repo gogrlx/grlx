@@ -1,0 +1,103 @@
+config:
+  dir: ./bin
+  env:
+    HOME: ${HOME}
+tests:
+  000 - Docker-compose running:
+    command: 'docker ps'
+    exit-code: 0
+    stdout:
+      contains: 
+        - 'grlx/sprout:latest'
+        - 'grlx/farmer:latest'
+
+  001 - Validate CLI Bin and Accept TLS Cert:
+    command: 'yes | ./grlx version'
+    exit-code: 0
+    stdout:
+      json:
+        package: "grlx"
+
+  002 - List All Keys:
+    command: './grlx keys list --out json'
+    exit-code: 0
+    stdout:
+      json:
+        accepted.sprouts: "[]"
+  003 - Accept sprout-a:
+    command: './grlx keys accept sprout-a --no-confirm --out json'
+    exit-code: 0
+    stdout:
+      json:
+        accepted.sprouts: "[map[id:sprout-a]]"
+
+  004 - List Unaccepted Keys (sprout-a missing):
+    command: './grlx keys list --out json'
+    exit-code: 0
+    stdout:
+      json:
+        unaccepted.sprouts: '[map[id:sprout-b] map[id:sprout-c] map[id:sprout-d] map[id:sprout-e] map[id:sprout-f]]'
+
+  005 - List Accepted Keys (confirm sprout-a accepted):
+    command: './grlx keys list --out json'
+    exit-code: 0
+    stdout:
+      json:
+        accepted.sprouts: '[map[id:sprout-a]]'
+
+  006 - Accept All Keys:
+    command: './grlx keys accept -A --no-confirm --out json'
+    exit-code: 0
+    stdout:
+      json:
+        accepted.sprouts: '[map[id:sprout-b] map[id:sprout-c] map[id:sprout-d] map[id:sprout-e] map[id:sprout-f]]'
+
+  007 - List Accepted Keys (confirm all added):
+    command: './grlx keys list --out json'
+    exit-code: 0
+    stdout:
+      json:
+        accepted.sprouts: '[map[id:sprout-a] map[id:sprout-b] map[id:sprout-c] map[id:sprout-d] map[id:sprout-e] map[id:sprout-f]]'
+
+  008 - List Unaccepted Keys (confirm no leftover keys):
+    command: './grlx keys list --out json'
+    exit-code: 0
+    stdout:
+      json:
+        unaccepted.sprouts: '[]'
+
+  009 - Accept Invalid Key:
+    command: './grlx keys accept invalid-key --no-confirm --out json'
+    exit-code: 1
+    stdout:
+      json:
+        error: "An invalid key was specified: `invalid-key`"
+
+  010 - Delete Invalid Key:
+    command: "./grlx keys delete invalid-key"
+    exit-code: 1
+
+  011 - Delete Valid Key (sprout-a):
+    command: './grlx keys --noconfirm delete sprout-a --out json'
+    exit-code: 0
+    stdout:
+      json:
+        deleted: "[sprout-a]"
+
+  012 - Re-accept All Keys:
+    command: './grlx --noconfirm keys accept -A --out json'
+    exit-code: 0
+    stdout:
+      json:
+        accepted: '[sprout-a]'
+    config:
+      retries: 5
+      interval: 1s
+      
+  013 - Run whoami on all Sprouts:
+    command: './grlx -T ".*" --out json cmd run -- whoami'
+    exit-code: 0
+    stdout:
+      json:
+        results.sprout-a.stdout: 'root\n'
+        retults.sprout-a.error: "null"

@@ -36,13 +36,14 @@ type KeySet struct {
 	Sprouts []KeyManager `json:"sprouts"`
 }
 type KeysByType struct {
-	Accepted   KeySet `json:"accepted"`
-	Denied     KeySet `json:"denied"`
-	Rejected   KeySet `json:"rejected"`
-	Unaccepted KeySet `json:"unaccepted"`
+	Accepted   KeySet `json:"accepted,omitempty"`
+	Denied     KeySet `json:"denied,omitempty"`
+	Rejected   KeySet `json:"rejected,omitempty"`
+	Unaccepted KeySet `json:"unaccepted,omitempty"`
 }
-type Inline200 struct {
-	Success bool `json:"success"`
+type Inline struct {
+	Success bool  `json:"success"`
+	Error   error `json:"error"`
 }
 
 type PingPong struct {

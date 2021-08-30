@@ -45,7 +45,7 @@ func PutNKey(w http.ResponseWriter, r *http.Request) {
 	registered, matches := pki.NKeyExists(submission.SproutID, submission.NKey)
 	if registered && matches {
 		log.Trace("A previously known NKey was submitted. Ignoring.")
-		jw, _ := json.Marshal(Inline200{Success: true})
+		jw, _ := json.Marshal(Inline{Success: true})
 		w.WriteHeader(http.StatusOK)
 		w.Write(jw)
 		return
@@ -53,7 +53,7 @@ func PutNKey(w http.ResponseWriter, r *http.Request) {
 	if !registered {
 		log.Trace("A previously unknown NKey was submitted. Saving to Unaccepted.")
 		pki.UnacceptNKey(submission.SproutID, submission.NKey)
-		jw, _ := json.Marshal(Inline200{Success: true})
+		jw, _ := json.Marshal(Inline{Success: true})
 		w.WriteHeader(http.StatusOK)
 		w.Write(jw)
 		return
@@ -63,7 +63,7 @@ func PutNKey(w http.ResponseWriter, r *http.Request) {
 		registered, matches := pki.NKeyExists(submission.SproutID+"_"+strconv.Itoa(trailingIndex), submission.NKey)
 		if registered && matches {
 			log.Trace("A previously known NKey was submitted. Ignoring.")
-			jw, _ := json.Marshal(Inline200{Success: true})
+			jw, _ := json.Marshal(Inline{Success: true})
 			w.WriteHeader(http.StatusOK)
 			w.Write(jw)
 			return
@@ -71,7 +71,7 @@ func PutNKey(w http.ResponseWriter, r *http.Request) {
 		if !registered {
 			log.Trace("A previously accepted ID is presenting a new NKey. Saving to Rejected.")
 			pki.RejectNKey(submission.SproutID+"_"+strconv.Itoa(trailingIndex), submission.NKey)
-			jw, _ := json.Marshal(Inline200{Success: true})
+			jw, _ := json.Marshal(Inline{Success: true})
 			w.WriteHeader(http.StatusOK)
 			w.Write(jw)
 			return
@@ -80,7 +80,7 @@ func PutNKey(w http.ResponseWriter, r *http.Request) {
 	// if there are more than 100 nkeys with the same id,
 	// you're probably under attack
 	log.Error("There are over 100 keys submitted with the same ID. Ignoring submission.")
-	jw, _ := json.Marshal(Inline200{Success: false})
+	jw, _ := json.Marshal(Inline{Success: false})
 	w.WriteHeader(http.StatusServiceUnavailable)
 	w.Write(jw)
 	return
@@ -102,17 +102,17 @@ func AcceptNKey(w http.ResponseWriter, r *http.Request) {
 	switch err {
 	case ErrSproutIDNotFound:
 		w.WriteHeader(http.StatusNotFound)
-		jw, _ := json.Marshal(Inline200{Success: false})
+		jw, _ := json.Marshal(Inline{Success: false, Error: err})
 		w.Write(jw)
 		return
 	case nil:
 		w.WriteHeader(http.StatusOK)
-		jw, _ := json.Marshal(Inline200{Success: true})
+		jw, _ := json.Marshal(Inline{Success: true, Error: err})
 		w.Write(jw)
 		return
 	default:
 		w.WriteHeader(http.StatusServiceUnavailable)
-		jw, _ := json.Marshal(Inline200{Success: false})
+		jw, _ := json.Marshal(Inline{Success: false, Error: err})
 		w.Write(jw)
 		return
 	}
@@ -131,12 +131,12 @@ func GetNKey(w http.ResponseWriter, r *http.Request) {
 	switch err {
 	case ErrSproutIDInvalid:
 		w.WriteHeader(http.StatusBadRequest)
-		jw, _ := json.Marshal(Inline200{Success: false})
+		jw, _ := json.Marshal(Inline{Success: false, Error: err})
 		w.Write(jw)
 		return
 	case ErrSproutIDNotFound:
 		w.WriteHeader(http.StatusNotFound)
-		jw, _ := json.Marshal(Inline200{Success: false})
+		jw, _ := json.Marshal(Inline{Success: false, Error: err})
 		w.Write(jw)
 		return
 	case nil:
@@ -146,7 +146,7 @@ func GetNKey(w http.ResponseWriter, r *http.Request) {
 		return
 	default:
 		w.WriteHeader(http.StatusServiceUnavailable)
-		jw, _ := json.Marshal(Inline200{Success: false})
+		jw, _ := json.Marshal(Inline{Success: false, Error: err})
 		w.Write(jw)
 		return
 	}
@@ -164,22 +164,22 @@ func RejectNKey(w http.ResponseWriter, r *http.Request) {
 	switch err {
 	case ErrSproutIDInvalid:
 		w.WriteHeader(http.StatusBadRequest)
-		jw, _ := json.Marshal(Inline200{Success: false})
+		jw, _ := json.Marshal(Inline{Success: false, Error: err})
 		w.Write(jw)
 		return
 	case ErrSproutIDNotFound:
 		w.WriteHeader(http.StatusNotFound)
-		jw, _ := json.Marshal(Inline200{Success: false})
+		jw, _ := json.Marshal(Inline{Success: false, Error: err})
 		w.Write(jw)
 		return
 	case nil:
 		w.WriteHeader(http.StatusOK)
-		jw, _ := json.Marshal(Inline200{Success: true})
+		jw, _ := json.Marshal(Inline{Success: true, Error: err})
 		w.Write(jw)
 		return
 	default:
 		w.WriteHeader(http.StatusServiceUnavailable)
-		jw, _ := json.Marshal(Inline200{Success: false})
+		jw, _ := json.Marshal(Inline{Success: false, Error: err})
 		w.Write(jw)
 		return
 	}
@@ -204,22 +204,22 @@ func DenyNKey(w http.ResponseWriter, r *http.Request) {
 	switch err {
 	case ErrSproutIDInvalid:
 		w.WriteHeader(http.StatusBadRequest)
-		jw, _ := json.Marshal(Inline200{Success: false})
+		jw, _ := json.Marshal(Inline{Success: false, Error: err})
 		w.Write(jw)
 		return
 	case ErrSproutIDNotFound:
 		w.WriteHeader(http.StatusNotFound)
-		jw, _ := json.Marshal(Inline200{Success: false})
+		jw, _ := json.Marshal(Inline{Success: false, Error: err})
 		w.Write(jw)
 		return
 	case nil:
 		w.WriteHeader(http.StatusOK)
-		jw, _ := json.Marshal(Inline200{Success: true})
+		jw, _ := json.Marshal(Inline{Success: true, Error: err})
 		w.Write(jw)
 		return
 	default:
 		w.WriteHeader(http.StatusServiceUnavailable)
-		jw, _ := json.Marshal(Inline200{Success: false})
+		jw, _ := json.Marshal(Inline{Success: false, Error: err})
 		w.Write(jw)
 		return
 	}
@@ -237,22 +237,22 @@ func UnacceptNKey(w http.ResponseWriter, r *http.Request) {
 	switch err {
 	case ErrSproutIDInvalid:
 		w.WriteHeader(http.StatusBadRequest)
-		jw, _ := json.Marshal(Inline200{Success: false})
+		jw, _ := json.Marshal(Inline{Success: false, Error: err})
 		w.Write(jw)
 		return
 	case ErrSproutIDNotFound:
 		w.WriteHeader(http.StatusNotFound)
-		jw, _ := json.Marshal(Inline200{Success: false})
+		jw, _ := json.Marshal(Inline{Success: false, Error: err})
 		w.Write(jw)
 		return
 	case nil:
 		w.WriteHeader(http.StatusOK)
-		jw, _ := json.Marshal(Inline200{Success: true})
+		jw, _ := json.Marshal(Inline{Success: true, Error: err})
 		w.Write(jw)
 		return
 	default:
 		w.WriteHeader(http.StatusServiceUnavailable)
-		jw, _ := json.Marshal(Inline200{Success: false})
+		jw, _ := json.Marshal(Inline{Success: false, Error: err})
 		w.Write(jw)
 		return
 	}
@@ -270,22 +270,22 @@ func DeleteNKey(w http.ResponseWriter, r *http.Request) {
 	switch err {
 	case ErrSproutIDInvalid:
 		w.WriteHeader(http.StatusBadRequest)
-		jw, _ := json.Marshal(Inline200{Success: false})
+		jw, _ := json.Marshal(Inline{Success: false, Error: err})
 		w.Write(jw)
 		return
 	case ErrSproutIDNotFound:
 		w.WriteHeader(http.StatusNotFound)
-		jw, _ := json.Marshal(Inline200{Success: false})
+		jw, _ := json.Marshal(Inline{Success: false, Error: err})
 		w.Write(jw)
 		return
 	case nil:
 		w.WriteHeader(http.StatusOK)
-		jw, _ := json.Marshal(Inline200{Success: true})
+		jw, _ := json.Marshal(Inline{Success: true, Error: err})
 		w.Write(jw)
 		return
 	default:
 		w.WriteHeader(http.StatusServiceUnavailable)
-		jw, _ := json.Marshal(Inline200{Success: false})
+		jw, _ := json.Marshal(Inline{Success: false, Error: err})
 		w.Write(jw)
 		return
 	}

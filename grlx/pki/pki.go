@@ -53,7 +53,7 @@ func UnacceptKey(id string) (bool, error) {
 
 		return false, ErrSproutIDNotFound
 	}
-	var success Inline200
+	var success Inline
 	url := FarmerURL + "/pki/unacceptnkey"
 	km := KeyManager{SproutID: id}
 	jw, _ := json.Marshal(km)
@@ -69,7 +69,7 @@ func UnacceptKey(id string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return success.Success, nil
+	return success.Success, success.Error
 }
 func DenyKey(id string) (bool, error) {
 	keyList, err := ListKeys()
@@ -99,7 +99,7 @@ func DenyKey(id string) (bool, error) {
 
 		return false, ErrSproutIDNotFound
 	}
-	var success Inline200
+	var success Inline
 	FarmerURL := viper.GetString("FarmerURL")
 	url := FarmerURL + "/pki/denynkey"
 	km := KeyManager{SproutID: id}
@@ -116,7 +116,7 @@ func DenyKey(id string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return success.Success, nil
+	return success.Success, success.Error
 }
 func RejectKey(id string) (bool, error) {
 	keyList, err := ListKeys()
@@ -146,7 +146,7 @@ func RejectKey(id string) (bool, error) {
 
 		return false, ErrSproutIDNotFound
 	}
-	var success Inline200
+	var success Inline
 	FarmerURL := viper.GetString("FarmerURL")
 	url := FarmerURL + "/pki/rejectnkey"
 	km := KeyManager{SproutID: id}
@@ -163,7 +163,7 @@ func RejectKey(id string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return success.Success, nil
+	return success.Success, success.Error
 }
 func DeleteKey(id string) (bool, error) {
 	keyList, err := ListKeys()
@@ -188,7 +188,7 @@ func DeleteKey(id string) (bool, error) {
 	if !keyFound {
 		return false, ErrSproutIDNotFound
 	}
-	var success Inline200
+	var success Inline
 	FarmerURL := viper.GetString("FarmerURL")
 	url := FarmerURL + "/pki/deletenkey"
 	km := KeyManager{SproutID: id}
@@ -205,7 +205,7 @@ func DeleteKey(id string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return success.Success, nil
+	return success.Success, success.Error
 }
 func AcceptKey(id string) (bool, error) {
 	keyList, err := ListKeys()
@@ -234,7 +234,7 @@ func AcceptKey(id string) (bool, error) {
 		}
 		return false, ErrSproutIDNotFound
 	}
-	var success Inline200
+	var success Inline
 	FarmerURL := viper.GetString("FarmerURL")
 	url := FarmerURL + "/pki/acceptnkey"
 	km := KeyManager{SproutID: id}
@@ -251,5 +251,5 @@ func AcceptKey(id string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return success.Success, nil
+	return success.Success, success.Error
 }
