@@ -1,16 +1,16 @@
 ## <p align="center"><img src="logos/grlx.jpg" width="300"></p>
 
-# Grlx - System management without the stinkin' dependencies!
+# grlx - System management without the stinkin' dependencies!
 
 [![License 0BSD](https://img.shields.io/badge/License-0BSD-pink.svg)](https://opensource.org/licenses/0BSD)
 [![Go Report Card](https://goreportcard.com/badge/github.com/gogrlx/grlx)](https://goreportcard.com/report/github.com/gogrlx/grlx) [![GoDoc](https://img.shields.io/badge/GoDoc-reference-007d9c)](https://pkg.go.dev/github.com/gogrlx/grlx)
 [![Slack](https://img.shields.io/badge/chat-on%20slack-green)](https://gophers.slack.com/)
 
 
-Grlx (pronounced "garlic" is a pure-[Go](http://golang.org) alternative to other DevOps automation engines, such as Salt or Ansible.
+grlx (pronounced "garlic" is a pure-[Go](http://golang.org) alternative to other DevOps automation engines, such as Salt or Ansible.
 ## Installation
 
-Grlx is made up of three components: the `farmer`, one or many `sprout`s, and a CLI utility, `grlx`. 
+grlx is made up of three components: the `farmer`, one or many `sprout`s, and a CLI utility, `grlx`. 
 The `farmer` binary runs as a daemon on a management server (referred to as the 'farmer'), and is controlled via the `grlx` cli.
 `grlx` can be run both locally on the management sever or remotely over a secure-by-default, TLS-encrypted API.
 The `sprout` binary should be installed as a daemon on systems that are to be managed.
