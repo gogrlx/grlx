@@ -20,6 +20,7 @@ func GenerateTrees(allRecipies []*Recipe) ([]*Recipe, []error) {
 	hasDups, dups := NoDuplicateIDs(allRecipies)
 	if hasDups {
 		for _, dup := range dups {
+			//TODO wrap this error
 			errorList = append(errorList, errors.New(fmt.Sprintf("Recipe identifier is not unique: %s", dup)))
 		}
 		return []*Recipe{}, errorList
@@ -28,6 +29,7 @@ func GenerateTrees(allRecipies []*Recipe) ([]*Recipe, []error) {
 	allDefined, mising := AllDependenciesDefined(allRecipies)
 	if !allDefined {
 		for _, dep := range mising {
+			//TODO wrap this error
 			errorList = append(errorList, errors.New(fmt.Sprintf("Recipe identifier is required but not defined: %s", dep)))
 		}
 		return []*Recipe{}, errorList

@@ -179,6 +179,58 @@ func TestNoDuplicateIDs(t *testing.T) {
 	return
 }
 func TestHasCycle(t *testing.T) {
+	testCases := []struct {
+		name         string
+		recipes      []*Recipe
+		noDuplicates bool
+		duplicates   []string
+	}{{name: "no duplicates",
+		recipes:      []*Recipe{&a, &b, &c, &d},
+		noDuplicates: true,
+		duplicates:   []string{}},
+		{name: "a duplicated",
+			recipes:      []*Recipe{&a, &aa},
+			noDuplicates: false,
+			duplicates:   []string{"a"}},
+		{name: "empty set",
+			recipes:      []*Recipe{},
+			noDuplicates: true,
+			duplicates:   []string{}},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			noDuplicates, duplicates := HasCycle(tc.recipes)
+			if len(duplicates) > 0 {
+				for _, e := range duplicates {
+					found := false
+					for _, ex := range tc.duplicates {
+						if ex == e {
+							found = true
+						}
+					}
+					if !found {
+						t.Errorf("%s was found but should not have been.", e)
+					}
+				}
+				// compare the error types here
+			}
+			for _, e := range tc.duplicates {
+				found := false
+				for _, ex := range duplicates {
+					if ex == e {
+						found = true
+					}
+				}
+				if !found {
+					t.Errorf("%s was not found but should have been.", e)
+				}
+			}
+			if noDuplicates != tc.noDuplicates {
+				t.Errorf("Expected: %v  but got: %v", tc.noDuplicates, noDuplicates)
+			}
+		})
+	}
+	return
 }
 
 func TestBuildTrees(t *testing.T) {
