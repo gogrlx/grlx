@@ -1,7 +1,10 @@
 package rootball
 
 import (
+	"errors"
 	"testing"
+
+	. "github.com/gogrlx/grlx/types"
 )
 
 var (
@@ -15,6 +18,10 @@ var (
 	g  Recipe
 	h  Recipe
 	i  Recipe
+	j  Recipe
+	k  Recipe
+	l  Recipe
+	m  Recipe
 )
 
 func init() {
@@ -28,12 +35,20 @@ func init() {
 	g.ID = "g"
 	h.ID = "h"
 	i.ID = "i"
+	j.ID = "j"
+	k.ID = "k"
+	l.ID = "l"
+	m.ID = "m"
 	a.Dependencies = []string{"b", "c"}
 	b.Dependencies = []string{"d"}
 	e.Dependencies = []string{"a", "d"}
 	g.Dependencies = []string{"h"}
 	h.Dependencies = []string{"i"}
 	i.Dependencies = []string{"g", "a", "e"}
+	j.Dependencies = []string{"a", "b"}
+	k.Dependencies = []string{"j", "b"}
+	l.Dependencies = []string{"k", "j", "b"}
+	m.Dependencies = []string{"j", "b", "a", "k"}
 
 }
 
@@ -44,21 +59,32 @@ func TestGenerateTree(t *testing.T) {
 		expected   string
 		err        error
 	}{{name: "simple test",
-		recipeFile: RecipeFile{Recipes: []*Recipe{&a},
+		recipeFile: RecipeFile{Recipes: []*Recipe{&a, &b, &d, &c},
 			Includes: []string{}},
-		expected: ""},
+		expected: "a\n|\t├── b\n|\t|\t└── d\n|\t└── c\n\n\n"},
+		{name: "deeply nested deps",
+			recipeFile: RecipeFile{Recipes: []*Recipe{&a, &b, &d, &c, &j, &k, &l, &m},
+				Includes: []string{}},
+
+			expected: "l\n|\t├── k\n|\t|\t├── j\n|\t|\t|\t├── a\n|\t|\t|\t|\t├── b\n|\t|\t|\t|\t|\t└── d\n|\t|\t|\t|\t└── c\n|\t|\t|\t└── b\n|\t|\t|\t|\t└── d\n|\t|\t└── b\n|\t|\t|\t└── d\n|\t├── j\n|\t|\t├── a\n|\t|\t|\t├── b\n|\t|\t|\t|\t└── d\n|\t|\t|\t└── c\n|\t|\t└── b\n|\t|\t|\t└── d\n|\t└── b\n|\t|\t└── d\n\n\nm\n|\t├── j\n|\t|\t├── a\n|\t|\t|\t├── b\n|\t|\t|\t|\t└── d\n|\t|\t|\t└── c\n|\t|\t└── b\n|\t|\t|\t└── d\n|\t├── b\n|\t|\t└── d\n|\t├── a\n|\t|\t├── b\n|\t|\t|\t└── d\n|\t|\t└── c\n|\t└── k\n|\t|\t├── j\n|\t|\t|\t├── a\n|\t|\t|\t|\t├── b\n|\t|\t|\t|\t|\t└── d\n|\t|\t|\t|\t└── c\n|\t|\t|\t└── b\n|\t|\t|\t|\t└── d\n|\t|\t└── b\n|\t|\t|\t└── d\n\n\n"},
+		//expected: "l\n|\t├── k\n|\t|\t├── j\n|\t|\t|\t├── a\n|\t|\t|\t|\t├── b\n|\t|\t|\t|\t|\t└── d\n|\t|\t|\t|\t└── c\n|\t|\t|\t└── b\n|\t|\t|\t|\t└── d\n|\t|\t└── b\n|\t|\t|\t└── d\n|\t├── j\n|\t|\t├── a\n|\t|\t|\t├── b\n|\t|\t|\t|\t└── d\n|\t|\t|\t└── c\n|\t|\t└── b\n|\t|\t|\t└── d\n|\t└── b\n|\t|\t└── d\n\nm\n|\t├── j\n|\t|\t├── a\n|\t|\t|\t├── b\n|\t|\t|\t|\t└── d\n|\t|\t|\t└── c\n|\t|\t└── b\n|\t|\t|\t└── d\n|\t├── b\n|\t|\t└── d\n|\t├── a\n|\t|\t├── b\n|\t|\t|\t└── d\n|\t|\t└── c\n|\t└── k\n|\t|\t├── j\n|\t|\t|\t├── a\n|\t|\t|\t|\t├── b\n|\t|\t|\t|\t|\t└── d\n|\t|\t|\t|\t└── c\n|\t|\t|\t└── b\n|\t|\t|\t|\t└── d\n|\t|\t└── b\n|\t|\t|\t└── d"},
 		{name: "g-h-i cycle",
-			recipeFile: RecipeFile{Recipes: []*Recipe{&g, &h, &i}},
-			expected:   ""},
+			recipeFile: RecipeFile{Recipes: []*Recipe{&g, &h, &i, &a, &b, &c, &d, &e}},
+			expected:   "",
+			err:        ErrDependencyCycleFound},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			for _, recipe := range tc.recipeFile.Recipes {
+				recipe.dependencies = []*Recipe{}
+			}
 			roots, errs := GenerateTrees(tc.recipeFile.Recipes)
 			if len(errs) > 0 {
 				for _, e := range errs {
-					t.Error(e)
+					if !errors.Is(e, tc.err) {
+						t.Error(e)
+					}
 				}
-				// compare the error types here
 			}
 			out := PrintTrees(roots)
 			if out != tc.expected {
@@ -79,7 +105,7 @@ func TestAllDependenciesDefined(t *testing.T) {
 		recipes:   []*Recipe{&a, &b, &c, &d},
 		defined:   true,
 		undefined: nil},
-		{name: "a missing",
+		{name: "a and d missing",
 			recipes:   []*Recipe{&e},
 			defined:   false,
 			undefined: []string{"d", "a"}},
@@ -199,7 +225,7 @@ func TestHasCycle(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			noDuplicates, duplicates := HasCycle(tc.recipes)
+			noDuplicates, duplicates := NoDuplicateIDs(tc.recipes)
 			if len(duplicates) > 0 {
 				for _, e := range duplicates {
 					found := false

@@ -17,8 +17,8 @@ var RecipeSet []*Recipe
 func GenerateTrees(allRecipies []*Recipe) ([]*Recipe, []error) {
 	// check for duplicates
 	errorList := []error{}
-	hasDups, dups := NoDuplicateIDs(allRecipies)
-	if hasDups {
+	hasNoDups, dups := NoDuplicateIDs(allRecipies)
+	if !hasNoDups {
 		for _, dup := range dups {
 			//TODO wrap this error
 			errorList = append(errorList, errors.New(fmt.Sprintf("Recipe identifier is not unique: %s", dup)))

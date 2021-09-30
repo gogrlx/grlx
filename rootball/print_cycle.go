@@ -22,12 +22,12 @@ func printNode(recipe *Recipe, depth int, isLast bool) string {
 			nodeline += "├── "
 		}
 	}
-	nodeline += recipe.ID
+	nodeline += recipe.ID + "\n"
 	for i, dep := range recipe.dependencies {
 		if i == len(recipe.dependencies)-1 {
-			printNode(dep, depth+1, true)
+			nodeline += printNode(dep, depth+1, true)
 		} else {
-			printNode(dep, depth+1, false)
+			nodeline += printNode(dep, depth+1, false)
 		}
 	}
 	return nodeline
@@ -46,9 +46,9 @@ func PrintCycle(cycle []string) string {
 		case 0:
 			out += fmt.Sprintf("> %s%s V\n", cycle[i], strings.Repeat(" ", maxLength-len(cycle[i])))
 		case len(cycle) - 1:
-			out += fmt.Sprintf("|| %s%s||\n", cycle[i], strings.Repeat(" ", maxLength-len(cycle[i])))
-		default:
 			out += fmt.Sprintf("^ %s%s <\n", cycle[i], strings.Repeat(" ", maxLength-len(cycle[i])))
+		default:
+			out += fmt.Sprintf("|| %s%s||\n", cycle[i], strings.Repeat(" ", maxLength-len(cycle[i])))
 		}
 	}
 	return out
