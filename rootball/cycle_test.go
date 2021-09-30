@@ -258,6 +258,3 @@ func TestHasCycle(t *testing.T) {
 	}
 	return
 }
-
-func TestBuildTrees(t *testing.T) {
-}
