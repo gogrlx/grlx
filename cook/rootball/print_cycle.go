@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-func PrintTrees(roots []*Recipe) string {
+func PrintTrees(roots []*Ingredient) string {
 	output := ""
 	for _, recipe := range roots {
 		output += printNode(recipe, 0, false) + "\n\n"
@@ -13,7 +13,7 @@ func PrintTrees(roots []*Recipe) string {
 	return output
 }
 
-func printNode(recipe *Recipe, depth int, isLast bool) string {
+func printNode(recipe *Ingredient, depth int, isLast bool) string {
 	nodeline := strings.Repeat("|\t", depth)
 	if depth != 0 {
 		if isLast {

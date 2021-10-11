@@ -11,10 +11,10 @@ import (
 // List all recipies across the RecipieFiles
 // Starting with the RecipieFile HEAD, build out tree for each Recipe Dependent Graph
 
-var ProtoRecipe Recipe
-var RecipeSet []*Recipe
+var ProtoRecipe Ingredient
+var RecipeSet []*Ingredient
 
-func GenerateTrees(allRecipies []*Recipe) ([]*Recipe, []error) {
+func GenerateTrees(allRecipies []*Ingredient) ([]*Ingredient, []error) {
 	// check for duplicates
 	errorList := []error{}
 	hasNoDups, dups := NoDuplicateIDs(allRecipies)
@@ -23,7 +23,7 @@ func GenerateTrees(allRecipies []*Recipe) ([]*Recipe, []error) {
 			//TODO wrap this error
 			errorList = append(errorList, errors.New(fmt.Sprintf("Recipe identifier is not unique: %s", dup)))
 		}
-		return []*Recipe{}, errorList
+		return []*Ingredient{}, errorList
 	}
 	// check for undefined deps
 	allDefined, mising := AllDependenciesDefined(allRecipies)
@@ -32,16 +32,16 @@ func GenerateTrees(allRecipies []*Recipe) ([]*Recipe, []error) {
 			//TODO wrap this error
 			errorList = append(errorList, errors.New(fmt.Sprintf("Recipe identifier is required but not defined: %s", dep)))
 		}
-		return []*Recipe{}, errorList
+		return []*Ingredient{}, errorList
 	}
 	// check for cycles
 	hasCycle, cycle := HasCycle(allRecipies)
 	if hasCycle {
 		errorList = append(errorList, fmt.Errorf("%w: %s", ErrDependencyCycleFound, PrintCycle(cycle)))
-		return []*Recipe{}, errorList
+		return []*Ingredient{}, errorList
 	}
 	// generate and return the roots
-	recipeMap := make(map[string]*Recipe)
+	recipeMap := make(map[string]*Ingredient)
 	for _, recipe := range allRecipies {
 		recipeMap[recipe.ID] = recipe
 	}
@@ -65,7 +65,7 @@ func GenerateTrees(allRecipies []*Recipe) ([]*Recipe, []error) {
 // Step 9: Build a dependency tree for each of the out-of-tree dependencies
 
 // Start from step 4
-func dfs(allRecipes *map[string]*Recipe, current string, isVisited *map[string]bool, isValidated *map[string]bool) (bool, []string) {
+func dfs(allRecipes *map[string]*Ingredient, current string, isVisited *map[string]bool, isValidated *map[string]bool) (bool, []string) {
 	if (*isVisited)[current] {
 		//TODO return the cycle
 		return findCycle(allRecipes, current, "", []string{})
@@ -81,7 +81,7 @@ func dfs(allRecipes *map[string]*Recipe, current string, isVisited *map[string]b
 	(*isVisited)[current] = false
 	return false, []string{}
 }
-func findCycle(allRecipes *map[string]*Recipe, top string, current string, chain []string) (bool, []string) {
+func findCycle(allRecipes *map[string]*Ingredient, top string, current string, chain []string) (bool, []string) {
 	if current == top {
 		chain = append(chain, current)
 		return true, chain
@@ -103,9 +103,9 @@ func findCycle(allRecipes *map[string]*Recipe, top string, current string, chain
 	return false, []string{}
 }
 
-func NoDuplicateIDs(allRecipes []*Recipe) (bool, []string) {
+func NoDuplicateIDs(allRecipes []*Ingredient) (bool, []string) {
 	duplicates := []string{}
-	recipeMap := make(map[string]*Recipe)
+	recipeMap := make(map[string]*Ingredient)
 	for _, recipe := range allRecipes {
 		if _, ok := recipeMap[recipe.ID]; !ok {
 			recipeMap[recipe.ID] = recipe
@@ -117,9 +117,9 @@ func NoDuplicateIDs(allRecipes []*Recipe) (bool, []string) {
 
 }
 
-func AllDependenciesDefined(allRecipes []*Recipe) (bool, []string) {
+func AllDependenciesDefined(allRecipes []*Ingredient) (bool, []string) {
 	unresolved := []string{}
-	recipeMap := make(map[string]*Recipe)
+	recipeMap := make(map[string]*Ingredient)
 	for _, recipe := range allRecipes {
 		recipeMap[recipe.ID] = recipe
 	}
@@ -133,10 +133,10 @@ func AllDependenciesDefined(allRecipes []*Recipe) (bool, []string) {
 	return len(unresolved) == 0, unresolved
 }
 
-func HasCycle(allRecipes []*Recipe) (bool, []string) {
+func HasCycle(allRecipes []*Ingredient) (bool, []string) {
 	isValidated := make(map[string]bool)
 	isVisited := make(map[string]bool)
-	recipeMap := make(map[string]*Recipe)
+	recipeMap := make(map[string]*Ingredient)
 	for _, i := range allRecipes {
 		isVisited[i.ID] = false
 		isValidated[i.ID] = false
@@ -155,8 +155,8 @@ func HasCycle(allRecipes []*Recipe) (bool, []string) {
 	return false, []string{}
 }
 
-func FindRoots(allRecipes []*Recipe) []*Recipe {
-	roots := []*Recipe{}
+func FindRoots(allRecipes []*Ingredient) []*Ingredient {
+	roots := []*Ingredient{}
 	for _, recipe := range allRecipes {
 		if !recipe.isRequisite {
 			roots = append(roots, recipe)

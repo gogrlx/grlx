@@ -12,6 +12,8 @@ import (
 	"github.com/spf13/viper"
 )
 
+const GrlxExt "grlx"
+
 var BuildInfo Version
 
 var configLoaded sync.Once
@@ -77,4 +79,9 @@ func LoadConfig(binary string) {
 		viper.Set("FarmerURL", "https://"+viper.GetString("FarmerInterface")+":"+viper.GetString("FarmerAPIPort"))
 		viper.WriteConfig()
 	})
+}
+
+//TODO actually validate the base path exists
+func BasePathValid() bool {
+	return true
 }
