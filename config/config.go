@@ -12,7 +12,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-const GrlxExt "grlx"
+const GrlxExt = "grlx"
 
 var BuildInfo Version
 
