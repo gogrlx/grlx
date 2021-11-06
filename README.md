@@ -7,7 +7,7 @@
 [![Slack](https://img.shields.io/badge/chat-on%20slack-green)](https://gophers.slack.com/)
 
 
-grlx (pronounced "garlic" is a pure-[Go](http://golang.org) alternative to other DevOps automation engines, such as Salt or Ansible.
+grlx (pronounced "garlic") is a pure-[Go](http://golang.org) alternative to other DevOps automation engines, such as Salt or Ansible.
 ## Installation
 
 grlx is made up of three components: the `farmer`, one or many `sprout`s, and a CLI utility, `grlx`. 
@@ -80,7 +80,7 @@ It's your donations that allow development to continue so that grlx can grow.
 
 ## License
 
-Dependencies may carry their own license agreemnts.
+Dependencies may carry their own license agreements.
 To see the licenses of dependencies, please view DEPENDENCIES.md.
 
 Unless otherwise noted, the grlx source files are distibuted under the 0BSD license found in the LICENSE file.
