@@ -3,3 +3,4 @@ config.jso*
 configs/
 etc
 .env
+*.zip

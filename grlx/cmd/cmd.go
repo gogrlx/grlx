@@ -20,6 +20,7 @@ import (
 
 var environment string
 var user string
+var noerr bool
 var cwd string
 var timeout int
 var path string
@@ -92,15 +93,19 @@ var cmdCmd_Run = &cobra.Command{
 				} else {
 					fmt.Printf("%s:\n", keyID)
 				}
-				fmt.Printf("%s\n", value.Stdout)
+				if noerr {
+					fmt.Printf("%s\n", value.Stdout)
+				} else {
+					fmt.Printf("%s%s\n", value.Stdout, value.Stderr)
+				}
 			}
 		}
 	},
 }
 
 func init() {
-
 	cmdCmd_Run.Flags().StringVarP(&environment, "environment", "E", "", "List of space-separated key=value OS Environment Variables")
+	cmdCmd_Run.Flags().BoolVar(&noerr, "noerr", false, "Don't print out the stderr from the command output")
 	cmdCmd_Run.Flags().StringVarP(&user, "runas", "u", "", "If running as a sudoer, run the command as another user")
 	cmdCmd_Run.Flags().StringVarP(&cwd, "cwd", "w", "", "Current working directory to run the command in")
 	cmdCmd_Run.Flags().IntVar(&timeout, "timout", 30, "Cancel command execution and return after X seconds")
