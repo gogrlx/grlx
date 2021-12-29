@@ -77,8 +77,8 @@ func SRun(cmd CmdRun) (CmdRun, error) {
 
 	//TODO replace os.Stdout/err here with writes to websocket to get live returnable data
 	var stdoutBuf, stderrBuf bytes.Buffer
-	command.Stdout = io.MultiWriter(os.Stdout, &stdoutBuf)
-	command.Stderr = io.MultiWriter(os.Stderr, &stderrBuf)
+	command.Stdout = io.MultiWriter(&stdoutBuf) //, os.Stdout)
+	command.Stderr = io.MultiWriter(&stderrBuf) //, os.Stderr)
 	timer := time.Now()
 	err := command.Run()
 	cmd.Duration = time.Now().Sub(timer)
