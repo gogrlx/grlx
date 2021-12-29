@@ -27,7 +27,7 @@ import (
 
 func init() {
 	config.LoadConfig("farmer")
-	log.SetLogLevel(log.LTrace)
+	log.SetLogLevel(log.LDebug)
 }
 
 var s *nats_server.Server

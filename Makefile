@@ -25,7 +25,7 @@ endif
 	export GitCommit=`git rev-parse HEAD | cut -c -7`;\
 	export BuildTime=`date -u +%Y%m%d.%H%M%S`;\
 	export Authors=`git log --format='%aN' | sort -u | sed "s@root@@"  | tr '\n' ';' | sed "s@;;@;@g" | sed "s@;@; @g" | sed "s@\(.*      \); @\1@" | sed "s@[[:blank:]]@SpAcE@g"`;\
-	export GitTag=$$(TAG=`git tag --contains $$(git rev-parse HEAD) | sort -R | tr '\n' ' '`; if [ "$$(printf "$$TAG")" ]; then prin      tf "$$TAG"; else printf "undefined"; fi);\
+	export GitTag=$$(TAG=`git tag --contains $$(git rev-parse HEAD) | sort -R | tr '\n' ' '`; if [ "$$(printf "$$TAG")" ]; then printf "$$TAG"; else printf "undefined"; fi);\
 	go build -ldflags "-X main.BuildNo=$$BITBUCKET_BUILD_NUMBER -X main.GitCommit=$$GitCommit -X main.Tag=$$GitTag -X main.BuildTime=$$BuildTime -X main.Authors=$$Authors" -o "bin/sprout" ./sprout/*.go
 	@printf "\e[32mSuccess!\e[39m\n"
 
@@ -44,7 +44,7 @@ endif
 	export GitCommit=`git rev-parse HEAD | cut -c -7`;\
 	export BuildTime=`date -u +%Y%m%d.%H%M%S`;\
 	export Authors=`git log --format='%aN' | sort -u | sed "s@root@@"  | tr '\n' ';' | sed "s@;;@;@g" | sed "s@;@; @g" | sed "s@\(.*      \); @\1@" | sed "s@[[:blank:]]@SpAcE@g"`;\
-	export GitTag=$$(TAG=`git tag --contains $$(git rev-parse HEAD) | sort -R | tr '\n' ' '`; if [ "$$(printf "$$TAG")" ]; then prin      tf "$$TAG"; else printf "undefined"; fi);\
+	export GitTag=$$(TAG=`git tag --contains $$(git rev-parse HEAD) | sort -R | tr '\n' ' '`; if [ "$$(printf "$$TAG")" ]; then printf "$$TAG"; else printf "undefined"; fi);\
 	go build -ldflags "-X main.BuildNo=$$BITBUCKET_BUILD_NUMBER -X main.GitCommit=$$GitCommit -X main.Tag=$$GitTag -X main.BuildTime=$$BuildTime -X main.Authors=$$Authors" -o "bin/grlx" ./grlx/main.go
 	@printf "\e[32mSuccess!\e[39m\n"
 
@@ -63,7 +63,7 @@ endif
 	export GitCommit=`git rev-parse HEAD | cut -c -7`;\
 	export BuildTime=`date -u +%Y%m%d.%H%M%S`;\
 	export Authors=`git log --format='%aN' | sort -u | sed "s@root@@"  | tr '\n' ';' | sed "s@;;@;@g" | sed "s@;@; @g" | sed "s@\(.*      \); @\1@" | sed "s@[[:blank:]]@SpAcE@g"`;\
-	export GitTag=$$(TAG=`git tag --contains $$(git rev-parse HEAD) | sort -R | tr '\n' ' '`; if [ "$$(printf "$$TAG")" ]; then prin      tf "$$TAG"; else printf "undefined"; fi);\
+	export GitTag=$$(TAG=`git tag --contains $$(git rev-parse HEAD) | sort -R | tr '\n' ' '`; if [ "$$(printf "$$TAG")" ]; then printf "$$TAG"; else printf "undefined"; fi);\
 	go build -ldflags "-X main.BuildNo=$$BITBUCKET_BUILD_NUMBER -X main.GitCommit=$$GitCommit -X main.Tag=$$GitTag -X main.BuildTime=$$BuildTime -X main.Authors=$$Authors" -o "bin/farmer" ./farmer/main.go
 	@printf "\e[32mSuccess!\e[39m\n"
 
