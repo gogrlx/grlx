@@ -1,0 +1,14 @@
+[Unit]
+Description=Grlx Sprout
+After=network-online.target
+Documentation=https://grlx.org
+
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/bin/grlx-sprout
+Restart=always
+RestartSec=30
+
+[Install]
+WantedBy=multi-user.target
