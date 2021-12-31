@@ -73,13 +73,13 @@ clean:
 	@printf "Cleaning up \e[32mmain\e[39m...\n"
 	docker-compose down || true
 	yes| docker-compose rm || true
-	docker rmi grlx/sprout:latest
-	docker rmi grlx/farmer:latest
+	docker rmi grlx/sprout:latest || true
+	docker rmi grlx/farmer:latest || true
 	rm -f ~/.config/grlx/tls-rootca.pem
-	rm -f main $(FNAME) || rm -rf main $(FNAME)
+	rm -f main bin/grlx bin/farmer bin/sprout
 
-install: clean main
-	mv $(FNAME) "$$GOPATH/bin/$(PKG)"
+install: clean all
+	mv bin/grlx bin/farmer bin/sprout "$$GOPATH/bin/"
 
 docker:
 	docker build -t grlx/farmer . -f docker/farmer.dockerfile
