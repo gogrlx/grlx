@@ -10,12 +10,8 @@ import (
 	"github.com/spf13/viper"
 )
 
-var FarmerURL string
-
-func init() {
-	FarmerURL = viper.GetString("FarmerURL")
-}
 func FPing(target string) (TargetedResults, error) {
+	FarmerURL := viper.GetString("FarmerURL")
 	// util target split
 	// check targets valid
 	var tr TargetedResults
