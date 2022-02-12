@@ -95,6 +95,7 @@ test: clean
 	docker-compose build
 	docker-compose up -d
 	@printf "\e[31mNo tests defined!\e[39m\n"
+	docker compose down
 	@exit 1
 
 run: main
