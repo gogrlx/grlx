@@ -1,5 +1,5 @@
 /*
-Copyright © 2021 NAME HERE <EMAIL ADDRESS>
+Copyright © 2021 Tai Groot <tai@taigrr.com>
 
 */
 package cmd
@@ -53,6 +53,7 @@ var testCmd_Ping = &cobra.Command{
 		}
 		switch outputMode {
 		case "json":
+			//TODO: Unmarshall the array specifically instead of the results object
 			jw, _ := json.Marshal(results)
 			fmt.Println(string(jw))
 			return
