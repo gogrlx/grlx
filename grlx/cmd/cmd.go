@@ -108,7 +108,7 @@ func init() {
 	cmdCmd_Run.Flags().BoolVar(&noerr, "noerr", false, "Don't print out the stderr from the command output")
 	cmdCmd_Run.Flags().StringVarP(&user, "runas", "u", "", "If running as a sudoer, run the command as another user")
 	cmdCmd_Run.Flags().StringVarP(&cwd, "cwd", "w", "", "Current working directory to run the command in")
-	cmdCmd_Run.Flags().IntVar(&timeout, "timout", 30, "Cancel command execution and return after X seconds")
+	cmdCmd_Run.Flags().IntVar(&timeout, "timeout", 30, "Cancel command execution and return after X seconds")
 	cmdCmd_Run.Flags().StringVarP(&path, "path", "p", "", "Prepend a folder to the PATH before execution")
 	cmdCmd.PersistentFlags().StringVarP(&sproutTarget, "target", "T", "", "list of sprouts to target")
 	cmdCmd.MarkPersistentFlagRequired("target")
