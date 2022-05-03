@@ -3,6 +3,7 @@ package cmd
 import (
 	//. "github.com/gogrlx/grlx/config"
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 
@@ -14,6 +15,10 @@ import (
 func FRun(target string, command CmdRun) (TargetedResults, error) {
 	// util target split
 	// check targets valid
+	client := http.Client{}
+	client.Timeout = command.Timeout
+	ctx, cancel := context.WithTimeout(context.Background(), command.Timeout)
+	defer cancel()
 	var tr TargetedResults
 	FarmerURL := viper.GetString("FarmerURL")
 	targets, err := util.ResolveTargets(target)
@@ -29,11 +34,11 @@ func FRun(target string, command CmdRun) (TargetedResults, error) {
 	}
 	url := FarmerURL + "/cmd/run"
 	jw, _ := json.Marshal(ta)
-	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(jw))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBuffer(jw))
 	if err != nil {
 		return tr, err
 	}
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return tr, err
 	}
