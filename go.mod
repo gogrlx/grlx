@@ -2,6 +2,8 @@ module github.com/gogrlx/grlx
 
 go 1.17
 
+replace gopkg.in/yaml.v2 => gopkg.in/yaml.v3 v3.0.0
+
 require (
 	github.com/fatih/color v1.13.0
 	github.com/gorilla/mux v1.8.0
@@ -38,6 +40,6 @@ require (
 	golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/time v0.0.0-20220411224347-583f2d630306 // indirect
-	gopkg.in/ini.v1 v1.66.5 // indirect
+	gopkg.in/ini.v1 v1.66.6 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )

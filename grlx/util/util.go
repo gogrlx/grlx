@@ -10,7 +10,7 @@ import (
 
 	gpki "github.com/gogrlx/grlx/grlx/pki"
 	. "github.com/gogrlx/grlx/types"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 func UserChoice(first string, second string, options ...string) (string, error) {
