@@ -1,0 +1,23 @@
+include:
+  - some.example.recipe
+  - some.example.recipe2
+
+states:
+  an.example.state.one:
+    requisites:
+      - some.random.other.ingredient
+    ingredient:
+      function: file.managed
+      file:  /opt/grlx/farmer
+      owner: root
+      group: root
+      mode: 0666
+  an.example.with.internal.array:
+    requisites: []
+    ingredient:
+      function: user.created
+      name: tai
+      groups:
+        - tai
+        - sudo
+
