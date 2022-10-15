@@ -1,6 +1,6 @@
 module github.com/gogrlx/grlx
 
-go 1.17
+go 1.19
 
 replace gopkg.in/yaml.v2 => gopkg.in/yaml.v3 v3.0.0
 
@@ -12,7 +12,7 @@ require (
 	github.com/nats-io/nkeys v0.3.0
 	github.com/spf13/cobra v1.4.0
 	github.com/spf13/viper v1.12.0
-	github.com/taigrr/log-socket v0.1.12
+	github.com/taigrr/log-socket v1.0.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
