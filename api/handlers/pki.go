@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/gogrlx/grlx/pki"
-	. "github.com/gogrlx/grlx/types"
+	"github.com/gogrlx/grlx/types"
 	"github.com/nats-io/nkeys"
 	"github.com/spf13/viper"
 	log "github.com/taigrr/log-socket/log"
@@ -15,8 +15,8 @@ import (
 
 // TODO: add callback event for when new key is PUT to the server
 func PutNKey(w http.ResponseWriter, r *http.Request) {
-	var submission KeySubmission
-	// grab the body of the req
+	var submission types.KeySubmission
+	// grab the body the req
 	err := json.NewDecoder(r.Body).Decode(&submission)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -45,7 +45,7 @@ func PutNKey(w http.ResponseWriter, r *http.Request) {
 	registered, matches := pki.NKeyExists(submission.SproutID, submission.NKey)
 	if registered && matches {
 		log.Trace("A previously known NKey was submitted. Ignoring.")
-		jw, _ := json.Marshal(Inline{Success: true})
+		jw, _ := json.Marshal(types.Inline{Success: true})
 		w.WriteHeader(http.StatusOK)
 		w.Write(jw)
 		return
@@ -53,7 +53,7 @@ func PutNKey(w http.ResponseWriter, r *http.Request) {
 	if !registered {
 		log.Trace("A previously unknown NKey was submitted. Saving to Unaccepted.")
 		pki.UnacceptNKey(submission.SproutID, submission.NKey)
-		jw, _ := json.Marshal(Inline{Success: true})
+		jw, _ := json.Marshal(types.Inline{Success: true})
 		w.WriteHeader(http.StatusOK)
 		w.Write(jw)
 		return
@@ -63,7 +63,7 @@ func PutNKey(w http.ResponseWriter, r *http.Request) {
 		registered, matches := pki.NKeyExists(submission.SproutID+"_"+strconv.Itoa(trailingIndex), submission.NKey)
 		if registered && matches {
 			log.Trace("A previously known NKey was submitted. Ignoring.")
-			jw, _ := json.Marshal(Inline{Success: true})
+			jw, _ := json.Marshal(types.Inline{Success: true})
 			w.WriteHeader(http.StatusOK)
 			w.Write(jw)
 			return
@@ -71,7 +71,7 @@ func PutNKey(w http.ResponseWriter, r *http.Request) {
 		if !registered {
 			log.Trace("A previously accepted ID is presenting a new NKey. Saving to Rejected.")
 			pki.RejectNKey(submission.SproutID+"_"+strconv.Itoa(trailingIndex), submission.NKey)
-			jw, _ := json.Marshal(Inline{Success: true})
+			jw, _ := json.Marshal(types.Inline{Success: true})
 			w.WriteHeader(http.StatusOK)
 			w.Write(jw)
 			return
@@ -80,19 +80,18 @@ func PutNKey(w http.ResponseWriter, r *http.Request) {
 	// if there are more than 100 nkeys with the same id,
 	// you're probably under attack
 	log.Error("There are over 100 keys submitted with the same ID. Ignoring submission.")
-	jw, _ := json.Marshal(Inline{Success: false})
+	jw, _ := json.Marshal(types.Inline{Success: false})
 	w.WriteHeader(http.StatusServiceUnavailable)
 	w.Write(jw)
-	return
 }
 
 func GetCertificate(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, viper.GetString("RootCA"))
 }
 
-//TODO: enable client authentication
+// TODO: enable client authentication
 func AcceptNKey(w http.ResponseWriter, r *http.Request) {
-	var km KeyManager
+	var km types.KeyManager
 	err := json.NewDecoder(r.Body).Decode(&km)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -100,25 +99,26 @@ func AcceptNKey(w http.ResponseWriter, r *http.Request) {
 	}
 	err = pki.AcceptNKey(km.SproutID)
 	switch err {
-	case ErrSproutIDNotFound:
+	case types.ErrSproutIDNotFound:
 		w.WriteHeader(http.StatusNotFound)
-		jw, _ := json.Marshal(Inline{Success: false, Error: err})
+		jw, _ := json.Marshal(types.Inline{Success: false, Error: err})
 		w.Write(jw)
 		return
 	case nil:
 		w.WriteHeader(http.StatusOK)
-		jw, _ := json.Marshal(Inline{Success: true, Error: err})
+		jw, _ := json.Marshal(types.Inline{Success: true, Error: err})
 		w.Write(jw)
 		return
 	default:
 		w.WriteHeader(http.StatusServiceUnavailable)
-		jw, _ := json.Marshal(Inline{Success: false, Error: err})
+		jw, _ := json.Marshal(types.Inline{Success: false, Error: err})
 		w.Write(jw)
 		return
 	}
 }
+
 func GetNKey(w http.ResponseWriter, r *http.Request) {
-	var km KeyManager
+	var km types.KeyManager
 	// Auth first as user
 	// 401 for unauthorized
 	err := json.NewDecoder(r.Body).Decode(&km)
@@ -129,30 +129,31 @@ func GetNKey(w http.ResponseWriter, r *http.Request) {
 	pubKey, err := pki.GetNKey(km.SproutID)
 	// 404 for key not found
 	switch err {
-	case ErrSproutIDInvalid:
+	case types.ErrSproutIDInvalid:
 		w.WriteHeader(http.StatusBadRequest)
-		jw, _ := json.Marshal(Inline{Success: false, Error: err})
+		jw, _ := json.Marshal(types.Inline{Success: false, Error: err})
 		w.Write(jw)
 		return
-	case ErrSproutIDNotFound:
+	case types.ErrSproutIDNotFound:
 		w.WriteHeader(http.StatusNotFound)
-		jw, _ := json.Marshal(Inline{Success: false, Error: err})
+		jw, _ := json.Marshal(types.Inline{Success: false, Error: err})
 		w.Write(jw)
 		return
 	case nil:
 		w.WriteHeader(http.StatusOK)
-		jw, _ := json.Marshal(KeySubmission{NKey: pubKey, SproutID: km.SproutID})
+		jw, _ := json.Marshal(types.KeySubmission{NKey: pubKey, SproutID: km.SproutID})
 		w.Write(jw)
 		return
 	default:
 		w.WriteHeader(http.StatusServiceUnavailable)
-		jw, _ := json.Marshal(Inline{Success: false, Error: err})
+		jw, _ := json.Marshal(types.Inline{Success: false, Error: err})
 		w.Write(jw)
 		return
 	}
 }
+
 func RejectNKey(w http.ResponseWriter, r *http.Request) {
-	var km KeyManager
+	var km types.KeyManager
 	// Auth first as user
 	// 401 for unauthorized
 	err := json.NewDecoder(r.Body).Decode(&km)
@@ -162,37 +163,38 @@ func RejectNKey(w http.ResponseWriter, r *http.Request) {
 	}
 	err = pki.RejectNKey(km.SproutID, "")
 	switch err {
-	case ErrSproutIDInvalid:
+	case types.ErrSproutIDInvalid:
 		w.WriteHeader(http.StatusBadRequest)
-		jw, _ := json.Marshal(Inline{Success: false, Error: err})
+		jw, _ := json.Marshal(types.Inline{Success: false, Error: err})
 		w.Write(jw)
 		return
-	case ErrSproutIDNotFound:
+	case types.ErrSproutIDNotFound:
 		w.WriteHeader(http.StatusNotFound)
-		jw, _ := json.Marshal(Inline{Success: false, Error: err})
+		jw, _ := json.Marshal(types.Inline{Success: false, Error: err})
 		w.Write(jw)
 		return
 	case nil:
 		w.WriteHeader(http.StatusOK)
-		jw, _ := json.Marshal(Inline{Success: true, Error: err})
+		jw, _ := json.Marshal(types.Inline{Success: true, Error: err})
 		w.Write(jw)
 		return
 	default:
 		w.WriteHeader(http.StatusServiceUnavailable)
-		jw, _ := json.Marshal(Inline{Success: false, Error: err})
+		jw, _ := json.Marshal(types.Inline{Success: false, Error: err})
 		w.Write(jw)
 		return
 	}
 }
-func ListNKey(w http.ResponseWriter, r *http.Request) {
+
+func ListNKey(w http.ResponseWriter, _ *http.Request) {
 	keyList := pki.ListNKeysByType()
 	jw, _ := json.Marshal(keyList)
 	w.WriteHeader(http.StatusOK)
 	w.Write(jw)
-	return
 }
+
 func DenyNKey(w http.ResponseWriter, r *http.Request) {
-	var km KeyManager
+	var km types.KeyManager
 	// Auth first as user
 	// 401 for unauthorized
 	err := json.NewDecoder(r.Body).Decode(&km)
@@ -202,30 +204,31 @@ func DenyNKey(w http.ResponseWriter, r *http.Request) {
 	}
 	err = pki.DenyNKey(km.SproutID)
 	switch err {
-	case ErrSproutIDInvalid:
+	case types.ErrSproutIDInvalid:
 		w.WriteHeader(http.StatusBadRequest)
-		jw, _ := json.Marshal(Inline{Success: false, Error: err})
+		jw, _ := json.Marshal(types.Inline{Success: false, Error: err})
 		w.Write(jw)
 		return
-	case ErrSproutIDNotFound:
+	case types.ErrSproutIDNotFound:
 		w.WriteHeader(http.StatusNotFound)
-		jw, _ := json.Marshal(Inline{Success: false, Error: err})
+		jw, _ := json.Marshal(types.Inline{Success: false, Error: err})
 		w.Write(jw)
 		return
 	case nil:
 		w.WriteHeader(http.StatusOK)
-		jw, _ := json.Marshal(Inline{Success: true, Error: err})
+		jw, _ := json.Marshal(types.Inline{Success: true, Error: err})
 		w.Write(jw)
 		return
 	default:
 		w.WriteHeader(http.StatusServiceUnavailable)
-		jw, _ := json.Marshal(Inline{Success: false, Error: err})
+		jw, _ := json.Marshal(types.Inline{Success: false, Error: err})
 		w.Write(jw)
 		return
 	}
 }
+
 func UnacceptNKey(w http.ResponseWriter, r *http.Request) {
-	var km KeyManager
+	var km types.KeyManager
 	// Auth first as user
 	// 401 for unauthorized
 	err := json.NewDecoder(r.Body).Decode(&km)
@@ -235,30 +238,31 @@ func UnacceptNKey(w http.ResponseWriter, r *http.Request) {
 	}
 	err = pki.UnacceptNKey(km.SproutID, "")
 	switch err {
-	case ErrSproutIDInvalid:
+	case types.ErrSproutIDInvalid:
 		w.WriteHeader(http.StatusBadRequest)
-		jw, _ := json.Marshal(Inline{Success: false, Error: err})
+		jw, _ := json.Marshal(types.Inline{Success: false, Error: err})
 		w.Write(jw)
 		return
-	case ErrSproutIDNotFound:
+	case types.ErrSproutIDNotFound:
 		w.WriteHeader(http.StatusNotFound)
-		jw, _ := json.Marshal(Inline{Success: false, Error: err})
+		jw, _ := json.Marshal(types.Inline{Success: false, Error: err})
 		w.Write(jw)
 		return
 	case nil:
 		w.WriteHeader(http.StatusOK)
-		jw, _ := json.Marshal(Inline{Success: true, Error: err})
+		jw, _ := json.Marshal(types.Inline{Success: true, Error: err})
 		w.Write(jw)
 		return
 	default:
 		w.WriteHeader(http.StatusServiceUnavailable)
-		jw, _ := json.Marshal(Inline{Success: false, Error: err})
+		jw, _ := json.Marshal(types.Inline{Success: false, Error: err})
 		w.Write(jw)
 		return
 	}
 }
+
 func DeleteNKey(w http.ResponseWriter, r *http.Request) {
-	var km KeyManager
+	var km types.KeyManager
 	// Auth first as user
 	// 401 for unauthorized
 	err := json.NewDecoder(r.Body).Decode(&km)
@@ -268,24 +272,24 @@ func DeleteNKey(w http.ResponseWriter, r *http.Request) {
 	}
 	err = pki.DeleteNKey(km.SproutID)
 	switch err {
-	case ErrSproutIDInvalid:
+	case types.ErrSproutIDInvalid:
 		w.WriteHeader(http.StatusBadRequest)
-		jw, _ := json.Marshal(Inline{Success: false, Error: err})
+		jw, _ := json.Marshal(types.Inline{Success: false, Error: err})
 		w.Write(jw)
 		return
-	case ErrSproutIDNotFound:
+	case types.ErrSproutIDNotFound:
 		w.WriteHeader(http.StatusNotFound)
-		jw, _ := json.Marshal(Inline{Success: false, Error: err})
+		jw, _ := json.Marshal(types.Inline{Success: false, Error: err})
 		w.Write(jw)
 		return
 	case nil:
 		w.WriteHeader(http.StatusOK)
-		jw, _ := json.Marshal(Inline{Success: true, Error: err})
+		jw, _ := json.Marshal(types.Inline{Success: true, Error: err})
 		w.Write(jw)
 		return
 	default:
 		w.WriteHeader(http.StatusServiceUnavailable)
-		jw, _ := json.Marshal(Inline{Success: false, Error: err})
+		jw, _ := json.Marshal(types.Inline{Success: false, Error: err})
 		w.Write(jw)
 		return
 	}
