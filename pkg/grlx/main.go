@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/gogrlx/grlx/grlx/cmd"
+	"github.com/gogrlx/grlx/pkg/grlx/cmd"
 	log "github.com/taigrr/log-socket/log"
 )
 

@@ -6,15 +6,17 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/gogrlx/grlx/config"
-	"github.com/gogrlx/grlx/grlx/util"
+	"github.com/gogrlx/grlx/pkg/grlx/util"
 	"github.com/gogrlx/grlx/pki"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
-var cfgFile string
-var sproutTarget string
-var outputMode string
+var (
+	cfgFile      string
+	sproutTarget string
+	outputMode   string
+)
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -33,7 +35,7 @@ func Execute() {
 
 func init() {
 	initConfig()
-	//cobra.OnInitialize(initConfig)
+	// cobra.OnInitialize(initConfig)
 
 	// Here you will define your flags and configuration settings.
 	// Cobra supports persistent flags, which, if defined here,
@@ -61,7 +63,6 @@ func init() {
 		fmt.Print("The TLS certificate for this farmer is unknown. Would you like to download and trust it? ")
 		shouldDownload, err := util.UserConfirmWithDefault(true)
 		for err != nil {
-
 			shouldDownload, err = util.UserConfirmWithDefault(true)
 		}
 		if !shouldDownload {
@@ -86,5 +87,4 @@ func initConfig() {
 		config.LoadConfig("grlx")
 	}
 	viper.AutomaticEnv() // read in environment variables that match
-
 }

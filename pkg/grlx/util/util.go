@@ -8,7 +8,7 @@ import (
 	"regexp"
 	"strings"
 
-	gpki "github.com/gogrlx/grlx/grlx/pki"
+	gpki "github.com/gogrlx/grlx/pkg/grlx/pki"
 	. "github.com/gogrlx/grlx/types"
 	"gopkg.in/yaml.v3"
 )
@@ -40,12 +40,13 @@ func UserChoice(first string, second string, options ...string) (string, error) 
 		return second, nil
 	}
 	for _, option := range options {
-		if strings.ToLower(option) == strings.ToLower(input) {
+		if strings.EqualFold(option, input) {
 			return option, nil
 		}
 	}
 	return "", ErrInvalidUserInput
 }
+
 func UserChoiceWithDefault(def string, second string, options ...string) (string, error) {
 	if len(def) == 0 || len(second) == 0 {
 		panic(ErrConfirmationLengthIsZero)
@@ -75,12 +76,13 @@ func UserChoiceWithDefault(def string, second string, options ...string) (string
 		return second, nil
 	}
 	for _, option := range options {
-		if strings.ToLower(option) == strings.ToLower(input) {
+		if strings.EqualFold(option, input) {
 			return option, nil
 		}
 	}
 	return "", ErrInvalidUserInput
 }
+
 func UserConfirm(first string, second string) (bool, error) {
 	if len(first) == 0 || len(second) == 0 {
 		panic(ErrConfirmationLengthIsZero)
@@ -102,6 +104,7 @@ func UserConfirm(first string, second string) (bool, error) {
 		return false, nil
 	}
 }
+
 func UserConfirmWithDefault(def bool) (bool, error) {
 	if def {
 		fmt.Print("Y/n:")
@@ -148,6 +151,7 @@ func ResolveTargets(target string) ([]string, error) {
 
 	return targetRegex(target, &accepted)
 }
+
 func targetRegex(target string, accepted *[]string) ([]string, error) {
 	if !strings.HasPrefix(target, "^") {
 		target = "^" + target
@@ -167,6 +171,7 @@ func targetRegex(target string, accepted *[]string) ([]string, error) {
 	}
 	return matchedTargets, nil
 }
+
 func listIntersection(a *[]string, b *[]string) []string {
 	hash := make(map[string]bool)
 	overlap := []string{}
@@ -181,24 +186,29 @@ func listIntersection(a *[]string, b *[]string) []string {
 	}
 	return overlap
 }
+
 func WriteYAML(i interface{}) {
 	jy, _ := yaml.Marshal(i)
 	fmt.Println(string(jy))
 }
+
 func WriteJSON(i interface{}) {
 	jw, _ := json.Marshal(i)
 	fmt.Println(string(jw))
 }
+
 func WriteJSONErr(err error) {
 	errWriter := Inline{Success: false, Error: err}
 	jw, _ := json.Marshal(errWriter)
 	fmt.Println(string(jw))
 }
+
 func WriteYAMLErr(err error) {
 	errWriter := Inline{Success: false, Error: err}
 	yw, _ := yaml.Marshal(errWriter)
 	fmt.Println(string(yw))
 }
+
 func WriteOutput(i interface{}, mode string) {
 	switch mode {
 	case "json":

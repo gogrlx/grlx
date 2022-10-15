@@ -8,14 +8,16 @@ import (
 
 	"github.com/fatih/color"
 	//. "github.com/gogrlx/grlx/config"
-	gpki "github.com/gogrlx/grlx/grlx/pki"
-	"github.com/gogrlx/grlx/grlx/util"
+	gpki "github.com/gogrlx/grlx/pkg/grlx/pki"
+	"github.com/gogrlx/grlx/pkg/grlx/util"
 	. "github.com/gogrlx/grlx/types"
 	"github.com/spf13/cobra"
 )
 
-var targetAll bool
-var noConfirm bool
+var (
+	targetAll bool
+	noConfirm bool
+)
 
 // keysCmd represents the keys command
 var keysCmd = &cobra.Command{
@@ -57,7 +59,7 @@ var keys_accept = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		if targetAll {
 			keyList, err := gpki.ListKeys()
-			//TODO: utility function for switched output mode errors
+			// TODO: utility function for switched output mode errors
 			if err != nil {
 				switch outputMode {
 				case "":
@@ -126,7 +128,7 @@ var keys_accept = &cobra.Command{
 			}
 		}
 		ok, err := gpki.AcceptKey(keyID)
-		//TODO: output error message in correct outputMode
+		// TODO: output error message in correct outputMode
 		if err != nil {
 			switch err {
 			case ErrSproutIDNotFound:
@@ -152,17 +154,17 @@ var keys_accept = &cobra.Command{
 			color.Red("%s could not be Accepted!\n", keyID)
 			os.Exit(1)
 		case "yaml":
-			//TODO implement YAML
+			// TODO implement YAML
 		}
-
 	},
 }
+
 var keys_list = &cobra.Command{
 	Use:   "list",
 	Short: "List the Sprout keys available on the farmer.",
 	Run: func(cmd *cobra.Command, args []string) {
 		keys, err := gpki.ListKeys()
-		//TODO: output error message in correct outputMode
+		// TODO: output error message in correct outputMode
 		// for example, invalid cert for interface
 		// or 'unsigned'
 		if err != nil {
@@ -194,11 +196,11 @@ var keys_list = &cobra.Command{
 			}
 			return
 		case "yaml":
-			//TODO implement YAML
+			// TODO implement YAML
 		}
-
 	},
 }
+
 var keys_delete = &cobra.Command{
 	Use:   "delete [sprout id]",
 	Short: "Delete a Sprout key from the Farmer by id.",
@@ -215,7 +217,7 @@ var keys_delete = &cobra.Command{
 			}
 		}
 		ok, err := gpki.DeleteKey(keyID)
-		//TODO: output error message in correct outputMode
+		// TODO: output error message in correct outputMode
 		if err != nil {
 			switch err {
 			case ErrSproutIDNotFound:
@@ -239,10 +241,11 @@ var keys_delete = &cobra.Command{
 			color.Red("%s could not be Deleted!\n", keyID)
 			os.Exit(1)
 		case "yaml":
-			//TODO implement YAML
+			// TODO implement YAML
 		}
 	},
 }
+
 var keys_unaccept = &cobra.Command{
 	Use:   "unaccept [sprout id]",
 	Short: "Move a Sprout key to the unaccepted group by id.",
@@ -259,7 +262,7 @@ var keys_unaccept = &cobra.Command{
 			}
 		}
 		ok, err := gpki.UnacceptKey(keyID)
-		//TODO: output error message in correct outputMode
+		// TODO: output error message in correct outputMode
 		if err != nil {
 			switch err {
 			case ErrSproutIDNotFound:
@@ -286,10 +289,11 @@ var keys_unaccept = &cobra.Command{
 			color.Red("%s could not be Unaccepted!\n", keyID)
 			os.Exit(1)
 		case "yaml":
-			//TODO implement YAML
+			// TODO implement YAML
 		}
 	},
 }
+
 var keys_reject = &cobra.Command{
 	Use:   "reject",
 	Short: "Move a Sprout key to the rejected group by id.",
@@ -306,7 +310,7 @@ var keys_reject = &cobra.Command{
 			}
 		}
 		ok, err := gpki.RejectKey(keyID)
-		//TODO: output error message in correct outputMode
+		// TODO: output error message in correct outputMode
 		if err != nil {
 			switch err {
 			case ErrSproutIDNotFound:
@@ -333,10 +337,11 @@ var keys_reject = &cobra.Command{
 			color.Red("%s could not be Rejected!\n", keyID)
 			os.Exit(1)
 		case "yaml":
-			//TODO implement YAML
+			// TODO implement YAML
 		}
 	},
 }
+
 var keys_deny = &cobra.Command{
 	Use:   "deny",
 	Short: "Move a Sprout key to the denied group by id.",
@@ -353,7 +358,7 @@ var keys_deny = &cobra.Command{
 			}
 		}
 		ok, err := gpki.DenyKey(keyID)
-		//TODO: output error message in correct outputMode
+		// TODO: output error message in correct outputMode
 
 		switch outputMode {
 		case "":

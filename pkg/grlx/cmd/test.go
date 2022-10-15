@@ -1,6 +1,5 @@
 /*
 Copyright © 2021 Tai Groot <tai@taigrr.com>
-
 */
 package cmd
 
@@ -11,7 +10,7 @@ import (
 	"log"
 
 	"github.com/fatih/color"
-	test "github.com/gogrlx/grlx/grlx/ingredients/test"
+	test "github.com/gogrlx/grlx/pkg/grlx/ingredients/test"
 	. "github.com/gogrlx/grlx/types"
 	"github.com/spf13/cobra"
 )
@@ -30,7 +29,6 @@ func init() {
 	testCmd.PersistentFlags().StringVarP(&sproutTarget, "target", "T", "", "List of target Sprouts")
 	testCmd.AddCommand(testCmd_Ping)
 	rootCmd.AddCommand(testCmd)
-
 }
 
 var testCmd_Ping = &cobra.Command{
@@ -42,7 +40,7 @@ var testCmd_Ping = &cobra.Command{
 			sproutTarget = ".*"
 		}
 		results, err := test.FPing(sproutTarget)
-		//TODO: output error message in correct outputMode
+		// TODO: output error message in correct outputMode
 		if err != nil {
 			switch err {
 			case ErrSproutIDNotFound:
@@ -53,7 +51,7 @@ var testCmd_Ping = &cobra.Command{
 		}
 		switch outputMode {
 		case "json":
-			//TODO: Unmarshall the array specifically instead of the results object
+			// TODO: Unmarshall the array specifically instead of the results object
 			jw, _ := json.Marshal(results)
 			fmt.Println(string(jw))
 			return
@@ -80,8 +78,7 @@ var testCmd_Ping = &cobra.Command{
 			}
 			return
 		case "yaml":
-			//TODO implement YAML
+			// TODO implement YAML
 		}
-
 	},
 }

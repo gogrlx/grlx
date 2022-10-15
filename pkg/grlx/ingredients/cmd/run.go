@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/gogrlx/grlx/grlx/util"
+	"github.com/gogrlx/grlx/pkg/grlx/util"
 	. "github.com/gogrlx/grlx/types"
 	"github.com/spf13/viper"
 )
@@ -22,7 +22,6 @@ func FRun(target string, command CmdRun) (TargetedResults, error) {
 	var tr TargetedResults
 	FarmerURL := viper.GetString("FarmerURL")
 	targets, err := util.ResolveTargets(target)
-
 	if err != nil {
 		return tr, err
 	}

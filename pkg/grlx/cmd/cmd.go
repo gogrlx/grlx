@@ -1,6 +1,5 @@
 /*
 Copyright © 2021 NAME HERE <EMAIL ADDRESS>
-
 */
 package cmd
 
@@ -13,17 +12,19 @@ import (
 	"time"
 
 	"github.com/fatih/color"
-	gcmd "github.com/gogrlx/grlx/grlx/ingredients/cmd"
+	gcmd "github.com/gogrlx/grlx/pkg/grlx/ingredients/cmd"
 	. "github.com/gogrlx/grlx/types"
 	"github.com/spf13/cobra"
 )
 
-var environment string
-var user string
-var noerr bool
-var cwd string
-var timeout int
-var path string
+var (
+	environment string
+	user        string
+	noerr       bool
+	cwd         string
+	timeout     int
+	path        string
+)
 
 // cmdCmd represents the cmd command
 var cmdCmd = &cobra.Command{
@@ -33,6 +34,7 @@ var cmdCmd = &cobra.Command{
 		cmd.Help()
 	},
 }
+
 var cmdCmd_Run = &cobra.Command{
 	Use:   "run command [and optional args]...",
 	Short: "Run a command remotely and see the output locally.",
@@ -63,8 +65,8 @@ var cmdCmd_Run = &cobra.Command{
 			case ErrSproutIDNotFound:
 				log.Fatalf("A targeted Sprout does not exist or is not accepted..")
 			default:
-				//TODO: handle endpoint timeouts here
-				//TODO: Error running command on the Sprout: nats: no responders available for request  run.go:65
+				// TODO: handle endpoint timeouts here
+				// TODO: Error running command on the Sprout: nats: no responders available for request  run.go:65
 				log.Panic(err)
 			}
 		}
