@@ -14,12 +14,9 @@ import (
 	"github.com/gogrlx/grlx/api"
 	"github.com/gogrlx/grlx/certs"
 	"github.com/gogrlx/grlx/config"
-	. "github.com/gogrlx/grlx/config"
 	"github.com/gogrlx/grlx/ingredients/cmd"
 	"github.com/gogrlx/grlx/ingredients/test"
 	"github.com/gogrlx/grlx/pki"
-
-	// . "github.com/gogrlx/grlx/types"
 
 	nats_server "github.com/nats-io/nats-server/v2/server"
 	nats "github.com/nats-io/nats.go"
@@ -50,7 +47,6 @@ func main() {
 	// Auth nats bus
 	// Cli accept key, add to config file
 	// Update auth users via api
-
 }
 
 func createConfigRoot() {
@@ -65,7 +61,7 @@ func createConfigRoot() {
 			log.Panicf(err.Error())
 		}
 	} else {
-		//TODO: work out what the other errors could be here
+		// TODO: work out what the other errors could be here
 		log.Panicf(err.Error())
 	}
 }
@@ -75,9 +71,9 @@ func StartAPIServer() {
 	FarmerInterface := viper.GetString("FarmerInterface")
 	FarmerAPIPort := viper.GetString("FarmerAPIPort")
 	KeyFile := viper.GetString("KeyFile")
-	r := api.NewRouter(BuildInfo, CertFile)
+	r := api.NewRouter(config.BuildInfo, CertFile)
 	srv := http.Server{
-		//TODO: add all below settings to configuration
+		// TODO: add all below settings to configuration
 		Addr:         FarmerInterface + ":" + FarmerAPIPort,
 		WriteTimeout: time.Second * 120,
 		ReadTimeout:  time.Second * 120,
@@ -93,8 +89,7 @@ func StartAPIServer() {
 	log.Tracef("API Server started on %s\n", FarmerInterface+":"+FarmerAPIPort)
 }
 
-type logger struct {
-}
+type logger struct{}
 
 func (l logger) Debugf(format string, args ...interface{}) {
 	log.Debugf(format, args...)
@@ -104,7 +99,7 @@ func (l logger) Debugf(format string, args ...interface{}) {
 func RunNATSServer() {
 	// Optionally override for individual debugging of tests
 	// err := opts.ProcessConfigFile("config.json")
-	//if err != nil {
+	// if err != nil {
 	//		log.Panicf("Error configuring server: %v", err)
 	//	}
 	var err error
@@ -124,17 +119,17 @@ func RunNATSServer() {
 	s.SetLogger(logger, true, true)
 	// Wait for accept loop(s) to be started
 	if !s.ReadyForConnections(10 * time.Second) {
-		//TODO handle case where nats server port is already taken
+		// TODO handle case where nats server port is already taken
 		log.Panicf("Unable to start NATS Server in Go Routine")
 	}
-	//s.ReloadOptions(opts)
+	// s.ReloadOptions(opts)
 	pki.SetNATSServer(s)
 	pki.ReloadNKeys()
 }
 
 func ConnectFarmer() {
-	var connectionAttempts = 1
-	var maxFarmerReconnect = 30
+	connectionAttempts := 1
+	maxFarmerReconnect := 30
 	RootCA := viper.GetString("RootCA")
 	FarmerInterface := viper.GetString("FarmerInterface")
 	if FarmerInterface == "0.0.0.0" {
@@ -144,7 +139,7 @@ func ConnectFarmer() {
 	opt, err := nats.NkeyOptionFromSeed(viper.GetString("NKeyFarmerPrivFile"))
 	_ = opt
 	if err != nil {
-		//TODO: handle error
+		// TODO: handle error
 		log.Panic(err)
 	}
 	certPool := x509.NewCertPool()
@@ -164,7 +159,7 @@ func ConnectFarmer() {
 	}
 	_ = config
 	log.Debug("Attempting to pair Farmer to NATS bus.")
-	nc, err := nats.Connect("tls://"+FarmerInterface+":4443", //nats.RootCAs(RootCA),
+	nc, err := nats.Connect("tls://"+FarmerInterface+":4443", // nats.RootCAs(RootCA),
 		nats.Secure(config),
 		opt,
 		nats.RetryOnFailedConnect(true),
