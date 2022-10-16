@@ -98,10 +98,6 @@ test: clean
 	docker compose down
 	@exit 1
 
-run: main
-	@echo "Running $(FNAME)..."
-	./malware
-
 
 .PHONY: all
 .PHONY: farmer
