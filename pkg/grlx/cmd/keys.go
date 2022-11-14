@@ -32,27 +32,17 @@ var keysCmd = &cobra.Command{
 func init() {
 	keysCmd.InheritedFlags().Set("target", "_")
 	keysCmd.PersistentFlags().BoolVar(&noConfirm, "no-confirm", false, "Do not prompt for confirmation")
-	keys_accept.Flags().BoolVarP(&targetAll, "all", "A", false, "Accept all unaccepted keys")
-	keysCmd.AddCommand(keys_accept)
-	keysCmd.AddCommand(keys_deny)
-	keysCmd.AddCommand(keys_reject)
-	keysCmd.AddCommand(keys_unaccept)
-	keysCmd.AddCommand(keys_delete)
-	keysCmd.AddCommand(keys_list)
+	keysAccept.Flags().BoolVarP(&targetAll, "all", "A", false, "Accept all unaccepted keys")
+	keysCmd.AddCommand(keysAccept,
+		keysDeny,
+		keysReject,
+		keysUnaccept,
+		keysDelete,
+		keysList)
 	rootCmd.AddCommand(keysCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// keysCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// keysCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
 
-var keys_accept = &cobra.Command{
+var keysAccept = &cobra.Command{
 	Use:   "accept 'key_id'",
 	Short: "Accept a Sprout key by id.",
 	Long:  `Allows a user to accept one or many keys by id.`,
@@ -159,7 +149,7 @@ var keys_accept = &cobra.Command{
 	},
 }
 
-var keys_list = &cobra.Command{
+var keysList = &cobra.Command{
 	Use:   "list",
 	Short: "List the Sprout keys available on the farmer.",
 	Run: func(cmd *cobra.Command, args []string) {
@@ -201,7 +191,7 @@ var keys_list = &cobra.Command{
 	},
 }
 
-var keys_delete = &cobra.Command{
+var keysDelete = &cobra.Command{
 	Use:   "delete [sprout id]",
 	Short: "Delete a Sprout key from the Farmer by id.",
 	Run: func(cmd *cobra.Command, args []string) {
@@ -246,7 +236,7 @@ var keys_delete = &cobra.Command{
 	},
 }
 
-var keys_unaccept = &cobra.Command{
+var keysUnaccept = &cobra.Command{
 	Use:   "unaccept [sprout id]",
 	Short: "Move a Sprout key to the unaccepted group by id.",
 	Run: func(cmd *cobra.Command, args []string) {
@@ -294,7 +284,7 @@ var keys_unaccept = &cobra.Command{
 	},
 }
 
-var keys_reject = &cobra.Command{
+var keysReject = &cobra.Command{
 	Use:   "reject",
 	Short: "Move a Sprout key to the rejected group by id.",
 	Run: func(cmd *cobra.Command, args []string) {
@@ -342,7 +332,7 @@ var keys_reject = &cobra.Command{
 	},
 }
 
-var keys_deny = &cobra.Command{
+var keysDeny = &cobra.Command{
 	Use:   "deny",
 	Short: "Move a Sprout key to the denied group by id.",
 	Run: func(cmd *cobra.Command, args []string) {
