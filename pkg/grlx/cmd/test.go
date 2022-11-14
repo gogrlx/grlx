@@ -11,7 +11,7 @@ import (
 
 	"github.com/fatih/color"
 	test "github.com/gogrlx/grlx/pkg/grlx/ingredients/test"
-	. "github.com/gogrlx/grlx/types"
+	"github.com/gogrlx/grlx/types"
 	"github.com/spf13/cobra"
 )
 
@@ -25,13 +25,13 @@ var testCmd = &cobra.Command{
 }
 
 func init() {
-	testCmd_Ping.Flags().BoolVarP(&targetAll, "all", "A", false, "Ping all Sprouts")
+	testCmdPing.Flags().BoolVarP(&targetAll, "all", "A", false, "Ping all Sprouts")
 	testCmd.PersistentFlags().StringVarP(&sproutTarget, "target", "T", "", "List of target Sprouts")
-	testCmd.AddCommand(testCmd_Ping)
+	testCmd.AddCommand(testCmdPing)
 	rootCmd.AddCommand(testCmd)
 }
 
-var testCmd_Ping = &cobra.Command{
+var testCmdPing = &cobra.Command{
 	Use:   "ping [key id]",
 	Short: "Determine if a given Sprout is online",
 	Args:  cobra.NoArgs,
@@ -43,7 +43,7 @@ var testCmd_Ping = &cobra.Command{
 		// TODO: output error message in correct outputMode
 		if err != nil {
 			switch err {
-			case ErrSproutIDNotFound:
+			case types.ErrSproutIDNotFound:
 				log.Fatalf("A targeted Sprout does not exist or is not accepted..")
 			default:
 				log.Panic(err)
@@ -64,7 +64,7 @@ var testCmd_Ping = &cobra.Command{
 					color.Red("%s: \n returned an invalid message!\n", keyID)
 					continue
 				}
-				var value PingPong
+				var value types.PingPong
 				err = json.NewDecoder(bytes.NewBuffer(jw)).Decode(&value)
 
 				if err != nil {

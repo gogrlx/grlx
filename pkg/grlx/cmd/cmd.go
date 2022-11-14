@@ -13,7 +13,7 @@ import (
 
 	"github.com/fatih/color"
 	gcmd "github.com/gogrlx/grlx/pkg/grlx/ingredients/cmd"
-	. "github.com/gogrlx/grlx/types"
+	"github.com/gogrlx/grlx/types"
 	"github.com/spf13/cobra"
 )
 
@@ -35,7 +35,7 @@ var cmdCmd = &cobra.Command{
 	},
 }
 
-var cmdCmd_Run = &cobra.Command{
+var cmdCmdRun = &cobra.Command{
 	Use:   "run command [and optional args]...",
 	Short: "Run a command remotely and see the output locally.",
 	Run: func(cmd *cobra.Command, args []string) {
@@ -43,14 +43,14 @@ var cmdCmd_Run = &cobra.Command{
 			cmd.Help()
 			return
 		}
-		var command CmdRun
+		var command types.CmdRun
 		command.Command = args[0]
 		if len(args) > 1 {
 			command.Args = args[1:]
 		}
 		command.CWD = cwd
 		command.Timeout = time.Second * time.Duration(timeout)
-		command.Env = make(EnvVar)
+		command.Env = make(types.EnvVar)
 		for _, pair := range strings.Split(environment, " ") {
 			if strings.ContainsRune(pair, '=') {
 				kv := strings.SplitN(pair, "=", 2)
@@ -62,7 +62,7 @@ var cmdCmd_Run = &cobra.Command{
 		results, err := gcmd.FRun(sproutTarget, command)
 		if err != nil {
 			switch err {
-			case ErrSproutIDNotFound:
+			case types.ErrSproutIDNotFound:
 				log.Fatalf("A targeted Sprout does not exist or is not accepted..")
 			default:
 				// TODO: handle endpoint timeouts here
@@ -84,7 +84,7 @@ var cmdCmd_Run = &cobra.Command{
 					color.Red("%s: \n returned an invalid message!\n", keyID)
 					continue
 				}
-				var value CmdRun
+				var value types.CmdRun
 				err = json.NewDecoder(bytes.NewBuffer(jw)).Decode(&value)
 				if err != nil {
 					color.Red("%s returned an invalid message!\n", keyID)
@@ -106,15 +106,15 @@ var cmdCmd_Run = &cobra.Command{
 }
 
 func init() {
-	cmdCmd_Run.Flags().StringVarP(&environment, "environment", "E", "", "List of space-separated key=value OS Environment Variables")
-	cmdCmd_Run.Flags().BoolVar(&noerr, "noerr", false, "Don't print out the stderr from the command output")
-	cmdCmd_Run.Flags().StringVarP(&user, "runas", "u", "", "If running as a sudoer, run the command as another user")
-	cmdCmd_Run.Flags().StringVarP(&cwd, "cwd", "w", "", "Current working directory to run the command in")
-	cmdCmd_Run.Flags().IntVar(&timeout, "timeout", 30, "Cancel command execution and return after X seconds")
-	cmdCmd_Run.Flags().StringVarP(&path, "path", "p", "", "Prepend a folder to the PATH before execution")
+	cmdCmdRun.Flags().StringVarP(&environment, "environment", "E", "", "List of space-separated key=value OS Environment Variables")
+	cmdCmdRun.Flags().BoolVar(&noerr, "noerr", false, "Don't print out the stderr from the command output")
+	cmdCmdRun.Flags().StringVarP(&user, "runas", "u", "", "If running as a sudoer, run the command as another user")
+	cmdCmdRun.Flags().StringVarP(&cwd, "cwd", "w", "", "Current working directory to run the command in")
+	cmdCmdRun.Flags().IntVar(&timeout, "timeout", 30, "Cancel command execution and return after X seconds")
+	cmdCmdRun.Flags().StringVarP(&path, "path", "p", "", "Prepend a folder to the PATH before execution")
 	cmdCmd.PersistentFlags().StringVarP(&sproutTarget, "target", "T", "", "list of sprouts to target")
 	cmdCmd.MarkPersistentFlagRequired("target")
-	cmdCmd.AddCommand(cmdCmd_Run)
+	cmdCmd.AddCommand(cmdCmdRun)
 	rootCmd.AddCommand(cmdCmd)
 
 	// Here you will define your flags and configuration settings.
