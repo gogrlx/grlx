@@ -1,10 +1,10 @@
 certfile: /etc/grlx/pki/farmer/tls-cert.pem
 certhosts:
-- localhost
-- 127.0.0.1
-- farmer
-- grlx
-- 192.168.2.4
+    - localhost
+    - 127.0.0.1
+    - farmer
+    - grlx
+    - 192.168.2.4
 certificatevalidtime: 8760h0m0s
 configroot: /etc/grlx/
 farmerapiport: "5405"
