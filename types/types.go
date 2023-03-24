@@ -30,6 +30,9 @@ type (
 		NKey     string `json:"nkey"`
 		SproutID string `json:"id"`
 	}
+	FileAbsent struct {
+		Name string `json:"name"`
+	}
 	KeyManager struct {
 		SproutID string `json:"id"`
 	}

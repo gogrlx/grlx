@@ -3,6 +3,7 @@ package cook
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -111,6 +112,27 @@ func unmarshalRecipe(recipe []byte) (map[string]interface{}, error) {
 	rmap := make(map[string]interface{})
 	err := yaml.Unmarshal(recipe, &rmap)
 	return rmap, err
+}
+
+func getIncludes(recipe map[string]interface{}) ([]string, error) {
+	if includes, ok := recipe["includes"]; ok {
+		switch i := includes.(type) {
+		case []interface{}:
+			inc := []string{}
+			for _, v := range i {
+				switch t := v.(type) {
+				case string:
+					inc = append(inc, t)
+				default:
+					return []string{}, fmt.Errorf("include must be a slice of strings, but found type %T", i)
+				}
+			}
+			return inc, nil
+		default:
+			return []string{}, fmt.Errorf("include must be a slice of strings, but found type %T", i)
+		}
+	}
+	return []string{}, nil
 }
 
 // TODO ensure ability to only run individual state (+ dependencies),

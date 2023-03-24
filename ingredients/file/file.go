@@ -1,4 +1,4 @@
-package cmd
+package file
 
 import (
 	nats "github.com/nats-io/nats.go"
