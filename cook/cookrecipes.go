@@ -1,17 +1,29 @@
 package cook
 
 import (
+	"bytes"
 	"errors"
 	"os"
 	"path/filepath"
 	"strings"
+	"text/template"
 
 	"github.com/gogrlx/grlx/config"
 )
 
+var funcMap template.FuncMap
+
+func init() {
+	funcMap = make(template.FuncMap)
+	// funcMap["props"] = props
+	// funcMap["secrets"] = secrets
+	// funcMap["hostname"] = hostname
+	// funcMap["id"] = id
+}
+
 func Cook(recipeID string) error {
 	basePath := getBasePath()
-	//TODO get git branch / tag from environment
+	// TODO get git branch / tag from environment
 	// pass in an ID to a Recipe
 	recipeFilePath, err := ResolveRecipeFilePath(basePath, recipeID)
 	_, _ = recipeFilePath, err
@@ -34,9 +46,9 @@ func ResolveRecipeFilePath(basePath string, recipeID string) (string, error) {
 	if filepath.Ext(basePath) == config.GrlxExt {
 		basePath = strings.TrimSuffix(basePath, "."+config.GrlxExt)
 	}
-	//TODO check if basepath is completely empty first
+	// TODO check if basepath is completely empty first
 	if !config.BasePathValid() {
-		//TODO create an error type for this, wrap and return it
+		// TODO create an error type for this, wrap and return it
 		return "", errors.New("")
 	}
 	dirList := strings.Split(recipeID, ".")
@@ -45,38 +57,54 @@ func ResolveRecipeFilePath(basePath string, recipeID string) (string, error) {
 		currentDir = filepath.Join(currentDir, dirList[depth])
 	}
 	stat, err := os.Stat(currentDir)
-	//TODO check all possible errors here
+	// TODO check all possible errors here
 	if os.IsNotExist(err) {
 		return "", err
 	}
 	if !stat.IsDir() {
-		//TODO standardize this error type
-		return "", errors.New("Path provided is not to a directory")
+		// TODO standardize this error type
+		return "", errors.New("path provided is not to a directory")
 	}
 	recipeFile := dirList[len(dirList)-1] + config.GrlxExt
 	recipeFile = filepath.Join(currentDir, recipeFile)
 
 	stat, err = os.Stat(recipeFile)
-	//TODO check all possible errors here
+	// TODO check all possible errors here
 	if os.IsNotExist(err) {
 		return "", err
 	}
-	//TODO allow for init.grlx types etc. in the future
+	// TODO allow for init.grlx types etc. in the future
 	if stat.IsDir() {
-		//TODO standardize this error type
-		return "", errors.New("Path provided is a directory")
+		// TODO standardize this error type
+		return "", errors.New("path provided is a directory")
 	}
 	return recipeFile, nil
 }
 
 func getBasePath() string {
-	//TODO Get basepath from environment
+	// TODO Get basepath from environment
 	return "/home/tai/code/foss/grlx/testing/recipes"
 }
 
 func ParseRecipeFile() {
-
 }
 
-//TODO ensure ability to only run individual state (+ dependencies),
+func renderRecipeTemplate(path string, file []byte) ([]byte, error) {
+	temp := template.New(path)
+	funcs := make(template.FuncMap)
+	temp.Funcs(funcs)
+	rt, err := temp.Parse(string(file))
+	if err != nil {
+		return []byte{}, err
+	}
+	rt.Option("missingkey=error")
+	buf := bytes.NewBuffer([]byte{})
+	err = rt.Execute(buf, nil)
+	if err != nil {
+		return []byte{}, err
+	}
+	return buf.Bytes(), nil
+}
+
+// TODO ensure ability to only run individual state (+ dependencies),
 // i.e. start from a root of a given dependency tree
