@@ -9,6 +9,7 @@ import (
 	"text/template"
 
 	"github.com/gogrlx/grlx/config"
+	"gopkg.in/yaml.v3"
 )
 
 var funcMap template.FuncMap
@@ -91,8 +92,8 @@ func ParseRecipeFile() {
 
 func renderRecipeTemplate(path string, file []byte) ([]byte, error) {
 	temp := template.New(path)
-	funcs := make(template.FuncMap)
-	temp.Funcs(funcs)
+	gFuncs := make(template.FuncMap)
+	temp.Funcs(gFuncs)
 	rt, err := temp.Parse(string(file))
 	if err != nil {
 		return []byte{}, err
@@ -104,6 +105,12 @@ func renderRecipeTemplate(path string, file []byte) ([]byte, error) {
 		return []byte{}, err
 	}
 	return buf.Bytes(), nil
+}
+
+func unmarshalRecipe(recipe []byte) (map[string]interface{}, error) {
+	rmap := make(map[string]interface{})
+	err := yaml.Unmarshal(recipe, &rmap)
+	return rmap, err
 }
 
 // TODO ensure ability to only run individual state (+ dependencies),
