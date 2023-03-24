@@ -13,21 +13,21 @@ import (
 	"syscall"
 	"time"
 
-	. "github.com/gogrlx/grlx/types"
+	"github.com/gogrlx/grlx/types"
 	"github.com/taigrr/log-socket/log"
 )
 
 var envMutex sync.Mutex
 
 // TODO allow selector to be more than an ID
-func FRun(target KeyManager, cmdRun CmdRun) (CmdRun, error) {
+func FRun(target types.KeyManager, cmdRun types.CmdRun) (types.CmdRun, error) {
 	topic := "grlx.sprouts." + target.SproutID + ".cmd.run"
-	var results CmdRun
+	var results types.CmdRun
 	err := ec.Request(topic, cmdRun, &results, time.Second*15+cmdRun.Duration)
 	return results, err
 }
 
-func SRun(cmd CmdRun) (CmdRun, error) {
+func SRun(cmd types.CmdRun) (types.CmdRun, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), cmd.Timeout)
 	defer cancel()
 	envMutex.Lock()
@@ -59,7 +59,7 @@ func SRun(cmd CmdRun) (CmdRun, error) {
 	command.Env = env
 
 	var uid uint32
-	//TODO fix for windows support
+	// TODO fix for windows support
 	if cmd.RunAs != "" && runtime.GOOS != "windows" {
 		u, err := user.Lookup(cmd.RunAs)
 		if err != nil {
@@ -75,13 +75,13 @@ func SRun(cmd CmdRun) (CmdRun, error) {
 	}
 	command.Dir = cmd.CWD
 
-	//TODO replace os.Stdout/err here with writes to websocket to get live returnable data
+	// TODO replace os.Stdout/err here with writes to websocket to get live returnable data
 	var stdoutBuf, stderrBuf bytes.Buffer
 	command.Stdout = io.MultiWriter(&stdoutBuf) //, os.Stdout)
 	command.Stderr = io.MultiWriter(&stderrBuf) //, os.Stderr)
 	timer := time.Now()
 	err := command.Run()
-	cmd.Duration = time.Now().Sub(timer)
+	cmd.Duration = time.Since(timer)
 	if err != nil {
 		log.Errorf("cmd.Run() failed with %s\n", err)
 	}
