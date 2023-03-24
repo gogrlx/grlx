@@ -1,4 +1,4 @@
-package main
+package parser
 
 type ReqType string
 
@@ -13,6 +13,13 @@ const (
 )
 
 type (
+	// Recipe interface{}
+	Result struct {
+		Suceeded bool
+		Failed   bool
+		Changed  bool
+		Changes  any
+	}
 	RecipeName string
 	Function   string
 	StateID    string
@@ -21,8 +28,7 @@ type (
 		Includes []RecipeName        `json:"include" yaml:"include"`
 		States   []map[StateID]State `json:"states" yaml:"states"`
 	}
-	Recipe map[string]interface{}
-	State  struct {
+	State struct {
 		Ingredient Ingredient `json:"ingredient" yaml:"ingredient"`
 		ID         StateID
 		Requisites []StateID
@@ -32,6 +38,3 @@ type (
 		Condition ReqType
 	}
 )
-
-func main() {
-}

@@ -6,6 +6,12 @@ import (
 )
 
 type (
+	Result struct {
+		Succeeded bool
+		Failed    bool
+		Changed   bool
+		Changes   any
+	}
 	Route struct {
 		Name        string
 		Method      string
@@ -30,7 +36,7 @@ type (
 		NKey     string `json:"nkey"`
 		SproutID string `json:"id"`
 	}
-	FileAbsent struct {
+	FilePath struct {
 		Name string `json:"name"`
 	}
 	KeyManager struct {

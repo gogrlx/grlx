@@ -135,5 +135,9 @@ func getIncludes(recipe map[string]interface{}) ([]string, error) {
 	return []string{}, nil
 }
 
+func collectAllIncludes(path string) ([]string, error) {
+	return []string{}, nil
+}
+
 // TODO ensure ability to only run individual state (+ dependencies),
 // i.e. start from a root of a given dependency tree
