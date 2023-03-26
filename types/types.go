@@ -1,11 +1,57 @@
 package types
 
 import (
+	"context"
 	"net/http"
 	"time"
 )
 
+const (
+	OnChanges ReqType = "onchanges"
+	OnFail    ReqType = "onfail"
+	Require   ReqType = "require"
+
+	OnChangesAny ReqType = "onchanges_any"
+	OnFailAny    ReqType = "onfail_any"
+	RequireAny   ReqType = "require_any"
+)
+
+// TODO rename to allIDs
+func (r RequisiteSet) All() []StepID {
+	collection := []StepID{}
+	for _, reqs := range r {
+		collection = append(collection, reqs.Steps...)
+	}
+	return collection
+}
+
 type (
+	RecipeStep interface {
+		Apply(context.Context) (Result, error)
+		Test(context.Context) (Result, error)
+	}
+	RecipeName string
+	Function   string
+	StepID     string
+	Ingredient map[string]interface{}
+	recipe     struct {
+		Includes []RecipeName      `json:"include" yaml:"include"`
+		States   []map[StepID]Step `json:"states" yaml:"states"`
+	}
+	RequisiteSet []Requisite
+	Step         struct {
+		Ingredient  Ingredient `json:"ingredient" yaml:"ingredient"`
+		ID          StepID
+		Requisites  RequisiteSet
+		IsRequisite bool
+	}
+	Targets   []StepID
+	Requisite struct {
+		Condition ReqType
+		// TODO change name here to StepIDs and Steps
+		Steps    []StepID
+		StepData []*Step
+	}
 	Result struct {
 		Succeeded bool
 		Failed    bool
@@ -84,6 +130,7 @@ type (
 		Action interface{}  `json:"action"`
 	}
 	TargetedResults struct {
-		Results map[string]interface{} `json:"results"`
+		Results map[string]interface{} `json:"results,omitempty"`
 	}
+	ReqType string
 )

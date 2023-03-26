@@ -8,20 +8,20 @@ import (
 )
 
 var (
-	aa Ingredient
-	a  Ingredient
-	b  Ingredient
-	c  Ingredient
-	d  Ingredient
-	e  Ingredient
-	f  Ingredient
-	g  Ingredient
-	h  Ingredient
-	i  Ingredient
-	j  Ingredient
-	k  Ingredient
-	l  Ingredient
-	m  Ingredient
+	aa Step
+	a  Step
+	b  Step
+	c  Step
+	d  Step
+	e  Step
+	f  Step
+	g  Step
+	h  Step
+	i  Step
+	j  Step
+	k  Step
+	l  Step
+	m  Step
 )
 
 func init() {
@@ -39,17 +39,16 @@ func init() {
 	k.ID = "k"
 	l.ID = "l"
 	m.ID = "m"
-	a.Dependencies = []string{"b", "c"}
-	b.Dependencies = []string{"d"}
-	e.Dependencies = []string{"a", "d"}
-	g.Dependencies = []string{"h"}
-	h.Dependencies = []string{"i"}
-	i.Dependencies = []string{"g", "a", "e"}
-	j.Dependencies = []string{"a", "b"}
-	k.Dependencies = []string{"j", "b"}
-	l.Dependencies = []string{"k", "j", "b"}
-	m.Dependencies = []string{"j", "b", "a", "k"}
-
+	a.Requisites = RequisiteSet{Requisite{Steps: []StepID{"b", "c"}}}
+	b.Requisites = RequisiteSet{Requisite{Steps: []StepID{"d"}}}
+	e.Requisites = RequisiteSet{Requisite{Steps: []StepID{"a", "d"}}}
+	g.Requisites = RequisiteSet{Requisite{Steps: []StepID{"h"}}}
+	h.Requisites = RequisiteSet{Requisite{Steps: []StepID{"i"}}}
+	i.Requisites = RequisiteSet{Requisite{Steps: []StepID{"g", "a", "e"}}}
+	j.Requisites = RequisiteSet{Requisite{Steps: []StepID{"a", "b"}}}
+	k.Requisites = RequisiteSet{Requisite{Steps: []StepID{"j", "b"}}}
+	l.Requisites = RequisiteSet{Requisite{Steps: []StepID{"k", "j", "b"}}}
+	m.Requisites = RequisiteSet{Requisite{Steps: []StepID{"j", "b", "a", "k"}}}
 }
 
 func TestGenerateTree(t *testing.T) {
@@ -58,27 +57,38 @@ func TestGenerateTree(t *testing.T) {
 		recipeFile RecipeFile
 		expected   string
 		err        error
-	}{{name: "simple test",
-		recipeFile: RecipeFile{Ingredients: []*Ingredient{&a, &b, &d, &c},
-			Includes: []string{}},
-		expected: "a\n|\t├── b\n|\t|\t└── d\n|\t└── c\n\n\n"},
-		{name: "deeply nested deps",
-			recipeFile: RecipeFile{Ingredients: []*Ingredient{&a, &b, &d, &c, &j, &k, &l, &m},
-				Includes: []string{}},
+	}{
+		{
+			name: "simple test",
+			recipeFile: RecipeFile{
+				Steps:    []*Step{&a, &b, &d, &c},
+				Includes: []string{},
+			},
+			expected: "a\n|\t├── b\n|\t|\t└── d\n|\t└── c\n\n\n",
+		},
+		{
+			name: "deeply nested deps",
+			recipeFile: RecipeFile{
+				Steps:    []*Step{&a, &b, &d, &c, &j, &k, &l, &m},
+				Includes: []string{},
+			},
 
-			expected: "l\n|\t├── k\n|\t|\t├── j\n|\t|\t|\t├── a\n|\t|\t|\t|\t├── b\n|\t|\t|\t|\t|\t└── d\n|\t|\t|\t|\t└── c\n|\t|\t|\t└── b\n|\t|\t|\t|\t└── d\n|\t|\t└── b\n|\t|\t|\t└── d\n|\t├── j\n|\t|\t├── a\n|\t|\t|\t├── b\n|\t|\t|\t|\t└── d\n|\t|\t|\t└── c\n|\t|\t└── b\n|\t|\t|\t└── d\n|\t└── b\n|\t|\t└── d\n\n\nm\n|\t├── j\n|\t|\t├── a\n|\t|\t|\t├── b\n|\t|\t|\t|\t└── d\n|\t|\t|\t└── c\n|\t|\t└── b\n|\t|\t|\t└── d\n|\t├── b\n|\t|\t└── d\n|\t├── a\n|\t|\t├── b\n|\t|\t|\t└── d\n|\t|\t└── c\n|\t└── k\n|\t|\t├── j\n|\t|\t|\t├── a\n|\t|\t|\t|\t├── b\n|\t|\t|\t|\t|\t└── d\n|\t|\t|\t|\t└── c\n|\t|\t|\t└── b\n|\t|\t|\t|\t└── d\n|\t|\t└── b\n|\t|\t|\t└── d\n\n\n"},
-		//expected: "l\n|\t├── k\n|\t|\t├── j\n|\t|\t|\t├── a\n|\t|\t|\t|\t├── b\n|\t|\t|\t|\t|\t└── d\n|\t|\t|\t|\t└── c\n|\t|\t|\t└── b\n|\t|\t|\t|\t└── d\n|\t|\t└── b\n|\t|\t|\t└── d\n|\t├── j\n|\t|\t├── a\n|\t|\t|\t├── b\n|\t|\t|\t|\t└── d\n|\t|\t|\t└── c\n|\t|\t└── b\n|\t|\t|\t└── d\n|\t└── b\n|\t|\t└── d\n\nm\n|\t├── j\n|\t|\t├── a\n|\t|\t|\t├── b\n|\t|\t|\t|\t└── d\n|\t|\t|\t└── c\n|\t|\t└── b\n|\t|\t|\t└── d\n|\t├── b\n|\t|\t└── d\n|\t├── a\n|\t|\t├── b\n|\t|\t|\t└── d\n|\t|\t└── c\n|\t└── k\n|\t|\t├── j\n|\t|\t|\t├── a\n|\t|\t|\t|\t├── b\n|\t|\t|\t|\t|\t└── d\n|\t|\t|\t|\t└── c\n|\t|\t|\t└── b\n|\t|\t|\t|\t└── d\n|\t|\t└── b\n|\t|\t|\t└── d"},
-		{name: "g-h-i cycle",
-			recipeFile: RecipeFile{Ingredients: []*Ingredient{&g, &h, &i, &a, &b, &c, &d, &e}},
+			expected: "l\n|\t├── k\n|\t|\t├── j\n|\t|\t|\t├── a\n|\t|\t|\t|\t├── b\n|\t|\t|\t|\t|\t└── d\n|\t|\t|\t|\t└── c\n|\t|\t|\t└── b\n|\t|\t|\t|\t└── d\n|\t|\t└── b\n|\t|\t|\t└── d\n|\t├── j\n|\t|\t├── a\n|\t|\t|\t├── b\n|\t|\t|\t|\t└── d\n|\t|\t|\t└── c\n|\t|\t└── b\n|\t|\t|\t└── d\n|\t└── b\n|\t|\t└── d\n\n\nm\n|\t├── j\n|\t|\t├── a\n|\t|\t|\t├── b\n|\t|\t|\t|\t└── d\n|\t|\t|\t└── c\n|\t|\t└── b\n|\t|\t|\t└── d\n|\t├── b\n|\t|\t└── d\n|\t├── a\n|\t|\t├── b\n|\t|\t|\t└── d\n|\t|\t└── c\n|\t└── k\n|\t|\t├── j\n|\t|\t|\t├── a\n|\t|\t|\t|\t├── b\n|\t|\t|\t|\t|\t└── d\n|\t|\t|\t|\t└── c\n|\t|\t|\t└── b\n|\t|\t|\t|\t└── d\n|\t|\t└── b\n|\t|\t|\t└── d\n\n\n",
+		},
+		// expected: "l\n|\t├── k\n|\t|\t├── j\n|\t|\t|\t├── a\n|\t|\t|\t|\t├── b\n|\t|\t|\t|\t|\t└── d\n|\t|\t|\t|\t└── c\n|\t|\t|\t└── b\n|\t|\t|\t|\t└── d\n|\t|\t└── b\n|\t|\t|\t└── d\n|\t├── j\n|\t|\t├── a\n|\t|\t|\t├── b\n|\t|\t|\t|\t└── d\n|\t|\t|\t└── c\n|\t|\t└── b\n|\t|\t|\t└── d\n|\t└── b\n|\t|\t└── d\n\nm\n|\t├── j\n|\t|\t├── a\n|\t|\t|\t├── b\n|\t|\t|\t|\t└── d\n|\t|\t|\t└── c\n|\t|\t└── b\n|\t|\t|\t└── d\n|\t├── b\n|\t|\t└── d\n|\t├── a\n|\t|\t├── b\n|\t|\t|\t└── d\n|\t|\t└── c\n|\t└── k\n|\t|\t├── j\n|\t|\t|\t├── a\n|\t|\t|\t|\t├── b\n|\t|\t|\t|\t|\t└── d\n|\t|\t|\t|\t└── c\n|\t|\t|\t└── b\n|\t|\t|\t|\t└── d\n|\t|\t└── b\n|\t|\t|\t└── d"},
+		{
+			name:       "g-h-i cycle",
+			recipeFile: RecipeFile{Steps: []*Step{&g, &h, &i, &a, &b, &c, &d, &e}},
 			expected:   "",
-			err:        ErrDependencyCycleFound},
+			err:        ErrDependencyCycleFound,
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			for _, recipe := range tc.recipeFile.Ingredients {
-				recipe.dependencies = []*Ingredient{}
+			for _, recipe := range tc.recipeFile.Steps {
+				recipe.Requisites = RequisiteSet{}
 			}
-			roots, errs := GenerateTrees(tc.recipeFile.Ingredients)
+			roots, errs := GenerateTrees(tc.recipeFile.Steps)
 			if len(errs) > 0 {
 				for _, e := range errs {
 					if !errors.Is(e, tc.err) {
@@ -88,35 +98,41 @@ func TestGenerateTree(t *testing.T) {
 			}
 			out := PrintTrees(roots)
 			if out != tc.expected {
-				t.Errorf("Expected: %s  but got: %s", tc.expected, out)
+				t.Errorf("Expected:\n %s  but got:\n%s", tc.expected, out)
 			}
 		})
 	}
-	return
 }
 
-func TestAllDependenciesDefined(t *testing.T) {
+func TestAllRequisitesDefined(t *testing.T) {
 	testCases := []struct {
 		name      string
-		recipes   []*Ingredient
+		recipes   []*Step
 		defined   bool
-		undefined []string
-	}{{name: "all present",
-		recipes:   []*Ingredient{&a, &b, &c, &d},
-		defined:   true,
-		undefined: nil},
-		{name: "a and d missing",
-			recipes:   []*Ingredient{&e},
-			defined:   false,
-			undefined: []string{"d", "a"}},
-		{name: "empty",
-			recipes:   []*Ingredient{},
+		undefined []StepID
+	}{
+		{
+			name:      "all present",
+			recipes:   []*Step{&a, &b, &c, &d},
 			defined:   true,
-			undefined: []string{}},
+			undefined: nil,
+		},
+		{
+			name:      "a and d missing",
+			recipes:   []*Step{&e},
+			defined:   false,
+			undefined: []StepID{"d", "a"},
+		},
+		{
+			name:      "empty",
+			recipes:   []*Step{},
+			defined:   true,
+			undefined: []StepID{},
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			allDefined, missing := AllDependenciesDefined(tc.recipes)
+			allDefined, missing := AllRequisitesDefined(tc.recipes)
 			if len(missing) > 0 {
 				for _, e := range missing {
 					found := false
@@ -147,27 +163,33 @@ func TestAllDependenciesDefined(t *testing.T) {
 			}
 		})
 	}
-	return
 }
 
 func TestNoDuplicateIDs(t *testing.T) {
 	testCases := []struct {
 		name         string
-		recipes      []*Ingredient
+		recipes      []*Step
 		noDuplicates bool
-		duplicates   []string
-	}{{name: "no duplicates",
-		recipes:      []*Ingredient{&a, &b, &c, &d},
-		noDuplicates: true,
-		duplicates:   []string{}},
-		{name: "a duplicated",
-			recipes:      []*Ingredient{&a, &aa},
-			noDuplicates: false,
-			duplicates:   []string{"a"}},
-		{name: "empty set",
-			recipes:      []*Ingredient{},
+		duplicates   []StepID
+	}{
+		{
+			name:         "no duplicates",
+			recipes:      []*Step{&a, &b, &c, &d},
 			noDuplicates: true,
-			duplicates:   []string{}},
+			duplicates:   []StepID{},
+		},
+		{
+			name:         "a duplicated",
+			recipes:      []*Step{&a, &aa},
+			noDuplicates: false,
+			duplicates:   []StepID{"a"},
+		},
+		{
+			name:         "empty set",
+			recipes:      []*Step{},
+			noDuplicates: true,
+			duplicates:   []StepID{},
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -198,30 +220,37 @@ func TestNoDuplicateIDs(t *testing.T) {
 				}
 			}
 			if noDuplicates != tc.noDuplicates {
-				t.Errorf("Expected: %v  but got: %v", tc.noDuplicates, noDuplicates)
+				t.Errorf("Expected:\n%v  but got:\n%v", tc.noDuplicates, noDuplicates)
 			}
 		})
 	}
-	return
 }
+
 func TestHasCycle(t *testing.T) {
 	testCases := []struct {
 		name         string
-		recipes      []*Ingredient
+		recipes      []*Step
 		noDuplicates bool
-		duplicates   []string
-	}{{name: "no duplicates",
-		recipes:      []*Ingredient{&a, &b, &c, &d},
-		noDuplicates: true,
-		duplicates:   []string{}},
-		{name: "a duplicated",
-			recipes:      []*Ingredient{&a, &aa},
-			noDuplicates: false,
-			duplicates:   []string{"a"}},
-		{name: "empty set",
-			recipes:      []*Ingredient{},
+		duplicates   []StepID
+	}{
+		{
+			name:         "no duplicates",
+			recipes:      []*Step{&a, &b, &c, &d},
 			noDuplicates: true,
-			duplicates:   []string{}},
+			duplicates:   []StepID{},
+		},
+		{
+			name:         "a duplicated",
+			recipes:      []*Step{&a, &aa},
+			noDuplicates: false,
+			duplicates:   []StepID{"a"},
+		},
+		{
+			name:         "empty set",
+			recipes:      []*Step{},
+			noDuplicates: true,
+			duplicates:   []StepID{},
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -252,9 +281,8 @@ func TestHasCycle(t *testing.T) {
 				}
 			}
 			if noDuplicates != tc.noDuplicates {
-				t.Errorf("Expected: %v  but got: %v", tc.noDuplicates, noDuplicates)
+				t.Errorf("Expected:\n%v  but got:\n%v", tc.noDuplicates, noDuplicates)
 			}
 		})
 	}
-	return
 }

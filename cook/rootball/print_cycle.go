@@ -3,9 +3,11 @@ package rootball
 import (
 	"fmt"
 	"strings"
+
+	"github.com/gogrlx/grlx/types"
 )
 
-func PrintTrees(roots []*Ingredient) string {
+func PrintTrees(roots []*types.Step) string {
 	output := ""
 	for _, recipe := range roots {
 		output += printNode(recipe, 0, false) + "\n\n"
@@ -13,7 +15,7 @@ func PrintTrees(roots []*Ingredient) string {
 	return output
 }
 
-func printNode(recipe *Ingredient, depth int, isLast bool) string {
+func printNode(recipe *types.Step, depth int, isLast bool) string {
 	nodeline := strings.Repeat("|\t", depth)
 	if depth != 0 {
 		if isLast {
@@ -22,18 +24,20 @@ func printNode(recipe *Ingredient, depth int, isLast bool) string {
 			nodeline += "├── "
 		}
 	}
-	nodeline += recipe.ID + "\n"
-	for i, dep := range recipe.dependencies {
-		if i == len(recipe.dependencies)-1 {
-			nodeline += printNode(dep, depth+1, true)
-		} else {
-			nodeline += printNode(dep, depth+1, false)
+	nodeline += string(recipe.ID + "\n")
+	for i, reqSet := range recipe.Requisites {
+		for _, dep := range reqSet.StepData {
+			if i == len(recipe.Requisites)-1 {
+				nodeline += printNode(dep, depth+1, true)
+			} else {
+				nodeline += printNode(dep, depth+1, false)
+			}
 		}
 	}
 	return nodeline
 }
 
-func PrintCycle(cycle []string) string {
+func PrintCycle(cycle []types.StepID) string {
 	out := ""
 	maxLength := 0
 	for _, w := range cycle {

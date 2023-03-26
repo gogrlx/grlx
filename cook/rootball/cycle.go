@@ -1,54 +1,57 @@
 package rootball
 
 import (
-	"errors"
 	"fmt"
 
-	. "github.com/gogrlx/grlx/types"
+	"github.com/gogrlx/grlx/types"
 )
 
 // Pull in all included RecipieFiles first
 // List all recipies across the RecipieFiles
 // Starting with the RecipieFile HEAD, build out tree for each Recipe Dependent Graph
 
-var ProtoRecipe Ingredient
-var RecipeSet []*Ingredient
+var (
+	ProtoRecipe types.Step
+	RecipeSet   []*types.Step
+)
 
-func GenerateTrees(allRecipies []*Ingredient) ([]*Ingredient, []error) {
+func GenerateTrees(allRecipies []*types.Step) ([]*types.Step, []error) {
 	// check for duplicates
 	errorList := []error{}
 	hasNoDups, dups := NoDuplicateIDs(allRecipies)
 	if !hasNoDups {
 		for _, dup := range dups {
-			//TODO wrap this error
-			errorList = append(errorList, errors.New(fmt.Sprintf("Recipe identifier is not unique: %s", dup)))
+			// TODO wrap this error
+			errorList = append(errorList, fmt.Errorf("recipe identifier is not unique: %s", dup))
 		}
-		return []*Ingredient{}, errorList
+		return []*types.Step{}, errorList
 	}
 	// check for undefined deps
-	allDefined, mising := AllDependenciesDefined(allRecipies)
+	allDefined, mising := AllRequisitesDefined(allRecipies)
 	if !allDefined {
 		for _, dep := range mising {
-			//TODO wrap this error
-			errorList = append(errorList, errors.New(fmt.Sprintf("Recipe identifier is required but not defined: %s", dep)))
+			// TODO wrap this error
+			errorList = append(errorList, fmt.Errorf("recipe identifier is required but not defined: %s", dep))
 		}
-		return []*Ingredient{}, errorList
+		return []*types.Step{}, errorList
 	}
 	// check for cycles
 	hasCycle, cycle := HasCycle(allRecipies)
 	if hasCycle {
-		errorList = append(errorList, fmt.Errorf("%w: %s", ErrDependencyCycleFound, PrintCycle(cycle)))
-		return []*Ingredient{}, errorList
+		errorList = append(errorList, fmt.Errorf("%w: %s", types.ErrDependencyCycleFound, PrintCycle(cycle)))
+		return []*types.Step{}, errorList
 	}
 	// generate and return the roots
-	recipeMap := make(map[string]*Ingredient)
+	recipeMap := make(map[types.StepID]*types.Step)
 	for _, recipe := range allRecipies {
 		recipeMap[recipe.ID] = recipe
 	}
 	for _, recipe := range allRecipies {
-		for _, dep := range recipe.Dependencies {
-			recipe.dependencies = append(recipe.dependencies, recipeMap[dep])
-			recipeMap[dep].isRequisite = true
+		for i := range recipe.Requisites {
+			for _, v := range recipe.Requisites[i].Steps {
+				recipe.Requisites[i].StepData = append(recipe.Requisites[i].StepData, recipeMap[v])
+				(recipeMap[v]).IsRequisite = true
+			}
 		}
 	}
 	return FindRoots(allRecipies), nil
@@ -56,22 +59,22 @@ func GenerateTrees(allRecipies []*Ingredient) ([]*Ingredient, []error) {
 
 // Step 1: render the YAMLs (recipefiles)
 // Step 2: recursively gather all recipefiles, adding each to a map[string]bool. Cycles between recipefiles are allowed.
-// Step 3: make a list of all states, with dependencies attached, described by *unique* string identifiers
+// Step 3: make a list of all states, with Requisites attached, described by *unique* string identifiers
 // Step 4: detect non-unique string identifiers, return an error for this
-// Step 5: Pass in a list of all possible states, each identifying their dependencies as string IDs
+// Step 5: Pass in a list of all possible states, each identifying their Requisites as string IDs
 // Step 6: For each of the recipes in the list, check for a dependency cycle using DFS (depth first search)
 // Step 7: Build a dependency tree for each of the recipies in the cooked protorecipe
 // Step 8: Scan for out-of-tree reicpies that need to be included
-// Step 9: Build a dependency tree for each of the out-of-tree dependencies
+// Step 9: Build a dependency tree for each of the out-of-tree Requisites
 
 // Start from step 4
-func dfs(allRecipes *map[string]*Ingredient, current string, isVisited *map[string]bool, isValidated *map[string]bool) (bool, []string) {
+func dfs(allRecipes *map[types.StepID]*types.Step, current types.StepID, isVisited *map[types.StepID]bool, isValidated *map[types.StepID]bool) (bool, []types.StepID) {
 	if (*isVisited)[current] {
-		//TODO return the cycle
-		return findCycle(allRecipes, current, "", []string{})
+		// TODO return the cycle
+		return findCycle(allRecipes, current, "", []types.StepID{})
 	}
 	(*isVisited)[current] = true
-	for _, id := range (*allRecipes)[current].Dependencies {
+	for _, id := range (*allRecipes)[current].Requisites.All() {
 		hasCycle, cycle := dfs(allRecipes, id, isVisited, isValidated)
 		if hasCycle {
 			return true, cycle
@@ -79,9 +82,10 @@ func dfs(allRecipes *map[string]*Ingredient, current string, isVisited *map[stri
 	}
 	(*isValidated)[current] = true
 	(*isVisited)[current] = false
-	return false, []string{}
+	return false, []types.StepID{}
 }
-func findCycle(allRecipes *map[string]*Ingredient, top string, current string, chain []string) (bool, []string) {
+
+func findCycle(allRecipes *map[types.StepID]*types.Step, top types.StepID, current types.StepID, chain []types.StepID) (bool, []types.StepID) {
 	if current == top {
 		chain = append(chain, current)
 		return true, chain
@@ -90,22 +94,22 @@ func findCycle(allRecipes *map[string]*Ingredient, top string, current string, c
 		current = top
 	}
 	chain = append(chain, current)
-	for _, w := range (*allRecipes)[current].Dependencies {
+	for _, w := range (*allRecipes)[current].Requisites.All() {
 		if w == top {
 			chain = append(chain, w)
 			return true, chain
 		}
-		isCycle, chain := findCycle(allRecipes, top, w, chain)
+		isCycle, cchain := findCycle(allRecipes, top, w, chain)
 		if isCycle {
-			return true, chain
+			return true, cchain
 		}
 	}
-	return false, []string{}
+	return false, []types.StepID{}
 }
 
-func NoDuplicateIDs(allRecipes []*Ingredient) (bool, []string) {
-	duplicates := []string{}
-	recipeMap := make(map[string]*Ingredient)
+func NoDuplicateIDs(allRecipes []*types.Step) (bool, []types.StepID) {
+	duplicates := []types.StepID{}
+	recipeMap := make(map[types.StepID]*types.Step)
 	for _, recipe := range allRecipes {
 		if _, ok := recipeMap[recipe.ID]; !ok {
 			recipeMap[recipe.ID] = recipe
@@ -114,17 +118,16 @@ func NoDuplicateIDs(allRecipes []*Ingredient) (bool, []string) {
 		}
 	}
 	return len(duplicates) == 0, duplicates
-
 }
 
-func AllDependenciesDefined(allRecipes []*Ingredient) (bool, []string) {
-	unresolved := []string{}
-	recipeMap := make(map[string]*Ingredient)
+func AllRequisitesDefined(allRecipes []*types.Step) (bool, []types.StepID) {
+	unresolved := []types.StepID{}
+	recipeMap := make(map[types.StepID]*types.Step)
 	for _, recipe := range allRecipes {
 		recipeMap[recipe.ID] = recipe
 	}
 	for _, recipe := range allRecipes {
-		for _, dep := range recipe.Dependencies {
+		for _, dep := range recipe.Requisites.All() {
 			if _, ok := recipeMap[dep]; !ok {
 				unresolved = append(unresolved, dep)
 			}
@@ -133,10 +136,10 @@ func AllDependenciesDefined(allRecipes []*Ingredient) (bool, []string) {
 	return len(unresolved) == 0, unresolved
 }
 
-func HasCycle(allRecipes []*Ingredient) (bool, []string) {
-	isValidated := make(map[string]bool)
-	isVisited := make(map[string]bool)
-	recipeMap := make(map[string]*Ingredient)
+func HasCycle(allRecipes []*types.Step) (bool, []types.StepID) {
+	isValidated := make(map[types.StepID]bool)
+	isVisited := make(map[types.StepID]bool)
+	recipeMap := make(map[types.StepID]*types.Step)
 	for _, i := range allRecipes {
 		isVisited[i.ID] = false
 		isValidated[i.ID] = false
@@ -148,17 +151,16 @@ func HasCycle(allRecipes []*Ingredient) (bool, []string) {
 		}
 		hasCycle, cycle := dfs(&recipeMap, i.ID, &isVisited, &isValidated)
 		if hasCycle {
-
 			return true, cycle
 		}
 	}
-	return false, []string{}
+	return false, []types.StepID{}
 }
 
-func FindRoots(allRecipes []*Ingredient) []*Ingredient {
-	roots := []*Ingredient{}
+func FindRoots(allRecipes []*types.Step) []*types.Step {
+	roots := []*types.Step{}
 	for _, recipe := range allRecipes {
-		if !recipe.isRequisite {
+		if !(*recipe).IsRequisite {
 			roots = append(roots, recipe)
 		}
 	}
