@@ -39,16 +39,16 @@ func init() {
 	k.ID = "k"
 	l.ID = "l"
 	m.ID = "m"
-	a.Requisites = RequisiteSet{Requisite{Steps: []StepID{"b", "c"}}}
-	b.Requisites = RequisiteSet{Requisite{Steps: []StepID{"d"}}}
-	e.Requisites = RequisiteSet{Requisite{Steps: []StepID{"a", "d"}}}
-	g.Requisites = RequisiteSet{Requisite{Steps: []StepID{"h"}}}
-	h.Requisites = RequisiteSet{Requisite{Steps: []StepID{"i"}}}
-	i.Requisites = RequisiteSet{Requisite{Steps: []StepID{"g", "a", "e"}}}
-	j.Requisites = RequisiteSet{Requisite{Steps: []StepID{"a", "b"}}}
-	k.Requisites = RequisiteSet{Requisite{Steps: []StepID{"j", "b"}}}
-	l.Requisites = RequisiteSet{Requisite{Steps: []StepID{"k", "j", "b"}}}
-	m.Requisites = RequisiteSet{Requisite{Steps: []StepID{"j", "b", "a", "k"}}}
+	a.Requisites = RequisiteSet{Requisite{StepIDs: []StepID{"b", "c"}}}
+	b.Requisites = RequisiteSet{Requisite{StepIDs: []StepID{"d"}}}
+	e.Requisites = RequisiteSet{Requisite{StepIDs: []StepID{"a", "d"}}}
+	g.Requisites = RequisiteSet{Requisite{StepIDs: []StepID{"h"}}}
+	h.Requisites = RequisiteSet{Requisite{StepIDs: []StepID{"i"}}}
+	i.Requisites = RequisiteSet{Requisite{StepIDs: []StepID{"g", "a", "e"}}}
+	j.Requisites = RequisiteSet{Requisite{StepIDs: []StepID{"a", "b"}}}
+	k.Requisites = RequisiteSet{Requisite{StepIDs: []StepID{"j", "b"}}}
+	l.Requisites = RequisiteSet{Requisite{StepIDs: []StepID{"k", "j", "b"}}}
+	m.Requisites = RequisiteSet{Requisite{StepIDs: []StepID{"j", "b", "a", "k"}}}
 }
 
 func TestGenerateTree(t *testing.T) {
@@ -75,7 +75,6 @@ func TestGenerateTree(t *testing.T) {
 
 			expected: "l\n|\t├── k\n|\t|\t├── j\n|\t|\t|\t├── a\n|\t|\t|\t|\t├── b\n|\t|\t|\t|\t|\t└── d\n|\t|\t|\t|\t└── c\n|\t|\t|\t└── b\n|\t|\t|\t|\t└── d\n|\t|\t└── b\n|\t|\t|\t└── d\n|\t├── j\n|\t|\t├── a\n|\t|\t|\t├── b\n|\t|\t|\t|\t└── d\n|\t|\t|\t└── c\n|\t|\t└── b\n|\t|\t|\t└── d\n|\t└── b\n|\t|\t└── d\n\n\nm\n|\t├── j\n|\t|\t├── a\n|\t|\t|\t├── b\n|\t|\t|\t|\t└── d\n|\t|\t|\t└── c\n|\t|\t└── b\n|\t|\t|\t└── d\n|\t├── b\n|\t|\t└── d\n|\t├── a\n|\t|\t├── b\n|\t|\t|\t└── d\n|\t|\t└── c\n|\t└── k\n|\t|\t├── j\n|\t|\t|\t├── a\n|\t|\t|\t|\t├── b\n|\t|\t|\t|\t|\t└── d\n|\t|\t|\t|\t└── c\n|\t|\t|\t└── b\n|\t|\t|\t|\t└── d\n|\t|\t└── b\n|\t|\t|\t└── d\n\n\n",
 		},
-		// expected: "l\n|\t├── k\n|\t|\t├── j\n|\t|\t|\t├── a\n|\t|\t|\t|\t├── b\n|\t|\t|\t|\t|\t└── d\n|\t|\t|\t|\t└── c\n|\t|\t|\t└── b\n|\t|\t|\t|\t└── d\n|\t|\t└── b\n|\t|\t|\t└── d\n|\t├── j\n|\t|\t├── a\n|\t|\t|\t├── b\n|\t|\t|\t|\t└── d\n|\t|\t|\t└── c\n|\t|\t└── b\n|\t|\t|\t└── d\n|\t└── b\n|\t|\t└── d\n\nm\n|\t├── j\n|\t|\t├── a\n|\t|\t|\t├── b\n|\t|\t|\t|\t└── d\n|\t|\t|\t└── c\n|\t|\t└── b\n|\t|\t|\t└── d\n|\t├── b\n|\t|\t└── d\n|\t├── a\n|\t|\t├── b\n|\t|\t|\t└── d\n|\t|\t└── c\n|\t└── k\n|\t|\t├── j\n|\t|\t|\t├── a\n|\t|\t|\t|\t├── b\n|\t|\t|\t|\t|\t└── d\n|\t|\t|\t|\t└── c\n|\t|\t|\t└── b\n|\t|\t|\t|\t└── d\n|\t|\t└── b\n|\t|\t|\t└── d"},
 		{
 			name:       "g-h-i cycle",
 			recipeFile: RecipeFile{Steps: []*Step{&g, &h, &i, &a, &b, &c, &d, &e}},
@@ -85,9 +84,9 @@ func TestGenerateTree(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			for _, recipe := range tc.recipeFile.Steps {
-				recipe.Requisites = RequisiteSet{}
-			}
+			//			for _, recipe := range tc.recipeFile.Steps {
+			//				recipe.Requisites = RequisiteSet{}
+			//			}
 			roots, errs := GenerateTrees(tc.recipeFile.Steps)
 			if len(errs) > 0 {
 				for _, e := range errs {
@@ -98,7 +97,7 @@ func TestGenerateTree(t *testing.T) {
 			}
 			out := PrintTrees(roots)
 			if out != tc.expected {
-				t.Errorf("Expected:\n %s  but got:\n%s", tc.expected, out)
+				t.Errorf("Expected:\n%s  but got:\n%s", tc.expected, out)
 			}
 		})
 	}

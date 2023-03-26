@@ -27,9 +27,9 @@ func GenerateTrees(allRecipies []*types.Step) ([]*types.Step, []error) {
 		return []*types.Step{}, errorList
 	}
 	// check for undefined deps
-	allDefined, mising := AllRequisitesDefined(allRecipies)
+	allDefined, missing := AllRequisitesDefined(allRecipies)
 	if !allDefined {
-		for _, dep := range mising {
+		for _, dep := range missing {
 			// TODO wrap this error
 			errorList = append(errorList, fmt.Errorf("recipe identifier is required but not defined: %s", dep))
 		}
@@ -46,10 +46,10 @@ func GenerateTrees(allRecipies []*types.Step) ([]*types.Step, []error) {
 	for _, recipe := range allRecipies {
 		recipeMap[recipe.ID] = recipe
 	}
-	for _, recipe := range allRecipies {
+	for _, recipe := range recipeMap {
 		for i := range recipe.Requisites {
-			for _, v := range recipe.Requisites[i].Steps {
-				recipe.Requisites[i].StepData = append(recipe.Requisites[i].StepData, recipeMap[v])
+			for _, v := range recipe.Requisites[i].StepIDs {
+				recipe.Requisites[i].Steps = append(recipe.Requisites[i].Steps, recipeMap[v])
 				(recipeMap[v]).IsRequisite = true
 			}
 		}
@@ -68,14 +68,14 @@ func GenerateTrees(allRecipies []*types.Step) ([]*types.Step, []error) {
 // Step 9: Build a dependency tree for each of the out-of-tree Requisites
 
 // Start from step 4
-func dfs(allRecipes *map[types.StepID]*types.Step, current types.StepID, isVisited *map[types.StepID]bool, isValidated *map[types.StepID]bool) (bool, []types.StepID) {
+func dfs(allSteps *map[types.StepID]*types.Step, current types.StepID, isVisited *map[types.StepID]bool, isValidated *map[types.StepID]bool) (bool, []types.StepID) {
 	if (*isVisited)[current] {
 		// TODO return the cycle
-		return findCycle(allRecipes, current, "", []types.StepID{})
+		return findCycle(allSteps, current, "", []types.StepID{})
 	}
 	(*isVisited)[current] = true
-	for _, id := range (*allRecipes)[current].Requisites.All() {
-		hasCycle, cycle := dfs(allRecipes, id, isVisited, isValidated)
+	for _, id := range (*allSteps)[current].Requisites.AllIDs() {
+		hasCycle, cycle := dfs(allSteps, id, isVisited, isValidated)
 		if hasCycle {
 			return true, cycle
 		}
@@ -94,7 +94,7 @@ func findCycle(allRecipes *map[types.StepID]*types.Step, top types.StepID, curre
 		current = top
 	}
 	chain = append(chain, current)
-	for _, w := range (*allRecipes)[current].Requisites.All() {
+	for _, w := range (*allRecipes)[current].Requisites.AllIDs() {
 		if w == top {
 			chain = append(chain, w)
 			return true, chain
@@ -107,14 +107,14 @@ func findCycle(allRecipes *map[types.StepID]*types.Step, top types.StepID, curre
 	return false, []types.StepID{}
 }
 
-func NoDuplicateIDs(allRecipes []*types.Step) (bool, []types.StepID) {
+func NoDuplicateIDs(allSteps []*types.Step) (bool, []types.StepID) {
 	duplicates := []types.StepID{}
-	recipeMap := make(map[types.StepID]*types.Step)
-	for _, recipe := range allRecipes {
-		if _, ok := recipeMap[recipe.ID]; !ok {
-			recipeMap[recipe.ID] = recipe
+	stepMap := make(map[types.StepID]struct{})
+	for _, step := range allSteps {
+		if _, ok := stepMap[step.ID]; !ok {
+			stepMap[step.ID] = struct{}{}
 		} else {
-			duplicates = append(duplicates, recipe.ID)
+			duplicates = append(duplicates, step.ID)
 		}
 	}
 	return len(duplicates) == 0, duplicates
@@ -127,7 +127,7 @@ func AllRequisitesDefined(allRecipes []*types.Step) (bool, []types.StepID) {
 		recipeMap[recipe.ID] = recipe
 	}
 	for _, recipe := range allRecipes {
-		for _, dep := range recipe.Requisites.All() {
+		for _, dep := range recipe.Requisites.AllIDs() {
 			if _, ok := recipeMap[dep]; !ok {
 				unresolved = append(unresolved, dep)
 			}

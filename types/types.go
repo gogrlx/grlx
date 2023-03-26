@@ -16,9 +16,16 @@ const (
 	RequireAny   ReqType = "require_any"
 )
 
-// TODO rename to allIDs
-func (r RequisiteSet) All() []StepID {
+func (r RequisiteSet) AllIDs() []StepID {
 	collection := []StepID{}
+	for _, reqs := range r {
+		collection = append(collection, reqs.StepIDs...)
+	}
+	return collection
+}
+
+func (r RequisiteSet) AllSteps() []*Step {
+	collection := []*Step{}
 	for _, reqs := range r {
 		collection = append(collection, reqs.Steps...)
 	}
@@ -48,9 +55,8 @@ type (
 	Targets   []StepID
 	Requisite struct {
 		Condition ReqType
-		// TODO change name here to StepIDs and Steps
-		Steps    []StepID
-		StepData []*Step
+		StepIDs   []StepID
+		Steps     []*Step
 	}
 	Result struct {
 		Succeeded bool

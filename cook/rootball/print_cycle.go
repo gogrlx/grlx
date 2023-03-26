@@ -25,13 +25,13 @@ func printNode(recipe *types.Step, depth int, isLast bool) string {
 		}
 	}
 	nodeline += string(recipe.ID + "\n")
-	for i, reqSet := range recipe.Requisites {
-		for _, dep := range reqSet.StepData {
-			if i == len(recipe.Requisites)-1 {
-				nodeline += printNode(dep, depth+1, true)
-			} else {
-				nodeline += printNode(dep, depth+1, false)
-			}
+
+	steps := recipe.Requisites.AllSteps()
+	for i, step := range steps {
+		if i == len(steps)-1 {
+			nodeline += printNode(step, depth+1, true)
+		} else {
+			nodeline += printNode(step, depth+1, false)
 		}
 	}
 	return nodeline
