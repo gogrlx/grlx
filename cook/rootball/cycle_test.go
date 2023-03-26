@@ -24,7 +24,7 @@ var (
 	m  Step
 )
 
-func init() {
+func createSteps() {
 	a.ID = "a"
 	aa.ID = "a"
 	b.ID = "b"
@@ -87,6 +87,7 @@ func TestGenerateTree(t *testing.T) {
 			//			for _, recipe := range tc.recipeFile.Steps {
 			//				recipe.Requisites = RequisiteSet{}
 			//			}
+			createSteps()
 			roots, errs := GenerateTrees(tc.recipeFile.Steps)
 			if len(errs) > 0 {
 				for _, e := range errs {
@@ -131,6 +132,7 @@ func TestAllRequisitesDefined(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			createSteps()
 			allDefined, missing := AllRequisitesDefined(tc.recipes)
 			if len(missing) > 0 {
 				for _, e := range missing {
@@ -192,6 +194,7 @@ func TestNoDuplicateIDs(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			createSteps()
 			noDuplicates, duplicates := NoDuplicateIDs(tc.recipes)
 			if len(duplicates) > 0 {
 				for _, e := range duplicates {
