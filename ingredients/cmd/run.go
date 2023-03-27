@@ -3,7 +3,9 @@ package cmd
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
+	"math"
 	"os"
 	"os/exec"
 	"os/user"
@@ -13,8 +15,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/gogrlx/grlx/types"
 	"github.com/taigrr/log-socket/log"
+
+	"github.com/gogrlx/grlx/types"
 )
 
 var envMutex sync.Mutex
@@ -66,10 +69,13 @@ func SRun(cmd types.CmdRun) (types.CmdRun, error) {
 			return cmd, err
 		}
 		uid64, err := strconv.Atoi(u.Uid)
-		uid = uint32(uid64)
 		if err != nil {
 			return cmd, err
 		}
+		if uid64 > math.MaxUint32 {
+			return cmd, fmt.Errorf("UID %d is invalid", uid64)
+		}
+		uid = uint32(uid64)
 		command.SysProcAttr = &syscall.SysProcAttr{}
 		command.SysProcAttr.Credential = &syscall.Credential{Uid: uid}
 	}
