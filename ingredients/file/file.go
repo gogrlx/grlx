@@ -2,6 +2,7 @@ package file
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/gogrlx/grlx/types"
@@ -35,6 +36,16 @@ func (f File) Apply(ctx context.Context) (types.Result, error) {
 		return types.Result{Succeeded: false, Failed: true, Changed: false, Changes: nil}, fmt.Errorf("method %s undefined", f.Method)
 
 	}
+}
+
+func (f File) Properties() (map[string]interface{}, error) {
+	m := map[string]interface{}{}
+	b, err := json.Marshal(f)
+	if err != nil {
+		return m, err
+	}
+	err = json.Unmarshal(b, &m)
+	return m, err
 }
 
 var (

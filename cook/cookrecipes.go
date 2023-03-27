@@ -10,6 +10,7 @@ import (
 	"text/template"
 
 	"github.com/gogrlx/grlx/config"
+	"github.com/gogrlx/grlx/types"
 	"gopkg.in/yaml.v3"
 )
 
@@ -88,7 +89,8 @@ func getBasePath() string {
 	return "/home/tai/code/foss/grlx/testing/recipes"
 }
 
-func ParseRecipeFile() {
+func ParseRecipeFile() types.RecipeStep {
+	return nil
 }
 
 func renderRecipeTemplate(path string, file []byte) ([]byte, error) {

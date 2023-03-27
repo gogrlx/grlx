@@ -36,7 +36,7 @@ type (
 	RecipeStep interface {
 		Apply(context.Context) (Result, error)
 		Test(context.Context) (Result, error)
-		Properties() map[string]interface{}
+		Properties() (map[string]interface{}, error)
 	}
 	RecipeName string
 	Function   string
