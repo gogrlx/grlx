@@ -24,7 +24,7 @@ func init() {
 	// funcMap["id"] = id
 }
 
-func Cook(recipeID string) error {
+func Cook(recipeID types.RecipeName) error {
 	basePath := getBasePath()
 	// TODO get git branch / tag from environment
 	// pass in an ID to a Recipe
@@ -43,7 +43,7 @@ func Cook(recipeID string) error {
 	return nil
 }
 
-func ResolveRecipeFilePath(basePath string, recipeID string) (string, error) {
+func ResolveRecipeFilePath(basePath string, recipeID types.RecipeName) (string, error) {
 	// open file if found, error out if missing , also allow for .grlx extensions
 	// split the ID on periods, resolve to basename directory
 	if filepath.Ext(basePath) == config.GrlxExt {
@@ -54,7 +54,7 @@ func ResolveRecipeFilePath(basePath string, recipeID string) (string, error) {
 		// TODO create an error type for this, wrap and return it
 		return "", errors.New("")
 	}
-	dirList := strings.Split(recipeID, ".")
+	dirList := strings.Split(string(recipeID), ".")
 	currentDir := filepath.Join(basePath)
 	for depth := 0; depth < len(dirList)-1; depth++ {
 		currentDir = filepath.Join(currentDir, dirList[depth])
