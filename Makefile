@@ -69,7 +69,7 @@ endif
 
 
 
-clean:  
+clean:
 	@printf "Cleaning up \e[32mmain\e[39m...\n"
 	docker-compose down || true
 	yes| docker-compose rm || true
@@ -100,8 +100,7 @@ test: clean
 
 
 .PHONY: all
-.PHONY: farmer
-.PHONY: grlx
-.PHONY: sprout
-.PHONY: docker
+.PHONY: clean
+.PHONY: install
+.PHONY: test
 .PHONY: update
