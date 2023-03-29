@@ -29,9 +29,27 @@ func Cook(recipeID types.RecipeName) error {
 	// TODO get git branch / tag from environment
 	// pass in an ID to a Recipe
 	recipeFilePath, err := ResolveRecipeFilePath(basePath, recipeID)
-	_, _ = recipeFilePath, err
-
+	if err != nil {
+		return err
+	}
+	f, err := os.ReadFile(recipeFilePath)
+	if err != nil {
+		return err
+	}
 	// parse file imports
+	rendered, err := renderRecipeTemplate(recipeFilePath, f)
+	if err != nil {
+		return err
+	}
+	recipeMap, err := unmarshalRecipe(rendered)
+	if err != nil {
+		return err
+	}
+	starterIncludes, err := getIncludes(recipeMap)
+	if err != nil {
+		return err
+	}
+	_ = starterIncludes
 	// load all imported files into recipefile list
 	// range over all keys under each recipe ID for matching ingredients
 	// split on periods in ingredient name, fail and error if no matching ingredient module
@@ -93,8 +111,8 @@ func ParseRecipeFile() types.RecipeStep {
 	return nil
 }
 
-func renderRecipeTemplate(path string, file []byte) ([]byte, error) {
-	temp := template.New(path)
+func renderRecipeTemplate(recipeName string, file []byte) ([]byte, error) {
+	temp := template.New(recipeName)
 	gFuncs := make(template.FuncMap)
 	temp.Funcs(gFuncs)
 	rt, err := temp.Parse(string(file))
@@ -116,25 +134,25 @@ func unmarshalRecipe(recipe []byte) (map[string]interface{}, error) {
 	return rmap, err
 }
 
-func getIncludes(recipe map[string]interface{}) ([]string, error) {
+func getIncludes(recipe map[string]interface{}) ([]types.RecipeName, error) {
 	if includes, ok := recipe["includes"]; ok {
 		switch i := includes.(type) {
 		case []interface{}:
-			inc := []string{}
+			inc := []types.RecipeName{}
 			for _, v := range i {
 				switch t := v.(type) {
 				case string:
-					inc = append(inc, t)
+					inc = append(inc, types.RecipeName(t))
 				default:
-					return []string{}, fmt.Errorf("include must be a slice of strings, but found type %T", i)
+					return []types.RecipeName{}, fmt.Errorf("include must be a slice of strings, but found type %T", i)
 				}
 			}
 			return inc, nil
 		default:
-			return []string{}, fmt.Errorf("include must be a slice of strings, but found type %T", i)
+			return []types.RecipeName{}, fmt.Errorf("include must be a slice of strings, but found type %T", i)
 		}
 	}
-	return []string{}, nil
+	return []types.RecipeName{}, nil
 }
 
 func collectAllIncludes(path string) ([]string, error) {
