@@ -107,7 +107,7 @@ func getBasePath() string {
 	return "/home/tai/code/foss/grlx/testing/recipes"
 }
 
-func ParseRecipeFile() types.RecipeStep {
+func ParseRecipeFile(recipeName types.RecipeName) []types.RecipeStep {
 	return nil
 }
 
