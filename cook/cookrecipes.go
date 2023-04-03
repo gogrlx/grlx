@@ -50,10 +50,14 @@ func Cook(recipeID types.RecipeName) error {
 		return err
 	}
 	_ = starterIncludes
+	allIncludes := collectAllIncludes(starterIncludes)
+	includes := map[recipeID]struct{}{}
+
 	// load all imported files into recipefile list
 	// range over all keys under each recipe ID for matching ingredients
 	// split on periods in ingredient name, fail and error if no matching ingredient module
-	// generate ingredient ID based on Recipe ID + basename of ingredient module
+	// generate ingredient ID
+	// based on Recipe ID + basename of ingredient module
 	// Load all ingredients into trees
 	// test all ingredients for missing, loops, duplicates, etc.
 	// run all ingredients in goroutine waitgroups, sending success codes via channels
@@ -134,6 +138,13 @@ func unmarshalRecipe(recipe []byte) (map[string]interface{}, error) {
 	return rmap, err
 }
 
+func collectAllIncludes(starter []types.RecipeName) ([]types.RecipeName, error) {
+	includeMap := map[types.RecipeName]struct{}{}
+
+	for _, s := range starter
+	}
+}
+
 func getIncludes(recipe map[string]interface{}) ([]types.RecipeName, error) {
 	if includes, ok := recipe["includes"]; ok {
 		switch i := includes.(type) {
@@ -153,10 +164,6 @@ func getIncludes(recipe map[string]interface{}) ([]types.RecipeName, error) {
 		}
 	}
 	return []types.RecipeName{}, nil
-}
-
-func collectAllIncludes(path string) ([]string, error) {
-	return []string{}, nil
 }
 
 // TODO ensure ability to only run individual state (+ dependencies),
