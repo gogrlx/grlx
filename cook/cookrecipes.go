@@ -139,10 +139,16 @@ func unmarshalRecipe(recipe []byte) (map[string]interface{}, error) {
 }
 
 func collectAllIncludes(starter []types.RecipeName) ([]types.RecipeName, error) {
-	includeMap := map[types.RecipeName]struct{}{}
+	includeMap := map[types.RecipeName]bool{}
 
-	for _, s := range starter
+	for _, s := range starter {
+		includeMap[s] = false
 	}
+	names := []types.RecipeName{}
+	for v := range includeMap {
+		names = append(names, v)
+	}
+	return names, nil
 }
 
 func getIncludes(recipe map[string]interface{}) ([]types.RecipeName, error) {
