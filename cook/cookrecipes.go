@@ -50,8 +50,12 @@ func Cook(recipeID types.RecipeName) error {
 		return err
 	}
 	_ = starterIncludes
-	allIncludes := collectAllIncludes(starterIncludes)
-	includes := map[recipeID]struct{}{}
+	allIncludes, err := collectAllIncludes(starterIncludes)
+	if err != nil {
+		return err
+	}
+	_ = starterIncludes
+	includes := map[types.RecipeName]struct{}{}
 
 	// load all imported files into recipefile list
 	// range over all keys under each recipe ID for matching ingredients
