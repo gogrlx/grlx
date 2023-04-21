@@ -72,8 +72,8 @@ func Cook(recipeID types.RecipeName) error {
 func ResolveRecipeFilePath(basePath string, recipeID types.RecipeName) (string, error) {
 	// open file if found, error out if missing , also allow for .grlx extensions
 	// split the ID on periods, resolve to basename directory
-	if filepath.Ext(basePath) == config.GrlxExt {
-		basePath = strings.TrimSuffix(basePath, "."+config.GrlxExt)
+	if filepath.Ext(string(recipeID)) == config.GrlxExt {
+		recipeID = types.RecipeName(strings.TrimSuffix(string(recipeID), "."+config.GrlxExt))
 	}
 	// TODO check if basepath is completely empty first
 	if !config.BasePathValid() {
@@ -94,20 +94,29 @@ func ResolveRecipeFilePath(basePath string, recipeID types.RecipeName) (string, 
 		// TODO standardize this error type
 		return "", errors.New("path provided is not to a directory")
 	}
-	recipeFile := dirList[len(dirList)-1] + config.GrlxExt
-	recipeFile = filepath.Join(currentDir, recipeFile)
-
-	stat, err = os.Stat(recipeFile)
-	// TODO check all possible errors here
+	recipeExtFile := dirList[len(dirList)-1] + config.GrlxExt
+	recipeExtFile = filepath.Join(currentDir, recipeExtFile)
+	initFile := filepath.Join(dirList[len(dirList)-1], "init"+config.GrlxExt)
+	stat, err = os.Stat(initFile)
 	if os.IsNotExist(err) {
-		return "", err
+		stat, err = os.Stat(recipeExtFile)
+		// TODO check all possible errors here
+		if os.IsNotExist(err) {
+			return "", err
+		}
+		// TODO allow for init.grlx types etc. in the future
+		if stat.IsDir() {
+			// TODO standardize this error type, this happend when the state points to a folder ending in .grlx
+			return "", errors.New("path provided is a directory")
+		}
+		return recipeExtFile, nil
 	}
 	// TODO allow for init.grlx types etc. in the future
 	if stat.IsDir() {
 		// TODO standardize this error type
-		return "", errors.New("path provided is a directory")
+		return "", errors.New("init.grlx cannot be a directory")
 	}
-	return recipeFile, nil
+	return initFile, nil
 }
 
 func getBasePath() string {
@@ -158,15 +167,10 @@ func collectAllIncludes(starter []types.RecipeName) ([]types.RecipeName, error) 
 func getIncludes(recipe map[string]interface{}) ([]types.RecipeName, error) {
 	if includes, ok := recipe["includes"]; ok {
 		switch i := includes.(type) {
-		case []interface{}:
+		case []string:
 			inc := []types.RecipeName{}
 			for _, v := range i {
-				switch t := v.(type) {
-				case string:
-					inc = append(inc, types.RecipeName(t))
-				default:
-					return []types.RecipeName{}, fmt.Errorf("include must be a slice of strings, but found type %T", i)
-				}
+				inc = append(inc, types.RecipeName(v))
 			}
 			return inc, nil
 		default:
