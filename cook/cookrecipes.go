@@ -37,19 +37,10 @@ func Cook(recipeID types.RecipeName) error {
 		return err
 	}
 	// parse file imports
-	rendered, err := renderRecipeTemplate(recipeFilePath, f)
+	starterIncludes, err := extractIncludes(recipeFilePath, f)
 	if err != nil {
 		return err
 	}
-	recipeMap, err := unmarshalRecipe(rendered)
-	if err != nil {
-		return err
-	}
-	starterIncludes, err := getIncludes(recipeMap)
-	if err != nil {
-		return err
-	}
-	_ = starterIncludes
 	allIncludes, err := collectAllIncludes(starterIncludes)
 	if err != nil {
 		return err
@@ -128,6 +119,18 @@ func ParseRecipeFile(recipeName types.RecipeName) []types.RecipeStep {
 	return nil
 }
 
+func extractIncludes(recipeName string, file []byte) ([]types.RecipeName, error) {
+	recipeBytes, err := renderRecipeTemplate(recipeName, file)
+	if err != nil {
+		return []types.RecipeName{}, err
+	}
+	recipeMap, err := unmarshalRecipe(recipeBytes)
+	if err != nil {
+		return []types.RecipeName{}, err
+	}
+	return includesFromMap(recipeMap)
+}
+
 func renderRecipeTemplate(recipeName string, file []byte) ([]byte, error) {
 	temp := template.New(recipeName)
 	gFuncs := make(template.FuncMap)
@@ -164,7 +167,7 @@ func collectAllIncludes(starter []types.RecipeName) ([]types.RecipeName, error) 
 	return names, nil
 }
 
-func getIncludes(recipe map[string]interface{}) ([]types.RecipeName, error) {
+func includesFromMap(recipe map[string]interface{}) ([]types.RecipeName, error) {
 	if includes, ok := recipe["includes"]; ok {
 		switch i := includes.(type) {
 		case []string:
