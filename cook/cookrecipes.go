@@ -41,13 +41,18 @@ func Cook(recipeID types.RecipeName) error {
 	if err != nil {
 		return err
 	}
-	allIncludes, err := collectAllIncludes(starterIncludes)
+	includeSet := make(map[types.RecipeName]bool)
+	for _, si := range starterIncludes {
+		includeSet[si] = false
+	}
+	includeSet, err = collectAllIncludes(includeSet)
 	if err != nil {
 		return err
 	}
-	_ = starterIncludes
-	includes := map[types.RecipeName]struct{}{}
-
+	includes := []types.RecipeName{}
+	for inc := range includeSet {
+		includes = append(includes, inc)
+	}
 	// load all imported files into recipefile list
 	// range over all keys under each recipe ID for matching ingredients
 	// split on periods in ingredient name, fail and error if no matching ingredient module
@@ -75,9 +80,9 @@ func resolveRelativeFilePath(relatedRecipePath string, recipeID types.RecipeName
 		// TODO standardize this error type
 		return "", errors.New("path provided is not to a directory")
 	}
-	recipeExtFile := string(recipeID) + config.GrlxExt
+	recipeExtFile := string(recipeID) + "." + config.GrlxExt
 	recipeExtFile = filepath.Join(relationBasePath, recipeExtFile)
-	initFile := filepath.Join(relationBasePath, string(recipeID), "init"+config.GrlxExt)
+	initFile := filepath.Join(relationBasePath, string(recipeID), "init."+config.GrlxExt)
 	stat, err = os.Stat(initFile)
 	if os.IsNotExist(err) {
 		stat, err = os.Stat(recipeExtFile)
@@ -98,6 +103,75 @@ func resolveRelativeFilePath(relatedRecipePath string, recipeID types.RecipeName
 		return "", errors.New("init.grlx cannot be a directory")
 	}
 	return initFile, nil
+}
+
+func ResolveRecipeFilepath(basepath, path string) (types.RecipeName, error) {
+	basepath = filepath.Clean(basepath)
+	path = filepath.Clean(path)
+	path = strings.TrimPrefix(path, basepath)
+	strings.ReplaceAll(path, "/", ".")
+	recipeExtFile := string(path) + "." + config.GrlxExt
+	initFile := filepath.Join(path, "init."+config.GrlxExt)
+	stat, err := os.Stat(initFile)
+	if os.IsNotExist(err) {
+		stat, err = os.Stat(recipeExtFile)
+		// TODO check all possible errors here
+		if os.IsNotExist(err) {
+			return "", err
+		}
+		// TODO allow for init.grlx types etc. in the future
+		if stat.IsDir() {
+			// TODO standardize this error type, this happend when the state points to a folder ending in .grlx
+			return "", errors.New("path provided is a directory")
+		}
+		return types.RecipeName(strings.TrimSuffix(recipeExtFile, ".grlx")), nil
+	}
+	// TODO allow for init.grlx types etc. in the future
+	if stat.IsDir() {
+		// TODO standardize this error type
+		return "", errors.New("init.grlx cannot be a directory")
+	}
+	return types.RecipeName(strings.TrimSuffix(initFile, ".grlx")), nil
+}
+
+func relativeRecipeToAbsolute(basepath, relatedRecipePath string, recipeID types.RecipeName) (types.RecipeName, error) {
+	if filepath.Ext(string(recipeID)) == config.GrlxExt {
+		recipeID = types.RecipeName(strings.TrimSuffix(string(recipeID), "."+config.GrlxExt))
+	}
+	// TODO check if basepath is completely empty first
+	relationBasePath := filepath.Dir(relatedRecipePath)
+	stat, err := os.Stat(relatedRecipePath)
+	// TODO check all possible errors here
+	if os.IsNotExist(err) {
+		return "", err
+	}
+	if !stat.IsDir() {
+		// TODO standardize this error type
+		return "", errors.New("path provided is not to a directory")
+	}
+	recipeExtFile := string(recipeID) + "." + config.GrlxExt
+	recipeExtFile = filepath.Join(relationBasePath, recipeExtFile)
+	initFile := filepath.Join(relationBasePath, string(recipeID), "init."+config.GrlxExt)
+	stat, err = os.Stat(initFile)
+	if os.IsNotExist(err) {
+		stat, err = os.Stat(recipeExtFile)
+		// TODO check all possible errors here
+		if os.IsNotExist(err) {
+			return "", err
+		}
+		// TODO allow for init.grlx types etc. in the future
+		if stat.IsDir() {
+			// TODO standardize this error type, this happend when the state points to a folder ending in .grlx
+			return "", errors.New("path provided is a directory")
+		}
+		return types.RecipeName(recipeExtFile), nil
+	}
+	// TODO allow for init.grlx types etc. in the future
+	if stat.IsDir() {
+		// TODO standardize this error type
+		return "", errors.New("init.grlx cannot be a directory")
+	}
+	return types.RecipeName(initFile), nil
 }
 
 func ResolveRecipeFilePath(basePath string, recipeID types.RecipeName) (string, error) {
@@ -125,9 +199,9 @@ func ResolveRecipeFilePath(basePath string, recipeID types.RecipeName) (string, 
 		// TODO standardize this error type
 		return "", errors.New("path provided is not to a directory")
 	}
-	recipeExtFile := dirList[len(dirList)-1] + config.GrlxExt
+	recipeExtFile := dirList[len(dirList)-1] + "." + config.GrlxExt
 	recipeExtFile = filepath.Join(currentDir, recipeExtFile)
-	initFile := filepath.Join(dirList[len(dirList)-1], "init"+config.GrlxExt)
+	initFile := filepath.Join(dirList[len(dirList)-1], "init."+config.GrlxExt)
 	stat, err = os.Stat(initFile)
 	if os.IsNotExist(err) {
 		stat, err = os.Stat(recipeExtFile)
@@ -159,8 +233,8 @@ func ParseRecipeFile(recipeName types.RecipeName) []types.RecipeStep {
 	return nil
 }
 
-func extractIncludes(recipeName string, file []byte) ([]types.RecipeName, error) {
-	recipeBytes, err := renderRecipeTemplate(recipeName, file)
+func extractIncludes(recipePath string, file []byte) ([]types.RecipeName, error) {
+	recipeBytes, err := renderRecipeTemplate(recipePath, file)
 	if err != nil {
 		return []types.RecipeName{}, err
 	}
@@ -168,7 +242,22 @@ func extractIncludes(recipeName string, file []byte) ([]types.RecipeName, error)
 	if err != nil {
 		return []types.RecipeName{}, err
 	}
-	return includesFromMap(recipeMap)
+	includeList, err := includesFromMap(recipeMap)
+	if err != nil {
+		return []types.RecipeName{}, err
+	}
+	for i, inc := range includeList {
+		tinc := string(inc)
+		if strings.HasPrefix(tinc, ".") {
+
+			rel, err := relativeRecipeToAbsolute(getBasePath(), recipePath, inc)
+			if err != nil {
+				return []types.RecipeName{}, err
+			}
+			includeList[i] = rel
+		}
+	}
+	return includeList, nil
 }
 
 func renderRecipeTemplate(recipeName string, file []byte) ([]byte, error) {
@@ -194,17 +283,44 @@ func unmarshalRecipe(recipe []byte) (map[string]interface{}, error) {
 	return rmap, err
 }
 
-func collectAllIncludes(starter []types.RecipeName) ([]types.RecipeName, error) {
-	includeMap := map[types.RecipeName]bool{}
+func collectAllIncludes(starter map[types.RecipeName]bool) (map[types.RecipeName]bool, error) {
+	allIncluded := false
+	for !allIncluded {
+		allIncluded = true
+		for inc, done := range starter {
+			if !done {
+				allIncluded = false
+				starter[inc] = true
+				recipeFilePath, err := ResolveRecipeFilePath(getBasePath(), inc)
+				if err != nil {
+					return starter, err
+				}
+				f, err := os.ReadFile(recipeFilePath)
+				if err != nil {
+					return starter, err
+				}
+				// parse file imports
+				eIncludes, err := extractIncludes(recipeFilePath, f)
+				if err != nil {
+					return starter, err
+				}
+				for _, inc := range eIncludes {
+					if _, ok := starter[inc]; !ok {
+						starter[inc] = false
+					}
+				}
 
-	for _, s := range starter {
-		includeMap[s] = false
+				newIncludes, err := collectAllIncludes(starter)
+				if err != nil {
+					return newIncludes, err
+				}
+				for inc, done := range newIncludes {
+					starter[inc] = done
+				}
+			}
+		}
 	}
-	names := []types.RecipeName{}
-	for v := range includeMap {
-		names = append(names, v)
-	}
-	return names, nil
+	return starter, nil
 }
 
 func includesFromMap(recipe map[string]interface{}) ([]types.RecipeName, error) {
