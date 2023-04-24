@@ -25,10 +25,10 @@ func init() {
 }
 
 func Cook(recipeID types.RecipeName) error {
-	basePath := getBasePath()
+	basepath := getBasePath()
 	// TODO get git branch / tag from environment
 	// pass in an ID to a Recipe
-	recipeFilePath, err := ResolveRecipeFilePath(basePath, recipeID)
+	recipeFilePath, err := ResolveRecipeFilePath(basepath, recipeID)
 	if err != nil {
 		return err
 	}
@@ -37,7 +37,7 @@ func Cook(recipeID types.RecipeName) error {
 		return err
 	}
 	// parse file imports
-	starterIncludes, err := extractIncludes(recipeFilePath, f)
+	starterIncludes, err := extractIncludes(basepath, recipeFilePath, f)
 	if err != nil {
 		return err
 	}
@@ -45,7 +45,7 @@ func Cook(recipeID types.RecipeName) error {
 	for _, si := range starterIncludes {
 		includeSet[si] = false
 	}
-	includeSet, err = collectAllIncludes(includeSet)
+	includeSet, err = collectAllIncludes(basepath, includeSet)
 	if err != nil {
 		return err
 	}
@@ -233,7 +233,7 @@ func ParseRecipeFile(recipeName types.RecipeName) []types.RecipeStep {
 	return nil
 }
 
-func extractIncludes(recipePath string, file []byte) ([]types.RecipeName, error) {
+func extractIncludes(basepath, recipePath string, file []byte) ([]types.RecipeName, error) {
 	recipeBytes, err := renderRecipeTemplate(recipePath, file)
 	if err != nil {
 		return []types.RecipeName{}, err
@@ -250,7 +250,7 @@ func extractIncludes(recipePath string, file []byte) ([]types.RecipeName, error)
 		tinc := string(inc)
 		if strings.HasPrefix(tinc, ".") {
 
-			rel, err := relativeRecipeToAbsolute(getBasePath(), recipePath, inc)
+			rel, err := relativeRecipeToAbsolute(basepath, recipePath, inc)
 			if err != nil {
 				return []types.RecipeName{}, err
 			}
@@ -283,7 +283,7 @@ func unmarshalRecipe(recipe []byte) (map[string]interface{}, error) {
 	return rmap, err
 }
 
-func collectAllIncludes(starter map[types.RecipeName]bool) (map[types.RecipeName]bool, error) {
+func collectAllIncludes(basepath string, starter map[types.RecipeName]bool) (map[types.RecipeName]bool, error) {
 	allIncluded := false
 	for !allIncluded {
 		allIncluded = true
@@ -291,7 +291,7 @@ func collectAllIncludes(starter map[types.RecipeName]bool) (map[types.RecipeName
 			if !done {
 				allIncluded = false
 				starter[inc] = true
-				recipeFilePath, err := ResolveRecipeFilePath(getBasePath(), inc)
+				recipeFilePath, err := ResolveRecipeFilePath(basepath, inc)
 				if err != nil {
 					return starter, err
 				}
@@ -300,7 +300,7 @@ func collectAllIncludes(starter map[types.RecipeName]bool) (map[types.RecipeName
 					return starter, err
 				}
 				// parse file imports
-				eIncludes, err := extractIncludes(recipeFilePath, f)
+				eIncludes, err := extractIncludes(basepath, recipeFilePath, f)
 				if err != nil {
 					return starter, err
 				}
@@ -310,7 +310,7 @@ func collectAllIncludes(starter map[types.RecipeName]bool) (map[types.RecipeName
 					}
 				}
 
-				newIncludes, err := collectAllIncludes(starter)
+				newIncludes, err := collectAllIncludes(basepath, starter)
 				if err != nil {
 					return newIncludes, err
 				}
