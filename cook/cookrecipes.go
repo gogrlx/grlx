@@ -60,6 +60,46 @@ func Cook(recipeID types.RecipeName) error {
 	return nil
 }
 
+func resolveRelativeFilePath(relatedRecipePath string, recipeID types.RecipeName) (string, error) {
+	if filepath.Ext(string(recipeID)) == config.GrlxExt {
+		recipeID = types.RecipeName(strings.TrimSuffix(string(recipeID), "."+config.GrlxExt))
+	}
+	// TODO check if basepath is completely empty first
+	relationBasePath := filepath.Dir(relatedRecipePath)
+	stat, err := os.Stat(relatedRecipePath)
+	// TODO check all possible errors here
+	if os.IsNotExist(err) {
+		return "", err
+	}
+	if !stat.IsDir() {
+		// TODO standardize this error type
+		return "", errors.New("path provided is not to a directory")
+	}
+	recipeExtFile := string(recipeID) + config.GrlxExt
+	recipeExtFile = filepath.Join(relationBasePath, recipeExtFile)
+	initFile := filepath.Join(relationBasePath, string(recipeID), "init"+config.GrlxExt)
+	stat, err = os.Stat(initFile)
+	if os.IsNotExist(err) {
+		stat, err = os.Stat(recipeExtFile)
+		// TODO check all possible errors here
+		if os.IsNotExist(err) {
+			return "", err
+		}
+		// TODO allow for init.grlx types etc. in the future
+		if stat.IsDir() {
+			// TODO standardize this error type, this happend when the state points to a folder ending in .grlx
+			return "", errors.New("path provided is a directory")
+		}
+		return recipeExtFile, nil
+	}
+	// TODO allow for init.grlx types etc. in the future
+	if stat.IsDir() {
+		// TODO standardize this error type
+		return "", errors.New("init.grlx cannot be a directory")
+	}
+	return initFile, nil
+}
+
 func ResolveRecipeFilePath(basePath string, recipeID types.RecipeName) (string, error) {
 	// open file if found, error out if missing , also allow for .grlx extensions
 	// split the ID on periods, resolve to basename directory
