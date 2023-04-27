@@ -24,34 +24,44 @@ func init() {
 	// funcMap["id"] = id
 }
 
-func Cook(recipeID types.RecipeName) error {
-	basepath := getBasePath()
+func collectAllIncludes(basepath string, recipeID types.RecipeName) ([]types.RecipeName, error) {
 	// TODO get git branch / tag from environment
 	// pass in an ID to a Recipe
 	recipeFilePath, err := ResolveRecipeFilePath(basepath, recipeID)
 	if err != nil {
-		return err
+		return []types.RecipeName{}, err
 	}
 	f, err := os.ReadFile(recipeFilePath)
 	if err != nil {
-		return err
+		return []types.RecipeName{}, err
 	}
 	// parse file imports
 	starterIncludes, err := extractIncludes(basepath, recipeFilePath, f)
 	if err != nil {
-		return err
+		return []types.RecipeName{}, err
 	}
 	includeSet := make(map[types.RecipeName]bool)
 	for _, si := range starterIncludes {
 		includeSet[si] = false
 	}
-	includeSet, err = collectAllIncludes(basepath, includeSet)
+	includeSet, err = collectIncludes(basepath, includeSet)
 	if err != nil {
-		return err
+		return []types.RecipeName{}, err
 	}
 	includes := []types.RecipeName{}
 	for inc := range includeSet {
 		includes = append(includes, inc)
+	}
+	return includes, nil
+}
+
+func Cook(recipeID types.RecipeName) error {
+	basepath := getBasePath()
+	includes, err := collectAllIncludes(basepath, recipeID)
+	if err != nil {
+		return err
+	}
+	for _, inc := range includes {
 	}
 	// load all imported files into recipefile list
 	// range over all keys under each recipe ID for matching ingredients
@@ -283,7 +293,7 @@ func unmarshalRecipe(recipe []byte) (map[string]interface{}, error) {
 	return rmap, err
 }
 
-func collectAllIncludes(basepath string, starter map[types.RecipeName]bool) (map[types.RecipeName]bool, error) {
+func collectIncludes(basepath string, starter map[types.RecipeName]bool) (map[types.RecipeName]bool, error) {
 	allIncluded := false
 	for !allIncluded {
 		allIncluded = true
@@ -310,7 +320,7 @@ func collectAllIncludes(basepath string, starter map[types.RecipeName]bool) (map
 					}
 				}
 
-				newIncludes, err := collectAllIncludes(basepath, starter)
+				newIncludes, err := collectIncludes(basepath, starter)
 				if err != nil {
 					return newIncludes, err
 				}
@@ -321,6 +331,18 @@ func collectAllIncludes(basepath string, starter map[types.RecipeName]bool) (map
 		}
 	}
 	return starter, nil
+}
+
+func stepsFromMap(recipe map[string]interface{}) (map[string]interface{}, error) {
+	if steps, ok := recipe["steps"]; ok {
+		switch s := steps.(type) {
+		case map[string]interface{}:
+			return s, nil
+		default:
+			return make(map[string]interface{}), fmt.Errorf("steps must be a map[string]interface{}, but found type %T", s)
+		}
+	}
+	return make(map[string]interface{}), nil
 }
 
 func includesFromMap(recipe map[string]interface{}) ([]types.RecipeName, error) {
