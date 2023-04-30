@@ -62,8 +62,14 @@ func Cook(recipeID types.RecipeName) error {
 		return err
 	}
 	for _, inc := range includes {
+		// load all imported files into recipefile list
+		fp, err := ResolveRecipeFilePath(basepath, inc)
+		if err != nil {
+			// TODO: wrap this error and explain file existed but no longer exists
+			return err
+		}
+
 	}
-	// load all imported files into recipefile list
 	// range over all keys under each recipe ID for matching ingredients
 	// split on periods in ingredient name, fail and error if no matching ingredient module
 	// generate ingredient ID
