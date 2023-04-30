@@ -2,6 +2,7 @@ package cook
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -61,6 +62,7 @@ func Cook(recipeID types.RecipeName) error {
 	if err != nil {
 		return err
 	}
+	recipesteps := make(map[string]interface{})
 	for _, inc := range includes {
 		// load all imported files into recipefile list
 		fp, err := ResolveRecipeFilePath(basepath, inc)
@@ -68,7 +70,27 @@ func Cook(recipeID types.RecipeName) error {
 			// TODO: wrap this error and explain file existed but no longer exists
 			return err
 		}
-
+		f, err := os.ReadFile(fp)
+		if err != nil {
+			return err
+		}
+		b, err := renderRecipeTemplate(fp, f)
+		if err != nil {
+			return err
+		}
+		var recipe map[string]interface{}
+		err = json.Unmarshal(b, &recipe)
+		if err != nil {
+			return err
+		}
+		m, err := stepsFromMap(recipe)
+		if err != nil {
+			return err
+		}
+		recipesteps, err = joinMaps(recipesteps, m)
+		if err != nil {
+			return err
+		}
 	}
 	// range over all keys under each recipe ID for matching ingredients
 	// split on periods in ingredient name, fail and error if no matching ingredient module
@@ -79,6 +101,20 @@ func Cook(recipeID types.RecipeName) error {
 	// run all ingredients in goroutine waitgroups, sending success codes via channels
 	// use reasonable timeouts for each ingredient cook
 	return nil
+}
+
+func joinMaps(a, b map[string]interface{}) (map[string]interface{}, error) {
+	c := make(map[string]interface{})
+	for k, v := range a {
+		c[k] = v
+	}
+	for k, v := range b {
+		if _, ok := c[k]; ok {
+			return make(map[string]interface{}), fmt.Errorf("error: key %s found in both maps", k)
+		}
+		c[k] = v
+	}
+	return c, nil
 }
 
 func resolveRelativeFilePath(relatedRecipePath string, recipeID types.RecipeName) (string, error) {
