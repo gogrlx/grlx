@@ -87,12 +87,22 @@ func Cook(recipeID types.RecipeName) error {
 		if err != nil {
 			return err
 		}
+		// range over all keys under each recipe ID for matching ingredients
 		recipesteps, err = joinMaps(recipesteps, m)
 		if err != nil {
 			return err
 		}
 	}
-	// range over all keys under each recipe ID for matching ingredients
+	for id, step := range recipesteps {
+		switch s := step.(type) {
+		case map[string]interface{}:
+			if len(s) != 1 {
+				return fmt.Errorf("recipe %s must have one directive, but has %d", id, len(s))
+			}
+		default:
+			return fmt.Errorf("recipe %s must me a map[string]interface{} but found %T", id, step)
+		}
+	}
 	// split on periods in ingredient name, fail and error if no matching ingredient module
 	// generate ingredient ID
 	// based on Recipe ID + basename of ingredient module
