@@ -37,6 +37,7 @@ type (
 		Apply(context.Context) (Result, error)
 		Test(context.Context) (Result, error)
 		Properties() (map[string]interface{}, error)
+		Methods()  []string
 	}
 	RecipeName string
 	Function   string

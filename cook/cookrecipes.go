@@ -99,6 +99,7 @@ func Cook(recipeID types.RecipeName) error {
 			if len(s) != 1 {
 				return fmt.Errorf("recipe %s must have one directive, but has %d", id, len(s))
 			}
+			
 		default:
 			return fmt.Errorf("recipe %s must me a map[string]interface{} but found %T", id, step)
 		}
