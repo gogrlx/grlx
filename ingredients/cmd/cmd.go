@@ -63,8 +63,12 @@ func (c Cmd) PropsForMethod(method string) (map[string]string, error){
 }
 
 // TODO parse out the map here
-func (c Cmd) Parse(map[string]interface{})(Cmd, error){
-	return c, nil
+func (c Cmd) Parse(id, method string,params map[string]interface{})(Cmd, error){
+	return New(id, method, params)
+}
+
+func New(id, method string, params map[string]interface{})(Cmd, error){
+
 }
 
 func (c Cmd) Properties() (map[string]interface{}, error) {

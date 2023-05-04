@@ -15,7 +15,12 @@ type File struct {
 	Method string
 }
 
-func New(id, method string, params map[string]interface{}) File {
+// TODO error check, set id, properly parse
+func (f File) Parse(id, method string, params map[string]interface{}) (File, error){
+	return New(id, method, params)
+}
+
+func New(id, method string, params map[string]interface{}) (File, error) {
 	return File{ID: id, Method: method}
 }
 
@@ -53,9 +58,10 @@ func (f File) Methods() []string{
 			"file.managed",
 			"file.present",
 			"file.symlink",
-			"file.absent", `
+			"file.absent", 
 		}
 }
+
 
 func (f File) Properties() (map[string]interface{}, error) {
 	m := map[string]interface{}{}
@@ -78,4 +84,5 @@ func RegisterEC(n *nats.EncodedConn) {
 
 func init() {
 	FarmerInterface = viper.GetString("FarmerInterface")
+	ingredients.RegisterAllMethods(File{})
 }
