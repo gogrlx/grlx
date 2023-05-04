@@ -1,8 +1,13 @@
 package cmd
 
 import (
+	"context"
+	"fmt"
 	nats "github.com/nats-io/nats.go"
+	"encoding/json"
+	"github.com/gogrlx/grlx/types"
 	"github.com/spf13/viper"
+	"github.com/gogrlx/grlx/ingredients"
 )
 
 var (
@@ -10,6 +15,17 @@ var (
 	FarmerInterface string
 )
 
+func init(){
+	baseCMD := Cmd{}
+	ingredients.RegisterAllMethods(baseCMD)
+}
+
+type Cmd struct {
+	ID     string
+	Method string
+	Name   string
+	Async  bool
+}
 func RegisterEC(n *nats.EncodedConn) {
 	ec = n
 }
@@ -39,6 +55,16 @@ func (c Cmd) Apply(ctx context.Context) (types.Result, error) {
 func (c Cmd) Methods() []string{
 	return []string{"cmd.run", 
 		}
+}
+
+// TODO create map for method: type
+func (c Cmd) PropsForMethod(method string) (map[string]string, error){
+	return nil, nil
+}
+
+// TODO parse out the map here
+func (c Cmd) Parse(map[string]interface{})(Cmd, error){
+	return c, nil
 }
 
 func (c Cmd) Properties() (map[string]interface{}, error) {

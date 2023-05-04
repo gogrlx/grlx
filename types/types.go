@@ -37,7 +37,9 @@ type (
 		Apply(context.Context) (Result, error)
 		Test(context.Context) (Result, error)
 		Properties() (map[string]interface{}, error)
+		Parse(map[string]interface{})(RecipeStep, error)
 		Methods()  []string
+		PropertiesForMethod(method string)(map[string]string, error)
 	}
 	RecipeName string
 	Function   string
