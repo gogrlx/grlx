@@ -2,7 +2,6 @@ package cook
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -79,7 +78,7 @@ func Cook(recipeID types.RecipeName) error {
 			return err
 		}
 		var recipe map[string]interface{}
-		err = json.Unmarshal(b, &recipe)
+		err = yaml.Unmarshal(b, &recipe)
 		if err != nil {
 			return err
 		}
@@ -99,7 +98,7 @@ func Cook(recipeID types.RecipeName) error {
 			if len(s) != 1 {
 				return fmt.Errorf("recipe %s must have one directive, but has %d", id, len(s))
 			}
-			
+
 		default:
 			return fmt.Errorf("recipe %s must me a map[string]interface{} but found %T", id, step)
 		}
@@ -292,7 +291,7 @@ func getBasePath() string {
 	return "/home/tai/code/foss/grlx/testing/recipes"
 }
 
-func ParseRecipeFile(recipeName types.RecipeName) []types.RecipeStep {
+func ParseRecipeFile(recipeName types.RecipeName) []types.RecipeCooker {
 	return nil
 }
 

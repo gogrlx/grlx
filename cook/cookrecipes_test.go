@@ -45,7 +45,7 @@ func TestParseRecipeFile(t *testing.T) {
 	testCases := []struct {
 		id          string
 		recipe      types.RecipeName
-		recipeSteps []types.RecipeStep
+		recipeSteps []types.RecipeCooker
 	}{}
 
 	for _, tc := range testCases {

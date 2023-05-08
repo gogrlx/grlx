@@ -37,11 +37,4 @@ manage-all-files:
    - -sl
   paht:  // this line is misspelled, but not ignored, instead causes a compilation failure
    - '/usr/bin/failure/'
-
-
-
-
-
-
-
 */

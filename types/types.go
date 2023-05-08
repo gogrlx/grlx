@@ -33,13 +33,13 @@ func (r RequisiteSet) AllSteps() []*Step {
 }
 
 type (
-	RecipeStep interface {
+	RecipeCooker interface {
 		Apply(context.Context) (Result, error)
 		Test(context.Context) (Result, error)
 		Properties() (map[string]interface{}, error)
-		Parse(id, method string, map[string]interface{})(RecipeStep, error)
-		Methods()  []string
-		PropertiesForMethod(method string)(map[string]string, error)
+		Parse(id, method string, properties map[string]interface{}) (RecipeCooker, error)
+		Methods() []string
+		PropertiesForMethod(method string) (map[string]string, error)
 	}
 	RecipeName string
 	Function   string
@@ -54,6 +54,7 @@ type (
 		Ingredient  Ingredient `json:"ingredient" yaml:"ingredient"`
 		ID          StepID
 		Requisites  RequisiteSet
+		Properties  map[string]interface{}
 		IsRequisite bool
 	}
 	Targets   []StepID

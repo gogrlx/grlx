@@ -2,23 +2,23 @@ package ingredients
 
 import (
 	"os/sync"
-	 "github.com/gogrlx/grlx/types"
+
+	"github.com/gogrlx/grlx/types"
 )
 
-var ( 
+var (
 	ingTex sync.Mutex
-	ingMap map[string] types.RecipeStep
-
+	ingMap map[string]types.RecipeCooker
 )
 
-func init(){
-	ingMap = make(map[string]types.RecipeStep)
+func init() {
+	ingMap = make(map[string]types.RecipeCooker)
 }
 
-func RegisterAllMethods(step types.RecipeStep){
+func RegisterAllMethods(step types.RecipeCooker) {
 	ingMap.Lock()
 	defer ingMap.Unlock()
-	for _, method := range step.Methods(){
-		ingMap[method]=step
+	for _, method := range step.Methods() {
+		ingMap[method] = step
 	}
 }

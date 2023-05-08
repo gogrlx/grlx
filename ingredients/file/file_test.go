@@ -8,7 +8,7 @@ import (
 )
 
 func TestRecipeStepUsage(t *testing.T) {
-	var x types.RecipeStep = New("testFile", "append", map[string]any{})
+	var x types.RecipeCooker = New("testFile", "append", map[string]any{})
 	res, err := x.Apply(context.Background())
 	if err != nil {
 		t.Error(err)
