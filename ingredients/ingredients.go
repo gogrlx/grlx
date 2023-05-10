@@ -1,7 +1,7 @@
 package ingredients
 
 import (
-	"os/sync"
+	"sync"
 
 	"github.com/gogrlx/grlx/types"
 )
@@ -16,8 +16,8 @@ func init() {
 }
 
 func RegisterAllMethods(step types.RecipeCooker) {
-	ingMap.Lock()
-	defer ingMap.Unlock()
+	ingTex.Lock()
+	defer ingTex.Unlock()
 	for _, method := range step.Methods() {
 		ingMap[method] = step
 	}
