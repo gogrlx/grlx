@@ -137,7 +137,7 @@ func ResolveRecipeFilePath(basePath string, recipeID types.RecipeName) (string, 
 	}
 	recipeExtFile := dirList[len(dirList)-1] + "." + config.GrlxExt
 	recipeExtFile = filepath.Join(currentDir, recipeExtFile)
-	initFile := filepath.Join(dirList[len(dirList)-1], "init."+config.GrlxExt)
+	initFile := filepath.Join(currentDir, dirList[len(dirList)-1], "init."+config.GrlxExt)
 	stat, err = os.Stat(initFile)
 	if os.IsNotExist(err) {
 		stat, err = os.Stat(recipeExtFile)

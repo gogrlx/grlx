@@ -1,0 +1,10 @@
+include:
+  - .dev
+steps:
+  configure http config:
+    file.managed:
+      - name: /etc/http/conf/http.conf:
+      - source: grlx://apache/http.conf
+      - user: root
+      - group: root
+      - mode: 644

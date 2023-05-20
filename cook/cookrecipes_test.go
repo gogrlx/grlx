@@ -23,9 +23,14 @@ func TestResolveRecipeFilePath(t *testing.T) {
 		filepath: "",
 		err:      os.ErrNotExist,
 	}, {
-		id:       "",
-		recipe:   "",
-		filepath: "",
+		id:       "dev",
+		recipe:   "dev",
+		filepath: "/home/tai/code/foss/grlx/testing/recipes/dev.grlx",
+		err:      nil,
+	}, {
+		id:       "apache",
+		recipe:   "apache",
+		filepath: "/home/tai/code/foss/grlx/testing/recipes/apache/init.grlx",
 		err:      nil,
 	}}
 	for _, tc := range testCases {
@@ -56,20 +61,20 @@ func TestParseRecipeFile(t *testing.T) {
 	}
 }
 
-func TestGetIncludes(t *testing.T) {
-	testCases := []struct {
-		id     string
-		recipe map[string]interface{}
-		err    error
-	}{}
-
-	for _, tc := range testCases {
-		t.Run(tc.id, func(t *testing.T) {
-			recipeNames, err := getIncludes(tc.recipe)
-			if !errors.Is(tc.err, err) {
-				t.Errorf("Expected err %v but got %v", tc.err, err)
-			}
-			_ = recipeNames
-		})
-	}
-}
+//func TestGetIncludes(t *testing.T) {
+//	testCases := []struct {
+//		id     string
+//		recipe map[string]interface{}
+//		err    error
+//	}{}
+//
+//	for _, tc := range testCases {
+//		t.Run(tc.id, func(t *testing.T) {
+//			recipeNames, err := GetIncludes(tc.recipe)
+//			if !errors.Is(tc.err, err) {
+//				t.Errorf("Expected err %v but got %v", tc.err, err)
+//			}
+//			_ = recipeNames
+//		})
+//	}
+//}
