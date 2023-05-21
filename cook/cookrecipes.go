@@ -31,11 +31,11 @@ func populateFuncMap(sproutID string) template.FuncMap {
 	return v
 }
 
-func Cook(sproutID string, recipeID types.RecipeName) error {
+func Cook(sproutID string, recipeID types.RecipeName) (string, error) {
 	basepath := getBasePath()
 	includes, err := collectAllIncludes(sproutID, basepath, recipeID)
 	if err != nil {
-		return err
+		return "", err
 	}
 	recipesteps := make(map[string]interface{})
 	for _, inc := range includes {
@@ -43,40 +43,40 @@ func Cook(sproutID string, recipeID types.RecipeName) error {
 		fp, err := ResolveRecipeFilePath(basepath, inc)
 		if err != nil {
 			// TODO: wrap this error and explain file existed but no longer exists
-			return err
+			return "", err
 		}
 		f, err := os.ReadFile(fp)
 		if err != nil {
-			return err
+			return "", err
 		}
 		b, err := renderRecipeTemplate(sproutID, fp, f)
 		if err != nil {
-			return err
+			return "", err
 		}
 		var recipe map[string]interface{}
 		err = yaml.Unmarshal(b, &recipe)
 		if err != nil {
-			return err
+			return "", err
 		}
 		m, err := stepsFromMap(recipe)
 		if err != nil {
-			return err
+			return "", err
 		}
 		// range over all keys under each recipe ID for matching ingredients
 		recipesteps, err = joinMaps(recipesteps, m)
 		if err != nil {
-			return err
+			return "", err
 		}
 	}
 	for id, step := range recipesteps {
 		switch s := step.(type) {
 		case map[string]interface{}:
 			if len(s) != 1 {
-				return fmt.Errorf("recipe %s must have one directive, but has %d", id, len(s))
+				return "", fmt.Errorf("recipe %s must have one directive, but has %d", id, len(s))
 			}
 
 		default:
-			return fmt.Errorf("recipe %s must me a map[string]interface{} but found %T", id, step)
+			return "", fmt.Errorf("recipe %s must me a map[string]interface{} but found %T", id, step)
 		}
 	}
 
@@ -86,7 +86,7 @@ func Cook(sproutID string, recipeID types.RecipeName) error {
 	// test all ingredients for missing, loops, duplicates, etc.
 	// run all ingredients in goroutine waitgroups, sending success codes via channels
 	// use reasonable timeouts for each ingredient cook
-	return nil
+	return "", nil
 }
 
 func ResolveRecipeFilePath(basepath string, recipeID types.RecipeName) (string, error) {
