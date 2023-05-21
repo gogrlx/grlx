@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"testing"
 
 	"github.com/gogrlx/grlx/types"
@@ -12,21 +13,64 @@ import (
 
 func TestExtractIncludes(t *testing.T) {
 	testCases := []struct {
-		id       string
-		sprout   string
-		basepath string
-		recipe   types.RecipeName
-	}{{
-		id:       "dev",
-		sprout:   "testSprout",
-		basepath: getBasePath(),
-		recipe:   "dev",
-	}}
+		id          string
+		sprout      string
+		basepath    string
+		recipe      types.RecipeName
+		mapContents []string
+	}{
+		{
+			id:          "dev",
+			sprout:      "testSprout",
+			basepath:    getBasePath(),
+			recipe:      "dev",
+			mapContents: []string{"apache", "missing"},
+		},
+		{
+			id:          "independent",
+			sprout:      "testSprout",
+			basepath:    getBasePath(),
+			recipe:      "independent",
+			mapContents: []string{},
+		},
+		{
+			id:          "apache init",
+			sprout:      "testSprout",
+			basepath:    getBasePath(),
+			recipe:      "apache",
+			mapContents: []string{"apache"},
+		},
+		{
+			id:          "apache slash init",
+			sprout:      "testSprout",
+			basepath:    getBasePath(),
+			recipe:      "apache.init.grlx",
+			mapContents: []string{"apache"},
+		},
+	}
 	for _, tc := range testCases {
 		t.Run(tc.id, func(t *testing.T) {
-			f, _ := os.ReadFile(filepath.Join(tc.basepath, string(tc.recipe)+".grlx"))
+			fp, err := ResolveRecipeFilePath(getBasePath(), tc.recipe)
+			if err != nil {
+				t.Error(err)
+			}
+			f, _ := os.ReadFile(fp)
 			r, err := extractIncludes(tc.sprout, tc.basepath, string(tc.recipe), f)
-			fmt.Printf("extractedIncludes: %v, %v", r, err)
+			if err != nil {
+				t.Error(err)
+			}
+			if len(r) != len(tc.mapContents) {
+				t.Errorf("expected %v but got %v", tc.mapContents, r)
+			}
+			sort.Slice(r, func(i, j int) bool {
+				return string(r[i]) < string(r[j])
+			})
+			sort.Strings(tc.mapContents)
+			for i := range tc.mapContents {
+				if string(r[i]) != tc.mapContents[i] {
+					t.Errorf("expected %v but got %v", tc.mapContents, r)
+				}
+			}
 		})
 	}
 }

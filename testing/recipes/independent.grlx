@@ -1,0 +1,4 @@
+steps:
+  touch unimportant file:
+    file.exists:
+      - name: /tmp/exists
