@@ -9,6 +9,24 @@ import (
 	"github.com/gogrlx/grlx/types"
 )
 
+func TestCollectAllIncludes(t *testing.T) {
+	testCases := []struct {
+		id     string
+		recipe types.RecipeName
+		sprout string
+	}{{
+		id:     "dev",
+		recipe: "dev",
+		sprout: "testSprout",
+	}}
+	for _, tc := range testCases {
+		t.Run(tc.id, func(t *testing.T) {
+			recipes, err := collectAllIncludes(tc.sprout, getBasePath(), tc.recipe)
+			t.Errorf("%v %v", recipes, err)
+		})
+	}
+}
+
 func TestRelativeRecipeToAbsolute(t *testing.T) {
 	testCases := []struct {
 		id              string

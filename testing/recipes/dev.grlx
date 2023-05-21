@@ -1,7 +1,7 @@
 include:
   - .missing
   - .apache
-{{- /* if props is_desktop False */ -}}
+{{/* if props is_desktop False */}}
 steps:
   install golang:
     archive.extracted:
@@ -9,28 +9,28 @@ steps:
       - source: https://go.dev/dl/go1.20.4.linux-amd64.tar.gz
       - force: True
       - hash: sha256=698ef3243972a51ddb4028e4a1ac63dc6d60821bf18e59a807e051fee0a385bd
-        - require: configure keynav
+      - require: configure keynav
   add go to path:
     file.append:
-	  - name: /etc/profile
-	  - text: |
-	      export PATH=$PATH:/usr/local/go/bin
-	  - require:
-	    - install golang
-  
+      - name: /etc/profile
+      - text: |
+          export PATH=$PATH:/usr/local/go/bin
+      - require:
+        - install golang
+
   get go version:
     cmd.run:
-	  - name: go version
-	  - runas: tai
-	  - require:
-	    - add go to path
+      - name: go version
+      - runas: tai
+      - require:
+        - add go to path
 {{- if (props "is_desktop")}}
   configure conky:
-	file.managed:
-	  - name: /home/tai/.config/conky
-	  - source: grlx://conky.conf
-	  - user: tai
-	  - group: tai
-	  - mode: 644
-	  - makedirs: True
+    file.managed:
+      - name: /home/tai/.config/conky
+      - source: grlx://conky.conf
+      - user: tai
+      - group: tai
+      - mode: 644
+      - makedirs: True
 {{ end }}

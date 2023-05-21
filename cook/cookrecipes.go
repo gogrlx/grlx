@@ -9,6 +9,7 @@ import (
 	"text/template"
 
 	"github.com/gogrlx/grlx/config"
+	"github.com/gogrlx/grlx/props"
 	"github.com/gogrlx/grlx/types"
 	"gopkg.in/yaml.v3"
 )
@@ -23,9 +24,16 @@ func init() {
 	// funcMap["id"] = id
 }
 
-func Cook(recipeID types.RecipeName) error {
+func populateFuncMap(sproutID string) template.FuncMap {
+	v := funcMap
+	v["props"] = props.GetPropFunc(sproutID)
+	//	v["secrets"] = secrets.GetSecretFunc(sproutID)
+	return v
+}
+
+func Cook(sproutID string, recipeID types.RecipeName) error {
 	basepath := getBasePath()
-	includes, err := collectAllIncludes(basepath, recipeID)
+	includes, err := collectAllIncludes(sproutID, basepath, recipeID)
 	if err != nil {
 		return err
 	}
@@ -41,7 +49,7 @@ func Cook(recipeID types.RecipeName) error {
 		if err != nil {
 			return err
 		}
-		b, err := renderRecipeTemplate(fp, f)
+		b, err := renderRecipeTemplate(sproutID, fp, f)
 		if err != nil {
 			return err
 		}
@@ -71,6 +79,7 @@ func Cook(recipeID types.RecipeName) error {
 			return fmt.Errorf("recipe %s must me a map[string]interface{} but found %T", id, step)
 		}
 	}
+
 	// split on periods in ingredient name, fail and error if no matching ingredient module
 	// generate ingredient ID based on Recipe ID + basename of ingredient module
 	// Load all ingredients into trees
@@ -105,7 +114,6 @@ func ResolveRecipeFilePath(basepath string, recipeID types.RecipeName) (string, 
 
 	path = strings.ReplaceAll(path, ".", string(filepath.Separator))
 	// check if path is a directory and contains init.grlx
-	fmt.Println(path)
 	initFile := filepath.Join(path, "init."+config.GrlxExt)
 	stat, err := os.Stat(initFile)
 	if err == nil {
@@ -117,7 +125,6 @@ func ResolveRecipeFilePath(basepath string, recipeID types.RecipeName) (string, 
 
 	// check if path is a valid .grlx file
 	extPath := path + "." + config.GrlxExt
-	fmt.Println(extPath)
 	stat, err = os.Stat(extPath)
 	if err == nil {
 		if stat.IsDir() {

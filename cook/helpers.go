@@ -14,7 +14,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func collectAllIncludes(basepath string, recipeID types.RecipeName) ([]types.RecipeName, error) {
+func collectAllIncludes(sproutID, basepath string, recipeID types.RecipeName) ([]types.RecipeName, error) {
 	// TODO get git branch / tag from environment
 	// pass in an ID to a Recipe
 	recipeFilePath, err := ResolveRecipeFilePath(basepath, recipeID)
@@ -26,7 +26,7 @@ func collectAllIncludes(basepath string, recipeID types.RecipeName) ([]types.Rec
 		return []types.RecipeName{}, err
 	}
 	// parse file imports
-	starterIncludes, err := extractIncludes(basepath, recipeFilePath, f)
+	starterIncludes, err := extractIncludes(sproutID, basepath, recipeFilePath, f)
 	if err != nil {
 		return []types.RecipeName{}, err
 	}
@@ -34,7 +34,7 @@ func collectAllIncludes(basepath string, recipeID types.RecipeName) ([]types.Rec
 	for _, si := range starterIncludes {
 		includeSet[si] = false
 	}
-	includeSet, err = collectIncludesRecurse(basepath, includeSet)
+	includeSet, err = collectIncludesRecurse(sproutID, basepath, includeSet)
 	if err != nil {
 		return []types.RecipeName{}, err
 	}
@@ -135,13 +135,14 @@ func getBasePath() string {
 	return "/home/tai/code/foss/grlx/testing/recipes"
 }
 
-func extractIncludes(basepath, recipePath string, file []byte) ([]types.RecipeName, error) {
-	recipeBytes, err := renderRecipeTemplate(recipePath, file)
+func extractIncludes(sproutID, basepath, recipePath string, file []byte) ([]types.RecipeName, error) {
+	recipeBytes, err := renderRecipeTemplate(sproutID, recipePath, file)
 	if err != nil {
 		return []types.RecipeName{}, err
 	}
 	recipeMap, err := unmarshalRecipe(recipeBytes)
 	if err != nil {
+		fmt.Printf("%s\n", string(recipeBytes))
 		return []types.RecipeName{}, err
 	}
 	includeList, err := includesFromMap(recipeMap)
@@ -162,9 +163,9 @@ func extractIncludes(basepath, recipePath string, file []byte) ([]types.RecipeNa
 	return includeList, nil
 }
 
-func renderRecipeTemplate(recipeName string, file []byte) ([]byte, error) {
+func renderRecipeTemplate(sproutID, recipeName string, file []byte) ([]byte, error) {
 	temp := template.New(recipeName)
-	gFuncs := make(template.FuncMap)
+	gFuncs := populateFuncMap(sproutID)
 	temp.Funcs(gFuncs)
 	rt, err := temp.Parse(string(file))
 	if err != nil {
@@ -185,7 +186,7 @@ func unmarshalRecipe(recipe []byte) (map[string]interface{}, error) {
 	return rmap, err
 }
 
-func collectIncludesRecurse(basepath string, starter map[types.RecipeName]bool) (map[types.RecipeName]bool, error) {
+func collectIncludesRecurse(sproutID, basepath string, starter map[types.RecipeName]bool) (map[types.RecipeName]bool, error) {
 	allIncluded := false
 	for !allIncluded {
 		allIncluded = true
@@ -202,7 +203,7 @@ func collectIncludesRecurse(basepath string, starter map[types.RecipeName]bool) 
 					return starter, err
 				}
 				// parse file imports
-				eIncludes, err := extractIncludes(basepath, recipeFilePath, f)
+				eIncludes, err := extractIncludes(sproutID, basepath, recipeFilePath, f)
 				if err != nil {
 					return starter, err
 				}
@@ -212,7 +213,7 @@ func collectIncludesRecurse(basepath string, starter map[types.RecipeName]bool) 
 					}
 				}
 
-				newIncludes, err := collectIncludesRecurse(basepath, starter)
+				newIncludes, err := collectIncludesRecurse(sproutID, basepath, starter)
 				if err != nil {
 					return newIncludes, err
 				}
