@@ -72,8 +72,7 @@ func Cook(recipeID types.RecipeName) error {
 		}
 	}
 	// split on periods in ingredient name, fail and error if no matching ingredient module
-	// generate ingredient ID
-	// based on Recipe ID + basename of ingredient module
+	// generate ingredient ID based on Recipe ID + basename of ingredient module
 	// Load all ingredients into trees
 	// test all ingredients for missing, loops, duplicates, etc.
 	// run all ingredients in goroutine waitgroups, sending success codes via channels
@@ -81,83 +80,54 @@ func Cook(recipeID types.RecipeName) error {
 	return nil
 }
 
-func ResolveRecipeFilepath(basepath, path string) (types.RecipeName, error) {
+func ResolveRecipeFilePath(basepath string, recipeID types.RecipeName) (string, error) {
+	path := string(recipeID)
 	basepath = filepath.Clean(basepath)
 	path = filepath.Clean(path)
 	path = strings.TrimPrefix(path, basepath)
-	strings.ReplaceAll(path, "/", ".")
-	recipeExtFile := string(path) + "." + config.GrlxExt
+	path = filepath.Join(basepath, path)
+	if strings.HasSuffix(path, "."+config.GrlxExt) {
+		// swap out dot notation for slashes, but preserve extension
+		path = strings.TrimSuffix(path, "."+config.GrlxExt)
+		path = strings.ReplaceAll(path, ".", string(filepath.Separator))
+		path = path + "." + config.GrlxExt
+
+		stat, err := os.Stat(path)
+		if os.IsNotExist(err) {
+			return "", err
+		}
+		if stat.IsDir() {
+			return "", errors.New("path provided is a directory, directory must not end in .grlx")
+		}
+		return path, nil
+	}
+	// at this point, we know the path doesn't end in .grlx
+
+	path = strings.ReplaceAll(path, ".", string(filepath.Separator))
+	// check if path is a directory and contains init.grlx
+	fmt.Println(path)
 	initFile := filepath.Join(path, "init."+config.GrlxExt)
 	stat, err := os.Stat(initFile)
-	if os.IsNotExist(err) {
-		stat, err = os.Stat(recipeExtFile)
-		// TODO check all possible errors here
-		if os.IsNotExist(err) {
-			return "", err
-		}
-		// TODO allow for init.grlx types etc. in the future
+	if err == nil {
 		if stat.IsDir() {
-			// TODO standardize this error type, this happend when the state points to a folder ending in .grlx
-			return "", errors.New("path provided is a directory")
+			return "", errors.New("path provided is a directory, directory must not end in .grlx")
 		}
-		return types.RecipeName(strings.TrimSuffix(recipeExtFile, ".grlx")), nil
+		return initFile, nil
 	}
-	// TODO allow for init.grlx types etc. in the future
-	if stat.IsDir() {
-		// TODO standardize this error type
-		return "", errors.New("init.grlx cannot be a directory")
-	}
-	return types.RecipeName(strings.TrimSuffix(initFile, ".grlx")), nil
-}
 
-func ResolveRecipeFilePath(basePath string, recipeID types.RecipeName) (string, error) {
-	// open file if found, error out if missing , also allow for .grlx extensions
-	// split the ID on periods, resolve to basename directory
-	if filepath.Ext(string(recipeID)) == config.GrlxExt {
-		recipeID = types.RecipeName(strings.TrimSuffix(string(recipeID), "."+config.GrlxExt))
-	}
-	// TODO check if basepath is completely empty first
-	if !config.BasePathValid() {
-		// TODO create an error type for this, wrap and return it
-		return "", errors.New("")
-	}
-	dirList := strings.Split(string(recipeID), ".")
-	currentDir := filepath.Join(basePath)
-	for depth := 0; depth < len(dirList)-1; depth++ {
-		currentDir = filepath.Join(currentDir, dirList[depth])
-	}
-	stat, err := os.Stat(currentDir)
-	// TODO check all possible errors here
-	if os.IsNotExist(err) {
+	// check if path is a valid .grlx file
+	extPath := path + "." + config.GrlxExt
+	fmt.Println(extPath)
+	stat, err = os.Stat(extPath)
+	if err == nil {
+		if stat.IsDir() {
+			// TODO standardize this error type
+			return "", errors.New("init.grlx cannot be a directory")
+		}
+		return extPath, nil
+	} else {
 		return "", err
 	}
-	if !stat.IsDir() {
-		// TODO standardize this error type
-		return "", errors.New("path provided is not to a directory")
-	}
-	recipeExtFile := dirList[len(dirList)-1] + "." + config.GrlxExt
-	recipeExtFile = filepath.Join(currentDir, recipeExtFile)
-	initFile := filepath.Join(currentDir, dirList[len(dirList)-1], "init."+config.GrlxExt)
-	stat, err = os.Stat(initFile)
-	if os.IsNotExist(err) {
-		stat, err = os.Stat(recipeExtFile)
-		// TODO check all possible errors here
-		if os.IsNotExist(err) {
-			return "", err
-		}
-		// TODO allow for init.grlx types etc. in the future
-		if stat.IsDir() {
-			// TODO standardize this error type, this happend when the state points to a folder ending in .grlx
-			return "", errors.New("path provided is a directory")
-		}
-		return recipeExtFile, nil
-	}
-	// TODO allow for init.grlx types etc. in the future
-	if stat.IsDir() {
-		// TODO standardize this error type
-		return "", errors.New("init.grlx cannot be a directory")
-	}
-	return initFile, nil
 }
 
 func ParseRecipeFile(recipeName types.RecipeName) []types.RecipeCooker {

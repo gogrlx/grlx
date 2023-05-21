@@ -3,6 +3,7 @@ package cook
 import (
 	"errors"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/gogrlx/grlx/types"
@@ -23,14 +24,34 @@ func TestResolveRecipeFilePath(t *testing.T) {
 		filepath: "",
 		err:      os.ErrNotExist,
 	}, {
-		id:       "dev",
-		recipe:   "dev",
-		filepath: "/home/tai/code/foss/grlx/testing/recipes/dev.grlx",
+		id:       "apache dot grlx",
+		recipe:   "apache.grlx",
+		filepath: "",
+		err:      os.ErrNotExist,
+	}, {
+		id:       "apache dot apache dot grlx",
+		recipe:   "apache.apache.grlx",
+		filepath: filepath.Join(getBasePath(), "apache/apache.grlx"),
 		err:      nil,
 	}, {
-		id:       "apache",
+		id:       "apache slash path",
+		recipe:   "apache/apache",
+		filepath: filepath.Join(getBasePath(), "apache/apache.grlx"),
+		err:      nil,
+	}, {
+		id:       "apache dot path",
+		recipe:   "apache.apache",
+		filepath: filepath.Join(getBasePath(), "apache/apache.grlx"),
+		err:      nil,
+	}, {
+		id:       "dev",
+		recipe:   "dev",
+		filepath: filepath.Join(getBasePath(), "dev.grlx"),
+		err:      nil,
+	}, {
+		id:       "apache init",
 		recipe:   "apache",
-		filepath: "/home/tai/code/foss/grlx/testing/recipes/apache/init.grlx",
+		filepath: filepath.Join(getBasePath(), "apache/init.grlx"),
 		err:      nil,
 	}}
 	for _, tc := range testCases {
