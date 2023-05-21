@@ -79,7 +79,8 @@ func Cook(sproutID string, recipeID types.RecipeName) (string, error) {
 			return "", fmt.Errorf("recipe %s must me a map[string]interface{} but found %T", id, step)
 		}
 	}
-
+	steps, err := makeRecipeSteps(recipesteps)
+	tree, err := getRecipeTree(recipesteps)
 	// split on periods in ingredient name, fail and error if no matching ingredient module
 	// generate ingredient ID based on Recipe ID + basename of ingredient module
 	// Load all ingredients into trees

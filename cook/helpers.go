@@ -14,6 +14,24 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+func makeRecipeSteps(recipes map[string]interface{}) ([]types.Step, error) {
+	steps := []types.Step{}
+	for recipeName, recipe := range recipes {
+		// TODO pick up here
+		// split on the dot here to get the ingredient
+
+		step := types.Step{
+			ID:          types.StepID(recipeName),
+			Ingredient:  types.Ingredient,
+			Requisites:  types.RequisiteSet,
+			Properties:  map[string]interface{},
+			IsRequisite: false,
+		}
+		steps = append(steps, step)
+	}
+	return steps, nil
+}
+
 func collectAllIncludes(sproutID, basepath string, recipeID types.RecipeName) ([]types.RecipeName, error) {
 	// TODO get git branch / tag from environment
 	// pass in an ID to a Recipe
@@ -279,6 +297,9 @@ func includesFromMap(recipe map[string]interface{}) ([]types.RecipeName, error) 
 	}
 
 	return []types.RecipeName{}, nil
+}
+
+func getRecipeTree(recipes map[string]interface{}) {
 }
 
 // TODO ensure ability to only run individual state (+ dependencies),
