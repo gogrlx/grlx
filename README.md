@@ -76,7 +76,7 @@ A big thank you to all of grlx's sponsors.
 It's your donations that allow development to continue so that grlx can grow.
 
 ### Founders Club
-## <p align="left"><a href="https://newleafsolutions.dev"><img src="logos/newleaf.png" width="125"></a></p>
+## <p align="left"><a href="https://newleafsolutions.dev"><img src="logos/newleaf.png" width="125"></a> <a href="https://github.com/ADAtomic"><img src="logos/adatomic.png" width="125"></a></p>
 
 
 ## License
