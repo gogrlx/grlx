@@ -34,7 +34,7 @@ func collectAllIncludes(basepath string, recipeID types.RecipeName) ([]types.Rec
 	for _, si := range starterIncludes {
 		includeSet[si] = false
 	}
-	includeSet, err = collectIncludes(basepath, includeSet)
+	includeSet, err = collectIncludesRecurse(basepath, includeSet)
 	if err != nil {
 		return []types.RecipeName{}, err
 	}
@@ -185,7 +185,7 @@ func unmarshalRecipe(recipe []byte) (map[string]interface{}, error) {
 	return rmap, err
 }
 
-func collectIncludes(basepath string, starter map[types.RecipeName]bool) (map[types.RecipeName]bool, error) {
+func collectIncludesRecurse(basepath string, starter map[types.RecipeName]bool) (map[types.RecipeName]bool, error) {
 	allIncluded := false
 	for !allIncluded {
 		allIncluded = true
@@ -212,7 +212,7 @@ func collectIncludes(basepath string, starter map[types.RecipeName]bool) (map[ty
 					}
 				}
 
-				newIncludes, err := collectIncludes(basepath, starter)
+				newIncludes, err := collectIncludesRecurse(basepath, starter)
 				if err != nil {
 					return newIncludes, err
 				}
