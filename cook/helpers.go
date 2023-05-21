@@ -38,6 +38,7 @@ func collectAllIncludes(sproutID, basepath string, recipeID types.RecipeName) ([
 	if err != nil {
 		return []types.RecipeName{}, err
 	}
+	fmt.Printf("includeSet: %v\n", includeSet)
 	includes := []types.RecipeName{}
 	for inc := range includeSet {
 		includes = append(includes, inc)
@@ -142,7 +143,6 @@ func extractIncludes(sproutID, basepath, recipePath string, file []byte) ([]type
 	}
 	recipeMap, err := unmarshalRecipe(recipeBytes)
 	if err != nil {
-		fmt.Printf("%s\n", string(recipeBytes))
 		return []types.RecipeName{}, err
 	}
 	includeList, err := includesFromMap(recipeMap)
@@ -239,18 +239,23 @@ func stepsFromMap(recipe map[string]interface{}) (map[string]interface{}, error)
 }
 
 func includesFromMap(recipe map[string]interface{}) ([]types.RecipeName, error) {
-	if includes, ok := recipe["includes"]; ok {
+	if includes, ok := recipe["include"]; ok {
 		switch i := includes.(type) {
-		case []string:
+		case []interface{}:
 			inc := []types.RecipeName{}
 			for _, v := range i {
-				inc = append(inc, types.RecipeName(v))
+				if s, ok := v.(string); ok {
+					inc = append(inc, types.RecipeName(s))
+				} else {
+					return []types.RecipeName{}, fmt.Errorf("include must be a slice of strings, but found type %T in the slice", v)
+				}
 			}
 			return inc, nil
 		default:
 			return []types.RecipeName{}, fmt.Errorf("include must be a slice of strings, but found type %T", i)
 		}
 	}
+
 	return []types.RecipeName{}, nil
 }
 

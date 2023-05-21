@@ -2,7 +2,6 @@ package cook
 
 import (
 	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -12,8 +11,7 @@ import (
 
 func TestCook(t *testing.T) {
 	t.Run("apache", func(t *testing.T) {
-		err := Cook("", "apache")
-		fmt.Println(err)
+		Cook("", "apache")
 	})
 }
 

@@ -2,6 +2,6 @@ include:
   - dev
 steps:
   fix golang:
-    file.missing
+    file.missing:
       - name: /usr/local/go/fake
       - require: add go to path
