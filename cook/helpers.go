@@ -99,44 +99,35 @@ func resolveRelativeFilePath(relatedRecipePath string, recipeID types.RecipeName
 	return initFile, nil
 }
 
+// TODO implement reverse lookup
+// note: because slash paths are valid,
+// all that needs to be done is to check if the path contains
+// the basepath and strip the extension
+func pathToRecipeName(path string) (types.RecipeName, error) {
+	path = strings.TrimSuffix(path, "."+config.GrlxExt)
+	path = strings.TrimPrefix(path, getBasePath()+"/")
+	return types.RecipeName(path), nil
+}
+
+// attaches a related path to the prefix of a recipe name
+// makes no guarantees that the resultant path is valid
+
 func relativeRecipeToAbsolute(basepath, relatedRecipePath string, recipeID types.RecipeName) (types.RecipeName, error) {
-	if filepath.Ext(string(recipeID)) == config.GrlxExt {
-		recipeID = types.RecipeName(strings.TrimSuffix(string(recipeID), "."+config.GrlxExt))
-	}
-	// TODO check if basepath is completely empty first
-	relationBasePath := filepath.Dir(relatedRecipePath)
-	stat, err := os.Stat(relatedRecipePath)
-	// TODO check all possible errors here
-	if os.IsNotExist(err) {
-		return "", err
-	}
-	if !stat.IsDir() {
-		// TODO standardize this error type
-		return "", errors.New("path provided is not to a directory")
-	}
-	recipeExtFile := string(recipeID) + "." + config.GrlxExt
-	recipeExtFile = filepath.Join(relationBasePath, recipeExtFile)
-	initFile := filepath.Join(relationBasePath, string(recipeID), "init."+config.GrlxExt)
-	stat, err = os.Stat(initFile)
-	if os.IsNotExist(err) {
-		stat, err = os.Stat(recipeExtFile)
-		// TODO check all possible errors here
-		if os.IsNotExist(err) {
+	path := string(recipeID)
+	if !strings.HasPrefix(path, ".") {
+		var err error
+		path, err = ResolveRecipeFilePath(basepath, recipeID)
+		if err != nil {
 			return "", err
 		}
-		// TODO allow for init.grlx types etc. in the future
-		if stat.IsDir() {
-			// TODO standardize this error type, this happend when the state points to a folder ending in .grlx
-			return "", errors.New("path provided is a directory")
-		}
-		return types.RecipeName(recipeExtFile), nil
+		return pathToRecipeName(path)
 	}
-	// TODO allow for init.grlx types etc. in the future
-	if stat.IsDir() {
-		// TODO standardize this error type
-		return "", errors.New("init.grlx cannot be a directory")
-	}
-	return types.RecipeName(initFile), nil
+	path = strings.TrimPrefix(path, ".")
+
+	relationBasePath := filepath.Dir(relatedRecipePath)
+
+	path = filepath.Join(relationBasePath, path)
+	return pathToRecipeName(path)
 }
 
 func getBasePath() string {

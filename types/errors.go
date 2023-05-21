@@ -15,6 +15,7 @@ var (
 	ErrSproutIDNotFound     = errors.New("a Sprout ID matching that system cannot be found")
 	ErrInvalidUserInput     = errors.New("invalid user input was received")
 
+	ErrNotImplemented           = errors.New("this feature is not yet implemented")
 	ErrInvalidKeyState          = errors.New("code bug: an invalid key state was supplied")
 	ErrConfirmationLengthIsZero = errors.New("code bug: confirmation options muct not be 0-length")
 )
