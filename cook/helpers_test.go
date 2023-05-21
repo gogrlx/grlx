@@ -11,6 +11,10 @@ import (
 	"github.com/gogrlx/grlx/types"
 )
 
+func TestExtractRequisites(t *testing.T) {
+	// TODO: implement
+}
+
 func TestExtractIncludes(t *testing.T) {
 	testCases := []struct {
 		id          string

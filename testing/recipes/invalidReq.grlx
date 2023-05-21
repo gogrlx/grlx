@@ -1,0 +1,10 @@
+include:
+  - dev
+
+steps:
+  this is a step that can never run:
+    file.manage:
+      - name: /tmp/nonexistant
+      - require:
+        - True
+        - nested: dict

@@ -46,6 +46,28 @@ func collectAllIncludes(sproutID, basepath string, recipeID types.RecipeName) ([
 	return includes, nil
 }
 
+func extractRequisites(step map[string]interface{}) ([]string, error) {
+	if _, ok := step["require"]; !ok {
+		return []string{}, nil
+	}
+	switch r := step["require"].(type) {
+	case []interface{}:
+		reqs := []string{}
+		for _, req := range r {
+			if _, ok := req.(string); !ok {
+				return []string{}, fmt.Errorf("error: require must be a string or list of strings")
+			} else {
+				reqs = append(reqs, req.(string))
+			}
+		}
+		return reqs, nil
+	case string:
+		return []string{r}, nil
+	default:
+		return []string{}, fmt.Errorf("error: require must be a string or list of strings")
+	}
+}
+
 func joinMaps(a, b map[string]interface{}) (map[string]interface{}, error) {
 	c := make(map[string]interface{})
 	for k, v := range a {
