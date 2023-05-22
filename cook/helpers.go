@@ -19,17 +19,45 @@ func makeRecipeSteps(recipes map[string]interface{}) ([]types.Step, error) {
 	for recipeName, recipe := range recipes {
 		// TODO pick up here
 		// split on the dot here to get the ingredient
+		if _, ok := recipe.(map[string]interface{}); ok {
+			step, err := recipeToStep(recipeName, recipe.(map[string]interface{}))
+			if err != nil {
+				return []types.Step{}, err
+			}
+			steps = append(steps, step)
 
-		step := types.Step{
-			ID:          types.StepID(recipeName),
-			Ingredient:  types.Ingredient,
-			Requisites:  types.RequisiteSet,
-			Properties:  map[string]interface{},
-			IsRequisite: false,
+		} else {
+			return []types.Step{}, fmt.Errorf("error: recipe %s must be a map", recipeName)
 		}
-		steps = append(steps, step)
 	}
 	return steps, nil
+}
+
+func recipeToStep(id string, recipe map[string]interface{}) (types.Step, error) {
+	var step types.Step
+	if len(recipe) != 1 {
+		return step, errors.New("error: recipe must have exactly one key")
+	}
+	for k, v := range recipe {
+		rp := strings.Split(k, ".")
+		if len(rp) != 2 {
+			return step, errors.New("error: recipe key must be in the form ingredient.method")
+		}
+		if m, ok := v.(map[string]interface{}); !ok {
+			return types.Step{}, fmt.Errorf("error: %s must be a map", k)
+		} else {
+			step = types.Step{
+				ID:          types.StepID(id),
+				Ingredient:  types.Ingredient(rp[0]),
+				Method:      rp[1],
+				Requisites:  types.RequisiteSet,
+				Properties:  map[string]interface{},
+				IsRequisite: false,
+			}
+		}
+	}
+	if _, ok := recipe["method"]; !ok {
+	}
 }
 
 func collectAllIncludes(sproutID, basepath string, recipeID types.RecipeName) ([]types.RecipeName, error) {
@@ -64,7 +92,7 @@ func collectAllIncludes(sproutID, basepath string, recipeID types.RecipeName) ([
 	return includes, nil
 }
 
-func extractRequisites(step map[string]interface{}) ([]string, error) {
+func extractRequisites(step map[string]interface{}) (types.RequisiteSet, error) {
 	if _, ok := step["require"]; !ok {
 		return []string{}, nil
 	}

@@ -44,7 +44,7 @@ type (
 	RecipeName string
 	Function   string
 	StepID     string
-	Ingredient map[string]interface{}
+	Ingredient string
 	recipe     struct {
 		Includes []RecipeName      `json:"include" yaml:"include"`
 		States   []map[StepID]Step `json:"states" yaml:"states"`
@@ -52,6 +52,7 @@ type (
 	RequisiteSet []Requisite
 	Step         struct {
 		Ingredient  Ingredient `json:"ingredient" yaml:"ingredient"`
+		Method      string     `json:"method" yaml:"method"`
 		ID          StepID
 		Requisites  RequisiteSet
 		Properties  map[string]interface{}
