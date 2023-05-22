@@ -14,18 +14,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-var funcMap template.FuncMap
-
-func init() {
-	funcMap = make(template.FuncMap)
-	// funcMap["props"] = props
-	// funcMap["secrets"] = secrets
-	// funcMap["hostname"] = hostname
-	// funcMap["id"] = id
-}
-
 func populateFuncMap(sproutID string) template.FuncMap {
-	v := funcMap
+	v := template.FuncMap{}
 	v["props"] = props.GetPropFunc(sproutID)
 	//	v["secrets"] = secrets.GetSecretFunc(sproutID)
 	return v
