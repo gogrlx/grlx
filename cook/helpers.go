@@ -93,24 +93,34 @@ func collectAllIncludes(sproutID, basepath string, recipeID types.RecipeName) ([
 }
 
 func extractRequisites(step map[string]interface{}) (types.RequisiteSet, error) {
-	if _, ok := step["require"]; !ok {
-		return []string{}, nil
+	rt, ok := step["requirements"]
+	// if there isn't a requirements stub, there aren't any requirements for this step
+	if !ok {
+		return []types.Requisite{}, nil
 	}
-	switch r := step["require"].(type) {
-	case []interface{}:
-		reqs := []string{}
-		for _, req := range r {
-			if _, ok := req.(string); !ok {
-				return []string{}, fmt.Errorf("error: require must be a string or list of strings")
-			} else {
-				reqs = append(reqs, req.(string))
+	// if there is a requirements stub, it must be a list of maps
+	reqs, ok := rt.([]interface{})
+	if !ok {
+		return []types.Requisite{}, fmt.Errorf("error: requirements must be a list map[string]string")
+	}
+	requisites := []types.Requisite{}
+	for k, v := range reqs {
+		switch r := v.(type) {
+		case []interface{}:
+			reqs := []string{}
+			for _, req := range r {
+				if _, ok := req.(string); !ok {
+					return []string{}, fmt.Errorf("error: require must be a string or list of strings")
+				} else {
+					reqs = append(reqs, req.(string))
+				}
 			}
+			return reqs, nil
+		case string:
+			return []string{r}, nil
+		default:
+			return []string{}, fmt.Errorf("error: require must be a string or list of strings")
 		}
-		return reqs, nil
-	case string:
-		return []string{r}, nil
-	default:
-		return []string{}, fmt.Errorf("error: require must be a string or list of strings")
 	}
 }
 

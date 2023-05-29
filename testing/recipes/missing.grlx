@@ -4,5 +4,5 @@ steps:
   fix golang:
     file.missing:
       - name: /usr/local/go/fake
-      - require:
-        - add go to path
+      - requirements:
+        - require: add go to path
