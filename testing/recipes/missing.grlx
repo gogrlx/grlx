@@ -5,6 +5,6 @@ steps:
     file.missing:
       - name: /usr/local/go/fake
       - requirements:
-        - require: 
-		  - add go to path
-		- require_any: add go to path
+        - require:
+          - add go to path
+        - require_any: add go to path
