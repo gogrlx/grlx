@@ -1,6 +1,7 @@
 package cook
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -12,7 +13,27 @@ import (
 )
 
 func TestExtractRequisites(t *testing.T) {
-	// TODO: implement
+	testCases := []struct {
+		id          string
+		stepString  string
+		ExpectedReq types.RequisiteSet
+	}{{id: "empty", stepString: "{}", ExpectedReq: types.RequisiteSet{}}}
+	for _, tc := range testCases {
+		t.Run(tc.id, func(t *testing.T) {
+			m := make(map[string]interface{})
+			err := json.Unmarshal([]byte(tc.stepString), &m)
+			if err != nil {
+				t.Error(err)
+			}
+			req, err := extractRequisites(m)
+			if err != nil {
+				t.Error(err)
+			}
+			if !req.Equals(tc.ExpectedReq) {
+				t.Errorf("expected %v but got %v", tc.ExpectedReq, req)
+			}
+		})
+	}
 }
 
 func TestExtractIncludes(t *testing.T) {

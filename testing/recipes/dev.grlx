@@ -10,7 +10,7 @@ steps:
       - force: True
       - hash: sha256=698ef3243972a51ddb4028e4a1ac63dc6d60821bf18e59a807e051fee0a385bd
       - requisites:
-	    - require: configure keynav
+        - require: configure keynav
   add go to path:
     file.append:
       - name: /etc/profile

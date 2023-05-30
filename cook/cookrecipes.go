@@ -86,7 +86,7 @@ func Cook(sproutID string, recipeID types.RecipeName) (string, error) {
 }
 
 func GenerateJobID() string {
-	return uuid.New()
+	return uuid.New().String()
 }
 
 func ResolveRecipeFilePath(basepath string, recipeID types.RecipeName) (string, error) {

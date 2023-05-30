@@ -146,3 +146,54 @@ type (
 	}
 	ReqType string
 )
+
+func (r RequisiteSet) Equals(other RequisiteSet) bool {
+	if len(r) != len(other) {
+		return false
+	}
+	rmap := make(map[ReqType]Requisite)
+	omap := make(map[ReqType]Requisite)
+	// load the slices into maps
+	// to deduplicate the keys
+	for _, req := range r {
+		rmap[req.Condition] = req
+	}
+	for _, req := range other {
+		omap[req.Condition] = req
+	}
+	// check that the keys are the same
+	// across both maps
+	for k, req := range rmap {
+		oreq, ok := omap[k]
+		if !ok {
+			return false
+		}
+		if !req.Equals(oreq) {
+			return false
+		}
+	}
+	return true
+}
+
+func (r Requisite) Equals(other Requisite) bool {
+	if r.Condition != other.Condition {
+		return false
+	}
+	if len(r.Steps) != len(other.Steps) {
+		return false
+	}
+	rmap := make(map[StepID]StepID)
+	omap := make(map[StepID]StepID)
+	for _, step := range r.Steps {
+		rmap[step.ID] = step.ID
+	}
+	for _, step := range other.Steps {
+		omap[step.ID] = step.ID
+	}
+	for k, step := range rmap {
+		if omap[k] != step {
+			return false
+		}
+	}
+	return true
+}
