@@ -106,12 +106,12 @@ func deInterfaceRequisites(req types.ReqType, v interface{}) (types.RequisiteSet
 			if id, ok := id.(string); ok {
 				ids = append(ids, types.StepID(id))
 			} else {
-				return []types.Requisite{}, errors.New("error: " + string(req) + " must be a string or a list of strings, got " + fmt.Sprintf("%T", v[i]))
+				return []types.Requisite{}, errors.Join(errors.New(string(req)+" must be a string or a list of strings, got "+fmt.Sprintf("%T", v[i])), ErrInvalidFormat)
 			}
 		}
 		requisites = append(requisites, types.Requisite{StepIDs: ids, Condition: types.OnChanges})
 	default:
-		return []types.Requisite{}, errors.New("error: " + string(req) + " must be a string or a list of strings, got " + fmt.Sprintf("%T", v))
+		return []types.Requisite{}, errors.Join(errors.New(string(req)+" must be a string or a list of strings, got "+fmt.Sprintf("%T", v)), ErrInvalidFormat)
 	}
 	return requisites, nil
 }
@@ -125,7 +125,7 @@ func extractRequisites(step map[string]interface{}) (types.RequisiteSet, error) 
 	requisites := []types.Requisite{}
 	// if there is a requirements key, it must be map[string]interface{} , i.e. map[string]string or map[string][]string
 	if rti, ok := rt.(map[string]interface{}); !ok {
-		return []types.Requisite{}, errors.New("error: requirements must be a map")
+		return []types.Requisite{}, errors.Join(errors.New("error: requirements must be a map"), ErrInvalidFormat)
 	} else {
 		for k, v := range rti {
 			switch types.ReqType(k) {
@@ -358,7 +358,7 @@ func includesFromMap(recipe map[string]interface{}) ([]types.RecipeName, error) 
 	return []types.RecipeName{}, nil
 }
 
-func getRecipeTree(recipes []*types.Step) ([]*types.Step, []error) {
+func getRecipeTree(recipes []*types.Step) ([]*types.Step, error) {
 	// TODO pick up here...
 	return rootball.GenerateTrees(recipes)
 }

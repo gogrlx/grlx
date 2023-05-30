@@ -1,6 +1,7 @@
 package rootball
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/gogrlx/grlx/types"
@@ -15,7 +16,7 @@ var (
 	RecipeSet   []*types.Step
 )
 
-func GenerateTrees(allRecipies []*types.Step) ([]*types.Step, []error) {
+func GenerateTrees(allRecipies []*types.Step) ([]*types.Step, error) {
 	// check for duplicates
 	errorList := []error{}
 	hasNoDups, dups := NoDuplicateIDs(allRecipies)
@@ -24,7 +25,7 @@ func GenerateTrees(allRecipies []*types.Step) ([]*types.Step, []error) {
 			// TODO wrap this error
 			errorList = append(errorList, fmt.Errorf("recipe identifier is not unique: %s", dup))
 		}
-		return []*types.Step{}, errorList
+		return []*types.Step{}, errors.Join(errorList...)
 	}
 	// check for undefined deps
 	allDefined, missing := AllRequisitesDefined(allRecipies)
@@ -33,13 +34,13 @@ func GenerateTrees(allRecipies []*types.Step) ([]*types.Step, []error) {
 			// TODO wrap this error
 			errorList = append(errorList, fmt.Errorf("recipe identifier is required but not defined: %s", dep))
 		}
-		return []*types.Step{}, errorList
+		return []*types.Step{}, errors.Join(errorList...)
 	}
 	// check for cycles
 	hasCycle, cycle := HasCycle(allRecipies)
 	if hasCycle {
 		errorList = append(errorList, fmt.Errorf("%w: %s", types.ErrDependencyCycleFound, PrintCycle(cycle)))
-		return []*types.Step{}, errorList
+		return []*types.Step{}, errors.Join(errorList...)
 	}
 	// generate and return the roots
 	recipeMap := make(map[types.StepID]*types.Step)

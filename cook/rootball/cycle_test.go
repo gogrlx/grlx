@@ -88,13 +88,9 @@ func TestGenerateTree(t *testing.T) {
 			//				recipe.Requisites = RequisiteSet{}
 			//			}
 			createSteps()
-			roots, errs := GenerateTrees(tc.recipeFile.Steps)
-			if len(errs) > 0 {
-				for _, e := range errs {
-					if !errors.Is(e, tc.err) {
-						t.Error(e)
-					}
-				}
+			roots, err := GenerateTrees(tc.recipeFile.Steps)
+			if !errors.Is(err, tc.err) {
+				t.Error(err)
 			}
 			out := PrintTrees(roots)
 			if out != tc.expected {

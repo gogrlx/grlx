@@ -19,7 +19,7 @@ func TestDeInterfaceRequisites(t *testing.T) {
 		Expected        types.RequisiteSet
 		ReqType         types.ReqType
 		Err             error
-	}{{id: "empty", requisiteString: "{}", Expected: types.RequisiteSet{}, ReqType: types.OnChanges}}
+	}{{id: "empty", requisiteString: "{}", Expected: types.RequisiteSet{}, ReqType: types.OnChanges, Err: ErrInvalidFormat}}
 	for _, tc := range testCases {
 		t.Run(tc.id, func(t *testing.T) {
 			m := interface{}(nil)
@@ -28,7 +28,7 @@ func TestDeInterfaceRequisites(t *testing.T) {
 				t.Error(err)
 			}
 			reqs, err := deInterfaceRequisites(tc.ReqType, m)
-			if err != tc.Err {
+			if !errors.Is(err, tc.Err) {
 				t.Error(err)
 			}
 			for _, r := range reqs {

@@ -71,13 +71,12 @@ func Cook(sproutID string, recipeID types.RecipeName) (string, error) {
 		}
 	}
 	steps, err := makeRecipeSteps(recipesteps)
-	tree, errs := getRecipeTree(steps)
-	if len(errs) > 0 {
-		for _, err := range errs {
-			if err != nil {
-				return "", err
-			}
-		}
+	if err != nil {
+		return "", err
+	}
+	tree, err := getRecipeTree(steps)
+	if err != nil {
+		return "", err
 	}
 	jid := GenerateJobID()
 	// here, send out the tree to be executed to the sprout over NATS, and send back the JobID
