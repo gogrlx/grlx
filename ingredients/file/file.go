@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/gogrlx/grlx/ingredients"
 	"github.com/gogrlx/grlx/types"
 	nats "github.com/nats-io/nats.go"
 	"github.com/spf13/viper"
@@ -16,12 +17,12 @@ type File struct {
 }
 
 // TODO error check, set id, properly parse
-func (f File) Parse(id, method string, params map[string]interface{}) (File, error){
+func (f File) Parse(id, method string, params map[string]interface{}) (types.RecipeCooker, error) {
 	return New(id, method, params)
 }
 
 func New(id, method string, params map[string]interface{}) (File, error) {
-	return File{ID: id, Method: method}
+	return File{ID: id, Method: method}, nil
 }
 
 func (f File) Test(ctx context.Context) (types.Result, error) {
@@ -43,25 +44,27 @@ func (f File) Apply(ctx context.Context) (types.Result, error) {
 	case "file.symlink":
 		fallthrough
 	default:
-		return types.Result{Succeeded: false}, nil
-	default:
 		// TODO define error type
 		return types.Result{Succeeded: false, Failed: true, Changed: false, Changes: nil}, fmt.Errorf("method %s undefined", f.Method)
 
 	}
 }
 
-func (f File) Methods() []string{
-	return []string{ "file.append",
-			"file.contains",
-			"file.content",
-			"file.managed",
-			"file.present",
-			"file.symlink",
-			"file.absent", 
-		}
+func (f File) PropertiesForMethod(method string) (map[string]string, error) {
+	return nil, nil
 }
 
+func (f File) Methods() []string {
+	return []string{
+		"file.append",
+		"file.contains",
+		"file.content",
+		"file.managed",
+		"file.present",
+		"file.symlink",
+		"file.absent",
+	}
+}
 
 func (f File) Properties() (map[string]interface{}, error) {
 	m := map[string]interface{}{}

@@ -2,12 +2,13 @@ package cmd
 
 import (
 	"context"
-	"fmt"
-	nats "github.com/nats-io/nats.go"
 	"encoding/json"
-	"github.com/gogrlx/grlx/types"
-	"github.com/spf13/viper"
+	"fmt"
+
 	"github.com/gogrlx/grlx/ingredients"
+	"github.com/gogrlx/grlx/types"
+	nats "github.com/nats-io/nats.go"
+	"github.com/spf13/viper"
 )
 
 var (
@@ -15,7 +16,7 @@ var (
 	FarmerInterface string
 )
 
-func init(){
+func init() {
 	baseCMD := Cmd{}
 	ingredients.RegisterAllMethods(baseCMD)
 }
@@ -26,6 +27,7 @@ type Cmd struct {
 	Name   string
 	Async  bool
 }
+
 func RegisterEC(n *nats.EncodedConn) {
 	ec = n
 }
@@ -33,6 +35,7 @@ func RegisterEC(n *nats.EncodedConn) {
 func init() {
 	FarmerInterface = viper.GetString("FarmerInterface")
 }
+
 func New(id, method string, params map[string]interface{}) Cmd {
 	return Cmd{ID: id, Method: method}
 }
@@ -52,23 +55,18 @@ func (c Cmd) Apply(ctx context.Context) (types.Result, error) {
 	}
 }
 
-func (c Cmd) Methods() []string{
-	return []string{"cmd.run", 
-		}
+func (c Cmd) Methods() []string {
+	return []string{"cmd.run"}
 }
 
 // TODO create map for method: type
-func (c Cmd) PropsForMethod(method string) (map[string]string, error){
+func (c Cmd) PropertiesForMethod(method string) (map[string]string, error) {
 	return nil, nil
 }
 
 // TODO parse out the map here
-func (c Cmd) Parse(id, method string,params map[string]interface{})(Cmd, error){
-	return New(id, method, params)
-}
-
-func New(id, method string, params map[string]interface{})(Cmd, error){
-
+func (c Cmd) Parse(id, method string, params map[string]interface{}) (types.RecipeCooker, error) {
+	return New(id, method, params), nil
 }
 
 func (c Cmd) Properties() (map[string]interface{}, error) {
