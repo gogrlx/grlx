@@ -96,18 +96,28 @@ func collectAllIncludes(sproutID, basepath string, recipeID types.RecipeName) ([
 	return includes, nil
 }
 
-// TODO this is extremely verbose, and probably warrants clean up.
-// if the core type check logic is extracted, it will drastically
-// simplify the required tests.
-func extractRequisites(step map[string]interface{}) (types.RequisiteSet, error) {
-	// here are the possible enumerations of requirements:
-	// OnChanges	ReqType = "onchanges"
-	// OnFail		ReqType = "onfail"
-	// Require		ReqType = "require"
-	// OnChangesAny	ReqType = "onchanges_any"
-	// OnFailAny	ReqType = "onfail_any"
-	// RequireAny	ReqType = "require_any"
+func deInterfaceRequisite(req types.ReqType, v interface{}) (types.RequisiteSet, error) {
+	requisites := []types.Requisite{}
+	switch v := v.(type) {
+	case string:
+		requisites = append(requisites, types.Requisite{StepIDs: []types.StepID{types.StepID(v)}, Condition: req})
+	case []interface{}:
+		ids := []types.StepID{}
+		for i, id := range v {
+			if id, ok := id.(string); ok {
+				ids = append(ids, types.StepID(id))
+			} else {
+				return []types.Requisite{}, errors.New("error: " + string(req) + " must be a string or a list of strings, got " + fmt.Sprintf("%T", v[i]))
+			}
+		}
+		requisites = append(requisites, types.Requisite{StepIDs: ids, Condition: types.OnChanges})
+	default:
+		return []types.Requisite{}, errors.New("error: " + string(req) + " must be a string or a list of strings, got " + fmt.Sprintf("%T", v))
+	}
+	return requisites, nil
+}
 
+func extractRequisites(step map[string]interface{}) (types.RequisiteSet, error) {
 	rt, ok := step["requirements"]
 	// if there isn't a requirements key, there aren't any requirements for this step
 	if !ok {
@@ -120,85 +130,14 @@ func extractRequisites(step map[string]interface{}) (types.RequisiteSet, error) 
 	} else {
 		for k, v := range rti {
 			switch types.ReqType(k) {
-			case types.OnChanges:
-				switch v.(type) {
-				case string:
-					requisites = append(requisites, types.Requisite{StepIDs: []types.StepID{types.StepID(v.(string))}, Condition: types.OnChanges})
-				case []string:
-					ids := []types.StepID{}
-					for _, id := range v.([]string) {
-						ids = append(ids, types.StepID(id))
-					}
-					requisites = append(requisites, types.Requisite{StepIDs: ids, Condition: types.OnChanges})
-				default:
-					return []types.Requisite{}, errors.New("error: onchanges must be a string or a list of strings, got " + fmt.Sprintf("%T", v))
+			case types.OnChanges, types.OnFail, types.Require:
+				fallthrough
+			case types.OnChangesAny, types.OnFailAny, types.RequireAny:
+				reqs, err := deInterfaceRequisite(types.ReqType(k), v)
+				if err != nil {
+					return []types.Requisite{}, err
 				}
-			case types.OnFail:
-				switch v.(type) {
-				case string:
-					requisites = append(requisites, types.Requisite{StepIDs: []types.StepID{types.StepID(v.(string))}, Condition: types.OnFail})
-				case []string:
-					ids := []types.StepID{}
-					for _, id := range v.([]string) {
-						ids = append(ids, types.StepID(id))
-					}
-					requisites = append(requisites, types.Requisite{StepIDs: ids, Condition: types.OnFail})
-
-				default:
-					return []types.Requisite{}, errors.New("error: onfail must be a string or a list of strings, got " + fmt.Sprintf("%T", v))
-				}
-			case types.Require:
-				switch v.(type) {
-				case string:
-					requisites = append(requisites, types.Requisite{StepIDs: []types.StepID{types.StepID(v.(string))}, Condition: types.Require})
-				case []string:
-					ids := []types.StepID{}
-					for _, id := range v.([]string) {
-						ids = append(ids, types.StepID(id))
-					}
-					requisites = append(requisites, types.Requisite{StepIDs: ids, Condition: types.Require})
-				default:
-					return []types.Requisite{}, errors.New("error: require must be a string or a list of strings, got " + fmt.Sprintf("%T", v))
-				}
-			case types.OnChangesAny:
-				switch v.(type) {
-				case string:
-					requisites = append(requisites, types.Requisite{StepIDs: []types.StepID{types.StepID(v.(string))}, Condition: types.OnChangesAny})
-				case []string:
-					ids := []types.StepID{}
-					for _, id := range v.([]string) {
-						ids = append(ids, types.StepID(id))
-					}
-					requisites = append(requisites, types.Requisite{StepIDs: ids, Condition: types.OnChanges})
-				default:
-					return []types.Requisite{}, errors.New("error: onchanges_any must be a string or a list of strings, got " + fmt.Sprintf("%T", v))
-				}
-			case types.OnFailAny:
-				switch v.(type) {
-				case string:
-					requisites = append(requisites, types.Requisite{StepIDs: []types.StepID{types.StepID(v.(string))}, Condition: types.OnFailAny})
-				case []string:
-					ids := []types.StepID{}
-					for _, id := range v.([]string) {
-						ids = append(ids, types.StepID(id))
-					}
-					requisites = append(requisites, types.Requisite{StepIDs: ids, Condition: types.OnFailAny})
-				default:
-					return []types.Requisite{}, errors.New("error: onfail_any must be a string or a list of strings, got " + fmt.Sprintf("%T", v))
-				}
-			case types.RequireAny:
-				switch v.(type) {
-				case string:
-					requisites = append(requisites, types.Requisite{StepIDs: []types.StepID{types.StepID(v.(string))}, Condition: types.RequireAny})
-				case []string:
-					ids := []types.StepID{}
-					for _, id := range v.([]string) {
-						ids = append(ids, types.StepID(id))
-					}
-					requisites = append(requisites, types.Requisite{StepIDs: ids, Condition: types.RequireAny})
-				default:
-					return []types.Requisite{}, errors.New("error: require_any must be a string or a list of strings, got " + fmt.Sprintf("%T", v))
-				}
+				requisites = append(requisites, reqs...)
 			default:
 				return []types.Requisite{}, errors.New("error: unknown requisite type " + k)
 			}
