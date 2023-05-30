@@ -11,6 +11,7 @@ import (
 	"github.com/gogrlx/grlx/config"
 	"github.com/gogrlx/grlx/props"
 	"github.com/gogrlx/grlx/types"
+	"github.com/google/uuid"
 	"gopkg.in/yaml.v3"
 )
 
@@ -70,14 +71,22 @@ func Cook(sproutID string, recipeID types.RecipeName) (string, error) {
 		}
 	}
 	steps, err := makeRecipeSteps(recipesteps)
-	tree, err := getRecipeTree(recipesteps)
-	// split on periods in ingredient name, fail and error if no matching ingredient module
-	// generate ingredient ID based on Recipe ID + basename of ingredient module
-	// Load all ingredients into trees
-	// test all ingredients for missing, loops, duplicates, etc.
-	// run all ingredients in goroutine waitgroups, sending success codes via channels
-	// use reasonable timeouts for each ingredient cook
-	return "", nil
+	tree, errs := getRecipeTree(steps)
+	if len(errs) > 0 {
+		for _, err := range errs {
+			if err != nil {
+				return "", err
+			}
+		}
+	}
+	jid := GenerateJobID()
+	// here, send out the tree to be executed to the sprout over NATS, and send back the JobID
+	_ = tree
+	return jid, nil
+}
+
+func GenerateJobID() string {
+	return uuid.New()
 }
 
 func ResolveRecipeFilePath(basepath string, recipeID types.RecipeName) (string, error) {

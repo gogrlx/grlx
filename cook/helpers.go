@@ -10,24 +10,23 @@ import (
 	"text/template"
 
 	"github.com/gogrlx/grlx/config"
+	"github.com/gogrlx/grlx/cook/rootball"
 	"github.com/gogrlx/grlx/types"
 	"gopkg.in/yaml.v3"
 )
 
-func makeRecipeSteps(recipes map[string]interface{}) ([]types.Step, error) {
-	steps := []types.Step{}
+func makeRecipeSteps(recipes map[string]interface{}) ([]*types.Step, error) {
+	steps := []*types.Step{}
 	for recipeName, recipe := range recipes {
-		// TODO pick up here
-		// split on the dot here to get the ingredient
 		if _, ok := recipe.(map[string]interface{}); ok {
 			step, err := recipeToStep(recipeName, recipe.(map[string]interface{}))
 			if err != nil {
-				return []types.Step{}, err
+				return []*types.Step{}, err
 			}
-			steps = append(steps, step)
+			steps = append(steps, &step)
 
 		} else {
-			return []types.Step{}, fmt.Errorf("error: recipe %s must be a map", recipeName)
+			return []*types.Step{}, fmt.Errorf("error: recipe %s must be a map", recipeName)
 		}
 	}
 	return steps, nil
@@ -46,18 +45,23 @@ func recipeToStep(id string, recipe map[string]interface{}) (types.Step, error) 
 		if m, ok := v.(map[string]interface{}); !ok {
 			return types.Step{}, fmt.Errorf("error: %s must be a map", k)
 		} else {
+			reqs, err := extractRequisites(m)
+			if err != nil {
+				return types.Step{}, err
+			}
 			step = types.Step{
 				ID:          types.StepID(id),
 				Ingredient:  types.Ingredient(rp[0]),
 				Method:      rp[1],
-				Requisites:  types.RequisiteSet,
-				Properties:  map[string]interface{},
+				Requisites:  reqs,
+				Properties:  m,
 				IsRequisite: false,
 			}
+			return step, nil
 		}
 	}
-	if _, ok := recipe["method"]; !ok {
-	}
+	// should be unreachable but need something to satisfy compiler
+	return types.Step{}, errors.New("error: recipe must have exactly one key")
 }
 
 func collectAllIncludes(sproutID, basepath string, recipeID types.RecipeName) ([]types.RecipeName, error) {
@@ -92,36 +96,115 @@ func collectAllIncludes(sproutID, basepath string, recipeID types.RecipeName) ([
 	return includes, nil
 }
 
+// TODO this is extremely verbose, and probably warrants clean up.
+// if the core type check logic is extracted, it will drastically
+// simplify the required tests.
 func extractRequisites(step map[string]interface{}) (types.RequisiteSet, error) {
+	// here are the possible enumerations of requirements:
+	// OnChanges	ReqType = "onchanges"
+	// OnFail		ReqType = "onfail"
+	// Require		ReqType = "require"
+	// OnChangesAny	ReqType = "onchanges_any"
+	// OnFailAny	ReqType = "onfail_any"
+	// RequireAny	ReqType = "require_any"
+
 	rt, ok := step["requirements"]
-	// if there isn't a requirements stub, there aren't any requirements for this step
+	// if there isn't a requirements key, there aren't any requirements for this step
 	if !ok {
 		return []types.Requisite{}, nil
 	}
-	// if there is a requirements stub, it must be a list of maps
-	reqs, ok := rt.([]interface{})
-	if !ok {
-		return []types.Requisite{}, fmt.Errorf("error: requirements must be a list map[string]string")
-	}
 	requisites := []types.Requisite{}
-	for k, v := range reqs {
-		switch r := v.(type) {
-		case []interface{}:
-			reqs := []string{}
-			for _, req := range r {
-				if _, ok := req.(string); !ok {
-					return []string{}, fmt.Errorf("error: require must be a string or list of strings")
-				} else {
-					reqs = append(reqs, req.(string))
+	// if there is a requirements key, it must be map[string]interface{} , i.e. map[string]string or map[string][]string
+	if rti, ok := rt.(map[string]interface{}); !ok {
+		return []types.Requisite{}, errors.New("error: requirements must be a map")
+	} else {
+		for k, v := range rti {
+			switch types.ReqType(k) {
+			case types.OnChanges:
+				switch v.(type) {
+				case string:
+					requisites = append(requisites, types.Requisite{StepIDs: []types.StepID{types.StepID(v.(string))}, Condition: types.OnChanges})
+				case []string:
+					ids := []types.StepID{}
+					for _, id := range v.([]string) {
+						ids = append(ids, types.StepID(id))
+					}
+					requisites = append(requisites, types.Requisite{StepIDs: ids, Condition: types.OnChanges})
+				default:
+					return []types.Requisite{}, errors.New("error: onchanges must be a string or a list of strings, got " + fmt.Sprintf("%T", v))
 				}
+			case types.OnFail:
+				switch v.(type) {
+				case string:
+					requisites = append(requisites, types.Requisite{StepIDs: []types.StepID{types.StepID(v.(string))}, Condition: types.OnFail})
+				case []string:
+					ids := []types.StepID{}
+					for _, id := range v.([]string) {
+						ids = append(ids, types.StepID(id))
+					}
+					requisites = append(requisites, types.Requisite{StepIDs: ids, Condition: types.OnFail})
+
+				default:
+					return []types.Requisite{}, errors.New("error: onfail must be a string or a list of strings, got " + fmt.Sprintf("%T", v))
+				}
+			case types.Require:
+				switch v.(type) {
+				case string:
+					requisites = append(requisites, types.Requisite{StepIDs: []types.StepID{types.StepID(v.(string))}, Condition: types.Require})
+				case []string:
+					ids := []types.StepID{}
+					for _, id := range v.([]string) {
+						ids = append(ids, types.StepID(id))
+					}
+					requisites = append(requisites, types.Requisite{StepIDs: ids, Condition: types.Require})
+				default:
+					return []types.Requisite{}, errors.New("error: require must be a string or a list of strings, got " + fmt.Sprintf("%T", v))
+				}
+			case types.OnChangesAny:
+				switch v.(type) {
+				case string:
+					requisites = append(requisites, types.Requisite{StepIDs: []types.StepID{types.StepID(v.(string))}, Condition: types.OnChangesAny})
+				case []string:
+					ids := []types.StepID{}
+					for _, id := range v.([]string) {
+						ids = append(ids, types.StepID(id))
+					}
+					requisites = append(requisites, types.Requisite{StepIDs: ids, Condition: types.OnChanges})
+				default:
+					return []types.Requisite{}, errors.New("error: onchanges_any must be a string or a list of strings, got " + fmt.Sprintf("%T", v))
+				}
+			case types.OnFailAny:
+				switch v.(type) {
+				case string:
+					requisites = append(requisites, types.Requisite{StepIDs: []types.StepID{types.StepID(v.(string))}, Condition: types.OnFailAny})
+				case []string:
+					ids := []types.StepID{}
+					for _, id := range v.([]string) {
+						ids = append(ids, types.StepID(id))
+					}
+					requisites = append(requisites, types.Requisite{StepIDs: ids, Condition: types.OnFailAny})
+				default:
+					return []types.Requisite{}, errors.New("error: onfail_any must be a string or a list of strings, got " + fmt.Sprintf("%T", v))
+				}
+			case types.RequireAny:
+				switch v.(type) {
+				case string:
+					requisites = append(requisites, types.Requisite{StepIDs: []types.StepID{types.StepID(v.(string))}, Condition: types.RequireAny})
+				case []string:
+					ids := []types.StepID{}
+					for _, id := range v.([]string) {
+						ids = append(ids, types.StepID(id))
+					}
+					requisites = append(requisites, types.Requisite{StepIDs: ids, Condition: types.RequireAny})
+				default:
+					return []types.Requisite{}, errors.New("error: require_any must be a string or a list of strings, got " + fmt.Sprintf("%T", v))
+				}
+			default:
+				return []types.Requisite{}, errors.New("error: unknown requisite type " + k)
 			}
-			return reqs, nil
-		case string:
-			return []string{r}, nil
-		default:
-			return []string{}, fmt.Errorf("error: require must be a string or list of strings")
 		}
 	}
+	return requisites, nil
 }
 
 func joinMaps(a, b map[string]interface{}) (map[string]interface{}, error) {
@@ -337,7 +420,9 @@ func includesFromMap(recipe map[string]interface{}) ([]types.RecipeName, error) 
 	return []types.RecipeName{}, nil
 }
 
-func getRecipeTree(recipes map[string]interface{}) {
+func getRecipeTree(recipes []*types.Step) ([]*types.Step, []error) {
+	// TODO pick up here...
+	return rootball.GenerateTrees(recipes)
 }
 
 // TODO ensure ability to only run individual state (+ dependencies),
