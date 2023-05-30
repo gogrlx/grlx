@@ -9,14 +9,15 @@ steps:
       - source: https://go.dev/dl/go1.20.4.linux-amd64.tar.gz
       - force: True
       - hash: sha256=698ef3243972a51ddb4028e4a1ac63dc6d60821bf18e59a807e051fee0a385bd
-      - require: configure keynav
+      - requisites:
+	    - require: configure keynav
   add go to path:
     file.append:
       - name: /etc/profile
       - text: |
           export PATH=$PATH:/usr/local/go/bin
-      - require:
-        - install golang
+      - requisites:
+        - require: install golang
 
   get go version:
     cmd.run:
