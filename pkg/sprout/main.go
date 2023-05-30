@@ -43,13 +43,13 @@ func main() {
 	certs.GenNKey(false)
 	for err := pki.LoadRootCA("sprout"); err != nil; err = pki.LoadRootCA("sprout") {
 		log.Debugf("Error with RootCA: %v", err)
-		//TODO make this delay configureable
+		// TODO make this delay configureable
 		time.Sleep(time.Second * 5)
 	}
 	for err := pki.PutNKey(sproutID); err != nil; err = pki.PutNKey(sproutID) {
 		log.Debugf("Error submitting NKey: %v", err)
 
-		//TODO make this delay configureable
+		// TODO make this delay configureable
 		time.Sleep(time.Second * 5)
 	}
 	go ConnectSprout()
@@ -61,7 +61,6 @@ func main() {
 	// Auth nats bus
 	// Cli accept key, add to config file
 	// Update auth users via api
-
 }
 
 func createConfigRoot() {
@@ -76,19 +75,19 @@ func createConfigRoot() {
 			log.Panicf(err.Error())
 		}
 	} else {
-		//TODO: work out what the other errors could be here
+		// TODO: work out what the other errors could be here
 		log.Panicf(err.Error())
 	}
 }
 
 func ConnectSprout() {
-	var connectionAttempts = 0
+	connectionAttempts := 0
 	var err error
 	SproutRootCA := viper.GetString("SproutRootCA")
 	FarmerInterface := viper.GetString("FarmerInterface")
 	opt, err := nats.NkeyOptionFromSeed(viper.GetString("NKeySproutPrivFile"))
 	if err != nil {
-		//TODO: handle error
+		// TODO: handle error
 		log.Panic(err)
 	}
 	certPool := x509.NewCertPool()
@@ -118,15 +117,12 @@ func ConnectSprout() {
 		nc, err = nats.Connect("tls://"+FarmerInterface+":4443", nats.Secure(config), opt,
 			nats.MaxReconnects(-1),
 			nats.ReconnectWait(time.Second*15),
-			//TODO: Add a reconnect handler
+			// TODO: Add a reconnect handler
 			nats.DisconnectHandler(func(_ *nats.Conn) {
 				connectionAttempts++
 				log.Debugf("Reconnecting to Farmer, attempt: %d\n", connectionAttempts)
 			}),
 		)
-	}
-	if err != nil {
-		log.Errorf("Got an error on Connect with Secure Options: %+v\n", err)
 	}
 	log.Debugf("Successfully connected to the Farmer")
 
