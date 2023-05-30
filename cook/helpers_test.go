@@ -12,6 +12,37 @@ import (
 	"github.com/gogrlx/grlx/types"
 )
 
+func TestDeInterfaceRequisites(t *testing.T) {
+	testCases := []struct {
+		id              string
+		requisiteString string
+		Expected        types.RequisiteSet
+		ReqType         types.ReqType
+		Err             error
+	}{{id: "empty", requisiteString: "{}", Expected: types.RequisiteSet{}, ReqType: types.OnChanges}}
+	for _, tc := range testCases {
+		t.Run(tc.id, func(t *testing.T) {
+			m := interface{}(nil)
+			err := json.Unmarshal([]byte(tc.requisiteString), &m)
+			if err != nil {
+				t.Error(err)
+			}
+			reqs, err := deInterfaceRequisites(tc.ReqType, m)
+			if err != tc.Err {
+				t.Error(err)
+			}
+			for _, r := range reqs {
+				if r.Condition != tc.ReqType {
+					t.Errorf("expected %v but got %v", tc.ReqType, r.Condition)
+				}
+				if !reqs.Equals(tc.Expected) {
+					t.Errorf("expected %v but got %v", tc.Expected, reqs)
+				}
+			}
+		})
+	}
+}
+
 func TestExtractRequisites(t *testing.T) {
 	testCases := []struct {
 		id          string

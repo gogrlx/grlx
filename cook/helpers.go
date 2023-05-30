@@ -96,7 +96,7 @@ func collectAllIncludes(sproutID, basepath string, recipeID types.RecipeName) ([
 	return includes, nil
 }
 
-func deInterfaceRequisite(req types.ReqType, v interface{}) (types.RequisiteSet, error) {
+func deInterfaceRequisites(req types.ReqType, v interface{}) (types.RequisiteSet, error) {
 	requisites := []types.Requisite{}
 	switch v := v.(type) {
 	case string:
@@ -133,7 +133,7 @@ func extractRequisites(step map[string]interface{}) (types.RequisiteSet, error) 
 			case types.OnChanges, types.OnFail, types.Require:
 				fallthrough
 			case types.OnChangesAny, types.OnFailAny, types.RequireAny:
-				reqs, err := deInterfaceRequisite(types.ReqType(k), v)
+				reqs, err := deInterfaceRequisites(types.ReqType(k), v)
 				if err != nil {
 					return []types.Requisite{}, err
 				}
