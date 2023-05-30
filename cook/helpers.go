@@ -88,7 +88,6 @@ func collectAllIncludes(sproutID, basepath string, recipeID types.RecipeName) ([
 	if err != nil {
 		return []types.RecipeName{}, err
 	}
-	fmt.Printf("includeSet: %v\n", includeSet)
 	includes := []types.RecipeName{}
 	for inc := range includeSet {
 		includes = append(includes, inc)

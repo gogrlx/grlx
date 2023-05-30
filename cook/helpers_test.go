@@ -144,6 +144,7 @@ func TestCollectAllIncludes(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.id, func(t *testing.T) {
 			recipes, err := collectAllIncludes(tc.sprout, getBasePath(), tc.recipe)
+			// TODO actually test this
 			fmt.Printf("%v, %v", recipes, err)
 		})
 	}
