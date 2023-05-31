@@ -19,15 +19,25 @@ func TestDeInterfaceRequisites(t *testing.T) {
 		Expected        types.RequisiteSet
 		ReqType         types.ReqType
 		Err             error
-	}{{id: "empty", requisiteString: "{}", Expected: types.RequisiteSet{}, ReqType: types.OnChanges, Err: ErrInvalidFormat}}
+	}{
+		{id: "empty", requisiteString: `{"data":null}`, Expected: types.RequisiteSet{}, ReqType: types.OnChanges, Err: ErrInvalidFormat},
+		{
+			id: "onchanges", requisiteString: `{"data":["single dependency"]}`,
+			Expected: types.RequisiteSet{types.Requisite{
+				Condition: types.OnChanges,
+				StepIDs:   []types.StepID{types.StepID("single dependency")},
+			}}, ReqType: types.OnChanges,
+			Err: nil,
+		},
+	}
 	for _, tc := range testCases {
 		t.Run(tc.id, func(t *testing.T) {
-			m := interface{}(nil)
+			m := map[string]interface{}{}
 			err := json.Unmarshal([]byte(tc.requisiteString), &m)
 			if err != nil {
 				t.Error(err)
 			}
-			reqs, err := deInterfaceRequisites(tc.ReqType, m)
+			reqs, err := deInterfaceRequisites(tc.ReqType, m["data"])
 			if !errors.Is(err, tc.Err) {
 				t.Error(err)
 			}
