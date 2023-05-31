@@ -46,7 +46,7 @@ func (c Cmd) Test(ctx context.Context) (types.Result, error) {
 
 func (c Cmd) Apply(ctx context.Context) (types.Result, error) {
 	switch c.Method {
-	case "cmd.run":
+	case "run":
 		fallthrough
 	default:
 		// TODO define error type
@@ -56,7 +56,7 @@ func (c Cmd) Apply(ctx context.Context) (types.Result, error) {
 }
 
 func (c Cmd) Methods() []string {
-	return []string{"cmd.run"}
+	return []string{"run"}
 }
 
 // TODO create map for method: type

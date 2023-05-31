@@ -31,17 +31,19 @@ func (f File) Test(ctx context.Context) (types.Result, error) {
 
 func (f File) Apply(ctx context.Context) (types.Result, error) {
 	switch f.Method {
-	case "file.absent":
+	case "absent":
 		fallthrough
-	case "file.append":
+	case "append":
 		fallthrough
-	case "file.contains":
+	case "contains":
 		fallthrough
-	case "file.content":
+	case "content":
 		fallthrough
-	case "file.managed":
+	case "managed":
 		fallthrough
-	case "file.symlink":
+	case "present":
+		fallthrough
+	case "symlink":
 		fallthrough
 	default:
 		// TODO define error type
@@ -56,13 +58,13 @@ func (f File) PropertiesForMethod(method string) (map[string]string, error) {
 
 func (f File) Methods() []string {
 	return []string{
-		"file.append",
-		"file.contains",
-		"file.content",
-		"file.managed",
-		"file.present",
-		"file.symlink",
-		"file.absent",
+		"absent",
+		"append",
+		"contains",
+		"content",
+		"managed",
+		"present",
+		"symlink",
 	}
 }
 
