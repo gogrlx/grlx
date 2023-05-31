@@ -179,16 +179,16 @@ func (r Requisite) Equals(other Requisite) bool {
 	if r.Condition != other.Condition {
 		return false
 	}
-	if len(r.Steps) != len(other.Steps) {
+	if len(r.StepIDs) != len(other.StepIDs) {
 		return false
 	}
 	rmap := make(map[StepID]StepID)
 	omap := make(map[StepID]StepID)
-	for _, step := range r.Steps {
-		rmap[step.ID] = step.ID
+	for _, step := range r.StepIDs {
+		rmap[step] = step
 	}
-	for _, step := range other.Steps {
-		omap[step.ID] = step.ID
+	for _, step := range other.StepIDs {
+		omap[step] = step
 	}
 	for k, step := range rmap {
 		if omap[k] != step {

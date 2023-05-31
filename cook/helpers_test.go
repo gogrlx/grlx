@@ -29,6 +29,22 @@ func TestDeInterfaceRequisites(t *testing.T) {
 			}}, ReqType: types.OnChanges,
 			Err: nil,
 		},
+		{
+			id: "two onchanges", requisiteString: `{"data":["one dependency", "another dependency"]}`,
+			Expected: types.RequisiteSet{types.Requisite{
+				Condition: types.OnChanges,
+				StepIDs:   []types.StepID{types.StepID("one dependency"), types.StepID("another dependency")},
+			}}, ReqType: types.OnChanges,
+			Err: nil,
+		},
+		{
+			id: "single string onchanges", requisiteString: `{"data":"single dependency"}`,
+			Expected: types.RequisiteSet{types.Requisite{
+				Condition: types.OnChanges,
+				StepIDs:   []types.StepID{types.StepID("single dependency")},
+			}}, ReqType: types.OnChanges,
+			Err: nil,
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.id, func(t *testing.T) {
@@ -45,9 +61,9 @@ func TestDeInterfaceRequisites(t *testing.T) {
 				if r.Condition != tc.ReqType {
 					t.Errorf("expected %v but got %v", tc.ReqType, r.Condition)
 				}
-				if !reqs.Equals(tc.Expected) {
-					t.Errorf("expected %v but got %v", tc.Expected, reqs)
-				}
+			}
+			if !reqs.Equals(tc.Expected) {
+				t.Errorf("expected %v but got %v", tc.Expected, reqs)
 			}
 		})
 	}
