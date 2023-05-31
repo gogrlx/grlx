@@ -20,7 +20,11 @@ func TestDeInterfaceRequisites(t *testing.T) {
 		ReqType         types.ReqType
 		Err             error
 	}{
-		{id: "empty", requisiteString: `{"data":null}`, Expected: types.RequisiteSet{}, ReqType: types.OnChanges, Err: ErrInvalidFormat},
+		{
+			id:              "empty",
+			requisiteString: `{"data":null}`, Expected: types.RequisiteSet{},
+			ReqType: types.OnChanges, Err: ErrInvalidFormat,
+		},
 		{
 			id: "onchanges", requisiteString: `{"data":["single dependency"]}`,
 			Expected: types.RequisiteSet{types.Requisite{
