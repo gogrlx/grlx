@@ -12,6 +12,18 @@ import (
 	"github.com/gogrlx/grlx/types"
 )
 
+// func collectIncludesRecurse(sproutID, basepath string, starter map[types.RecipeName]bool) (map[types.RecipeName]bool, error) {
+// func getRecipeTree(recipes []*types.Step) ([]*types.Step, error) {
+// func includesFromMap(recipe map[string]interface{}) ([]types.RecipeName, error) {
+// func joinMaps(a, b map[string]interface{}) (map[string]interface{}, error) {
+// func makeRecipeSteps(recipes map[string]interface{}) ([]*types.Step, error) {
+// func pathToRecipeName(path string) (types.RecipeName, error) {
+// func recipeToStep(id string, recipe map[string]interface{}) (types.Step, error) {
+// func renderRecipeTemplate(sproutID, recipeName string, file []byte) ([]byte, error) {
+// func resolveRelativeFilePath(relatedRecipePath string, recipeID types.RecipeName) (string, error) {
+// func stepsFromMap(recipe map[string]interface{}) (map[string]interface{}, error) {
+// func unmarshalRecipe(recipe []byte) (map[string]interface{}, error) {
+
 func TestDeInterfaceRequisites(t *testing.T) {
 	testCases := []struct {
 		id              string

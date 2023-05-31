@@ -84,21 +84,3 @@ func TestParseRecipeFile(t *testing.T) {
 		})
 	}
 }
-
-//func TestGetIncludes(t *testing.T) {
-//	testCases := []struct {
-//		id     string
-//		recipe map[string]interface{}
-//		err    error
-//	}{}
-//
-//	for _, tc := range testCases {
-//		t.Run(tc.id, func(t *testing.T) {
-//			recipeNames, err := GetIncludes(tc.recipe)
-//			if !errors.Is(tc.err, err) {
-//				t.Errorf("Expected err %v but got %v", tc.err, err)
-//			}
-//			_ = recipeNames
-//		})
-//	}
-//}
