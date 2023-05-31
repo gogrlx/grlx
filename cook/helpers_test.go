@@ -49,6 +49,14 @@ func TestDeInterfaceRequisites(t *testing.T) {
 			}}, ReqType: types.OnChanges,
 			Err: nil,
 		},
+		{
+			id: "onfail", requisiteString: `{"data":["one dependency", "another dependency"]}`,
+			Expected: types.RequisiteSet{types.Requisite{
+				Condition: types.OnFail,
+				StepIDs:   []types.StepID{types.StepID("one dependency"), types.StepID("another dependency")},
+			}}, ReqType: types.OnFail,
+			Err: nil,
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.id, func(t *testing.T) {

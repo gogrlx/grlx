@@ -109,7 +109,7 @@ func deInterfaceRequisites(req types.ReqType, v interface{}) (types.RequisiteSet
 				return []types.Requisite{}, errors.Join(errors.New(string(req)+" must be a string or a list of strings, got "+fmt.Sprintf("%T", v[i])), ErrInvalidFormat)
 			}
 		}
-		requisites = append(requisites, types.Requisite{StepIDs: ids, Condition: types.OnChanges})
+		requisites = append(requisites, types.Requisite{StepIDs: ids, Condition: req})
 	default:
 		return []types.Requisite{}, errors.Join(errors.New(string(req)+" must be a string or a list of strings, got "+fmt.Sprintf("%T", v)), ErrInvalidFormat)
 	}
