@@ -15,7 +15,6 @@ import (
 // func collectIncludesRecurse(sproutID, basepath string, starter map[types.RecipeName]bool) (map[types.RecipeName]bool, error) {
 // func getRecipeTree(recipes []*types.Step) ([]*types.Step, error) {
 // func includesFromMap(recipe map[string]interface{}) ([]types.RecipeName, error) {
-// func joinMaps(a, b map[string]interface{}) (map[string]interface{}, error) {
 // func makeRecipeSteps(recipes map[string]interface{}) ([]*types.Step, error) {
 // func pathToRecipeName(path string) (types.RecipeName, error) {
 // func recipeToStep(id string, recipe map[string]interface{}) (types.Step, error) {
@@ -228,6 +227,54 @@ func TestRelativeRecipeToAbsolute(t *testing.T) {
 			}
 			if !errors.Is(err, tc.err) {
 				t.Errorf("expected error %v but got %v", tc.err, err)
+			}
+		})
+	}
+}
+
+func TestJoinMaps(t *testing.T) {
+	testCases := []struct {
+		id       string
+		mapa     map[string]interface{}
+		mapb     map[string]interface{}
+		expected map[string]interface{}
+		err      error
+	}{
+		{
+			id:       "empty",
+			mapa:     map[string]interface{}{},
+			mapb:     map[string]interface{}{},
+			expected: map[string]interface{}{},
+			err:      nil,
+		},
+		{
+			id:       "disjoint",
+			mapa:     map[string]interface{}{"a": "b"},
+			mapb:     map[string]interface{}{"c": "d"},
+			expected: map[string]interface{}{"a": "b", "c": "d"},
+			err:      nil,
+		},
+		{
+			id:       "overlap",
+			mapa:     map[string]interface{}{"a": "b"},
+			mapb:     map[string]interface{}{"c": "d", "a": "e"},
+			expected: map[string]interface{}{},
+			err:      ErrDuplicateKey,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.id, func(t *testing.T) {
+			r, err := joinMaps(tc.mapa, tc.mapb)
+			if !errors.Is(err, tc.err) {
+				t.Errorf("expected error %v but got %v", tc.err, err)
+			}
+			if len(r) != len(tc.expected) {
+				t.Errorf("expected %v but got %v", tc.expected, r)
+			}
+			for k, v := range tc.expected {
+				if r[k] != v {
+					t.Errorf("expected %v but got %v", tc.expected, r)
+				}
 			}
 		})
 	}

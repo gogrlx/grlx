@@ -33,8 +33,7 @@ func Cook(sproutID string, recipeID types.RecipeName) (string, error) {
 		// load all imported files into recipefile list
 		fp, err := ResolveRecipeFilePath(basepath, inc)
 		if err != nil {
-			// TODO: wrap this error and explain file existed but no longer exists
-			return "", err
+			return "", errors.Join(ErrNoRecipe, err)
 		}
 		f, err := os.ReadFile(fp)
 		if err != nil {
@@ -63,11 +62,11 @@ func Cook(sproutID string, recipeID types.RecipeName) (string, error) {
 		switch s := step.(type) {
 		case map[string]interface{}:
 			if len(s) != 1 {
-				return "", fmt.Errorf("recipe %s must have one directive, but has %d", id, len(s))
+				return "", errors.Join(ErrInvalidFormat, fmt.Errorf("recipe %s must have one directive, but has %d", id, len(s)))
 			}
 
 		default:
-			return "", fmt.Errorf("recipe %s must me a map[string]interface{} but found %T", id, step)
+			return "", errors.Join(ErrInvalidFormat, fmt.Errorf("recipe %s must me a map[string]interface{} but found %T", id, step))
 		}
 	}
 	steps, err := makeRecipeSteps(recipesteps)
@@ -136,9 +135,9 @@ func ResolveRecipeFilePath(basepath string, recipeID types.RecipeName) (string, 
 	}
 }
 
-func ParseRecipeFile(recipeName types.RecipeName) []types.RecipeCooker {
-	return nil
-}
+// func ParseRecipeFile(recipeName types.RecipeName) []types.RecipeCooker {
+// 	return nil
+// }
 
 // TODO ensure ability to only run individual state (+ dependencies),
 // i.e. start from a root of a given dependency tree

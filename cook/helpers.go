@@ -152,7 +152,7 @@ func joinMaps(a, b map[string]interface{}) (map[string]interface{}, error) {
 	}
 	for k, v := range b {
 		if _, ok := c[k]; ok {
-			return make(map[string]interface{}), fmt.Errorf("error: key %s found in both maps", k)
+			return make(map[string]interface{}), errors.Join(ErrDuplicateKey, fmt.Errorf("error: key %s found in both maps", k))
 		}
 		c[k] = v
 	}

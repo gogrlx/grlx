@@ -70,17 +70,17 @@ func TestResolveRecipeFilePath(t *testing.T) {
 	}
 }
 
-func TestParseRecipeFile(t *testing.T) {
-	testCases := []struct {
-		id          string
-		recipe      types.RecipeName
-		recipeSteps []types.RecipeCooker
-	}{}
-
-	for _, tc := range testCases {
-		t.Run(tc.id, func(t *testing.T) {
-			steps := ParseRecipeFile(tc.recipe)
-			_ = steps
-		})
-	}
-}
+// func TestParseRecipeFile(t *testing.T) {
+// 	testCases := []struct {
+// 		id          string
+// 		recipe      types.RecipeName
+// 		recipeSteps []types.RecipeCooker
+// 	}{}
+//
+// 	for _, tc := range testCases {
+// 		t.Run(tc.id, func(t *testing.T) {
+// 			steps := ParseRecipeFile(tc.recipe)
+// 			_ = steps
+// 		})
+// 	}
+// }
