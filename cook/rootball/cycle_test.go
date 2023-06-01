@@ -88,7 +88,7 @@ func TestGenerateTree(t *testing.T) {
 			//				recipe.Requisites = RequisiteSet{}
 			//			}
 			createSteps()
-			roots, err := GenerateTrees(tc.recipeFile.Steps)
+			roots, err := ValidateTrees(tc.recipeFile.Steps)
 			if !errors.Is(err, tc.err) {
 				t.Error(err)
 			}

@@ -24,7 +24,6 @@ func makeRecipeSteps(recipes map[string]interface{}) ([]*types.Step, error) {
 				return []*types.Step{}, err
 			}
 			steps = append(steps, &step)
-
 		} else {
 			return []*types.Step{}, fmt.Errorf("error: recipe %s must be a map", recipeName)
 		}
@@ -42,23 +41,33 @@ func recipeToStep(id string, recipe map[string]interface{}) (types.Step, error) 
 		if len(rp) != 2 {
 			return step, errors.New("error: recipe key must be in the form ingredient.method")
 		}
-		if m, ok := v.(map[string]interface{}); !ok {
-			return types.Step{}, fmt.Errorf("error: %s must be a map", k)
-		} else {
-			reqs, err := extractRequisites(m)
-			if err != nil {
-				return types.Step{}, err
-			}
-			step = types.Step{
-				ID:          types.StepID(id),
-				Ingredient:  types.Ingredient(rp[0]),
-				Method:      rp[1],
-				Requisites:  reqs,
-				Properties:  m,
-				IsRequisite: false,
-			}
-			return step, nil
+		mi, ok := v.([]interface{})
+		if !ok {
+			return types.Step{}, fmt.Errorf("error: %s must contain a list of properties ([]interface{}), but is a %T", k, v)
 		}
+		m := make(map[string]interface{})
+		for _, interf := range mi {
+			if msi, ok := interf.(map[string]interface{}); ok {
+				for k, v := range msi {
+					m[k] = v
+				}
+			} else {
+				return types.Step{}, fmt.Errorf("error: %s must contain a list of properties ([]interface{}), but is a %T", k, v)
+			}
+		}
+		reqs, err := extractRequisites(m)
+		if err != nil {
+			return types.Step{}, err
+		}
+		step = types.Step{
+			ID:          types.StepID(id),
+			Ingredient:  types.Ingredient(rp[0]),
+			Method:      rp[1],
+			Requisites:  reqs,
+			Properties:  m,
+			IsRequisite: false,
+		}
+		return step, nil
 	}
 	// should be unreachable but need something to satisfy compiler
 	return types.Step{}, errors.New("error: recipe must have exactly one key")
@@ -117,28 +126,34 @@ func deInterfaceRequisites(req types.ReqType, v interface{}) (types.RequisiteSet
 }
 
 func extractRequisites(step map[string]interface{}) (types.RequisiteSet, error) {
-	rt, ok := step["requirements"]
+	rt, ok := step["requisites"]
 	// if there isn't a requirements key, there aren't any requirements for this step
 	if !ok {
 		return []types.Requisite{}, nil
 	}
 	requisites := []types.Requisite{}
 	// if there is a requirements key, it must be map[string]interface{} , i.e. map[string]string or map[string][]string
-	if rti, ok := rt.(map[string]interface{}); !ok {
-		return []types.Requisite{}, errors.Join(errors.New("error: requirements must be a map"), ErrInvalidFormat)
+	if rti, ok := rt.([]interface{}); !ok {
+		return []types.Requisite{}, errors.Join(errors.New("error: requirements must be a list of maps"), ErrInvalidFormat)
 	} else {
-		for k, v := range rti {
-			switch types.ReqType(k) {
-			case types.OnChanges, types.OnFail, types.Require:
-				fallthrough
-			case types.OnChangesAny, types.OnFailAny, types.RequireAny:
-				reqs, err := deInterfaceRequisites(types.ReqType(k), v)
-				if err != nil {
-					return []types.Requisite{}, err
+		for _, m := range rti {
+			mm, ok := m.(map[string]interface{})
+			if !ok {
+				return []types.Requisite{}, errors.Join(errors.New("error: requirements must be a list of maps"), ErrInvalidFormat)
+			}
+			for k, v := range mm {
+				switch types.ReqType(k) {
+				case types.OnChanges, types.OnFail, types.Require:
+					fallthrough
+				case types.OnChangesAny, types.OnFailAny, types.RequireAny:
+					reqs, err := deInterfaceRequisites(types.ReqType(k), v)
+					if err != nil {
+						return []types.Requisite{}, err
+					}
+					requisites = append(requisites, reqs...)
+				default:
+					return []types.Requisite{}, errors.New("error: unknown requisite type " + k)
 				}
-				requisites = append(requisites, reqs...)
-			default:
-				return []types.Requisite{}, errors.New("error: unknown requisite type " + k)
 			}
 		}
 	}
@@ -358,9 +373,10 @@ func includesFromMap(recipe map[string]interface{}) ([]types.RecipeName, error) 
 	return []types.RecipeName{}, nil
 }
 
-func getRecipeTree(recipes []*types.Step) ([]*types.Step, error) {
+func validateRecipeTree(recipes []*types.Step) ([]*types.Step, error) {
 	// TODO pick up here...
-	return rootball.GenerateTrees(recipes)
+	_, err := rootball.ValidateTrees(recipes)
+	return recipes, err
 }
 
 // TODO ensure ability to only run individual state (+ dependencies),

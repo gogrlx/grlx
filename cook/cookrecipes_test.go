@@ -11,7 +11,12 @@ import (
 
 func TestCook(t *testing.T) {
 	t.Run("apache", func(t *testing.T) {
-		Cook("", "apache")
+		jid, err := Cook("", "apache")
+		if err != nil {
+			t.Error(err)
+		}
+		_ = jid
+		// fmt.Println(jid)
 	})
 }
 

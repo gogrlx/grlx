@@ -8,3 +8,9 @@ steps:
       - user: root
       - group: root
       - mode: 644
+  configure keynav:
+    file.exists:
+      - name: /home/tai/.config/keynav.conf
+      - user: tai
+      - group: tai
+      - mode: 644

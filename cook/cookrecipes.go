@@ -18,6 +18,7 @@ import (
 func populateFuncMap(sproutID string) template.FuncMap {
 	v := template.FuncMap{}
 	v["props"] = props.GetPropFunc(sproutID)
+	// TODO: implement secrets and other template functions
 	//	v["secrets"] = secrets.GetSecretFunc(sproutID)
 	return v
 }
@@ -73,13 +74,18 @@ func Cook(sproutID string, recipeID types.RecipeName) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	tree, err := getRecipeTree(steps)
+	tree, err := validateRecipeTree(steps)
 	if err != nil {
 		return "", err
 	}
+	validSteps := []types.Step{}
+	for _, step := range tree {
+		validSteps = append(validSteps, *step)
+	}
+	fmt.Println(validSteps)
 	jid := GenerateJobID()
 	// here, send out the tree to be executed to the sprout over NATS, and send back the JobID
-	_ = tree
+
 	return jid, nil
 }
 

@@ -16,7 +16,7 @@ var (
 	RecipeSet   []*types.Step
 )
 
-func GenerateTrees(allRecipies []*types.Step) ([]*types.Step, error) {
+func ValidateTrees(allRecipies []*types.Step) ([]*types.Step, error) {
 	// check for duplicates
 	errorList := []error{}
 	hasNoDups, dups := NoDuplicateIDs(allRecipies)
@@ -55,6 +55,7 @@ func GenerateTrees(allRecipies []*types.Step) ([]*types.Step, error) {
 			}
 		}
 	}
+
 	return FindRoots(allRecipies), nil
 }
 
