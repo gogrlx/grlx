@@ -12,8 +12,15 @@ import (
 	"github.com/gogrlx/grlx/config"
 	"github.com/gogrlx/grlx/cook/rootball"
 	"github.com/gogrlx/grlx/types"
+	"github.com/nats-io/nats.go"
 	"gopkg.in/yaml.v3"
 )
+
+var ec *nats.EncodedConn
+
+func RegisterEC(n *nats.EncodedConn) {
+	ec = n
+}
 
 func makeRecipeSteps(recipes map[string]interface{}) ([]*types.Step, error) {
 	steps := []*types.Step{}

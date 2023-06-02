@@ -14,6 +14,7 @@ import (
 	"github.com/gogrlx/grlx/api"
 	"github.com/gogrlx/grlx/certs"
 	"github.com/gogrlx/grlx/config"
+	"github.com/gogrlx/grlx/cook"
 	"github.com/gogrlx/grlx/ingredients/cmd"
 	"github.com/gogrlx/grlx/ingredients/test"
 	"github.com/gogrlx/grlx/pki"
@@ -175,7 +176,7 @@ func ConnectFarmer() {
 		connectionAttempts++
 		log.Debugf("Attempting to pair Farmer to NATS bus (attempt %d/%d).", connectionAttempts, maxFarmerReconnect)
 		if connectionAttempts >= maxFarmerReconnect {
-			//		log.Fatalf("Failed to connect Farmer to NATS %d times, exiting.", connectionAttempts)
+			log.Fatalf("Failed to connect Farmer to NATS %d times, exiting.", connectionAttempts)
 		}
 		time.Sleep(time.Second * 15)
 	}
@@ -193,6 +194,7 @@ func ConnectFarmer() {
 	ec, _ := nats.NewEncodedConn(nc, nats.JSON_ENCODER)
 	test.RegisterEC(ec)
 	cmd.RegisterEC(ec)
+	cook.RegisterEC(ec)
 	defer ec.Close()
 	select {}
 }

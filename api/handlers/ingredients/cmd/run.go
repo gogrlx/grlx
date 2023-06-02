@@ -74,6 +74,4 @@ func HCmdRun(w http.ResponseWriter, r *http.Request) {
 	jr, _ := json.Marshal(results)
 	w.WriteHeader(http.StatusOK)
 	w.Write(jr)
-	return
-
 }
