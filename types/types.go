@@ -118,6 +118,16 @@ type (
 		Pong  bool  `json:"pong"`
 		Error error `json:"error"`
 	}
+	CmdCook struct {
+		Async   bool          `json:"async"`
+		Env     string        `json:"env"`
+		Recipe  RecipeName    `json:"recipe"`
+		Test    bool          `json:"test"`
+		Timeout time.Duration `json:"timeout"`
+
+		Errors map[string]error `json:"errors"`
+		JID    string           `json:"jid"`
+	}
 	CmdRun struct {
 		Command string        `json:"command"`
 		Args    []string      `json:"args"`

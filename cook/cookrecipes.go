@@ -23,11 +23,11 @@ func populateFuncMap(sproutID string) template.FuncMap {
 	return v
 }
 
-func Cook(sproutID string, recipeID types.RecipeName) (string, error) {
+func Cook(sproutID string, recipeID types.RecipeName, JID string) error {
 	basepath := getBasePath()
 	includes, err := collectAllIncludes(sproutID, basepath, recipeID)
 	if err != nil {
-		return "", err
+		return err
 	}
 	recipesteps := make(map[string]interface{})
 	for _, inc := range includes {
@@ -38,55 +38,55 @@ func Cook(sproutID string, recipeID types.RecipeName) (string, error) {
 		}
 		f, err := os.ReadFile(fp)
 		if err != nil {
-			return "", err
+			return err
 		}
 		b, err := renderRecipeTemplate(sproutID, fp, f)
 		if err != nil {
-			return "", err
+			return err
 		}
 		var recipe map[string]interface{}
 		err = yaml.Unmarshal(b, &recipe)
 		if err != nil {
-			return "", err
+			return err
 		}
 		m, err := stepsFromMap(recipe)
 		if err != nil {
-			return "", err
+			return err
 		}
 		// range over all keys under each recipe ID for matching ingredients
 		recipesteps, err = joinMaps(recipesteps, m)
 		if err != nil {
-			return "", err
+			return err
 		}
 	}
 	for id, step := range recipesteps {
 		switch s := step.(type) {
 		case map[string]interface{}:
 			if len(s) != 1 {
-				return "", errors.Join(ErrInvalidFormat, fmt.Errorf("recipe %s must have one directive, but has %d", id, len(s)))
+				return errors.Join(ErrInvalidFormat, fmt.Errorf("recipe %s must have one directive, but has %d", id, len(s)))
 			}
 
 		default:
-			return "", errors.Join(ErrInvalidFormat, fmt.Errorf("recipe %s must me a map[string]interface{} but found %T", id, step))
+			return errors.Join(ErrInvalidFormat, fmt.Errorf("recipe %s must me a map[string]interface{} but found %T", id, step))
 		}
 	}
 	steps, err := makeRecipeSteps(recipesteps)
 	if err != nil {
-		return "", err
+		return err
 	}
 	tree, err := validateRecipeTree(steps)
 	if err != nil {
-		return "", err
+		return err
 	}
 	validSteps := []types.Step{}
 	for _, step := range tree {
 		validSteps = append(validSteps, *step)
 	}
 	fmt.Println(validSteps)
-	jid := GenerateJobID()
+
 	// here, send out the tree to be executed to the sprout over NATS, and send back the JobID
 
-	return jid, nil
+	return nil
 }
 
 func GenerateJobID() string {
