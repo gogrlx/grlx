@@ -8,15 +8,15 @@ import (
 	"github.com/spf13/viper"
 	log "github.com/taigrr/log-socket/log"
 
-	//	. "github.com/gogrlx/grlx/types"
 	nats_server "github.com/nats-io/nats-server/v2/server"
 )
 
-var NatsServer *nats_server.Server
-var NatsOpts *nats_server.Options
-
-var cert tls.Certificate
-var certPool *x509.CertPool
+var (
+	NatsServer *nats_server.Server
+	NatsOpts   *nats_server.Options
+	cert       tls.Certificate
+	certPool   *x509.CertPool
+)
 
 func ConfigureNats() nats_server.Options {
 	var DefaultTestOptions nats_server.Options
@@ -32,13 +32,13 @@ func ConfigureNats() nats_server.Options {
 		DisableShortFirstPing: true,
 		Trace:                 true,
 		Debug:                 true,
-		//	TLSCert:               CertFile,
-		//		TLSKey:                KeyFile,
-		TLS:         true,
-		AllowNonTLS: false,
-		LogFile:     "nats.log",
-		AuthTimeout: 10,
-		//TLSCaCert:             RootCA,
+		TLS:                   true,
+		AllowNonTLS:           false,
+		LogFile:               "nats.log",
+		AuthTimeout:           10,
+		// TLSCert:               CertFile,
+		// TLSKey:                KeyFile,
+		// TLSCaCert:             RootCA,
 	}
 	certPool = x509.NewCertPool()
 	rootPEM, err := ioutil.ReadFile(RootCA)
@@ -67,14 +67,14 @@ func SetNATSServer(s *nats_server.Server) {
 	NatsServer = s
 }
 
-//TODO
+// TODO
 func ReloadNKeys() error {
-	//AuthorizedKeys
+	// AuthorizedKeys
 	authorizedKeys := GetNKeysByType("accepted")
-	farmerKey, err := GetPubNKey(true)
+	farmerKey, err := GetPubNKey(FarmerPubNKey)
 	log.Tracef("Loaded farmer's public key: %s", farmerKey)
 	if err != nil {
-		log.Fatalf("Could not load the Farmer's NKey, aborting!")
+		log.Fatalf("Could not load the Farmer's NKey, aborting")
 	}
 	farmerAccount := nats_server.Account{}
 	farmerAccount.Name = "Farmer"
@@ -87,7 +87,7 @@ func ReloadNKeys() error {
 	farmerUser := nats_server.NkeyUser{}
 	farmerUser.Permissions = &farmerPermissions
 	farmerUser.Nkey = farmerKey
-	//farmerUser.Account = &farmerAccount
+	// farmerUser.Account = &farmerAccount
 	nkeyUsers = append(nkeyUsers, &farmerUser)
 	for _, account := range authorizedKeys.Sprouts {
 		log.Tracef("Adding accepted key `%s` to NATS", account.SproutID)
@@ -95,7 +95,7 @@ func ReloadNKeys() error {
 		sproutAccount.Name = account.SproutID
 		key, err := GetNKey(account.SproutID)
 		if err != nil {
-			//TODO update panic to handle error
+			// TODO update panic to handle error
 			panic(err)
 		}
 		account_subscribe := nats_server.SubjectPermission{Allow: []string{"grlx.sprouts." + account.SproutID + ".>"}}
@@ -107,7 +107,7 @@ func ReloadNKeys() error {
 		sproutUser := nats_server.NkeyUser{}
 		sproutUser.Permissions = &sproutPermissions
 		sproutUser.Nkey = key
-		//farmerUser.Account = &farmerAccount
+		// farmerUser.Account = &farmerAccount
 		nkeyUsers = append(nkeyUsers, &sproutUser)
 	}
 	log.Tracef("Completed adding authorized clients.")
@@ -121,8 +121,8 @@ func ReloadNKeys() error {
 	}
 	optsCopy.TLSConfig = &config
 
-	//DefaultTestOptions.Accounts = append(DefaultTestOptions.Accounts, &farmerAccount)
-	//DefaultTestOptions.Accounts
+	// DefaultTestOptions.Accounts = append(DefaultTestOptions.Accounts, &farmerAccount)
+	// DefaultTestOptions.Accounts
 	if NatsServer != nil {
 		err = NatsServer.ReloadOptions(&optsCopy)
 		log.Error(err)

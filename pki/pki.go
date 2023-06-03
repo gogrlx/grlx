@@ -21,11 +21,18 @@ import (
 	. "github.com/gogrlx/grlx/types"
 )
 
+type PubKeyType int
+
+const (
+	SproutPubNKey PubKeyType = iota
+	FarmerPubNKey
+	CliPubNKey
+)
+
 var sproutMatcher *regexp.Regexp
 
 func init() {
 	sproutMatcher = regexp.MustCompile(`^[0-9a-z\.][-0-9_a-z\.]*$`)
-
 }
 
 func SetupPKIFarmer() {
@@ -34,11 +41,12 @@ func SetupPKIFarmer() {
 	if os.IsNotExist(err) {
 		err = os.MkdirAll(FarmerPKI, os.ModePerm)
 		if err != nil {
-			//TODO check if no permissions to create, log, and exit
+			// TODO check if no permissions to create, log, and exit
 			log.Panicf(err.Error())
 		}
 	}
-	for _, acceptanceState := range []string{"unaccepted",
+	for _, acceptanceState := range []string{
+		"unaccepted",
 		"denied",
 		"rejected",
 		"accepted",
@@ -71,10 +79,9 @@ func SetupPKISprout() {
 			log.Panicf(err.Error())
 		}
 	} else {
-		//TODO: work out what the other errors could be here
+		// TODO: work out what the other errors could be here
 		log.Panicf(err.Error())
 	}
-
 }
 
 // rules on sprout ids:
@@ -117,6 +124,7 @@ func IsValidSproutID(id string) bool {
 
 	return true
 }
+
 func AcceptNKey(id string) error {
 	defer ReloadNKeys()
 	fname, err := findNKey(id)
@@ -133,6 +141,7 @@ func AcceptNKey(id string) error {
 	}
 	return os.Rename(fname, newDest)
 }
+
 func DeleteNKey(id string) error {
 	defer ReloadNKeys()
 	fname, err := findNKey(id)
@@ -141,6 +150,7 @@ func DeleteNKey(id string) error {
 	}
 	return os.Remove(fname)
 }
+
 func DenyNKey(id string) error {
 	defer ReloadNKeys()
 	newDest := filepath.Join(viper.GetString("FarmerPKI") + "sprouts/denied/" + id)
@@ -152,8 +162,8 @@ func DenyNKey(id string) error {
 		return ErrAlreadyDenied
 	}
 	return os.Rename(fname, newDest)
-
 }
+
 func UnacceptNKey(id string, nkey string) error {
 	defer ReloadNKeys()
 	newDest := filepath.Join(viper.GetString("FarmerPKI") + "sprouts/unaccepted/" + id)
@@ -174,8 +184,8 @@ func UnacceptNKey(id string, nkey string) error {
 		return ErrAlreadyUnaccepted
 	}
 	return os.Rename(fname, newDest)
-
 }
+
 func GetNKeysByType(set string) KeySet {
 	keySet := KeySet{}
 	keySet.Sprouts = []KeyManager{}
@@ -201,6 +211,7 @@ func GetNKeysByType(set string) KeySet {
 	})
 	return keySet
 }
+
 func ListNKeysByType() KeysByType {
 	var allKeys KeysByType
 	allKeys.Accepted = GetNKeysByType("accepted")
@@ -209,6 +220,7 @@ func ListNKeysByType() KeysByType {
 	allKeys.Unaccepted = GetNKeysByType("unaccepted")
 	return allKeys
 }
+
 func RejectNKey(id string, nkey string) error {
 	defer ReloadNKeys()
 	newDest := filepath.Join(viper.GetString("FarmerPKI") + "sprouts/rejected/" + id)
@@ -230,6 +242,7 @@ func RejectNKey(id string, nkey string) error {
 	}
 	return os.Rename(fname, newDest)
 }
+
 func GetNKey(id string) (string, error) {
 	FarmerPKI := viper.GetString("FarmerPKI")
 	if !IsValidSproutID(id) {
@@ -257,6 +270,7 @@ func GetNKey(id string) (string, error) {
 	file, err := os.ReadFile(filename)
 	return string(file), err
 }
+
 func findNKey(id string) (string, error) {
 	FarmerPKI := viper.GetString("FarmerPKI")
 	if !IsValidSproutID(id) {
@@ -283,6 +297,7 @@ func findNKey(id string) (string, error) {
 	}
 	return filename, nil
 }
+
 func NKeyExists(id string, nkey string) (Registered bool, Matches bool) {
 	FarmerPKI := viper.GetString("FarmerPKI")
 	filename := ""
@@ -306,7 +321,7 @@ func NKeyExists(id string, nkey string) (Registered bool, Matches bool) {
 	}
 	file, err := os.ReadFile(filename)
 	if err != nil {
-		//TODO determine how we could get an error here!
+		// TODO determine how we could get an error here!
 		log.Fatalf("Error reading in %s: %v", filename, err)
 	}
 	content := string(file)
@@ -323,7 +338,7 @@ func fetchRootCA(filename string) error {
 		return err
 	}
 	file, err := os.Create(RootCA)
-	//TODO: sort out this panic
+	// TODO: sort out this panic
 	if err != nil {
 		return err
 	}
@@ -343,6 +358,7 @@ func fetchRootCA(filename string) error {
 	}
 	return err
 }
+
 func RootCACached(binary string) bool {
 	var RootCA string
 	switch binary {
@@ -357,6 +373,7 @@ func RootCACached(binary string) bool {
 	}
 	return false
 }
+
 func LoadRootCA(binary string) error {
 	var RootCA string
 	switch binary {
@@ -386,7 +403,7 @@ func LoadRootCA(binary string) error {
 	return nil
 }
 
-//TODO handle return body
+// TODO handle return body
 func PutNKey(id string) error {
 	nkey, err := GetPubNKey(false)
 	if err != nil {
@@ -409,10 +426,15 @@ func PutNKey(id string) error {
 	return nil
 }
 
-func GetPubNKey(isFarmer bool) (string, error) {
-	pubFile := viper.GetString("NKeySproutPubFile")
-	if isFarmer {
+func GetPubNKey(keyType PubKeyType) (string, error) {
+	var pubFile string
+	switch keyType {
+	case SproutPubNKey:
+		pubFile = viper.GetString("NKeySproutPubFile")
+	case FarmerPubNKey:
 		pubFile = viper.GetString("NKeyFarmerPubFile")
+	case CliPubNKey:
+		pubFile = viper.GetString("NKeyGrlxPubFile")
 	}
 	pubKeyBytes, err := os.ReadFile(pubFile)
 	if err != nil {
