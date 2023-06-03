@@ -8,11 +8,11 @@ require (
 	github.com/fatih/color v1.15.0
 	github.com/google/uuid v1.1.2
 	github.com/gorilla/mux v1.8.0
-	github.com/nats-io/nats-server/v2 v2.9.16
+	github.com/nats-io/nats-server/v2 v2.9.17
 	github.com/nats-io/nats.go v1.25.0
 	github.com/nats-io/nkeys v0.4.4
 	github.com/spf13/cobra v1.7.0
-	github.com/spf13/viper v1.15.0
+	github.com/spf13/viper v1.16.0
 	github.com/taigrr/log-socket v1.0.1
 	gopkg.in/yaml.v3 v3.0.1
 )
