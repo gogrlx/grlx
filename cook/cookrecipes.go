@@ -32,26 +32,26 @@ func Cook(sproutID string, recipeID types.RecipeName, JID string) error {
 	recipesteps := make(map[string]interface{})
 	for _, inc := range includes {
 		// load all imported files into recipefile list
-		fp, err := ResolveRecipeFilePath(basepath, inc)
-		if err != nil {
-			return "", errors.Join(ErrNoRecipe, err)
+		fp, fpErr := ResolveRecipeFilePath(basepath, inc)
+		if fpErr != nil {
+			return errors.Join(ErrNoRecipe, fpErr)
 		}
-		f, err := os.ReadFile(fp)
-		if err != nil {
-			return err
+		f, fpErr := os.ReadFile(fp)
+		if fpErr != nil {
+			return fpErr
 		}
-		b, err := renderRecipeTemplate(sproutID, fp, f)
-		if err != nil {
-			return err
+		b, renderErr := renderRecipeTemplate(sproutID, fp, f)
+		if renderErr != nil {
+			return renderErr
 		}
 		var recipe map[string]interface{}
-		err = yaml.Unmarshal(b, &recipe)
-		if err != nil {
-			return err
+		marshallErr := yaml.Unmarshal(b, &recipe)
+		if marshallErr != nil {
+			return marshallErr
 		}
-		m, err := stepsFromMap(recipe)
-		if err != nil {
-			return err
+		m, loadErr := stepsFromMap(recipe)
+		if loadErr != nil {
+			return loadErr
 		}
 		// range over all keys under each recipe ID for matching ingredients
 		recipesteps, err = joinMaps(recipesteps, m)

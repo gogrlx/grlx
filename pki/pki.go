@@ -65,6 +65,20 @@ func SetupPKIFarmer() {
 			log.Fatal(err)
 		}
 	}
+
+	stateFolder := filepath.Join(FarmerPKI + "admins/")
+	_, err = os.Stat(stateFolder)
+	if err == nil {
+		return
+	}
+	if os.IsNotExist(err) {
+		err = os.MkdirAll(stateFolder, os.ModePerm)
+		if err != nil {
+			log.Panicf(err.Error())
+		}
+	} else {
+		log.Fatal(err)
+	}
 }
 
 func SetupPKISprout() {
@@ -197,6 +211,9 @@ func GetNKeysByType(set string) KeySet {
 	case "denied":
 		fallthrough
 	case "rejected":
+		fallthrough
+	case "cli":
+		// continue execution below default case
 	default:
 		return keySet
 	}
@@ -368,10 +385,7 @@ func RootCACached(binary string) bool {
 		RootCA = viper.GetString("SproutRootCA")
 	}
 	_, err := os.Stat(RootCA)
-	if err == nil {
-		return true
-	}
-	return false
+	return err == nil
 }
 
 func LoadRootCA(binary string) error {
@@ -405,7 +419,7 @@ func LoadRootCA(binary string) error {
 
 // TODO handle return body
 func PutNKey(id string) error {
-	nkey, err := GetPubNKey(false)
+	nkey, err := GetPubNKey(SproutPubNKey)
 	if err != nil {
 		return err
 	}

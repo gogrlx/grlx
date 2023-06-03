@@ -87,6 +87,7 @@ func ReloadNKeys() error {
 	farmerUser := nats_server.NkeyUser{}
 	farmerUser.Permissions = &farmerPermissions
 	farmerUser.Nkey = farmerKey
+	farmerUser.Account = &farmerAccount
 	// farmerUser.Account = &farmerAccount
 	nkeyUsers = append(nkeyUsers, &farmerUser)
 	for _, account := range authorizedKeys.Sprouts {
@@ -98,15 +99,16 @@ func ReloadNKeys() error {
 			// TODO update panic to handle error
 			panic(err)
 		}
-		account_subscribe := nats_server.SubjectPermission{Allow: []string{"grlx.sprouts." + account.SproutID + ".>"}}
-		account_publish := nats_server.SubjectPermission{Allow: []string{"grlx.sprouts.announce." + account.SproutID, "_INBOX.>"}}
+		accountSubscribe := nats_server.SubjectPermission{Allow: []string{"grlx.sprouts." + account.SproutID + ".>"}}
+		accountPublish := nats_server.SubjectPermission{Allow: []string{"grlx.sprouts.announce." + account.SproutID, "_INBOX.>"}}
 		sproutAccount.Nkey = key
 		sproutPermissions := nats_server.Permissions{}
-		sproutPermissions.Publish = &account_publish
-		sproutPermissions.Subscribe = &account_subscribe
+		sproutPermissions.Publish = &accountPublish
+		sproutPermissions.Subscribe = &accountSubscribe
 		sproutUser := nats_server.NkeyUser{}
 		sproutUser.Permissions = &sproutPermissions
 		sproutUser.Nkey = key
+		sproutUser.Account = &sproutAccount
 		// farmerUser.Account = &farmerAccount
 		nkeyUsers = append(nkeyUsers, &sproutUser)
 	}
