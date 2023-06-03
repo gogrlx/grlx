@@ -20,7 +20,7 @@ var configLoaded sync.Once
 
 func LoadConfig(binary string) {
 	configLoaded.Do(func() {
-		//TODO if config doesn't exist, write out the default one
+		// TODO if config doesn't exist, write out the default one
 		viper.SetConfigType("yaml")
 		switch binary {
 		case "grlx":
@@ -40,8 +40,8 @@ func LoadConfig(binary string) {
 		}
 		err := viper.ReadInConfig()
 		if err != nil {
-			//TODO create default config
-			panic(fmt.Errorf("Fatal error config file: %w \n", err))
+			// TODO create default config
+			panic(fmt.Errorf("fatal error config file: %w", err))
 		}
 		viper.Set("ConfigRoot", "/etc/grlx/")
 		viper.SetDefault("FarmerInterface", "localhost")
@@ -81,7 +81,7 @@ func LoadConfig(binary string) {
 	})
 }
 
-//TODO actually validate the base path exists
+// TODO actually validate the base path exists
 func BasePathValid() bool {
 	return true
 }
