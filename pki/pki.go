@@ -66,13 +66,13 @@ func SetupPKIFarmer() {
 		}
 	}
 
-	stateFolder := filepath.Join(FarmerPKI + "admins/")
-	_, err = os.Stat(stateFolder)
+	cliPKIDir := filepath.Join(FarmerPKI + "admins/")
+	_, err = os.Stat(cliPKIDir)
 	if err == nil {
 		return
 	}
 	if os.IsNotExist(err) {
-		err = os.MkdirAll(stateFolder, os.ModePerm)
+		err = os.MkdirAll(cliPKIDir, os.ModePerm)
 		if err != nil {
 			log.Panicf(err.Error())
 		}
@@ -211,8 +211,6 @@ func GetNKeysByType(set string) KeySet {
 	case "denied":
 		fallthrough
 	case "rejected":
-		fallthrough
-	case "cli":
 		// continue execution below default case
 	default:
 		return keySet
@@ -320,13 +318,13 @@ func NKeyExists(id string, nkey string) (Registered bool, Matches bool) {
 	filename := ""
 	filepath.WalkDir(FarmerPKI+"sprouts/", func(path string, d fs.DirEntry, err error) error {
 		switch path {
-		case filepath.Join(FarmerPKI + "sprouts/unaccepted/" + id):
+		case filepath.Join(FarmerPKI, "sprouts", "unaccepted", id):
 			fallthrough
-		case filepath.Join(FarmerPKI + "sprouts/accepted/" + id):
+		case filepath.Join(FarmerPKI, "sprouts", "accepted", id):
 			fallthrough
-		case filepath.Join(FarmerPKI + "sprouts/denied/" + id):
+		case filepath.Join(FarmerPKI, "sprouts", "denied", id):
 			fallthrough
-		case filepath.Join(FarmerPKI + "sprouts/rejected/" + id):
+		case filepath.Join(FarmerPKI, "sprouts", "rejected", id):
 			filename = path
 			return ErrSproutIDFound
 		default:
