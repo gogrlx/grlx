@@ -4,15 +4,14 @@ Copyright © 2021 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"log"
 
-	"github.com/fatih/color"
-	gcook "github.com/gogrlx/grlx/pkg/grlx/ingredients/cook/api"
-	"github.com/gogrlx/grlx/types"
 	"github.com/spf13/cobra"
+
+	gcook "github.com/gogrlx/grlx/cook/api"
+	"github.com/gogrlx/grlx/types"
 )
 
 var async bool
@@ -35,7 +34,7 @@ var cmdCook = &cobra.Command{
 			return
 		}
 		var cmdCook types.CmdCook
-		results, err := gcook.NewCook(sproutTarget, cmdCook)
+		results, err := gcook.CookClient(sproutTarget, cmdCook)
 		if err != nil {
 			switch err {
 			case types.ErrSproutIDNotFound:
@@ -54,29 +53,29 @@ var cmdCook = &cobra.Command{
 		case "":
 			fallthrough
 		case "text":
-			for keyID, result := range results.Results {
-				jw, err := json.Marshal(result)
-				if err != nil {
-					color.Red("%s: \n returned an invalid message!\n", keyID)
-					continue
-				}
-				var value types.CmdRun
-				err = json.NewDecoder(bytes.NewBuffer(jw)).Decode(&value)
-				if err != nil {
-					color.Red("%s returned an invalid message!\n", keyID)
-					continue
-				}
-				if value.ErrCode != 0 {
-					color.Red("%s:\n", keyID)
-				} else {
-					fmt.Printf("%s:\n", keyID)
-				}
-				if noerr {
-					fmt.Printf("%s\n", value.Stdout)
-				} else {
-					fmt.Printf("%s%s\n", value.Stdout, value.Stderr)
-				}
-			}
+			//			for keyID, result := range results.Results {
+			//				jw, err := json.Marshal(result)
+			//				if err != nil {
+			//					color.Red("%s: \n returned an invalid message!\n", keyID)
+			//					continue
+			//				}
+			//				var value types.CmdRun
+			//				err = json.NewDecoder(bytes.NewBuffer(jw)).Decode(&value)
+			//				if err != nil {
+			//					color.Red("%s returned an invalid message!\n", keyID)
+			//					continue
+			//				}
+			//				if value.ErrCode != 0 {
+			//					color.Red("%s:\n", keyID)
+			//				} else {
+			//					fmt.Printf("%s:\n", keyID)
+			//				}
+			//				if noerr {
+			//					fmt.Printf("%s\n", value.Stdout)
+			//				} else {
+			//					fmt.Printf("%s%s\n", value.Stdout, value.Stderr)
+			//				}
+			//			}
 		}
 	},
 }
