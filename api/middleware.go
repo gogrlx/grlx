@@ -22,15 +22,20 @@ func Logger(inner http.Handler, name string) http.Handler {
 
 func Auth(inner http.Handler, name string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		authToken := r.Header.Get("Authorization")
-		if authToken == "" {
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
-		if auth.TokenHasAccess(authToken, r.Method) {
+		switch name {
+		case "GetCertificate", "PutNKey":
 			inner.ServeHTTP(w, r)
-		} else {
-			w.WriteHeader(http.StatusUnauthorized)
+		default:
+			authToken := r.Header.Get("Authorization")
+			if authToken == "" {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			if auth.TokenHasAccess(authToken, r.Method) {
+				inner.ServeHTTP(w, r)
+			} else {
+				w.WriteHeader(http.StatusUnauthorized)
+			}
 		}
 	})
 }
