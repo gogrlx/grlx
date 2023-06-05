@@ -2,7 +2,6 @@ package types
 
 import (
 	"context"
-	"net/http"
 	"time"
 )
 
@@ -70,13 +69,6 @@ type (
 		Changed   bool
 		Changes   any
 	}
-	Route struct {
-		Name        string
-		Method      string
-		Pattern     string
-		HandlerFunc http.HandlerFunc
-	}
-	Routes  []Route
 	Startup struct {
 		Version  Version `json:"version"`
 		SproutID string  `json:"id"`
