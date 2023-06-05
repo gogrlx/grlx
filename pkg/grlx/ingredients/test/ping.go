@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/gogrlx/grlx/auth"
 	"github.com/gogrlx/grlx/pkg/grlx/util"
 	. "github.com/gogrlx/grlx/types"
 	"github.com/spf13/viper"
@@ -31,6 +32,14 @@ func FPing(target string) (TargetedResults, error) {
 	if err != nil {
 		return tr, err
 	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	newToken, err := auth.NewToken()
+	if err != nil {
+		return tr, err
+	}
+	req.Header.Set("Authorization", newToken)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return tr, err

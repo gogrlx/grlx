@@ -18,6 +18,7 @@ var BuildInfo Version
 
 var configLoaded sync.Once
 
+// TODO use enum for binary as elsewhere
 func LoadConfig(binary string) {
 	configLoaded.Do(func() {
 		// TODO if config doesn't exist, write out the default one

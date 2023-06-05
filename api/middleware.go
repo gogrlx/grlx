@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/gogrlx/grlx/auth"
 	log "github.com/taigrr/log-socket/log"
 )
 
@@ -21,6 +22,15 @@ func Logger(inner http.Handler, name string) http.Handler {
 
 func Auth(inner http.Handler, name string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		inner.ServeHTTP(w, r)
+		authToken := r.Header.Get("Authorization")
+		if authToken == "" {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		if auth.TokenHasAccess(authToken, r.Method) {
+			inner.ServeHTTP(w, r)
+		} else {
+			w.WriteHeader(http.StatusUnauthorized)
+		}
 	})
 }

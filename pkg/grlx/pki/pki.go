@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/gogrlx/grlx/auth"
 	. "github.com/gogrlx/grlx/types"
 	"github.com/spf13/viper"
 )
@@ -17,6 +18,14 @@ func ListKeys() (KeysByType, error) {
 	if err != nil {
 		return keys, err
 	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	newToken, err := auth.NewToken()
+	if err != nil {
+		return keys, err
+	}
+	req.Header.Set("Authorization", newToken)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return keys, err
@@ -24,6 +33,7 @@ func ListKeys() (KeysByType, error) {
 	err = json.NewDecoder(resp.Body).Decode(&keys)
 	return keys, err
 }
+
 func UnacceptKey(id string) (bool, error) {
 	keyList, err := ListKeys()
 	FarmerURL := viper.GetString("FarmerURL")
@@ -31,9 +41,11 @@ func UnacceptKey(id string) (bool, error) {
 		return false, err
 	}
 	keyFound := false
-	for _, keySet := range []KeySet{keyList.Accepted,
+	for _, keySet := range []KeySet{
+		keyList.Accepted,
 		keyList.Denied,
-		keyList.Rejected} {
+		keyList.Rejected,
+	} {
 		for _, key := range keySet.Sprouts {
 			if keyFound {
 				break
@@ -57,10 +69,19 @@ func UnacceptKey(id string) (bool, error) {
 	url := FarmerURL + "/pki/unacceptnkey"
 	km := KeyManager{SproutID: id}
 	jw, _ := json.Marshal(km)
+
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(jw))
 	if err != nil {
 		return false, err
 	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	newToken, err := auth.NewToken()
+	if err != nil {
+		return false, err
+	}
+	req.Header.Set("Authorization", newToken)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return false, err
@@ -71,15 +92,18 @@ func UnacceptKey(id string) (bool, error) {
 	}
 	return success.Success, success.Error
 }
+
 func DenyKey(id string) (bool, error) {
 	keyList, err := ListKeys()
 	if err != nil {
 		return false, err
 	}
 	keyFound := false
-	for _, keySet := range []KeySet{keyList.Accepted,
+	for _, keySet := range []KeySet{
+		keyList.Accepted,
 		keyList.Unaccepted,
-		keyList.Rejected} {
+		keyList.Rejected,
+	} {
 		for _, key := range keySet.Sprouts {
 			if keyFound {
 				break
@@ -108,6 +132,14 @@ func DenyKey(id string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	newToken, err := auth.NewToken()
+	if err != nil {
+		return false, err
+	}
+	req.Header.Set("Authorization", newToken)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return false, err
@@ -118,15 +150,18 @@ func DenyKey(id string) (bool, error) {
 	}
 	return success.Success, success.Error
 }
+
 func RejectKey(id string) (bool, error) {
 	keyList, err := ListKeys()
 	if err != nil {
 		return false, err
 	}
 	keyFound := false
-	for _, keySet := range []KeySet{keyList.Accepted,
+	for _, keySet := range []KeySet{
+		keyList.Accepted,
 		keyList.Unaccepted,
-		keyList.Denied} {
+		keyList.Denied,
+	} {
 		for _, key := range keySet.Sprouts {
 			if keyFound {
 				break
@@ -155,6 +190,14 @@ func RejectKey(id string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	newToken, err := auth.NewToken()
+	if err != nil {
+		return false, err
+	}
+	req.Header.Set("Authorization", newToken)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return false, err
@@ -165,16 +208,19 @@ func RejectKey(id string) (bool, error) {
 	}
 	return success.Success, success.Error
 }
+
 func DeleteKey(id string) (bool, error) {
 	keyList, err := ListKeys()
 	if err != nil {
 		return false, err
 	}
 	keyFound := false
-	for _, keySet := range []KeySet{keyList.Accepted,
+	for _, keySet := range []KeySet{
+		keyList.Accepted,
 		keyList.Unaccepted,
 		keyList.Denied,
-		keyList.Rejected} {
+		keyList.Rejected,
+	} {
 		for _, key := range keySet.Sprouts {
 			if keyFound {
 				break
@@ -197,6 +243,14 @@ func DeleteKey(id string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	newToken, err := auth.NewToken()
+	if err != nil {
+		return false, err
+	}
+	req.Header.Set("Authorization", newToken)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return false, err
@@ -207,15 +261,18 @@ func DeleteKey(id string) (bool, error) {
 	}
 	return success.Success, success.Error
 }
+
 func AcceptKey(id string) (bool, error) {
 	keyList, err := ListKeys()
 	if err != nil {
 		return false, err
 	}
 	keyFound := false
-	for _, keySet := range []KeySet{keyList.Unaccepted,
+	for _, keySet := range []KeySet{
+		keyList.Unaccepted,
 		keyList.Denied,
-		keyList.Rejected} {
+		keyList.Rejected,
+	} {
 		for _, key := range keySet.Sprouts {
 			if keyFound {
 				break
@@ -243,6 +300,14 @@ func AcceptKey(id string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	newToken, err := auth.NewToken()
+	if err != nil {
+		return false, err
+	}
+	req.Header.Set("Authorization", newToken)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return false, err

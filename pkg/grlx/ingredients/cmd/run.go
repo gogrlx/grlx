@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/gogrlx/grlx/auth"
 	"github.com/gogrlx/grlx/pkg/grlx/util"
 	. "github.com/gogrlx/grlx/types"
 	"github.com/spf13/viper"
@@ -37,6 +38,13 @@ func FRun(target string, command CmdRun) (TargetedResults, error) {
 	if err != nil {
 		return tr, err
 	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	newToken, err := auth.NewToken()
+	if err != nil {
+		return tr, err
+	}
+	req.Header.Set("Authorization", newToken)
 	resp, err := client.Do(req)
 	if err != nil {
 		return tr, err
