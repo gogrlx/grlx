@@ -5,6 +5,22 @@ import (
 	"github.com/spf13/viper"
 )
 
+func GetPubkey() (string, error) {
+	seed, err := getPrivateSeed()
+	if err != nil {
+		return "", err
+	}
+	kp, err := nkeys.FromSeed([]byte(seed))
+	if err != nil {
+		return "", err
+	}
+	pubkey, err := kp.PublicKey()
+	if err != nil {
+		return "", err
+	}
+	return pubkey, nil
+}
+
 func getPrivateSeed() (string, error) {
 	seed := viper.GetString("privkey")
 	if seed == "" {
@@ -77,7 +93,7 @@ func createPrivateSeed() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	viper.Set("privkey", seed)
+	viper.Set("privkey", string(seed))
 	viper.WriteConfig()
 	return string(seed), nil
 }
