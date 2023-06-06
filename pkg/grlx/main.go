@@ -16,7 +16,6 @@ func init() {
 const DocumentationURL = "https://grlx.org"
 
 var (
-	BuildTime string
 	GitCommit string
 	Tag       string
 )
@@ -25,7 +24,6 @@ func main() {
 	defer log.Flush()
 	cmd.Execute(types.Version{
 		Arch:      runtime.GOOS,
-		BuildTime: BuildTime,
 		Compiler:  runtime.Version(),
 		GitCommit: GitCommit,
 		Tag:       Tag,

@@ -32,7 +32,6 @@ func init() {
 
 var (
 	s         *nats_server.Server
-	BuildTime string
 	GitCommit string
 	Tag       string
 )
@@ -81,7 +80,6 @@ func StartAPIServer() {
 	KeyFile := viper.GetString("KeyFile")
 	r := api.NewRouter(types.Version{
 		Arch:      runtime.GOOS,
-		BuildTime: BuildTime,
 		Compiler:  runtime.Version(),
 		GitCommit: GitCommit,
 		Tag:       Tag,
