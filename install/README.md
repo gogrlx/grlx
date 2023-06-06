@@ -33,10 +33,13 @@ officially supported yet.
 
 It is also possible to build the binaries yourself by cloning the repo
 and using the Makefile: this will build and drop the built binaries into `bin`.
+
 On linux:
     `make`
+
 On any other operating system:
     `GOOS=linux make`
+
 Note you will have to have a working go toolchain to build grlx.
 See the install instructions for your operating system [here](https://go.dev/doc/install).
 
@@ -58,7 +61,7 @@ chown farmer:farmer /etc/grlx
 systemctl daemon-reload
 systemctl enable --now grlx-farmer
 ```
-1. Configure at least one grlx CLI to set up the keys, then return to the farmer to restart the service.
+3. Configure at least one grlx CLI to set up the keys, then return to the farmer to restart the service.
 
 ## Command Line Installation
 
@@ -75,8 +78,8 @@ pubkeys:
     admin:
         - <YOUR PUBKEY HERE>
 ```
-1. On the farmer, run `systemctl restart grlx-farmer`
-1. On the system where you've set up the CLI, run `grlx version` to validate you
+7. On the farmer, run `systemctl restart grlx-farmer`
+8. On the system where you've set up the CLI, run `grlx version` to validate you
 have authenticated with the farmer correctly.
 
 ## Sprout Installation
@@ -91,7 +94,7 @@ To install the sprout:
 farmerinterface: <DOMAIN OR IP HERE>
 farmerurl: https://<DOMAIN OR IP HERE>:5405
 ```
-1. Run `systemctl daemon-reload && systemctl enable --now grlx-sprout`
+4. Run `systemctl daemon-reload && systemctl enable --now grlx-sprout`
 
 ## Required Ports
 All traffic flows in one direction: cli/sprout to farmer. The farmer needs two ports,
