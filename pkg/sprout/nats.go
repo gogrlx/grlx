@@ -25,7 +25,6 @@ func natsInit(nc *nats.EncodedConn) error {
 	log.Debugf("Announcing on Farmer...")
 	startup := types.Startup{}
 	startup.Version.Arch = runtime.GOARCH
-	startup.Version.BuildTime = BuildTime
 	startup.Version.Compiler = runtime.Version()
 	startup.Version.GitCommit = GitCommit
 	startup.Version.Tag = Tag

@@ -80,7 +80,6 @@ type (
 	}
 	Version struct {
 		Arch      string `json:"arch"`
-		BuildTime string `json:"build_time"`
 		Compiler  string `json:"compiler"`
 		GitCommit string `json:"git_commit"`
 		Tag       string `json:"tag"`

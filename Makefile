@@ -22,9 +22,8 @@ endif
 	export BITBUCKET_BUILD_NUMBER=$(TYPE);\
 	export CGO_ENABLED=0;\
 	export GitCommit=`git rev-parse HEAD | cut -c -7`;\
-	export BuildTime=`date -u +%Y%m%d.%H%M%S`;\
 	export GitTag=$$(TAG=`git tag --contains $$(git rev-parse HEAD) | sort -R | tr '\n' ' '`; if [ "$$(printf "$$TAG")" ]; then printf "$$TAG"; else printf "undefined"; fi);\
-	go build -ldflags "-X main.GitCommit=$$GitCommit -X main.Tag=$$GitTag -X main.BuildTime=$$BuildTime" -o "bin/sprout" ./pkg/sprout/*.go
+	go build -ldflags "-X main.GitCommit=$$GitCommit -X main.Tag=$$GitTag" -o "bin/sprout" ./pkg/sprout/*.go
 	@printf "\e[32mSuccess!\e[39m\n"
 
 
@@ -41,7 +40,7 @@ endif
 	export GitCommit=`git rev-parse HEAD | cut -c -7`;\
 	export BuildTime=`date -u +%Y%m%d.%H%M%S`;\
 	export GitTag=$$(TAG=`git tag --contains $$(git rev-parse HEAD) | sort -R | tr '\n' ' '`; if [ "$$(printf "$$TAG")" ]; then printf "$$TAG"; else printf "undefined"; fi);\
-	go build -ldflags "-X main.GitCommit=$$GitCommit -X main.Tag=$$GitTag -X main.BuildTime=$$BuildTime" -o "bin/grlx" ./pkg/grlx/main.go
+	go build -ldflags "-X main.GitCommit=$$GitCommit -X main.Tag=$$GitTag" -o "bin/grlx" ./pkg/grlx/main.go
 	@printf "\e[32mSuccess!\e[39m\n"
 
 
@@ -58,7 +57,7 @@ endif
 	export GitCommit=`git rev-parse HEAD | cut -c -7`;\
 	export BuildTime=`date -u +%Y%m%d.%H%M%S`;\
 	export GitTag=$$(TAG=`git tag --contains $$(git rev-parse HEAD) | sort -R | tr '\n' ' '`; if [ "$$(printf "$$TAG")" ]; then printf "$$TAG"; else printf "undefined"; fi);\
-	go build -ldflags "-X main.GitCommit=$$GitCommit -X main.Tag=$$GitTag -X main.BuildTime=$$BuildTime" -o "bin/farmer" ./pkg/farmer/main.go
+	go build -ldflags "-X main.GitCommit=$$GitCommit -X main.Tag=$$GitTag" -o "bin/farmer" ./pkg/farmer/main.go
 	@printf "\e[32mSuccess!\e[39m\n"
 
 

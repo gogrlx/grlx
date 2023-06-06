@@ -21,7 +21,9 @@ var versionCmd = &cobra.Command{
 		cv := types.CombinedVersion{
 			CLI:    grlxVersion,
 			Farmer: serverVersion,
-			Error:  err.Error(),
+		}
+		if err != nil {
+			cv.Error = err.Error()
 		}
 		switch outputMode {
 		case "json":
@@ -31,13 +33,13 @@ var versionCmd = &cobra.Command{
 		case "":
 			fallthrough
 		case "text":
-			formatter := "%s Version:\n\tTag: %s\n\tCommit: %s\n\tBuild Time: %s\n\tArch: %s\n\tCompiler: %s\n"
-			fmt.Printf(formatter, "CLI", grlxVersion.Tag, grlxVersion.GitCommit, grlxVersion.BuildTime, grlxVersion.Arch, grlxVersion.Compiler)
+			formatter := "%s Version:\n\tTag: %s\n\tCommit: %s\n\tArch: %s\n\tCompiler: %s\n"
+			fmt.Printf(formatter, "CLI", grlxVersion.Tag, grlxVersion.GitCommit, grlxVersion.Arch, grlxVersion.Compiler)
 			if err != nil {
 				log.Println("Error fetching Farmer version: " + err.Error())
 				return
 			}
-			fmt.Printf(formatter, "Farmer", serverVersion.Tag, serverVersion.GitCommit, serverVersion.BuildTime, serverVersion.Arch)
+			fmt.Printf(formatter, "Farmer", serverVersion.Tag, serverVersion.GitCommit, serverVersion.Arch, serverVersion.Compiler)
 		case "yaml":
 			// TODO implement YAML
 		}
