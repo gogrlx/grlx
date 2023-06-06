@@ -5,9 +5,10 @@ import (
 	"crypto/x509"
 	"io/ioutil"
 
-	"github.com/gogrlx/grlx/auth"
 	"github.com/spf13/viper"
 	log "github.com/taigrr/log-socket/log"
+
+	"github.com/gogrlx/grlx/auth"
 
 	nats_server "github.com/nats-io/nats-server/v2/server"
 )
@@ -79,10 +80,10 @@ func ReloadNKeys() error {
 	log.Tracef("Loaded farmer's public key: %s", farmerKey)
 	grlxKeys, err := auth.GetPubkeysByRole("admin")
 	if err != nil {
-		log.Fatalf("Could not load the grlx cli's NKey(s), aborting")
+		log.Errorf("Could not load the grlx cli's NKey(s), please edit the config")
+	} else {
+		log.Tracef("Loaded grlx cli's public key(s): %v", grlxKeys)
 	}
-	log.Tracef("Loaded grlx cli's public key(s): %v", grlxKeys)
-
 	nkeyUsers := []*nats_server.NkeyUser{}
 	accounts := []*nats_server.Account{}
 	allowAll := nats_server.SubjectPermission{Allow: []string{"grlx.>", "_INBOX.>"}}

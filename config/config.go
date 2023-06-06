@@ -8,8 +8,9 @@ import (
 	"sync"
 	"time"
 
-	. "github.com/gogrlx/grlx/types"
 	"github.com/spf13/viper"
+
+	. "github.com/gogrlx/grlx/types"
 )
 
 const GrlxExt = "grlx"
@@ -40,8 +41,40 @@ func LoadConfig(binary string) {
 			viper.AddConfigPath("/etc/grlx/")
 		}
 		err := viper.ReadInConfig()
-		if err != nil {
+
+		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+			log.Println("Config file not found, will create default config")
+			switch binary {
+			case "grlx":
+				dirname, err := os.UserHomeDir()
+				if err != nil {
+					log.Fatal(err)
+				}
+				cfgPath := filepath.Join(dirname, ".config/grlx/")
+				os.MkdirAll(cfgPath, 0o755)
+				cfgFile := filepath.Join(cfgPath, "grlx")
+				_, err = os.Create(cfgFile)
+				if err != nil {
+					log.Fatal(err)
+				}
+			case "farmer":
+				os.MkdirAll("/etc/grlx", 0o755)
+				cfgFile := filepath.Join("/etc/grlx", "farmer")
+				_, err = os.Create(cfgFile)
+				if err != nil {
+					log.Fatal(err)
+				}
+			case "sprout":
+				os.MkdirAll("/etc/grlx", 0o755)
+				cfgFile := filepath.Join("/etc/grlx", "sprout")
+				_, err = os.Create(cfgFile)
+				if err != nil {
+					log.Fatal(err)
+				}
+			}
+		} else if err != nil {
 			// TODO create default config
+			log.Printf("%T\n", err)
 			panic(fmt.Errorf("fatal error config file: %w", err))
 		}
 		viper.Set("ConfigRoot", "/etc/grlx/")

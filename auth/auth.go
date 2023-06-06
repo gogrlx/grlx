@@ -11,6 +11,7 @@ var (
 	ErrInvalidPubkey = errors.New("invalid pubkey format in config")
 	ErrMissingAdmin  = errors.New("no admin pubkey found in config")
 	ErrNoPrivkey     = errors.New("no private key found in config")
+	ErrPrivkeyExists = errors.New("private key already exists in config")
 	ErrNoPubkeys     = errors.New("no pubkeys found in config")
 )
 
@@ -31,7 +32,11 @@ func GetPubkey() (string, error) {
 }
 
 func CreatePrivkey() error {
-	_, err := createPrivateSeed()
+	_, err := getPrivateSeed()
+	if !errors.Is(err, ErrNoPrivkey) {
+		return ErrPrivkeyExists
+	}
+	_, err = createPrivateSeed()
 	return err
 }
 
