@@ -24,37 +24,37 @@ services:
       - ./testing/sprout_a:/etc/grlx/sprout
       - .:/app
       - go-modules:/go/pkg/mod
-    depends_on: 
+    depends_on:
       - farmer
   sprout_b:
     volumes:
       - ./testing/sprout_b:/etc/grlx/sprout
     image: grlx/sprout:latest
-    depends_on: 
+    depends_on:
       - farmer
   sprout_c:
     volumes:
       - ./testing/sprout_c:/etc/grlx/sprout
     image: grlx/sprout:latest
-    depends_on: 
+    depends_on:
       - farmer
   sprout_d:
     volumes:
       - ./testing/sprout_d:/etc/grlx/sprout
     image: grlx/sprout:latest
-    depends_on: 
+    depends_on:
       - farmer
   sprout_e:
     volumes:
       - ./testing/sprout_e:/etc/grlx/sprout
     image: grlx/sprout:latest
-    depends_on: 
+    depends_on:
       - farmer
   sprout_f:
     volumes:
       - ./testing/sprout_f:/etc/grlx/sprout
     image: grlx/sprout:latest
-    depends_on: 
+    depends_on:
       - farmer
 volumes:
   go-modules:
