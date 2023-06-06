@@ -152,7 +152,9 @@ func ReloadNKeys() error {
 	// DefaultTestOptions.Accounts
 	if NatsServer != nil {
 		err = NatsServer.ReloadOptions(&optsCopy)
-		log.Error(err)
+		if err != nil {
+			log.Error(err)
+		}
 	}
 	return err
 }
