@@ -31,6 +31,8 @@ func (u UserAuth) Sign(kp nkeys.KeyPair) (UserAuth, error) {
 
 // IsValid checks if the token is valid. It returns the public key
 // if valid, or an error if not.
+// Note this checks the signature using the public key in the token,
+// which is not necessarily a public key that is trusted by the server.
 func (u UserAuth) IsValid() (string, error) {
 	exp, err := time.Parse(time.RFC3339, u.Expires)
 	if err != nil {
