@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/fs"
 	"io/ioutil"
@@ -64,20 +65,6 @@ func SetupPKIFarmer() {
 		} else {
 			log.Fatal(err)
 		}
-	}
-
-	cliPKIDir := filepath.Join(FarmerPKI + "admins/")
-	_, err = os.Stat(cliPKIDir)
-	if err == nil {
-		return
-	}
-	if os.IsNotExist(err) {
-		err = os.MkdirAll(cliPKIDir, os.ModePerm)
-		if err != nil {
-			log.Panicf(err.Error())
-		}
-	} else {
-		log.Fatal(err)
 	}
 }
 
@@ -215,7 +202,7 @@ func GetNKeysByType(set string) KeySet {
 	default:
 		return keySet
 	}
-	setPath := filepath.Join(viper.GetString("FarmerPKI") + "sprouts/" + set + "/")
+	setPath := filepath.Join(viper.GetString("FarmerPKI"), "sprouts", set)
 	filepath.WalkDir(setPath, func(path string, d fs.DirEntry, err error) error {
 		_, id := filepath.Split(path)
 		if setPath == path {
@@ -238,7 +225,7 @@ func ListNKeysByType() KeysByType {
 
 func RejectNKey(id string, nkey string) error {
 	defer ReloadNKeys()
-	newDest := filepath.Join(viper.GetString("FarmerPKI") + "sprouts/rejected/" + id)
+	newDest := filepath.Join(viper.GetString("FarmerPKI"), "sprouts", "rejected", id)
 	fname, err := findNKey(id)
 	if nkey != "" && err == ErrSproutIDNotFound {
 		file, err := os.Create(newDest)
@@ -266,13 +253,13 @@ func GetNKey(id string) (string, error) {
 	filename := ""
 	filepath.WalkDir(FarmerPKI+"sprouts", func(path string, d fs.DirEntry, err error) error {
 		switch path {
-		case filepath.Join(FarmerPKI + "sprouts/unaccepted/" + id):
+		case filepath.Join(FarmerPKI, "sprouts", "unaccepted", id):
 			fallthrough
-		case filepath.Join(FarmerPKI + "sprouts/accepted/" + id):
+		case filepath.Join(FarmerPKI, "sprouts", "accepted", id):
 			fallthrough
-		case filepath.Join(FarmerPKI + "sprouts/denied/" + id):
+		case filepath.Join(FarmerPKI, "sprouts", "denied", id):
 			fallthrough
-		case filepath.Join(FarmerPKI + "sprouts/rejected/" + id):
+		case filepath.Join(FarmerPKI, "sprouts", "rejected", id):
 			filename = path
 			return ErrSproutIDFound
 		default:
@@ -294,13 +281,13 @@ func findNKey(id string) (string, error) {
 	filename := ""
 	filepath.WalkDir(FarmerPKI+"sprouts", func(path string, d fs.DirEntry, err error) error {
 		switch path {
-		case filepath.Join(FarmerPKI + "sprouts/unaccepted/" + id):
+		case filepath.Join(FarmerPKI, "sprouts", "unaccepted", id):
 			fallthrough
-		case filepath.Join(FarmerPKI + "sprouts/accepted/" + id):
+		case filepath.Join(FarmerPKI, "sprouts", "accepted", id):
 			fallthrough
-		case filepath.Join(FarmerPKI + "sprouts/denied/" + id):
+		case filepath.Join(FarmerPKI, "sprouts", "denied", id):
 			fallthrough
-		case filepath.Join(FarmerPKI + "sprouts/rejected/" + id):
+		case filepath.Join(FarmerPKI, "sprouts", "rejected", id):
 			filename = path
 			return ErrSproutIDFound
 		default:
@@ -316,7 +303,7 @@ func findNKey(id string) (string, error) {
 func NKeyExists(id string, nkey string) (Registered bool, Matches bool) {
 	FarmerPKI := viper.GetString("FarmerPKI")
 	filename := ""
-	filepath.WalkDir(FarmerPKI+"sprouts/", func(path string, d fs.DirEntry, err error) error {
+	filepath.WalkDir(filepath.Join(FarmerPKI, "sprouts"), func(path string, d fs.DirEntry, err error) error {
 		switch path {
 		case filepath.Join(FarmerPKI, "sprouts", "unaccepted", id):
 			fallthrough
@@ -362,7 +349,7 @@ func fetchRootCA(filename string) error {
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
 	client := &http.Client{Transport: tr, Timeout: time.Second * 10}
-	r, err := client.Get("https://" + viper.GetString("FarmerInterface") + ":" + viper.GetString("FarmerAPIPort") + "/auth/cert/")
+	r, err := client.Get(fmt.Sprintf("https://%s:%s/auth/cert/", viper.GetString("FarmerInterface"), viper.GetString("FarmerAPIPort")))
 	if err != nil {
 		os.Remove(RootCA)
 		return err

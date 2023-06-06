@@ -76,8 +76,7 @@ func ReloadNKeys() error {
 	if err != nil {
 		log.Fatalf("Could not load the Farmer's NKey, aborting")
 	}
-	farmerAccount := nats_server.Account{}
-	farmerAccount.Name = "Farmer"
+	farmerAccount := nats_server.NewAccount("Farmer")
 	farmerAccount.Nkey = farmerKey
 	nkeyUsers := []*nats_server.NkeyUser{}
 	allowAll := nats_server.SubjectPermission{Allow: []string{"grlx.>", "_INBOX.>"}}
@@ -87,13 +86,12 @@ func ReloadNKeys() error {
 	farmerUser := nats_server.NkeyUser{}
 	farmerUser.Permissions = &farmerPermissions
 	farmerUser.Nkey = farmerKey
-	farmerUser.Account = &farmerAccount
-	// farmerUser.Account = &farmerAccount
+	farmerUser.Account = farmerAccount
 	nkeyUsers = append(nkeyUsers, &farmerUser)
 	for _, account := range authorizedKeys.Sprouts {
 		log.Tracef("Adding accepted key `%s` to NATS", account.SproutID)
-		sproutAccount := nats_server.Account{}
-		sproutAccount.Name = account.SproutID
+		sproutAccount := nats_server.NewAccount(account.SproutID)
+		// sproutAccount.Name = account.SproutID
 		key, err := GetNKey(account.SproutID)
 		if err != nil {
 			// TODO update panic to handle error
@@ -108,7 +106,7 @@ func ReloadNKeys() error {
 		sproutUser := nats_server.NkeyUser{}
 		sproutUser.Permissions = &sproutPermissions
 		sproutUser.Nkey = key
-		sproutUser.Account = &sproutAccount
+		sproutUser.Account = sproutAccount
 		// farmerUser.Account = &farmerAccount
 		nkeyUsers = append(nkeyUsers, &sproutUser)
 	}
