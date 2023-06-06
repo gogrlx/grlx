@@ -79,6 +79,7 @@ func ReloadNKeys() error {
 	farmerAccount := nats_server.NewAccount("Farmer")
 	farmerAccount.Nkey = farmerKey
 	nkeyUsers := []*nats_server.NkeyUser{}
+	accounts := []*nats_server.Account{}
 	allowAll := nats_server.SubjectPermission{Allow: []string{"grlx.>", "_INBOX.>"}}
 	farmerPermissions := nats_server.Permissions{}
 	farmerPermissions.Publish = &allowAll
@@ -87,10 +88,12 @@ func ReloadNKeys() error {
 	farmerUser.Permissions = &farmerPermissions
 	farmerUser.Nkey = farmerKey
 	farmerUser.Account = farmerAccount
+	accounts = append(accounts, farmerAccount)
 	nkeyUsers = append(nkeyUsers, &farmerUser)
 	for _, account := range authorizedKeys.Sprouts {
 		log.Tracef("Adding accepted key `%s` to NATS", account.SproutID)
 		sproutAccount := nats_server.NewAccount(account.SproutID)
+		accounts = append(accounts, sproutAccount)
 		// sproutAccount.Name = account.SproutID
 		key, err := GetNKey(account.SproutID)
 		if err != nil {
@@ -113,6 +116,7 @@ func ReloadNKeys() error {
 	log.Tracef("Completed adding authorized clients.")
 	optsCopy := ConfigureNats()
 	optsCopy.Nkeys = nkeyUsers
+	optsCopy.Accounts = accounts
 	config := tls.Config{
 		ServerName:   "localhost",
 		RootCAs:      certPool,
