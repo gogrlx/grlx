@@ -28,11 +28,8 @@ func init() {
 }
 
 var (
-	Authors   string
-	BuildNo   string
 	BuildTime string
 	GitCommit string
-	Package   string
 	Tag       string
 	sproutID  string
 )

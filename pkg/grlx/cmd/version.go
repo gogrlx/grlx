@@ -31,8 +31,8 @@ var versionCmd = &cobra.Command{
 		case "":
 			fallthrough
 		case "text":
-			formatter := "%s Version:\n\tTag: %s\n\tCommit: %s\n\tBuild Time: %s\n\tArch: %s\n"
-			fmt.Printf(formatter, "CLI", grlxVersion.Tag, grlxVersion.GitCommit, grlxVersion.BuildTime, grlxVersion.Arch)
+			formatter := "%s Version:\n\tTag: %s\n\tCommit: %s\n\tBuild Time: %s\n\tArch: %s\n\tCompiler: %s\n"
+			fmt.Printf(formatter, "CLI", grlxVersion.Tag, grlxVersion.GitCommit, grlxVersion.BuildTime, grlxVersion.Arch, grlxVersion.Compiler)
 			if err != nil {
 				log.Println("Error fetching Farmer version: " + err.Error())
 				return

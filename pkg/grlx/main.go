@@ -1,6 +1,8 @@
 package main
 
 import (
+	"runtime"
+
 	log "github.com/taigrr/log-socket/log"
 
 	"github.com/gogrlx/grlx/pkg/grlx/cmd"
@@ -14,7 +16,6 @@ func init() {
 const DocumentationURL = "https://grlx.org"
 
 var (
-	Arch      string
 	BuildTime string
 	GitCommit string
 	Tag       string
@@ -23,8 +24,9 @@ var (
 func main() {
 	defer log.Flush()
 	cmd.Execute(types.Version{
-		Arch:      Arch,
+		Arch:      runtime.GOOS,
 		BuildTime: BuildTime,
+		Compiler:  runtime.Version(),
 		GitCommit: GitCommit,
 		Tag:       Tag,
 	})

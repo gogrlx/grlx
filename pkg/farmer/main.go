@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"runtime"
 	"time"
 
 	"github.com/spf13/viper"
@@ -18,6 +19,7 @@ import (
 	"github.com/gogrlx/grlx/ingredients/cmd"
 	"github.com/gogrlx/grlx/ingredients/test"
 	"github.com/gogrlx/grlx/pki"
+	"github.com/gogrlx/grlx/types"
 
 	nats_server "github.com/nats-io/nats-server/v2/server"
 	nats "github.com/nats-io/nats.go"
@@ -28,7 +30,12 @@ func init() {
 	log.SetLogLevel(log.LDebug)
 }
 
-var s *nats_server.Server
+var (
+	s         *nats_server.Server
+	BuildTime string
+	GitCommit string
+	Tag       string
+)
 
 func main() {
 	config.LoadConfig("farmer")
@@ -72,7 +79,13 @@ func StartAPIServer() {
 	FarmerInterface := viper.GetString("FarmerInterface")
 	FarmerAPIPort := viper.GetString("FarmerAPIPort")
 	KeyFile := viper.GetString("KeyFile")
-	r := api.NewRouter(config.BuildInfo, CertFile)
+	r := api.NewRouter(types.Version{
+		Arch:      runtime.GOOS,
+		BuildTime: BuildTime,
+		Compiler:  runtime.Version(),
+		GitCommit: GitCommit,
+		Tag:       Tag,
+	}, CertFile)
 	srv := http.Server{
 		// TODO: add all below settings to configuration
 		Addr:         FarmerInterface + ":" + FarmerAPIPort,
