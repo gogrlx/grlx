@@ -7,6 +7,13 @@ import (
 	"github.com/spf13/viper"
 )
 
+var (
+	ErrInvalidPubkey = errors.New("invalid pubkey format in config")
+	ErrMissingAdmin  = errors.New("no admin pubkey found in config")
+	ErrNoPrivkey     = errors.New("no private key found in config")
+	ErrNoPubkeys     = errors.New("no pubkeys found in config")
+)
+
 func GetPubkey() (string, error) {
 	seed, err := getPrivateSeed()
 	if err != nil {
@@ -23,10 +30,15 @@ func GetPubkey() (string, error) {
 	return pubkey, nil
 }
 
+func CreatePrivkey() error {
+	_, err := createPrivateSeed()
+	return err
+}
+
 func getPrivateSeed() (string, error) {
 	seed := viper.GetString("privkey")
 	if seed == "" {
-		return createPrivateSeed()
+		return "", ErrNoPrivkey
 	}
 	return seed, nil
 }
@@ -54,12 +66,6 @@ func TokenHasAccess(token string, method string) bool {
 	}
 	return pubkeyHasAccess(pk, method)
 }
-
-var (
-	ErrNoPubkeys     = errors.New("no pubkeys found in config")
-	ErrInvalidPubkey = errors.New("invalid pubkey format in config")
-	ErrMissingAdmin  = errors.New("no admin pubkey found in config")
-)
 
 func GetPubkeysByRole(role string) ([]string, error) {
 	authKeySet := viper.GetStringMap("pubkeys")
