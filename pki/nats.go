@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"io/ioutil"
 
+	"github.com/gogrlx/grlx/auth"
 	"github.com/spf13/viper"
 	log "github.com/taigrr/log-socket/log"
 
@@ -72,15 +73,22 @@ func ReloadNKeys() error {
 	// AuthorizedKeys
 	authorizedKeys := GetNKeysByType("accepted")
 	farmerKey, err := GetPubNKey(FarmerPubNKey)
-	log.Tracef("Loaded farmer's public key: %s", farmerKey)
 	if err != nil {
 		log.Fatalf("Could not load the Farmer's NKey, aborting")
 	}
-	farmerAccount := nats_server.NewAccount("Farmer")
-	farmerAccount.Nkey = farmerKey
+	log.Tracef("Loaded farmer's public key: %s", farmerKey)
+	grlxKeys, err := auth.GetPubkeysByRole("admin")
+	if err != nil {
+		log.Fatalf("Could not load the grlx cli's NKey(s), aborting")
+	}
+	log.Tracef("Loaded grlx cli's public key(s): %v", grlxKeys)
+
 	nkeyUsers := []*nats_server.NkeyUser{}
 	accounts := []*nats_server.Account{}
 	allowAll := nats_server.SubjectPermission{Allow: []string{"grlx.>", "_INBOX.>"}}
+
+	farmerAccount := nats_server.NewAccount("Farmer")
+	// farmerAccount.Nkey = farmerKey
 	farmerPermissions := nats_server.Permissions{}
 	farmerPermissions.Publish = &allowAll
 	farmerPermissions.Subscribe = &allowAll
@@ -88,8 +96,22 @@ func ReloadNKeys() error {
 	farmerUser.Permissions = &farmerPermissions
 	farmerUser.Nkey = farmerKey
 	farmerUser.Account = farmerAccount
-	accounts = append(accounts, farmerAccount)
+
+	grlxAdminAccount := nats_server.NewAccount("grlxAdmin")
+	grlxPermissions := nats_server.Permissions{}
+	grlxPermissions.Publish = &allowAll
+	grlxPermissions.Subscribe = &allowAll
+	for _, key := range grlxKeys {
+		grlxUser := nats_server.NkeyUser{}
+		grlxUser.Permissions = &grlxPermissions
+		grlxUser.Nkey = key
+		grlxUser.Account = grlxAdminAccount
+		nkeyUsers = append(nkeyUsers, &grlxUser)
+	}
+
 	nkeyUsers = append(nkeyUsers, &farmerUser)
+	accounts = append(accounts, farmerAccount)
+	accounts = append(accounts, grlxAdminAccount)
 	for _, account := range authorizedKeys.Sprouts {
 		log.Tracef("Adding accepted key `%s` to NATS", account.SproutID)
 		sproutAccount := nats_server.NewAccount(account.SproutID)
@@ -102,7 +124,7 @@ func ReloadNKeys() error {
 		}
 		accountSubscribe := nats_server.SubjectPermission{Allow: []string{"grlx.sprouts." + account.SproutID + ".>"}}
 		accountPublish := nats_server.SubjectPermission{Allow: []string{"grlx.sprouts.announce." + account.SproutID, "_INBOX.>"}}
-		sproutAccount.Nkey = key
+		//	sproutAccount.Nkey = key
 		sproutPermissions := nats_server.Permissions{}
 		sproutPermissions.Publish = &accountPublish
 		sproutPermissions.Subscribe = &accountSubscribe

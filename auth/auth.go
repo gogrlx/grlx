@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"errors"
+
 	"github.com/nats-io/nkeys"
 	"github.com/spf13/viper"
 )
@@ -53,35 +55,49 @@ func TokenHasAccess(token string, method string) bool {
 	return pubkeyHasAccess(pk, method)
 }
 
-// TODO allow for method-based access control
-func pubkeyHasAccess(pubkey string, method string) bool {
+var (
+	ErrNoPubkeys     = errors.New("no pubkeys found in config")
+	ErrInvalidPubkey = errors.New("invalid pubkey format in config")
+	ErrMissingAdmin  = errors.New("no admin pubkey found in config")
+)
+
+func GetPubkeysByRole(role string) ([]string, error) {
 	authKeySet := viper.GetStringMap("pubkeys")
 	if authKeySet == nil {
-		return false
+		return []string{}, ErrNoPubkeys
 	}
-	i, ok := authKeySet["admin"]
+	i, ok := authKeySet[role]
 	if !ok {
-		return false
+		return []string{}, ErrMissingAdmin
 	}
-	adminKey, ok := i.(string)
-	if !ok {
+	keys := []string{}
+	if adminKey, ok := i.(string); !ok {
 		if adminKeyList, ok := i.([]interface{}); ok {
 			for _, k := range adminKeyList {
 				if str, ok := k.(string); ok {
-					if str == pubkey {
-						return true
-					}
+					keys = append(keys, str)
 				} else {
-					return false
+					return []string{}, ErrInvalidPubkey
 				}
 			}
-			return false
+			return keys, nil
 		} else {
-			return false
+			return []string{}, ErrInvalidPubkey
 		}
 	} else {
-		return adminKey == pubkey
+		return []string{adminKey}, nil
 	}
+}
+
+// TODO allow for method-based access control
+func pubkeyHasAccess(pubkey string, method string) bool {
+	keys, _ := GetPubkeysByRole("admin")
+	for _, k := range keys {
+		if k == pubkey {
+			return true
+		}
+	}
+	return false
 }
 
 func createPrivateSeed() (string, error) {
