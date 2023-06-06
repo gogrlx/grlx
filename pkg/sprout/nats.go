@@ -23,11 +23,9 @@ func init() {
 func natsInit(nc *nats.EncodedConn) error {
 	log.Debugf("Announcing on Farmer...")
 	startup := types.Startup{}
-	startup.Version.Authors = Authors
 	startup.Version.BuildNo = BuildNo
 	startup.Version.BuildTime = BuildTime
 	startup.Version.GitCommit = GitCommit
-	startup.Version.Package_ = Package
 	startup.Version.Tag = Tag
 	startupEvent := "grlx.sprouts.announce." + sproutID
 	b, _ := json.Marshal(startup)

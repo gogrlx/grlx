@@ -5,12 +5,13 @@ import (
 
 	"github.com/gogrlx/grlx/api/handlers"
 
-	cmd "github.com/gogrlx/grlx/api/handlers/ingredients/cmd"
-	test "github.com/gogrlx/grlx/api/handlers/ingredients/test"
-	"github.com/gogrlx/grlx/types"
 	"github.com/gorilla/mux"
 	"github.com/taigrr/log-socket/browser"
 	"github.com/taigrr/log-socket/ws"
+
+	cmd "github.com/gogrlx/grlx/api/handlers/ingredients/cmd"
+	test "github.com/gogrlx/grlx/api/handlers/ingredients/test"
+	"github.com/gogrlx/grlx/types"
 )
 
 type Route struct {
@@ -26,6 +27,7 @@ var (
 )
 
 func NewRouter(v types.Version, certificate string) *mux.Router {
+	handlers.SetBuildVersion(v)
 	BuildInfoStruct = v
 	certFile = certificate
 	router := mux.NewRouter().StrictSlash(true)
@@ -46,6 +48,13 @@ func NewRouter(v types.Version, certificate string) *mux.Router {
 
 // TODO start using subrouters
 var routes = []Route{
+	{
+		Name:        "GetVersion",
+		Method:      http.MethodGet,
+		Pattern:     "/version",
+		HandlerFunc: handlers.GetVersion,
+	},
+
 	{
 		Name:        "GetLogSocket",
 		Method:      http.MethodGet,

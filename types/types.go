@@ -74,11 +74,9 @@ type (
 		SproutID string  `json:"id"`
 	}
 	Version struct {
-		Authors   string `json:"authors"`
 		BuildNo   string `json:"build_no"`
 		BuildTime string `json:"build_time"`
 		GitCommit string `json:"git_commit"`
-		Package_  string `json:"package"`
 		Tag       string `json:"tag"`
 	}
 
