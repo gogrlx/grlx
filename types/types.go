@@ -73,7 +73,13 @@ type (
 		Version  Version `json:"version"`
 		SproutID string  `json:"id"`
 	}
+	CombinedVersion struct {
+		CLI    Version `json:"cli"`
+		Farmer Version `json:"farmer"`
+		Error  string  `json:"error"`
+	}
 	Version struct {
+		Arch      string `json:"arch"`
 		BuildNo   string `json:"build_no"`
 		BuildTime string `json:"build_time"`
 		GitCommit string `json:"git_commit"`

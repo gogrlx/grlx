@@ -15,7 +15,6 @@ import (
 )
 
 type Route struct {
-	Name        string
 	Method      string
 	Pattern     string
 	HandlerFunc http.HandlerFunc
@@ -31,15 +30,15 @@ func NewRouter(v types.Version, certificate string) *mux.Router {
 	BuildInfoStruct = v
 	certFile = certificate
 	router := mux.NewRouter().StrictSlash(true)
-	for _, route := range routes {
+	for name, route := range Routes {
 		var handler http.Handler
 		handler = route.HandlerFunc
-		handler = Logger(handler, route.Name)
-		handler = Auth(handler, route.Name)
+		handler = Logger(handler, name)
+		handler = Auth(handler, name)
 		router.
 			Methods(route.Method).
 			Path(route.Pattern).
-			Name(route.Name).
+			Name(name).
 			Handler(handler)
 
 	}
@@ -47,88 +46,73 @@ func NewRouter(v types.Version, certificate string) *mux.Router {
 }
 
 // TODO start using subrouters
-var routes = []Route{
-	{
-		Name:        "GetVersion",
+var Routes = map[string]Route{
+	"GetVersion": {
 		Method:      http.MethodGet,
 		Pattern:     "/version",
 		HandlerFunc: handlers.GetVersion,
 	},
-
-	{
-		Name:        "GetLogSocket",
+	"GetLogSocket": {
 		Method:      http.MethodGet,
 		Pattern:     "/logs/ws",
 		HandlerFunc: ws.LogSocketHandler,
 	},
-	{
-		Name:        "GetLogPage",
+	"GetLogPage": {
 		Method:      http.MethodGet,
 		Pattern:     "/logs",
 		HandlerFunc: browser.LogSocketViewHandler,
 	},
-	{
-		Name:        "GetCertificate",
+	"GetCertificate": {
 		Method:      http.MethodGet,
 		Pattern:     "/auth/cert/",
 		HandlerFunc: handlers.GetCertificate,
 	},
-	{
-		Name:        "PutNKey",
+	"PutNKey": {
 		Method:      http.MethodPut,
 		Pattern:     "/pki/putnkey",
 		HandlerFunc: handlers.PutNKey,
 	},
-	{
-		Name:        "GetID",
+	"GetID": {
 		Method:      http.MethodPost,
 		Pattern:     "/pki/getnkey",
 		HandlerFunc: handlers.GetNKey,
 	},
-	{
-		Name:        "AcceptID",
+	"AcceptID": {
 		Method:      http.MethodPost,
 		Pattern:     "/pki/acceptnkey",
 		HandlerFunc: handlers.AcceptNKey,
 	},
-	{
-		Name:        "RejectID",
+	"RejectID": {
 		Method:      http.MethodPost,
 		Pattern:     "/pki/rejectnkey",
 		HandlerFunc: handlers.RejectNKey,
 	},
-	{
-		Name:        "ListID",
+	"ListID": {
 		Method:      http.MethodPost,
 		Pattern:     "/pki/listnkey",
 		HandlerFunc: handlers.ListNKey,
 	},
-	{
-		Name:        "DenyID",
+	"DenyID": {
 		Method:      http.MethodPost,
 		Pattern:     "/pki/denynkey",
 		HandlerFunc: handlers.DenyNKey,
 	},
-	{
-		Name:        "UnacceptID",
+	"UnacceptID": {
 		Method:      http.MethodPost,
 		Pattern:     "/pki/unacceptnkey",
 		HandlerFunc: handlers.UnacceptNKey,
 	},
-	{
-		Name:        "DeleteID",
+	"DeleteID": {
 		Method:      http.MethodPost,
 		Pattern:     "/pki/deletenkey",
 		HandlerFunc: handlers.DeleteNKey,
 	},
-	{
-		Name:        "TestPing",
+	"TestPing": {
 		Method:      http.MethodPost,
 		Pattern:     "/test/ping",
 		HandlerFunc: test.HTestPing,
 	},
-	{
-		Name:        "CmdRun",
+	"CmdRun": {
 		Method:      http.MethodPost,
 		Pattern:     "/cmd/run",
 		HandlerFunc: cmd.HCmdRun,

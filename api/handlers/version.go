@@ -4,11 +4,9 @@ import (
 	"encoding/json"
 	"net/http"
 
-	//. "github.com/gogrlx/grlx/config"
+	log "github.com/taigrr/log-socket/log"
 
 	"github.com/gogrlx/grlx/types"
-	. "github.com/gogrlx/grlx/types"
-	log "github.com/taigrr/log-socket/log"
 )
 
 var buildVersion types.Version
@@ -24,5 +22,4 @@ func GetVersion(w http.ResponseWriter, _ *http.Request) {
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Write(jr)
-	return
 }
