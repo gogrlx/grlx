@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/spf13/cobra"
 
@@ -23,8 +24,9 @@ var authCmd = &cobra.Command{
 }
 
 func init() {
-	authCmd.AddCommand(authPubKeyCmd)
 	authCmd.AddCommand(authPrivKeyCmd)
+	authCmd.AddCommand(authPubKeyCmd)
+	authCmd.AddCommand(authTokenCmd)
 	rootCmd.AddCommand(authCmd)
 }
 
@@ -37,23 +39,23 @@ var authPrivKeyCmd = &cobra.Command{
 
 		switch outputMode {
 		case "json":
-			success := "true"
-			if err != nil {
-				success = "false"
-			}
 			status := struct {
-				Success string `json:"success"`
+				Success bool   `json:"success"`
 				Error   string `json:"error"`
-			}{Success: success, Error: err.Error()}
+			}{Success: err == nil}
+			if err != nil {
+				status.Error = err.Error()
+			}
 			jw, _ := json.Marshal(status)
 			fmt.Println(string(jw))
+			os.Exit(1)
 			return
 		case "":
 			fallthrough
 		case "text":
 			if err != nil {
 				log.Println("Error: " + err.Error())
-				return
+				os.Exit(1)
 			}
 			fmt.Println("Private key saved to config")
 		case "yaml":
@@ -73,19 +75,61 @@ var authPubKeyCmd = &cobra.Command{
 			pubkey := struct {
 				Pubkey string `json:"pubkey"`
 				Error  string `json:"error"`
-			}{Pubkey: pubKey, Error: err.Error()}
+			}{Pubkey: pubKey}
+			if err != nil {
+				pubkey.Error = err.Error()
+			}
 			jw, _ := json.Marshal(pubkey)
 			// TODO: Unmarshall the array specifically instead of the results object
 			fmt.Println(string(jw))
+			if err != nil {
+				os.Exit(1)
+			}
 			return
 		case "":
 			fallthrough
 		case "text":
 			if err != nil {
 				log.Println("Error: " + err.Error())
-				return
+				os.Exit(1)
 			}
 			fmt.Println(pubKey)
+		case "yaml":
+			// TODO implement YAML
+		}
+	},
+}
+
+var authTokenCmd = &cobra.Command{
+	Use:   "token",
+	Short: "Create token for the Authorization header of API requests",
+	Long:  `Token is valid for 5 minutes`,
+	Args:  cobra.NoArgs,
+	Run: func(cmd *cobra.Command, _ []string) {
+		token, err := auth.NewToken()
+		switch outputMode {
+		case "json":
+			token := struct {
+				Token string `json:"token"`
+				Error string `json:"error"`
+			}{Token: token}
+			if err != nil {
+				token.Error = err.Error()
+			}
+			jw, _ := json.Marshal(token)
+			fmt.Println(string(jw))
+			if err != nil {
+				os.Exit(1)
+			}
+			return
+		case "":
+			fallthrough
+		case "text":
+			if err != nil {
+				log.Println("Error: " + err.Error())
+				os.Exit(1)
+			}
+			fmt.Println(token)
 		case "yaml":
 			// TODO implement YAML
 		}
