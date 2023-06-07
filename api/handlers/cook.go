@@ -1,4 +1,4 @@
-package cmd
+package handlers
 
 import (
 	"bytes"
@@ -16,7 +16,7 @@ import (
 )
 
 // TODO: add callback event for when new key is PUT to the server
-func HCook(w http.ResponseWriter, r *http.Request) {
+func Cook(w http.ResponseWriter, r *http.Request) {
 	// TODO consider using middleware to validate the targets instead of doing it here
 	var targetAction types.TargetedAction
 	// grab the body of the req
