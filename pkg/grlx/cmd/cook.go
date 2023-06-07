@@ -10,7 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	gcook "github.com/gogrlx/grlx/cook/api"
+	"github.com/gogrlx/grlx/api/client"
 	"github.com/gogrlx/grlx/types"
 )
 
@@ -34,14 +34,12 @@ var cmdCook = &cobra.Command{
 			return
 		}
 		var cmdCook types.CmdCook
-		results, err := gcook.CookClient(sproutTarget, cmdCook)
+		results, err := client.Cook(sproutTarget, cmdCook)
 		if err != nil {
 			switch err {
 			case types.ErrSproutIDNotFound:
 				log.Fatalf("A targeted Sprout does not exist or is not accepted.")
 			default:
-				// TODO: handle endpoint timeouts here
-				// TODO: Error running command on the Sprout: nats: no responders available for request  run.go:65
 				log.Panic(err)
 			}
 		}
@@ -83,10 +81,6 @@ var cmdCook = &cobra.Command{
 func init() {
 	cmdCook.Flags().StringVarP(&environment, "environment", "E", "", "")
 	cmdCook.Flags().BoolVar(&async, "async", false, "Don't print any output, just return the JID to look up results later")
-	cmdCook.Flags().StringVarP(&user, "runas", "u", "", "If running as a sudoer, run the command as another user")
-	cmdCook.Flags().StringVarP(&cwd, "cwd", "w", "", "Current working directory to run the command in")
-	cmdCook.Flags().IntVar(&timeout, "timeout", 30, "Cancel command execution and return after X seconds, printing the JID")
-	cmdCook.Flags().StringVarP(&path, "path", "p", "", "Prepend a folder to the PATH before execution")
 	cmdCook.PersistentFlags().StringVarP(&sproutTarget, "target", "T", "", "list of sprouts to target")
 	cmdCook.MarkPersistentFlagRequired("target")
 	rootCmd.AddCommand(cmdCook)

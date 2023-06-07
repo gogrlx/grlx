@@ -15,7 +15,6 @@ import (
 	log "github.com/taigrr/log-socket/log"
 )
 
-// TODO: add callback event for when new key is PUT to the server
 func Cook(w http.ResponseWriter, r *http.Request) {
 	// TODO consider using middleware to validate the targets instead of doing it here
 	var targetAction types.TargetedAction
