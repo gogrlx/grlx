@@ -26,7 +26,7 @@ var cookCmd = &cobra.Command{
 }
 
 var cmdCook = &cobra.Command{
-	Use:   "cook <recipe> <target> [and optional args]...",
+	Use:   "cook <recipe> -T <target> [and optional args]...",
 	Short: "Cook a recipe against a target and see the output locally.",
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) < 1 {
