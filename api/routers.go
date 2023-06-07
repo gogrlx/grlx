@@ -112,6 +112,11 @@ var Routes = map[string]Route{
 		Pattern:     "/test/ping",
 		HandlerFunc: test.HTestPing,
 	},
+	"Cook": {
+		Method:      http.MethodPost,
+		Pattern:     "/cook",
+		HandlerFunc: handlers.Cook,
+	},
 	"CmdRun": {
 		Method:      http.MethodPost,
 		Pattern:     "/cmd/run",
