@@ -5,15 +5,17 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/gogrlx/grlx/auth"
-	. "github.com/gogrlx/grlx/types"
 	"github.com/spf13/viper"
+
+	"github.com/gogrlx/grlx/api"
+	"github.com/gogrlx/grlx/auth"
+	"github.com/gogrlx/grlx/types"
 )
 
-func ListKeys() (KeysByType, error) {
-	var keys KeysByType
+func ListKeys() (types.KeysByType, error) {
+	var keys types.KeysByType
 	FarmerURL := viper.GetString("FarmerURL")
-	url := FarmerURL + "/pki/listnkey"
+	url := FarmerURL + api.Routes["ListID"].Pattern
 	req, err := http.NewRequest(http.MethodPost, url, nil)
 	if err != nil {
 		return keys, err
@@ -41,7 +43,7 @@ func UnacceptKey(id string) (bool, error) {
 		return false, err
 	}
 	keyFound := false
-	for _, keySet := range []KeySet{
+	for _, keySet := range []types.KeySet{
 		keyList.Accepted,
 		keyList.Denied,
 		keyList.Rejected,
@@ -59,15 +61,15 @@ func UnacceptKey(id string) (bool, error) {
 	if !keyFound {
 		for _, key := range keyList.Unaccepted.Sprouts {
 			if id == key.SproutID {
-				return false, ErrAlreadyUnaccepted
+				return false, types.ErrAlreadyUnaccepted
 			}
 		}
 
-		return false, ErrSproutIDNotFound
+		return false, types.ErrSproutIDNotFound
 	}
-	var success Inline
-	url := FarmerURL + "/pki/unacceptnkey"
-	km := KeyManager{SproutID: id}
+	var success types.Inline
+	url := FarmerURL + api.Routes["UnacceptID"].Pattern
+	km := types.KeyManager{SproutID: id}
 	jw, _ := json.Marshal(km)
 
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(jw))
@@ -99,7 +101,7 @@ func DenyKey(id string) (bool, error) {
 		return false, err
 	}
 	keyFound := false
-	for _, keySet := range []KeySet{
+	for _, keySet := range []types.KeySet{
 		keyList.Accepted,
 		keyList.Unaccepted,
 		keyList.Rejected,
@@ -117,16 +119,16 @@ func DenyKey(id string) (bool, error) {
 	if !keyFound {
 		for _, key := range keyList.Denied.Sprouts {
 			if id == key.SproutID {
-				return false, ErrAlreadyDenied
+				return false, types.ErrAlreadyDenied
 			}
 		}
 
-		return false, ErrSproutIDNotFound
+		return false, types.ErrSproutIDNotFound
 	}
-	var success Inline
+	var success types.Inline
 	FarmerURL := viper.GetString("FarmerURL")
-	url := FarmerURL + "/pki/denynkey"
-	km := KeyManager{SproutID: id}
+	url := FarmerURL + api.Routes["DenyID"].Pattern
+	km := types.KeyManager{SproutID: id}
 	jw, _ := json.Marshal(km)
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(jw))
 	if err != nil {
@@ -157,7 +159,7 @@ func RejectKey(id string) (bool, error) {
 		return false, err
 	}
 	keyFound := false
-	for _, keySet := range []KeySet{
+	for _, keySet := range []types.KeySet{
 		keyList.Accepted,
 		keyList.Unaccepted,
 		keyList.Denied,
@@ -175,16 +177,16 @@ func RejectKey(id string) (bool, error) {
 	if !keyFound {
 		for _, key := range keyList.Rejected.Sprouts {
 			if id == key.SproutID {
-				return false, ErrAlreadyRejected
+				return false, types.ErrAlreadyRejected
 			}
 		}
 
-		return false, ErrSproutIDNotFound
+		return false, types.ErrSproutIDNotFound
 	}
-	var success Inline
+	var success types.Inline
 	FarmerURL := viper.GetString("FarmerURL")
 	url := FarmerURL + "/pki/rejectnkey"
-	km := KeyManager{SproutID: id}
+	km := types.KeyManager{SproutID: id}
 	jw, _ := json.Marshal(km)
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(jw))
 	if err != nil {
@@ -215,7 +217,7 @@ func DeleteKey(id string) (bool, error) {
 		return false, err
 	}
 	keyFound := false
-	for _, keySet := range []KeySet{
+	for _, keySet := range []types.KeySet{
 		keyList.Accepted,
 		keyList.Unaccepted,
 		keyList.Denied,
@@ -232,12 +234,12 @@ func DeleteKey(id string) (bool, error) {
 		}
 	}
 	if !keyFound {
-		return false, ErrSproutIDNotFound
+		return false, types.ErrSproutIDNotFound
 	}
-	var success Inline
+	var success types.Inline
 	FarmerURL := viper.GetString("FarmerURL")
 	url := FarmerURL + "/pki/deletenkey"
-	km := KeyManager{SproutID: id}
+	km := types.KeyManager{SproutID: id}
 	jw, _ := json.Marshal(km)
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(jw))
 	if err != nil {
@@ -268,7 +270,7 @@ func AcceptKey(id string) (bool, error) {
 		return false, err
 	}
 	keyFound := false
-	for _, keySet := range []KeySet{
+	for _, keySet := range []types.KeySet{
 		keyList.Unaccepted,
 		keyList.Denied,
 		keyList.Rejected,
@@ -286,15 +288,15 @@ func AcceptKey(id string) (bool, error) {
 	if !keyFound {
 		for _, key := range keyList.Accepted.Sprouts {
 			if id == key.SproutID {
-				return false, ErrAlreadyAccepted
+				return false, types.ErrAlreadyAccepted
 			}
 		}
-		return false, ErrSproutIDNotFound
+		return false, types.ErrSproutIDNotFound
 	}
-	var success Inline
+	var success types.Inline
 	FarmerURL := viper.GetString("FarmerURL")
-	url := FarmerURL + "/pki/acceptnkey"
-	km := KeyManager{SproutID: id}
+	url := FarmerURL + api.Routes["AcceptID"].Pattern
+	km := types.KeyManager{SproutID: id}
 	jw, _ := json.Marshal(km)
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(jw))
 	if err != nil {

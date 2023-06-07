@@ -8,18 +8,19 @@ import (
 	"regexp"
 	"strings"
 
-	gpki "github.com/gogrlx/grlx/pkg/grlx/pki"
-	. "github.com/gogrlx/grlx/types"
 	"gopkg.in/yaml.v3"
+
+	gpki "github.com/gogrlx/grlx/pkg/grlx/pki"
+	"github.com/gogrlx/grlx/types"
 )
 
 func UserChoice(first string, second string, options ...string) (string, error) {
 	if len(first) == 0 || len(second) == 0 {
-		panic(ErrConfirmationLengthIsZero)
+		panic(types.ErrConfirmationLengthIsZero)
 	}
 	for _, option := range options {
 		if len(option) == 0 {
-			panic(ErrConfirmationLengthIsZero)
+			panic(types.ErrConfirmationLengthIsZero)
 		}
 	}
 	fmt.Printf("%s/%s", first, second)
@@ -44,16 +45,16 @@ func UserChoice(first string, second string, options ...string) (string, error) 
 			return option, nil
 		}
 	}
-	return "", ErrInvalidUserInput
+	return "", types.ErrInvalidUserInput
 }
 
 func UserChoiceWithDefault(def string, second string, options ...string) (string, error) {
 	if len(def) == 0 || len(second) == 0 {
-		panic(ErrConfirmationLengthIsZero)
+		panic(types.ErrConfirmationLengthIsZero)
 	}
 	for _, option := range options {
 		if len(option) == 0 {
-			panic(ErrConfirmationLengthIsZero)
+			panic(types.ErrConfirmationLengthIsZero)
 		}
 	}
 	fmt.Printf("%s/%s", strings.ToTitle(def), strings.ToLower(second))
@@ -80,12 +81,12 @@ func UserChoiceWithDefault(def string, second string, options ...string) (string
 			return option, nil
 		}
 	}
-	return "", ErrInvalidUserInput
+	return "", types.ErrInvalidUserInput
 }
 
 func UserConfirm(first string, second string) (bool, error) {
 	if len(first) == 0 || len(second) == 0 {
-		panic(ErrConfirmationLengthIsZero)
+		panic(types.ErrConfirmationLengthIsZero)
 	}
 	fmt.Printf("%s/%s", strings.ToLower(first), strings.ToLower(second))
 	fmt.Print(":")
@@ -125,7 +126,7 @@ func UserConfirmWithDefault(def bool) (bool, error) {
 	case "n":
 		return false, nil
 	default:
-		return false, ErrInvalidUserInput
+		return false, types.ErrInvalidUserInput
 	}
 }
 
@@ -198,13 +199,13 @@ func WriteJSON(i interface{}) {
 }
 
 func WriteJSONErr(err error) {
-	errWriter := Inline{Success: false, Error: err}
+	errWriter := types.Inline{Success: false, Error: err}
 	jw, _ := json.Marshal(errWriter)
 	fmt.Println(string(jw))
 }
 
 func WriteYAMLErr(err error) {
-	errWriter := Inline{Success: false, Error: err}
+	errWriter := types.Inline{Success: false, Error: err}
 	yw, _ := yaml.Marshal(errWriter)
 	fmt.Println(string(yw))
 }
