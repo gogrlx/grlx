@@ -3,7 +3,6 @@ package main
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"runtime"
@@ -156,7 +155,7 @@ func ConnectFarmer() {
 		log.Panic(err)
 	}
 	certPool := x509.NewCertPool()
-	rootPEM, err := ioutil.ReadFile(RootCA)
+	rootPEM, err := os.ReadFile(RootCA)
 	if err != nil || rootPEM == nil {
 		log.Panicf("nats: error loading or parsing rootCA file: %v", err)
 	}

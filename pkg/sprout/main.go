@@ -3,7 +3,6 @@ package main
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"io/ioutil"
 	"os"
 	"time"
 
@@ -89,7 +88,7 @@ func ConnectSprout() {
 		log.Panic(err)
 	}
 	certPool := x509.NewCertPool()
-	rootPEM, err := ioutil.ReadFile(SproutRootCA)
+	rootPEM, err := os.ReadFile(SproutRootCA)
 	if err != nil || rootPEM == nil {
 		log.Panicf("nats: error loading or parsing rootCA file: %v", err)
 	}
