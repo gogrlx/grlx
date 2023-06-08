@@ -19,6 +19,7 @@ var BuildInfo Version
 
 var configLoaded sync.Once
 
+// TODO move all references to viper to this file
 // TODO use enum for binary as elsewhere
 func LoadConfig(binary string) {
 	configLoaded.Do(func() {
