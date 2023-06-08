@@ -12,7 +12,7 @@ services:
     image: grlx/farmer:latest
     restart: unless-stopped
     ports:
-      - "4443:4443"
+      - "5406:5406"
       - "5405:5405"
 
   sprout_a:

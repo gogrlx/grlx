@@ -60,6 +60,20 @@ func NewToken() (string, error) {
 	return createSignedToken(kp)
 }
 
+func Sign(nonce []byte) ([]byte, error) {
+	seed, err := getPrivateSeed()
+	if err != nil {
+		return nil, err
+	}
+	kp, err := nkeys.FromSeed([]byte(seed))
+	if err != nil {
+		return nil, err
+	}
+	b, err := kp.Sign(nonce)
+	kp.Wipe()
+	return b, err
+}
+
 func TokenHasAccess(token string, method string) bool {
 	ua, err := decodeToken(token)
 	if err != nil {

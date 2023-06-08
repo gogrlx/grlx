@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -385,7 +384,7 @@ func LoadRootCA(binary string) error {
 		return err
 	}
 	certPool := x509.NewCertPool()
-	rootPEM, err := ioutil.ReadFile(RootCA)
+	rootPEM, err := os.ReadFile(RootCA)
 	if err != nil || rootPEM == nil {
 		return err
 	}

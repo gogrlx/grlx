@@ -143,6 +143,7 @@ func ConnectFarmer() {
 	connectionAttempts := 1
 	maxFarmerReconnect := 30
 	RootCA := viper.GetString("RootCA")
+	FarmerBusPort := viper.GetString("FarmerBusPort")
 	FarmerInterface := viper.GetString("FarmerInterface")
 	if FarmerInterface == "0.0.0.0" {
 		FarmerInterface = "localhost"
@@ -171,7 +172,7 @@ func ConnectFarmer() {
 	}
 	_ = config
 	log.Debug("Attempting to pair Farmer to NATS bus.")
-	nc, err := nats.Connect("tls://"+FarmerInterface+":4443", // nats.RootCAs(RootCA),
+	nc, err := nats.Connect("tls://"+FarmerInterface+":"+FarmerBusPort, // nats.RootCAs(RootCA),
 		nats.Secure(config),
 		opt,
 		nats.RetryOnFailedConnect(true),
@@ -202,6 +203,13 @@ func ConnectFarmer() {
 	//		//TODO: handle error
 	//		panic(err)
 	//	}
+	_, err = nc.Subscribe("grlx.>", func(m *nats.Msg) {
+		log.Printf("Received a join event: %s\n", string(m.Data))
+	})
+	if err != nil {
+		log.Errorf("Got an error on Subscribe: %+v\n", err)
+	}
+
 	ec, _ := nats.NewEncodedConn(nc, nats.JSON_ENCODER)
 	test.RegisterEC(ec)
 	cmd.RegisterEC(ec)

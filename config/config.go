@@ -88,6 +88,8 @@ func LoadConfig(binary string) {
 			}
 			certPath := filepath.Join(dirname, ".config/grlx/tls-rootca.pem")
 			viper.Set("GrlxRootCA", certPath)
+			viper.SetDefault("FarmerBusPort", "5406")
+			viper.SetDefault("FarmerBusInterface", viper.GetString("FarmerInterface")+":"+viper.GetString("FarmerBusPort"))
 		case "farmer":
 			viper.SetDefault("CertHosts", []string{"localhost", "127.0.0.1", "farmer", "grlx", viper.GetString("FarmerInterface")})
 			viper.SetDefault("CertificateValidTime", 365*24*time.Hour)
@@ -100,7 +102,7 @@ func LoadConfig(binary string) {
 			viper.Set("RootCAPriv", "/etc/grlx/pki/farmer/tls-rootca-key.pem")
 			viper.SetDefault("Organization", "GRLX Development")
 			viper.SetDefault("FarmerBusPort", "5406")
-			viper.SetDefault("FarmerBusInterface", viper.GetString("FarmerURL"))
+			viper.SetDefault("FarmerBusInterface", viper.GetString("FarmerURL")+":"+viper.GetString("FarmerBusPort"))
 		case "sprout":
 			viper.SetDefault("SproutID", "")
 			viper.Set("SproutPKI", "/etc/grlx/pki/sprout/")
@@ -108,7 +110,7 @@ func LoadConfig(binary string) {
 			viper.Set("NKeySproutPubFile", "/etc/grlx/pki/sprout/sprout.nkey.pub")
 			viper.Set("NKeySproutPrivFile", "/etc/grlx/pki/sprout/sprout.nkey")
 			viper.SetDefault("FarmerBusPort", "5406")
-			viper.SetDefault("FarmerBusInterface", viper.GetString("FarmerURL"))
+			viper.SetDefault("FarmerBusInterface", viper.GetString("FarmerURL")+":"+viper.GetString("FarmerBusPort"))
 		}
 		viper.Set("FarmerURL", "https://"+viper.GetString("FarmerInterface")+":"+viper.GetString("FarmerAPIPort"))
 		viper.WriteConfig()

@@ -3,7 +3,8 @@ package pki
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"io/ioutil"
+	"os"
+	"strconv"
 
 	"github.com/spf13/viper"
 	log "github.com/taigrr/log-socket/log"
@@ -21,14 +22,19 @@ var (
 )
 
 func ConfigureNats() nats_server.Options {
-	var DefaultTestOptions nats_server.Options
+	var NatsConfig nats_server.Options
 	FarmerInterface := viper.GetString("FarmerInterface")
+	FBusPort := viper.GetString("FarmerBusPort")
+	FarmerBusPort, err := strconv.Atoi(FBusPort)
+	if err != nil {
+		log.Panic(err)
+	}
 	RootCA := viper.GetString("RootCA")
 	CertFile := viper.GetString("CertFile")
 	KeyFile := viper.GetString("KeyFile")
-	DefaultTestOptions = nats_server.Options{
+	NatsConfig = nats_server.Options{
 		Host:                  FarmerInterface,
-		Port:                  4443,
+		Port:                  FarmerBusPort,
 		NoSigs:                true,
 		MaxControlLine:        4096,
 		DisableShortFirstPing: true,
@@ -38,12 +44,9 @@ func ConfigureNats() nats_server.Options {
 		AllowNonTLS:           false,
 		LogFile:               "nats.log",
 		AuthTimeout:           10,
-		// TLSCert:               CertFile,
-		// TLSKey:                KeyFile,
-		// TLSCaCert:             RootCA,
 	}
 	certPool = x509.NewCertPool()
-	rootPEM, err := ioutil.ReadFile(RootCA)
+	rootPEM, err := os.ReadFile(RootCA)
 	if err != nil || rootPEM == nil {
 		log.Panicf("nats: error loading or parsing rootCA file: %v", err)
 	}
@@ -61,8 +64,8 @@ func ConfigureNats() nats_server.Options {
 		Certificates: []tls.Certificate{cert},
 		MinVersion:   tls.VersionTLS12,
 	}
-	DefaultTestOptions.TLSConfig = &config
-	return DefaultTestOptions
+	NatsConfig.TLSConfig = &config
+	return NatsConfig
 }
 
 func SetNATSServer(s *nats_server.Server) {
@@ -85,20 +88,15 @@ func ReloadNKeys() error {
 		log.Tracef("Loaded grlx cli's public key(s): %v", grlxKeys)
 	}
 	nkeyUsers := []*nats_server.NkeyUser{}
-	accounts := []*nats_server.Account{}
 	allowAll := nats_server.SubjectPermission{Allow: []string{"grlx.>", "_INBOX.>"}}
 
-	farmerAccount := nats_server.NewAccount("Farmer")
-	// farmerAccount.Nkey = farmerKey
 	farmerPermissions := nats_server.Permissions{}
 	farmerPermissions.Publish = &allowAll
 	farmerPermissions.Subscribe = &allowAll
 	farmerUser := nats_server.NkeyUser{}
 	farmerUser.Permissions = &farmerPermissions
 	farmerUser.Nkey = farmerKey
-	farmerUser.Account = farmerAccount
 
-	grlxAdminAccount := nats_server.NewAccount("grlxAdmin")
 	grlxPermissions := nats_server.Permissions{}
 	grlxPermissions.Publish = &allowAll
 	grlxPermissions.Subscribe = &allowAll
@@ -106,17 +104,12 @@ func ReloadNKeys() error {
 		grlxUser := nats_server.NkeyUser{}
 		grlxUser.Permissions = &grlxPermissions
 		grlxUser.Nkey = key
-		grlxUser.Account = grlxAdminAccount
 		nkeyUsers = append(nkeyUsers, &grlxUser)
 	}
 
 	nkeyUsers = append(nkeyUsers, &farmerUser)
-	accounts = append(accounts, farmerAccount)
-	accounts = append(accounts, grlxAdminAccount)
 	for _, account := range authorizedKeys.Sprouts {
 		log.Tracef("Adding accepted key `%s` to NATS", account.SproutID)
-		sproutAccount := nats_server.NewAccount(account.SproutID)
-		accounts = append(accounts, sproutAccount)
 		// sproutAccount.Name = account.SproutID
 		key, err := GetNKey(account.SproutID)
 		if err != nil {
@@ -125,21 +118,17 @@ func ReloadNKeys() error {
 		}
 		accountSubscribe := nats_server.SubjectPermission{Allow: []string{"grlx.sprouts." + account.SproutID + ".>"}}
 		accountPublish := nats_server.SubjectPermission{Allow: []string{"grlx.sprouts.announce." + account.SproutID, "_INBOX.>"}}
-		//	sproutAccount.Nkey = key
 		sproutPermissions := nats_server.Permissions{}
 		sproutPermissions.Publish = &accountPublish
 		sproutPermissions.Subscribe = &accountSubscribe
 		sproutUser := nats_server.NkeyUser{}
 		sproutUser.Permissions = &sproutPermissions
 		sproutUser.Nkey = key
-		sproutUser.Account = sproutAccount
-		// farmerUser.Account = &farmerAccount
 		nkeyUsers = append(nkeyUsers, &sproutUser)
 	}
 	log.Tracef("Completed adding authorized clients.")
 	optsCopy := ConfigureNats()
 	optsCopy.Nkeys = nkeyUsers
-	optsCopy.Accounts = accounts
 	config := tls.Config{
 		ServerName:   "localhost",
 		RootCAs:      certPool,

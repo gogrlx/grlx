@@ -28,28 +28,39 @@ func natsInit(nc *nats.EncodedConn) error {
 	startup.Version.Compiler = runtime.Version()
 	startup.Version.GitCommit = GitCommit
 	startup.Version.Tag = Tag
+	startup.SproutID = sproutID
 	startupEvent := "grlx.sprouts.announce." + sproutID
-	b, _ := json.Marshal(startup)
-	nc.Publish(startupEvent, b)
+	err := nc.Publish(startupEvent, startup)
+	if err != nil {
+		return err
+	}
 	if err := nc.LastError(); err != nil {
 		log.Fatal(err)
 	} else {
 		log.Tracef("Successfully published startup message on `%s`.", startupEvent)
 	}
 
-	nc.Subscribe("grlx.sprouts."+sproutID+".cmd.run", func(m *nats.Msg) {
+	_, err = nc.Subscribe("grlx.sprouts."+sproutID+".cmd.run", func(m *nats.Msg) {
 		var cmdRun types.CmdRun
 		json.NewDecoder(bytes.NewBuffer(m.Data)).Decode(&cmdRun)
+		log.Trace(cmdRun)
 		results, _ := cmd.SRun(cmdRun)
 		resultsB, _ := json.Marshal(results)
 		m.Respond(resultsB)
 	})
-	nc.Subscribe("grlx.sprouts."+sproutID+".test.ping", func(m *nats.Msg) {
+	if err != nil {
+		return err
+	}
+	_, err = nc.Subscribe("grlx.sprouts."+sproutID+".test.ping", func(m *nats.Msg) {
 		var ping types.PingPong
 		json.NewDecoder(bytes.NewBuffer(m.Data)).Decode(&ping)
+		log.Trace(ping)
 		pong, _ := test.SPing(ping)
 		pongB, _ := json.Marshal(pong)
 		m.Respond(pongB)
 	})
+	if err != nil {
+		return err
+	}
 	return nil
 }

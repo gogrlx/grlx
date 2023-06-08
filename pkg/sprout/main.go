@@ -82,6 +82,7 @@ func ConnectSprout() {
 	var err error
 	SproutRootCA := viper.GetString("SproutRootCA")
 	FarmerInterface := viper.GetString("FarmerInterface")
+	FarmerBusPort := viper.GetString("FarmerBusPort")
 	opt, err := nats.NkeyOptionFromSeed(viper.GetString("NKeySproutPrivFile"))
 	if err != nil {
 		// TODO: handle error
@@ -101,7 +102,7 @@ func ConnectSprout() {
 		RootCAs:    certPool,
 		MinVersion: tls.VersionTLS12,
 	}
-	nc, err := nats.Connect("tls://"+FarmerInterface+":4443", nats.Secure(config), opt,
+	nc, err := nats.Connect("tls://"+FarmerInterface+":"+FarmerBusPort, nats.Secure(config), opt,
 		nats.MaxReconnects(-1),
 		nats.ReconnectWait(time.Second*15),
 		nats.DisconnectHandler(func(_ *nats.Conn) {
@@ -111,7 +112,7 @@ func ConnectSprout() {
 	)
 	for err != nil {
 		time.Sleep(time.Second * 15)
-		nc, err = nats.Connect("tls://"+FarmerInterface+":4443", nats.Secure(config), opt,
+		nc, err = nats.Connect("tls://"+FarmerInterface+":"+FarmerBusPort, nats.Secure(config), opt,
 			nats.MaxReconnects(-1),
 			nats.ReconnectWait(time.Second*15),
 			// TODO: Add a reconnect handler
@@ -131,7 +132,10 @@ func ConnectSprout() {
 	ec, _ := nats.NewEncodedConn(nc, nats.JSON_ENCODER)
 	test.RegisterEC(ec)
 	cmd.RegisterEC(ec)
-	natsInit(ec)
+	err = natsInit(ec)
+	if err != nil {
+		log.Panicf("Error with natsInit: %v", err)
+	}
 	defer ec.Close()
 	select {}
 }
