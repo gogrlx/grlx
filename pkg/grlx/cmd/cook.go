@@ -20,7 +20,7 @@ var async bool
 var cookCmd = &cobra.Command{
 	Use:   "cook",
 	Short: "Cook a recipe on a Sprout or a list of Sprouts",
-	Run: func(cmd *cobra.Command, args []string) {
+	Run: func(cmd *cobra.Command, _ []string) {
 		cmd.Help()
 	},
 }
@@ -29,11 +29,16 @@ var cmdCook = &cobra.Command{
 	Use:   "cook <recipe> -T <target> [and optional args]...",
 	Short: "Cook a recipe against a target and see the output locally.",
 	Run: func(cmd *cobra.Command, args []string) {
-		if len(args) < 1 {
+		if len(args) != 1 {
 			cmd.Help()
 			return
 		}
 		var cmdCook types.CmdCook
+		cmdCook.Recipe = types.RecipeName(args[0])
+		cmdCook.Async = async
+		cmdCook.Env = environment
+		//	cmdCook.Test = test
+
 		results, err := client.Cook(sproutTarget, cmdCook)
 		if err != nil {
 			switch err {
