@@ -34,7 +34,17 @@ var tailCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal(err)
 		}
+		sub2, err := ec.Subscribe("_INBOX.>", func(msg *nats.Msg) {
+			printTex.Lock()
+			fmt.Println(msg.Subject)
+			fmt.Println(string(msg.Data))
+			printTex.Unlock()
+		})
+		if err != nil {
+			log.Fatal(err)
+		}
 		defer sub.Unsubscribe()
+		defer sub2.Unsubscribe()
 		defer nc.Flush()
 		select {}
 	},
