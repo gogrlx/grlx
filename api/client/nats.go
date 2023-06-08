@@ -36,6 +36,7 @@ func NewNatsClient() (*nats.Conn, error) {
 		MinVersion: tls.VersionTLS12,
 	}
 
+	// TODO: add a disconnect handler to reconnect
 	connOpts := []nats.Option{nats.Name("grlx-cli"), nats.Nkey(pubkey, auth.Sign), nats.Secure(config)}
 
 	fmt.Println("Connecting to", URL)
