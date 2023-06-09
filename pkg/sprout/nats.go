@@ -62,5 +62,16 @@ func natsInit(nc *nats.EncodedConn) error {
 	if err != nil {
 		return err
 	}
+	_, err = nc.Subscribe("grlx.sprouts."+sproutID+".cook", func(m *nats.Msg) {
+		var rEnvelope types.RecipeEnvelope
+		json.NewDecoder(bytes.NewBuffer(m.Data)).Decode(&rEnvelope)
+		log.Trace(rEnvelope)
+		ack := types.Ack{Acknowledged: true, JobID: rEnvelope.JobID}
+		ackB, _ := json.Marshal(ack)
+		m.Respond(ackB)
+	})
+	if err != nil {
+		return err
+	}
 	return nil
 }

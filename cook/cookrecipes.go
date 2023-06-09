@@ -7,12 +7,14 @@ import (
 	"path/filepath"
 	"strings"
 	"text/template"
+	"time"
+
+	"github.com/google/uuid"
+	"gopkg.in/yaml.v3"
 
 	"github.com/gogrlx/grlx/config"
 	"github.com/gogrlx/grlx/props"
 	"github.com/gogrlx/grlx/types"
-	"github.com/google/uuid"
-	"gopkg.in/yaml.v3"
 )
 
 func populateFuncMap(sproutID string) template.FuncMap {
@@ -83,9 +85,22 @@ func Cook(sproutID string, recipeID types.RecipeName, JID string) error {
 		validSteps = append(validSteps, *step)
 	}
 	fmt.Println(validSteps)
-
+	rEnvelope := types.RecipeEnvelope{
+		JobID: JID,
+		Steps: validSteps,
+	}
 	// here, send out the tree to be executed to the sprout over NATS, and send back the JobID
-
+	var ack types.Ack
+	err = ec.Request("grlx.sprouts."+sproutID+".cook", rEnvelope, &ack, 30*time.Second)
+	if err != nil {
+		return err
+	}
+	if !ack.Acknowledged {
+		return errors.New("sprout did not acknowledge recipe")
+	}
+	if ack.JobID != JID {
+		return errors.New("sprout acknowledged recipe but returned wrong JobID")
+	}
 	return nil
 }
 

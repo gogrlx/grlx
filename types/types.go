@@ -40,6 +40,15 @@ type (
 		Methods() []string
 		PropertiesForMethod(method string) (map[string]string, error)
 	}
+	RecipeEnvelope struct {
+		JobID string
+		Steps []Step
+	}
+	Ack struct {
+		Acknowledged bool
+		JobID        string
+	}
+
 	RecipeName string
 	Function   string
 	StepID     string
