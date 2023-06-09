@@ -202,7 +202,7 @@ func ConnectFarmer() {
 	//		//TODO: handle error
 	//		panic(err)
 	//	}
-	_, err = nc.Subscribe("grlx.>", func(m *nats.Msg) {
+	_, err = nc.Subscribe("grlx.sprouts.announce.>", func(m *nats.Msg) {
 		log.Printf("Received a join event: %s\n", string(m.Data))
 	})
 	if err != nil {

@@ -84,7 +84,6 @@ func Cook(sproutID string, recipeID types.RecipeName, JID string) error {
 	for _, step := range tree {
 		validSteps = append(validSteps, *step)
 	}
-	fmt.Println(validSteps)
 	rEnvelope := types.RecipeEnvelope{
 		JobID: JID,
 		Steps: validSteps,

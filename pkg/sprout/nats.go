@@ -34,7 +34,7 @@ func natsInit(nc *nats.EncodedConn) error {
 	if err != nil {
 		return err
 	}
-	if err := nc.LastError(); err != nil {
+	if err = nc.LastError(); err != nil {
 		log.Fatal(err)
 	} else {
 		log.Tracef("Successfully published startup message on `%s`.", startupEvent)
