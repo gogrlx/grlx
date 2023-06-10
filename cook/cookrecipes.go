@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/taigrr/log-socket/log"
 	"gopkg.in/yaml.v3"
 
 	"github.com/gogrlx/grlx/config"
@@ -88,7 +89,7 @@ func Cook(sproutID string, recipeID types.RecipeName, JID string) error {
 		JobID: JID,
 		Steps: validSteps,
 	}
-	// here, send out the tree to be executed to the sprout over NATS, and send back the JobID
+	log.Noticef("cooking sprout %s: %s", sproutID, JID)
 	var ack types.Ack
 	err = ec.Request("grlx.sprouts."+sproutID+".cook", rEnvelope, &ack, 30*time.Second)
 	if err != nil {
