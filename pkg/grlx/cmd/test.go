@@ -77,8 +77,6 @@ var testCmdPing = &cobra.Command{
 				}
 			}
 			return
-		case "yaml":
-			// TODO implement YAML
 		}
 	},
 }

@@ -44,22 +44,20 @@ func init() {
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
 
-	rootCmd.PersistentFlags().StringVar(&outputMode, "out", "", "Format to print out response (where appropriate). Options are `json`, `yaml`, or `text`")
+	rootCmd.PersistentFlags().StringVar(&outputMode, "out", "", "Format to print out response (where appropriate). Options are `json`, or `text`")
 	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
 		switch outputMode {
 		case "json":
-			fallthrough
-		case "yaml":
 			fallthrough
 		case "":
 			fallthrough
 		case "text":
 		default:
-			fmt.Println("Valid --out modes: `json`, `yaml`, or `text`. Mode `" + outputMode + "` is invalid.")
+			fmt.Println("Valid --out modes: `json`, or `text`. Mode `" + outputMode + "` is invalid.")
 			os.Exit(1)
 		}
 	}
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.grlx.yaml)")
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.config/grlx/grlx)")
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
 	if !pki.RootCACached("grlx") {

@@ -58,8 +58,6 @@ var authPrivKeyCmd = &cobra.Command{
 				os.Exit(1)
 			}
 			fmt.Println("Private key saved to config")
-		case "yaml":
-			// TODO implement YAML
 		}
 	},
 }
@@ -94,8 +92,6 @@ var authPubKeyCmd = &cobra.Command{
 				os.Exit(1)
 			}
 			fmt.Println(pubKey)
-		case "yaml":
-			// TODO implement YAML
 		}
 	},
 }
@@ -130,8 +126,6 @@ var authTokenCmd = &cobra.Command{
 				os.Exit(1)
 			}
 			fmt.Println(token)
-		case "yaml":
-			// TODO implement YAML
 		}
 	},
 }

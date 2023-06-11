@@ -40,8 +40,6 @@ var versionCmd = &cobra.Command{
 				return
 			}
 			fmt.Printf(formatter, "Farmer", serverVersion.Tag, serverVersion.GitCommit, serverVersion.Arch, serverVersion.Compiler)
-		case "yaml":
-			// TODO implement YAML
 		}
 	},
 }

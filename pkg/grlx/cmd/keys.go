@@ -58,8 +58,6 @@ var keysAccept = &cobra.Command{
 					color.Red("Error: %v", err)
 				case "json":
 					util.WriteJSONErr(err)
-				case "yaml":
-					util.WriteYAMLErr(err)
 				}
 				return
 			}
@@ -85,7 +83,6 @@ var keysAccept = &cobra.Command{
 					case "text":
 						color.Red("Error: %v", err)
 					case "json":
-					case "yaml":
 					}
 					return
 				}
@@ -98,7 +95,6 @@ var keysAccept = &cobra.Command{
 					fmt.Printf("Key %s accepted.\n", id.SproutID)
 				}
 			case "json":
-			case "yaml":
 			}
 			return
 		}
@@ -143,8 +139,6 @@ var keysAccept = &cobra.Command{
 			}
 			color.Red("%s could not be Accepted!\n", keyID)
 			os.Exit(1)
-		case "yaml":
-			// TODO implement YAML
 		}
 	},
 }
@@ -185,8 +179,6 @@ var keysList = &cobra.Command{
 				color.Yellow(key.SproutID)
 			}
 			return
-		case "yaml":
-			// TODO implement YAML
 		}
 	},
 }
@@ -230,8 +222,6 @@ var keysDelete = &cobra.Command{
 			}
 			color.Red("%s could not be Deleted!\n", keyID)
 			os.Exit(1)
-		case "yaml":
-			// TODO implement YAML
 		}
 	},
 }
@@ -278,8 +268,6 @@ var keysUnaccept = &cobra.Command{
 			}
 			color.Red("%s could not be Unaccepted!\n", keyID)
 			os.Exit(1)
-		case "yaml":
-			// TODO implement YAML
 		}
 	},
 }
@@ -326,8 +314,6 @@ var keysReject = &cobra.Command{
 			}
 			color.Red("%s could not be Rejected!\n", keyID)
 			os.Exit(1)
-		case "yaml":
-			// TODO implement YAML
 		}
 	},
 }

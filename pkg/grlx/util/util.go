@@ -8,8 +8,6 @@ import (
 	"regexp"
 	"strings"
 
-	"gopkg.in/yaml.v3"
-
 	gpki "github.com/gogrlx/grlx/pkg/grlx/pki"
 	"github.com/gogrlx/grlx/types"
 )
@@ -188,11 +186,6 @@ func listIntersection(a *[]string, b *[]string) []string {
 	return overlap
 }
 
-func WriteYAML(i interface{}) {
-	jy, _ := yaml.Marshal(i)
-	fmt.Println(string(jy))
-}
-
 func WriteJSON(i interface{}) {
 	jw, _ := json.Marshal(i)
 	fmt.Println(string(jw))
@@ -204,18 +197,10 @@ func WriteJSONErr(err error) {
 	fmt.Println(string(jw))
 }
 
-func WriteYAMLErr(err error) {
-	errWriter := types.Inline{Success: false, Error: err}
-	yw, _ := yaml.Marshal(errWriter)
-	fmt.Println(string(yw))
-}
-
 func WriteOutput(i interface{}, mode string) {
 	switch mode {
 	case "json":
 		WriteJSON(i)
-	case "yaml":
-		WriteYAML(i)
 	case "":
 		fallthrough
 	case "text":
