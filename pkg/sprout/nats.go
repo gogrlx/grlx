@@ -66,8 +66,7 @@ func natsInit(nc *nats.EncodedConn) error {
 		var rEnvelope types.RecipeEnvelope
 		json.NewDecoder(bytes.NewBuffer(m.Data)).Decode(&rEnvelope)
 		log.Trace(rEnvelope)
-		ack := types.Ack{Acknowledged: true, JobID: rEnvelope.JobID}
-		ackB, _ := json.Marshal(ack)
+		ackB, _ := json.Marshal(types.Ack{Acknowledged: true, JobID: rEnvelope.JobID})
 		m.Respond(ackB)
 	})
 	if err != nil {
