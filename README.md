@@ -1,4 +1,4 @@
-## <p align="center"><img src="logos/grlx.jpg" width="300"></p>
+## <p align="center"><img src="docs/logos/grlx.jpg" width="300"></p>
 
 # grlx - System management without the stinkin' dependencies!
 
@@ -17,8 +17,6 @@ The `farmer` binary runs as a daemon on a management server (referred to as the 
 The `sprout` binary should be installed as a daemon on systems that are to be managed.
 Managed systems are referred to as 'sprouts.'
 
-
-All binaries are built without `CGO`, and should therefore be compatible with as many Linux systems as possible.
 
 ## Architecture
 
@@ -50,7 +48,7 @@ Some features (not yet ordered) that are coming to grlx:
 - [ ] Simple monitoring data and collection
 - [ ] Standardized error handling
 - [ ] Support for non-systemd init systems
-- [ ] Template shell-based rendering
+- [ ] Template rendering
 - ... Many more!
 
 
@@ -69,14 +67,14 @@ XMR: [835Vpty7GkGhinCchD7uy8SXcKu8E6oY4buz45toMCF8UcrqxiLSRQsdKd4hNGL8odHUDxd7GP
 
 BTC: [bc1qafg9cqkxzfyj5adcr3l6ekp8x8fwzl30uawtgz](bitcoin:bc1qafg9cqkxzfyj5adcr3l6ekp8x8fwzl30uawtgz)
 
-GitHub: <a href="https://github.com/sponsors/taigrr?o=esb"><img src="logos/ghsponsor.png" width="116"></a>
+GitHub: <a href="https://github.com/sponsors/taigrr?o=esb"><img src="docs/logos/ghsponsor.png" width="116"></a>
 ## Sponsors
 
 A big thank you to all of grlx's sponsors.
 It's your donations that allow development to continue so that grlx can grow.
 
 ### Founders Club
-## <p align="left"><a href="https://newleafsolutions.dev"><img src="logos/newleaf.png" width="125"></a> <a href="https://github.com/ADAtomic"><img src="logos/adatomic.png" width="125"></a></p>
+## <p align="left"><a href="https://newleafsolutions.dev"><img src="docs/logos/newleaf.png" width="125"></a> <a href="https://github.com/ADAtomic"><img src="docs/logos/adatomic.png" width="125"></a></p>
 
 
 ## License
@@ -87,5 +85,3 @@ To see the licenses of dependencies, please view DEPENDENCIES.md.
 Unless otherwise noted, the grlx source files are distibuted under the 0BSD license found in the LICENSE file.
 
 All grlx logos are Copyright 2021 Tai Groot, and Licensed under CC BY 3.0.
-
-The original Go Gopher was designed by [Renee French](http://reneefrench.blogspot.com/).
