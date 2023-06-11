@@ -7,8 +7,6 @@ import (
 
 	"github.com/gogrlx/grlx/ingredients"
 	"github.com/gogrlx/grlx/types"
-	nats "github.com/nats-io/nats.go"
-	"github.com/spf13/viper"
 )
 
 type File struct {
@@ -56,8 +54,8 @@ func (f File) PropertiesForMethod(method string) (map[string]string, error) {
 	return nil, nil
 }
 
-func (f File) Methods() []string {
-	return []string{
+func (f File) Methods() (string, []string) {
+	return "file", []string{
 		"absent",
 		"append",
 		"contains",
@@ -78,16 +76,6 @@ func (f File) Properties() (map[string]interface{}, error) {
 	return m, err
 }
 
-var (
-	ec              *nats.EncodedConn
-	FarmerInterface string
-)
-
-func RegisterEC(n *nats.EncodedConn) {
-	ec = n
-}
-
 func init() {
-	FarmerInterface = viper.GetString("FarmerInterface")
 	ingredients.RegisterAllMethods(File{})
 }

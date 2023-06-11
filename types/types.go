@@ -37,7 +37,7 @@ type (
 		Test(context.Context) (Result, error)
 		Properties() (map[string]interface{}, error)
 		Parse(id, method string, properties map[string]interface{}) (RecipeCooker, error)
-		Methods() []string
+		Methods() (string, []string)
 		PropertiesForMethod(method string) (map[string]string, error)
 	}
 	RecipeEnvelope struct {

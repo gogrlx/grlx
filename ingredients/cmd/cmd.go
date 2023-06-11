@@ -55,8 +55,8 @@ func (c Cmd) Apply(ctx context.Context) (types.Result, error) {
 	}
 }
 
-func (c Cmd) Methods() []string {
-	return []string{"run"}
+func (c Cmd) Methods() (string, []string) {
+	return "cmd", []string{"run"}
 }
 
 // TODO create map for method: type
