@@ -2,8 +2,6 @@ module github.com/gogrlx/grlx
 
 go 1.20
 
-replace gopkg.in/yaml.v2 => gopkg.in/yaml.v3 v3.0.1
-
 require (
 	github.com/fatih/color v1.15.0
 	github.com/google/uuid v1.3.0
