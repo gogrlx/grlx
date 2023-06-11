@@ -138,7 +138,7 @@ func AcceptNKey(id string) error {
 	id = strings.SplitN(id, "_", 2)[0]
 	newDest := filepath.Join(viper.GetString("FarmerPKI") + "sprouts/accepted/" + id)
 	if fname == newDest {
-		return ErrAlreadyAccepted
+		return types.ErrAlreadyAccepted
 	}
 	return os.Rename(fname, newDest)
 }
@@ -160,7 +160,7 @@ func DenyNKey(id string) error {
 		return err
 	}
 	if fname == newDest {
-		return ErrAlreadyDenied
+		return types.ErrAlreadyDenied
 	}
 	return os.Rename(fname, newDest)
 }
@@ -169,27 +169,27 @@ func UnacceptNKey(id string, nkey string) error {
 	defer ReloadNKeys()
 	newDest := filepath.Join(viper.GetString("FarmerPKI") + "sprouts/unaccepted/" + id)
 	fname, err := findNKey(id)
-	if nkey != "" && err == ErrSproutIDNotFound {
-		file, err := os.Create(newDest)
-		if err != nil {
-			return err
+	if nkey != "" && err == types.ErrSproutIDNotFound {
+		file, errCreate := os.Create(newDest)
+		if errCreate != nil {
+			return errCreate
 		}
 		defer file.Close()
-		_, err = file.WriteString(nkey)
-		return err
+		_, errWrite := file.WriteString(nkey)
+		return errWrite
 	}
 	if err != nil {
 		return err
 	}
 	if fname == newDest {
-		return ErrAlreadyUnaccepted
+		return types.ErrAlreadyUnaccepted
 	}
 	return os.Rename(fname, newDest)
 }
 
-func GetNKeysByType(set string) KeySet {
-	keySet := KeySet{}
-	keySet.Sprouts = []KeyManager{}
+func GetNKeysByType(set string) types.KeySet {
+	keySet := types.KeySet{}
+	keySet.Sprouts = []types.KeyManager{}
 	switch set {
 	case "unaccepted":
 		fallthrough
@@ -203,19 +203,19 @@ func GetNKeysByType(set string) KeySet {
 		return keySet
 	}
 	setPath := filepath.Join(viper.GetString("FarmerPKI"), "sprouts", set)
-	filepath.WalkDir(setPath, func(path string, d fs.DirEntry, err error) error {
+	filepath.WalkDir(setPath, func(path string, _ fs.DirEntry, _ error) error {
 		_, id := filepath.Split(path)
 		if setPath == path {
 			return nil
 		}
-		keySet.Sprouts = append(keySet.Sprouts, KeyManager{SproutID: id})
+		keySet.Sprouts = append(keySet.Sprouts, types.KeyManager{SproutID: id})
 		return nil
 	})
 	return keySet
 }
 
-func ListNKeysByType() KeysByType {
-	var allKeys KeysByType
+func ListNKeysByType() types.KeysByType {
+	var allKeys types.KeysByType
 	allKeys.Accepted = GetNKeysByType("accepted")
 	allKeys.Denied = GetNKeysByType("denied")
 	allKeys.Rejected = GetNKeysByType("rejected")
@@ -227,20 +227,20 @@ func RejectNKey(id string, nkey string) error {
 	defer ReloadNKeys()
 	newDest := filepath.Join(viper.GetString("FarmerPKI"), "sprouts", "rejected", id)
 	fname, err := findNKey(id)
-	if nkey != "" && err == ErrSproutIDNotFound {
-		file, err := os.Create(newDest)
-		if err != nil {
-			return err
+	if nkey != "" && err == types.ErrSproutIDNotFound {
+		file, errCreate := os.Create(newDest)
+		if errCreate != nil {
+			return errCreate
 		}
 		defer file.Close()
-		_, err = file.WriteString(nkey)
-		return err
+		_, errWrite := file.WriteString(nkey)
+		return errWrite
 	}
 	if err != nil {
 		return err
 	}
 	if fname == newDest {
-		return ErrAlreadyRejected
+		return types.ErrAlreadyRejected
 	}
 	return os.Rename(fname, newDest)
 }
@@ -248,10 +248,10 @@ func RejectNKey(id string, nkey string) error {
 func GetNKey(id string) (string, error) {
 	FarmerPKI := viper.GetString("FarmerPKI")
 	if !IsValidSproutID(id) {
-		return "", ErrSproutIDInvalid
+		return "", types.ErrSproutIDInvalid
 	}
 	filename := ""
-	filepath.WalkDir(FarmerPKI+"sprouts", func(path string, d fs.DirEntry, err error) error {
+	filepath.WalkDir(FarmerPKI+"sprouts", func(path string, _ fs.DirEntry, _ error) error {
 		switch path {
 		case filepath.Join(FarmerPKI, "sprouts", "unaccepted", id):
 			fallthrough
@@ -261,13 +261,13 @@ func GetNKey(id string) (string, error) {
 			fallthrough
 		case filepath.Join(FarmerPKI, "sprouts", "rejected", id):
 			filename = path
-			return ErrSproutIDFound
+			return types.ErrSproutIDFound
 		default:
 		}
 		return nil
 	})
 	if filename == "" {
-		return "", ErrSproutIDNotFound
+		return "", types.ErrSproutIDNotFound
 	}
 	file, err := os.ReadFile(filename)
 	return string(file), err
@@ -276,10 +276,10 @@ func GetNKey(id string) (string, error) {
 func findNKey(id string) (string, error) {
 	FarmerPKI := viper.GetString("FarmerPKI")
 	if !IsValidSproutID(id) {
-		return "", ErrSproutIDInvalid
+		return "", types.ErrSproutIDInvalid
 	}
 	filename := ""
-	filepath.WalkDir(FarmerPKI+"sprouts", func(path string, d fs.DirEntry, err error) error {
+	filepath.WalkDir(FarmerPKI+"sprouts", func(path string, _ fs.DirEntry, _ error) error {
 		switch path {
 		case filepath.Join(FarmerPKI, "sprouts", "unaccepted", id):
 			fallthrough
@@ -289,13 +289,13 @@ func findNKey(id string) (string, error) {
 			fallthrough
 		case filepath.Join(FarmerPKI, "sprouts", "rejected", id):
 			filename = path
-			return ErrSproutIDFound
+			return types.ErrSproutIDFound
 		default:
 		}
 		return nil
 	})
 	if filename == "" {
-		return "", ErrSproutIDNotFound
+		return "", types.ErrSproutIDNotFound
 	}
 	return filename, nil
 }
@@ -303,7 +303,7 @@ func findNKey(id string) (string, error) {
 func NKeyExists(id string, nkey string) (Registered bool, Matches bool) {
 	FarmerPKI := viper.GetString("FarmerPKI")
 	filename := ""
-	filepath.WalkDir(filepath.Join(FarmerPKI, "sprouts"), func(path string, d fs.DirEntry, err error) error {
+	filepath.WalkDir(filepath.Join(FarmerPKI, "sprouts"), func(path string, _ fs.DirEntry, _ error) error {
 		switch path {
 		case filepath.Join(FarmerPKI, "sprouts", "unaccepted", id):
 			fallthrough
@@ -313,7 +313,7 @@ func NKeyExists(id string, nkey string) (Registered bool, Matches bool) {
 			fallthrough
 		case filepath.Join(FarmerPKI, "sprouts", "rejected", id):
 			filename = path
-			return ErrSproutIDFound
+			return types.ErrSproutIDFound
 		default:
 		}
 		return nil
@@ -392,7 +392,7 @@ func LoadRootCA(binary string) error {
 	ok := certPool.AppendCertsFromPEM(rootPEM)
 	if !ok {
 		log.Errorf("nats: failed to parse root certificate from %q", RootCA)
-		return ErrCannotParseRootCA
+		return types.ErrCannotParseRootCA
 	}
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{
 		RootCAs:    certPool,

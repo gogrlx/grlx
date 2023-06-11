@@ -111,10 +111,10 @@ func ReloadNKeys() error {
 	for _, account := range authorizedKeys.Sprouts {
 		log.Tracef("Adding accepted key `%s` to NATS", account.SproutID)
 		// sproutAccount.Name = account.SproutID
-		key, err := GetNKey(account.SproutID)
-		if err != nil {
+		key, errGet := GetNKey(account.SproutID)
+		if errGet != nil {
 			// TODO update panic to handle error
-			panic(err)
+			panic(errGet)
 		}
 		accountSubscribe := nats_server.SubjectPermission{Allow: []string{"grlx.sprouts." + account.SproutID + ".>"}}
 		accountPublish := nats_server.SubjectPermission{Allow: []string{"grlx.sprouts.announce." + account.SproutID, "_INBOX.>"}}
