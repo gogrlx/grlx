@@ -1,6 +1,3 @@
-/*
-Copyright © 2021 Tai Groot <tai@taigrr.com>
-*/
 package cmd
 
 import (

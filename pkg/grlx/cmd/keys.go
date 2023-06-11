@@ -7,7 +7,6 @@ import (
 	"os"
 
 	"github.com/fatih/color"
-	//. "github.com/gogrlx/grlx/config"
 	gpki "github.com/gogrlx/grlx/pkg/grlx/pki"
 	"github.com/gogrlx/grlx/pkg/grlx/util"
 	"github.com/gogrlx/grlx/types"
