@@ -69,6 +69,7 @@ var cmdCook = &cobra.Command{
 			// complete <- struct{}{}
 		})
 		if err != nil {
+			log.Println("Error subscribing to grlx.cook."+jid+".>", err)
 			log.Fatal(err)
 		}
 		defer sub.Unsubscribe()

@@ -7,6 +7,7 @@ import (
 
 	log "github.com/taigrr/log-socket/log"
 
+	"github.com/gogrlx/grlx/cook"
 	"github.com/gogrlx/grlx/ingredients/cmd"
 	"github.com/gogrlx/grlx/ingredients/test"
 	"github.com/gogrlx/grlx/pki"
@@ -68,6 +69,12 @@ func natsInit(nc *nats.EncodedConn) error {
 		log.Trace(rEnvelope)
 		ackB, _ := json.Marshal(types.Ack{Acknowledged: true, JobID: rEnvelope.JobID})
 		m.Respond(ackB)
+		go func() {
+			err = cook.CookRecipeEnvelope(rEnvelope)
+			if err != nil {
+				log.Error(err)
+			}
+		}()
 	})
 	if err != nil {
 		return err

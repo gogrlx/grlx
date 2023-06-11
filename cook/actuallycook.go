@@ -2,6 +2,7 @@ package cook
 
 import (
 	"context"
+	"errors"
 	"sync"
 
 	"github.com/taigrr/log-socket/log"
@@ -12,6 +13,8 @@ import (
 )
 
 type CompletionStatus int
+
+var ErrStalled = errors.New("no steps are in progress")
 
 const (
 	NotStarted CompletionStatus = iota
@@ -63,7 +66,11 @@ func CookRecipeEnvelope(envelope types.RecipeEnvelope) error {
 			log.Noticef("Step %s completed with status %v", completion.ID, completion)
 			// TODO also collect the results of the step and store them into a log folder by JID
 			completionMap[completion.ID] = completion
+			noneInProgress := true
 			for id, step := range completionMap {
+				if step.CompletionStatus == InProgress {
+					noneInProgress = false
+				}
 				if step.CompletionStatus != NotStarted {
 					continue
 				}
@@ -128,6 +135,10 @@ func CookRecipeEnvelope(envelope types.RecipeEnvelope) error {
 						}
 					}
 				}(stepMap[id])
+			}
+			if noneInProgress {
+				// no steps are in progress, so we're done
+				return ErrStalled
 			}
 		// All steps are done, so context will be cancelled and we'll exit
 		case <-ctx.Done():

@@ -19,7 +19,6 @@ func Cook(target string, cmdCook types.CmdCook) (types.CmdCook, error) {
 	// check targets valid
 	client := http.Client{}
 	ctx := context.Background()
-	var tr types.TargetedResults
 	FarmerURL := viper.GetString("FarmerURL")
 	targets, err := util.ResolveTargets(target)
 	if err != nil {
@@ -48,7 +47,7 @@ func Cook(target string, cmdCook types.CmdCook) (types.CmdCook, error) {
 	if err != nil {
 		return cmdCook, err
 	}
-	err = json.NewDecoder(resp.Body).Decode(&tr)
+	err = json.NewDecoder(resp.Body).Decode(&cmdCook)
 	// TODO connect NATS and start tailing the bus here
 	return cmdCook, err
 }
