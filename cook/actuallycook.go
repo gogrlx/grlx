@@ -20,7 +20,6 @@ const (
 	Failed
 )
 
-// TODO store Changes struct here to allow for unified error/status reporting
 type StepCompletion struct {
 	ID               types.StepID
 	CompletionStatus CompletionStatus
