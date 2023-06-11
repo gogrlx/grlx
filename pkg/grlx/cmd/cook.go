@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/nats-io/nats.go"
 	"github.com/spf13/cobra"
 
 	"github.com/gogrlx/grlx/api/client"
@@ -48,6 +49,32 @@ var cmdCook = &cobra.Command{
 				log.Panic(err)
 			}
 		}
+		// topic: grlx.cook."+envelope.JobID+"."+pki.GetSproutID()
+		jid := results.JID
+		nc, err := client.NewNatsClient()
+		if err != nil {
+			log.Fatal(err)
+		}
+		ec, err := nats.NewEncodedConn(nc, nats.JSON_ENCODER)
+		if err != nil {
+			log.Fatal(err)
+		}
+		complete := make(chan struct{})
+		sub, err := ec.Subscribe("grlx.cook."+jid+".>", func(msg *nats.Msg) {
+			printTex.Lock()
+			defer printTex.Unlock()
+			fmt.Println(msg.Subject)
+			fmt.Println(string(msg.Data))
+			// TODO add a signal on the sprout side to indicate that the cook is complete
+			// complete <- struct{}{}
+		})
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer sub.Unsubscribe()
+		defer nc.Flush()
+		<-complete
+
 		switch outputMode {
 		case "json":
 			jw, _ := json.Marshal(results)
