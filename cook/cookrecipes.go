@@ -26,7 +26,7 @@ func populateFuncMap(sproutID string) template.FuncMap {
 	return v
 }
 
-func Cook(sproutID string, recipeID types.RecipeName, JID string) error {
+func SendCookEvent(sproutID string, recipeID types.RecipeName, JID string) error {
 	basepath := getBasePath()
 	includes, err := collectAllIncludes(sproutID, basepath, recipeID)
 	if err != nil {

@@ -35,6 +35,7 @@ func init() {
 	sproutMatcher = regexp.MustCompile(`^[0-9a-z\.][-0-9_a-z\.]*$`)
 }
 
+// TODO: look into merging this package with the auth and certs packages
 func SetupPKIFarmer() {
 	FarmerPKI := viper.GetString("FarmerPKI")
 	_, err := os.Stat(FarmerPKI)
