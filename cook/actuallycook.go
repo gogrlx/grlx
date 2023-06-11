@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/gogrlx/grlx/ingredients"
 	"github.com/gogrlx/grlx/types"
 )
 
@@ -16,6 +17,7 @@ const (
 	Failed
 )
 
+// TODO store Changes struct here to allow for unified error/status reporting
 type StepCompletion struct {
 	ID               types.StepID
 	CompletionStatus CompletionStatus
@@ -67,13 +69,46 @@ func CookRecipeEnvelope(envelope types.RecipeEnvelope) error {
 				if !requisitesMet {
 					continue
 				}
+				// mark the step as in progress
+				t := completionMap[id]
+				t.CompletionStatus = InProgress
+				completionMap[id] = t
 				// all requisites are met, so start the step in a goroutine
 				go func(step types.Step) {
+					defer wg.Done()
 					// TODO here use the ingredient package to load and cook the step
-					wg.Done()
-					completionChan <- StepCompletion{
-						ID:               step.ID,
-						CompletionStatus: Completed,
+					ingredient, err := ingredients.NewRecipeCooker(step.ID, step.Ingredient, step.Method, step.Properties)
+					if err != nil {
+						// TODO here broadcast the error on the bus
+						completionChan <- StepCompletion{
+							ID:               step.ID,
+							CompletionStatus: Failed,
+						}
+					}
+					// TODO allow for cancellation
+					// TODO check for Test v Apply
+					res, err := ingredient.Apply(context.Background())
+					if err != nil {
+						completionChan <- StepCompletion{
+							ID:               step.ID,
+							CompletionStatus: Failed,
+						}
+					}
+					if res.Succeeded {
+						completionChan <- StepCompletion{
+							ID:               step.ID,
+							CompletionStatus: Completed,
+						}
+					} else if res.Failed {
+						completionChan <- StepCompletion{
+							ID:               step.ID,
+							CompletionStatus: Failed,
+						}
+					} else {
+						completionChan <- StepCompletion{
+							ID:               step.ID,
+							CompletionStatus: Completed,
+						}
 					}
 				}(stepMap[id])
 			}
