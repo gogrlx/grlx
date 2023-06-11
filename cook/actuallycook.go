@@ -1,6 +1,11 @@
 package cook
 
-import "github.com/gogrlx/grlx/types"
+import (
+	"context"
+	"sync"
+
+	"github.com/gogrlx/grlx/types"
+)
 
 type CompletionStatus int
 
@@ -19,6 +24,10 @@ type StepCompletion struct {
 
 func CookRecipeEnvelope(envelope types.RecipeEnvelope) error {
 	completionMap := map[types.StepID]StepCompletion{}
+	stepMap := map[types.StepID]types.Step{}
+	for _, step := range envelope.Steps {
+		stepMap[step.ID] = step
+	}
 	for _, step := range envelope.Steps {
 		completionMap[step.ID] = StepCompletion{
 			ID:               step.ID,
@@ -26,16 +35,39 @@ func CookRecipeEnvelope(envelope types.RecipeEnvelope) error {
 			ChangesMade:      false,
 		}
 	}
+	wg := sync.WaitGroup{}
+	wg.Add(len(envelope.Steps))
 	completionChan := make(chan StepCompletion, 5)
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		wg.Wait()
+		cancel()
+	}()
 	for {
 		select {
 		case completion := <-completionChan:
 			completionMap[completion.ID] = completion
-			go func() {
-			}()
+			for id, step := range completionMap {
+				if step.CompletionStatus != NotStarted {
+					continue
+				}
+				requisitesMet, err := RequisitesAreMet(stepMap[id])
+				if err != nil {
+					// TODO here broadcast the error on the bus and mark the step as failed
+					wg.Done()
+				}
+				if !requisitesMet {
+					continue
+				}
+				go func() {
+					// TODO here use the ingredient package to load and cook the step
+					wg.Done()
+				}()
+			}
+		case <-ctx.Done():
+			return nil
 		}
 	}
-	return nil
 }
 
 func RequisitesAreMet(step types.Step) (bool, error) {
