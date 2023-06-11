@@ -5,7 +5,8 @@ Documentation=https://grlx.org
 
 [Service]
 Type=simple
-User=root
+User=farmer
+Group=farmer
 ExecStart=/usr/local/bin/grlx-farmer
 Restart=always
 RestartSec=30
