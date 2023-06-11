@@ -18,7 +18,7 @@ import (
 	"github.com/spf13/viper"
 	log "github.com/taigrr/log-socket/log"
 
-	. "github.com/gogrlx/grlx/types"
+	"github.com/gogrlx/grlx/types"
 )
 
 type PubKeyType int
@@ -408,7 +408,7 @@ func PutNKey(id string) error {
 	if err != nil {
 		return err
 	}
-	keySub := KeySubmission{NKey: nkey, SproutID: id}
+	keySub := types.KeySubmission{NKey: nkey, SproutID: id}
 
 	jw, _ := json.Marshal(keySub)
 	url := viper.GetString("FarmerURL") + "/pki/putnkey"

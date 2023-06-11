@@ -43,6 +43,7 @@ type (
 	RecipeEnvelope struct {
 		JobID string
 		Steps []Step
+		Test  bool
 	}
 	Ack struct {
 		Acknowledged bool
@@ -73,6 +74,7 @@ type (
 		Steps     []*Step
 	}
 	Result struct {
+		// TODO: use a type for this
 		Succeeded bool
 		Failed    bool
 		Changed   bool
