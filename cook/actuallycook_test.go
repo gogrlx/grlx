@@ -9,44 +9,97 @@ import (
 
 func TestRequisitesAreMet(t *testing.T) {
 	// TODO
+
+	completionmap := map[types.StepID]StepCompletion{
+		"failed": {
+			ID:               "failed",
+			CompletionStatus: Failed,
+		},
+		"succeeded": {
+			ID:               "succeeded",
+			CompletionStatus: Completed,
+		},
+		"inprogress": {
+			ID:               "inprogress",
+			CompletionStatus: InProgress,
+		},
+		"notstarted": {
+			ID:               "notstarted",
+			CompletionStatus: NotStarted,
+		},
+	}
+
 	testCases := []struct {
-		id            string
-		step          types.Step
-		completionmap map[types.StepID]StepCompletion
-		expected      bool
-		err           error
+		id         string
+		requisites types.RequisiteSet
+		expected   bool
+		err        error
 	}{
 		{
-			id: "no reqs",
-			step: types.Step{
-				ID:         "step1",
-				Requisites: types.RequisiteSet{},
-			},
-			completionmap: map[types.StepID]StepCompletion{},
-			expected:      true,
-			err:           nil,
+			id:         "no reqs",
+			requisites: types.RequisiteSet{},
+			expected:   true, err: nil,
 		},
 		{
 			id: "one requisite, not met",
-			step: types.Step{
-				ID: "step1",
-				Requisites: types.RequisiteSet{types.Requisite{
-					Condition: types.Require,
-					StepIDs:   []types.StepID{"a"},
-				}},
-			},
-			completionmap: map[types.StepID]StepCompletion{"a": {
-				ID:               "a",
-				CompletionStatus: Failed,
+			requisites: types.RequisiteSet{types.Requisite{
+				Condition: types.Require,
+				StepIDs:   []types.StepID{"failed"},
+			}},
+			expected: false, err: ErrRequisiteNotMet,
+		},
+		{
+			id: "one requisite, met",
+			requisites: types.RequisiteSet{types.Requisite{
+				Condition: types.Require,
+				StepIDs:   []types.StepID{"succeeded"},
+			}},
+			expected: true, err: nil,
+		},
+		{
+			id: "one requisite, in progress",
+			requisites: types.RequisiteSet{types.Requisite{
+				Condition: types.Require,
+				StepIDs:   []types.StepID{"inprogress"},
 			}},
 			expected: false,
+			err:      nil,
+		},
+		{
+			id: "two requisites, one not met",
+			requisites: types.RequisiteSet{
+				types.Requisite{
+					Condition: types.Require,
+					StepIDs:   []types.StepID{"succeeded", "failed"},
+				},
+			},
+			expected: false,
 			err:      ErrRequisiteNotMet,
+		},
+		{
+			id: "two requisites, one met, one pending",
+			requisites: types.RequisiteSet{
+				types.Requisite{
+					Condition: types.Require,
+					StepIDs:   []types.StepID{"succeeded", "inprogress"},
+				},
+			},
+			expected: false, err: nil,
+		},
+		{
+			id: "two anyrequisites, one met, one pending",
+			requisites: types.RequisiteSet{
+				types.Requisite{
+					Condition: types.RequireAny,
+					StepIDs:   []types.StepID{"succeeded", "inprogress"},
+				},
+			},
+			expected: true, err: nil,
 		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.id, func(t *testing.T) {
-			// TODO
-			met, err := RequisitesAreMet(tc.step, tc.completionmap)
+			met, err := RequisitesAreMet(types.Step{Requisites: tc.requisites}, completionmap)
 			if !errors.Is(err, tc.err) {
 				t.Errorf("expected error %v, got %v", tc.err, err)
 			}
