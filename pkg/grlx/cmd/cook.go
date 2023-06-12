@@ -57,7 +57,8 @@ var cmdCook = &cobra.Command{
 			log.Fatal(err)
 		}
 		complete := make(chan struct{})
-		sub, err := ec.Subscribe("grlx.cook."+jid+".>", func(msg *nats.Msg) {
+		topic := "grlx.cook.*." + jid
+		sub, err := ec.Subscribe(topic, func(msg *nats.Msg) {
 			printTex.Lock()
 			defer printTex.Unlock()
 			fmt.Println(msg.Subject)
@@ -66,7 +67,7 @@ var cmdCook = &cobra.Command{
 			// complete <- struct{}{}
 		})
 		if err != nil {
-			log.Println("Error subscribing to grlx.cook."+jid+".>", err)
+			log.Printf("Error subscribing to %s: %v\n", topic, err)
 			log.Fatal(err)
 		}
 		defer sub.Unsubscribe()

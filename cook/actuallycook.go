@@ -3,6 +3,7 @@ package cook
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/taigrr/log-socket/log"
@@ -14,7 +15,10 @@ import (
 
 type CompletionStatus int
 
-var ErrStalled = errors.New("no steps are in progress")
+var (
+	ErrStalled         = errors.New("no steps are in progress")
+	ErrRequisiteNotMet = errors.New("requisite not met")
+)
 
 const (
 	NotStarted CompletionStatus = iota
@@ -62,7 +66,7 @@ func CookRecipeEnvelope(envelope types.RecipeEnvelope) error {
 		select {
 		// each time a step completes, check if any other steps can be started
 		case completion := <-completionChan:
-			ec.Publish("grlx.cook."+envelope.JobID+"."+pki.GetSproutID(), completion)
+			ec.Publish("grlx.cook."+pki.GetSproutID()+"."+envelope.JobID, completion)
 			log.Noticef("Step %s completed with status %v", completion.ID, completion)
 			// TODO also collect the results of the step and store them into a log folder by JID
 			completionMap[completion.ID] = completion
@@ -150,6 +154,106 @@ func CookRecipeEnvelope(envelope types.RecipeEnvelope) error {
 
 // TODO this is a stub
 // RequisitesAreMet returns true if all of the requisites for the given step are met
+// All top-level requisites are ANDed together, and meta states can be combined with an ANY clauses
+// to use OR logic instead
 func RequisitesAreMet(step types.Step, completionMap map[types.StepID]StepCompletion) (bool, error) {
-	return false, nil
+	if len(step.Requisites) == 0 {
+		return true, nil
+	}
+	unmet := false
+	for _, reqSet := range step.Requisites {
+		errStr := "%s requirement of %s not met"
+		switch reqSet.Condition {
+		case types.OnChanges:
+			for _, req := range reqSet.StepIDs {
+				reqStatus := completionMap[req]
+				// if the step is completed or failed, and no changes were made, then the requisite cannot be met
+				if reqStatus.CompletionStatus == Completed || reqStatus.CompletionStatus == Failed {
+					if !reqStatus.ChangesMade {
+						return false, errors.Join(ErrRequisiteNotMet, fmt.Errorf(errStr, reqSet.Condition, string(req)))
+					}
+				} else {
+					// if the step is not completed or failed, then the requisite is not met (yet)
+					unmet = true
+				}
+			}
+		case types.OnFail:
+			for _, req := range reqSet.StepIDs {
+				reqStatus := completionMap[req]
+				// if the step is completed, then the requisite cannot be met
+				if reqStatus.CompletionStatus == Completed {
+					return false, errors.Join(ErrRequisiteNotMet, fmt.Errorf(errStr, reqSet.Condition, string(req)))
+				} else if reqStatus.CompletionStatus != Failed {
+					// if the step is not completed or failed, then the requisite is not met (yet)
+					unmet = true
+				}
+			}
+		case types.Require:
+			for _, req := range reqSet.StepIDs {
+				reqStatus := completionMap[req]
+				if reqStatus.CompletionStatus == Failed {
+					return false, errors.Join(ErrRequisiteNotMet, fmt.Errorf(errStr, reqSet.Condition, string(req)))
+				} else if reqStatus.CompletionStatus != Completed {
+					unmet = true
+				}
+			}
+
+		case types.OnChangesAny:
+			met := false
+			pendingRemaining := false
+			for _, req := range reqSet.StepIDs {
+				reqStatus := completionMap[req]
+				if reqStatus.CompletionStatus == Completed || reqStatus.CompletionStatus == Failed {
+					if reqStatus.ChangesMade {
+						met = true
+					}
+				} else {
+					pendingRemaining = true
+				}
+			}
+			if !pendingRemaining && !met {
+				return false, errors.Join(ErrRequisiteNotMet, fmt.Errorf(errStr, reqSet.Condition, "any"))
+			}
+			if !met {
+				unmet = true
+			}
+		case types.OnFailAny:
+			met := false
+			pendingRemaining := false
+			for _, req := range reqSet.StepIDs {
+				reqStatus := completionMap[req]
+				if reqStatus.CompletionStatus == Failed {
+					met = true
+				} else if reqStatus.CompletionStatus != Completed {
+					pendingRemaining = true
+				}
+			}
+			if !pendingRemaining && !met {
+				return false, errors.Join(ErrRequisiteNotMet, fmt.Errorf(errStr, reqSet.Condition, "any"))
+			}
+			if !met {
+				unmet = true
+			}
+		case types.RequireAny:
+			met := false
+			pendingRemaining := false
+			for _, req := range reqSet.StepIDs {
+				reqStatus := completionMap[req]
+				if reqStatus.CompletionStatus == Completed {
+					met = true
+				} else if reqStatus.CompletionStatus != Failed {
+					pendingRemaining = true
+				}
+			}
+			if !pendingRemaining && !met {
+				return false, errors.Join(ErrRequisiteNotMet, fmt.Errorf(errStr, reqSet.Condition, "any"))
+			}
+			if !met {
+				unmet = true
+			}
+		default:
+			return false, errors.Join(ErrRequisiteNotMet, fmt.Errorf("unknown requisite condition %s", reqSet.Condition))
+		}
+	}
+	return !unmet, nil
 }
