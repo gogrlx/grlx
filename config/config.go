@@ -8,14 +8,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gogrlx/grlx/types"
 	"github.com/spf13/viper"
-
-	. "github.com/gogrlx/grlx/types"
 )
 
 const GrlxExt = "grlx"
 
-var BuildInfo Version
+var BuildInfo types.Version
 
 var configLoaded sync.Once
 
@@ -47,9 +46,9 @@ func LoadConfig(binary string) {
 			log.Println("Config file not found, will create default config")
 			switch binary {
 			case "grlx":
-				dirname, err := os.UserHomeDir()
+				dirname, errHomeDir := os.UserHomeDir()
 				if err != nil {
-					log.Fatal(err)
+					log.Fatal(errHomeDir)
 				}
 				cfgPath := filepath.Join(dirname, ".config/grlx/")
 				os.MkdirAll(cfgPath, 0o755)
@@ -112,6 +111,7 @@ func LoadConfig(binary string) {
 			viper.Set("NKeySproutPrivFile", "/etc/grlx/pki/sprout/sprout.nkey")
 			viper.SetDefault("FarmerBusPort", "5406")
 			viper.SetDefault("FarmerBusInterface", viper.GetString("FarmerURL")+":"+viper.GetString("FarmerBusPort"))
+			viper.SetDefault("CacheDir", "/var/cache/grlx/sprout/files/provided")
 		}
 		viper.Set("FarmerURL", "https://"+viper.GetString("FarmerInterface")+":"+viper.GetString("FarmerAPIPort"))
 		viper.WriteConfig()
@@ -121,4 +121,8 @@ func LoadConfig(binary string) {
 // TODO actually validate the base path exists
 func BasePathValid() bool {
 	return true
+}
+
+func CacheDir() string {
+	return viper.GetString("CacheDir")
 }

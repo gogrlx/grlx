@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/gogrlx/grlx/config"
 	"github.com/gogrlx/grlx/ingredients"
 	"github.com/gogrlx/grlx/types"
 )
@@ -45,7 +46,7 @@ func (f File) Test(ctx context.Context) (types.Result, error) {
 	case "touch":
 		return f.undef()
 	case "cached":
-		return f.undef()
+		return f.cached(ctx, true)
 	case "contains":
 		return f.undef()
 	case "content":
@@ -61,6 +62,45 @@ func (f File) Test(ctx context.Context) (types.Result, error) {
 		return types.Result{Succeeded: false, Failed: true, Changed: false, Changes: nil}, fmt.Errorf("method %s undefined", f.method)
 
 	}
+}
+
+func (f File) cached(ctx context.Context, test bool) (types.Result, error) {
+	source, ok := f.params["source"].(string)
+	if !ok || source == "" {
+		// TODO join with an error type for missing params
+		return types.Result{Succeeded: false, Failed: true}, fmt.Errorf("source not defined")
+	}
+	// TODO allow for skip_verify here
+	hash, ok := f.params["hash"].(string)
+	if !ok || hash == "" {
+		return types.Result{Succeeded: false, Failed: true}, fmt.Errorf("hash not defined")
+	}
+	// TODO determine filename scheme for skip_verify downloads
+	cacheDest := filepath.Join(config.CacheDir(), hash)
+	fp, err := NewFileProvider(f.id, source, cacheDest, hash, f.params)
+	if err != nil {
+		return types.Result{Succeeded: false, Failed: true}, err
+	}
+	// TODO allow for skip_verify here
+	valid, errVal := fp.Verify(ctx)
+	if errVal != nil {
+		return types.Result{Succeeded: false, Failed: true}, errVal
+	}
+	if !valid {
+		if test {
+			return types.Result{
+				Succeeded: true, Failed: false,
+				Changed: true, Changes: fp,
+			}, nil
+		} else {
+			err = fp.Download(ctx)
+			if err != nil {
+				return types.Result{Succeeded: false, Failed: true}, err
+			}
+			return types.Result{Succeeded: true, Failed: false, Changed: true, Changes: fp}, nil
+		}
+	}
+	return types.Result{Succeeded: true, Failed: false, Changed: false}, nil
 }
 
 func (f File) absent(ctx context.Context, test bool) (types.Result, error) {
@@ -108,7 +148,7 @@ func (f File) Apply(ctx context.Context) (types.Result, error) {
 	case "touch":
 		return f.undef()
 	case "cached":
-		return f.undef()
+		return f.cached(ctx, false)
 	case "contains":
 		return f.undef()
 	case "content":
