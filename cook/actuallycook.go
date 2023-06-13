@@ -42,6 +42,7 @@ func CookRecipeEnvelope(envelope types.RecipeEnvelope) error {
 			ID:               step.ID,
 			CompletionStatus: NotStarted,
 			ChangesMade:      false,
+			Changes:          nil,
 		}
 	}
 	stepMap := map[types.StepID]types.Step{}
@@ -67,7 +68,8 @@ func CookRecipeEnvelope(envelope types.RecipeEnvelope) error {
 		// each time a step completes, check if any other steps can be started
 		case completion := <-completionChan:
 			ec.Publish("grlx.cook."+pki.GetSproutID()+"."+envelope.JobID, completion)
-			log.Noticef("Step %s completed with status %v", completion.ID, completion)
+			log.Printf("Step %s completed with status %v", completion.ID, completion)
+			wg.Done()
 			// TODO also collect the results of the step and store them into a log folder by JID
 			completionMap[completion.ID] = completion
 			noneInProgress := true
@@ -78,33 +80,38 @@ func CookRecipeEnvelope(envelope types.RecipeEnvelope) error {
 				if step.CompletionStatus != NotStarted {
 					continue
 				}
+				// mark the step as in progress
 				requisitesMet, err := RequisitesAreMet(stepMap[id], completionMap)
 				if err != nil {
-					completionChan <- StepCompletion{
-						ID:               id,
-						CompletionStatus: Failed,
-						Error:            err,
-					}
-					wg.Done()
+					t := completionMap[id]
+					t.CompletionStatus = Failed
+					completionMap[id] = t
+					go func(cChan chan StepCompletion, id types.StepID, err error) {
+						cChan <- StepCompletion{
+							ID:               id,
+							CompletionStatus: Failed,
+							Error:            err,
+						}
+					}(completionChan, id, err)
 					continue
 				}
 				if !requisitesMet {
 					continue
 				}
-				// mark the step as in progress
 				t := completionMap[id]
 				t.CompletionStatus = InProgress
 				completionMap[id] = t
 				// all requisites are met, so start the step in a goroutine
-				go func(step types.Step) {
-					defer wg.Done()
+				go func(step types.Step, cChan chan StepCompletion) {
 					// use the ingredient package to load and cook the step
 					ingredient, err := ingredients.NewRecipeCooker(step.ID, step.Ingredient, step.Method, step.Properties)
 					if err != nil {
-						completionChan <- StepCompletion{
+						cChan <- StepCompletion{
 							ID:               step.ID,
 							CompletionStatus: Failed,
+							Error:            err,
 						}
+						return
 					}
 					var res types.Result
 					// TODO allow for cancellation
@@ -116,43 +123,38 @@ func CookRecipeEnvelope(envelope types.RecipeEnvelope) error {
 						res, err = ingredient.Apply(bgCtx)
 					}
 					if res.Succeeded {
-						completionChan <- StepCompletion{
+						cChan <- StepCompletion{
 							ID:               step.ID,
 							CompletionStatus: Completed,
 							ChangesMade:      res.Changed,
 							Changes:          res.Changes,
+							Error:            err,
 						}
-					} else if res.Failed {
-						completionChan <- StepCompletion{
+					} else {
+						cChan <- StepCompletion{
 							ID:               step.ID,
 							CompletionStatus: Failed,
 							ChangesMade:      res.Changed,
 							Changes:          res.Changes,
-						}
-					} else if err != nil {
-						completionChan <- StepCompletion{
-							ID:               step.ID,
-							CompletionStatus: Completed,
 							Error:            err,
-							// res might be nil if err is not nil
-							// so don't try to access res.Changed or res.Changes
 						}
 					}
-				}(stepMap[id])
+				}(stepMap[id], completionChan)
+				noneInProgress = false
 			}
 			if noneInProgress {
 				// no steps are in progress, so we're done
-				return ErrStalled
+				log.Print("No steps are in progress")
 			}
 		// All steps are done, so context will be cancelled and we'll exit
 		case <-ctx.Done():
+			log.Print("All steps completed")
 			return nil
 			// TODO add a timeout case
 		}
 	}
 }
 
-// TODO this is a stub
 // RequisitesAreMet returns true if all of the requisites for the given step are met
 // All top-level requisites are ANDed together, and meta states can be combined with an ANY clauses
 // to use OR logic instead
