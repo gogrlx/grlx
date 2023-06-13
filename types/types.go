@@ -32,6 +32,13 @@ func (r RequisiteSet) AllSteps() []*Step {
 }
 
 type (
+	FileProvider interface {
+		Download(context.Context) error
+		Properties() (map[string]interface{}, error)
+		Parse(id, source, destination, hash string, properties map[string]interface{}) (FileProvider, error)
+		Protocols() []string
+		Verify(context.Context) (bool, error)
+	}
 	RecipeCooker interface {
 		Apply(context.Context) (Result, error)
 		Test(context.Context) (Result, error)
