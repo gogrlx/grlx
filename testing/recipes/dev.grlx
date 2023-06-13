@@ -25,6 +25,9 @@ steps:
       - runas: tai
       - require:
         - add go to path
+  temp file deleted:
+    file.absent:
+      - name: /tmp/deletable
 {{- if (props "is_desktop")}}
   configure conky:
     file.managed:
