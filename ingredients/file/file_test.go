@@ -9,7 +9,7 @@ import (
 
 func TestRecipeStepUsage(t *testing.T) {
 	var x types.RecipeCooker
-	x, err := New("testFile", "append", map[string]any{})
+	x, err := (File{}).Parse("testFile", "append", map[string]any{})
 	if err != nil {
 		t.Error(err)
 		return
