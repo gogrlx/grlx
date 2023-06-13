@@ -23,22 +23,39 @@ func (f File) Parse(id, method string, params map[string]interface{}) (types.Rec
 	return File{id: id, method: method, params: params}, nil
 }
 
+// this is a helper func to replace fallthroughs so I can keep the
+// cases sorted alphabetically. It's not exported and won't stick around.
+// TODO remove undef func
+func (f File) undef() (types.Result, error) {
+	return types.Result{Succeeded: false, Failed: true, Changed: false, Changes: nil}, fmt.Errorf("method %s undefined", f.method)
+}
+
 func (f File) Test(ctx context.Context) (types.Result, error) {
 	switch f.method {
 	case "absent":
 		return f.absent(ctx, true)
 	case "append":
-		fallthrough
+		return f.undef()
+	case "directory":
+		return f.undef()
+	case "missing":
+		return f.undef()
+	case "prepend":
+		return f.undef()
+	case "touch":
+		return f.undef()
+	case "cached":
+		return f.undef()
 	case "contains":
-		fallthrough
+		return f.undef()
 	case "content":
-		fallthrough
+		return f.undef()
 	case "managed":
-		fallthrough
+		return f.undef()
 	case "present":
-		fallthrough
+		return f.undef()
 	case "symlink":
-		fallthrough
+		return f.undef()
 	default:
 		// TODO define error type
 		return types.Result{Succeeded: false, Failed: true, Changed: false, Changes: nil}, fmt.Errorf("method %s undefined", f.method)
@@ -81,17 +98,27 @@ func (f File) Apply(ctx context.Context) (types.Result, error) {
 	case "absent":
 		return f.absent(ctx, false)
 	case "append":
-		fallthrough
+		return f.undef()
+	case "directory":
+		return f.undef()
+	case "missing":
+		return f.undef()
+	case "prepend":
+		return f.undef()
+	case "touch":
+		return f.undef()
+	case "cached":
+		return f.undef()
 	case "contains":
-		fallthrough
+		return f.undef()
 	case "content":
-		fallthrough
+		return f.undef()
 	case "managed":
-		fallthrough
+		return f.undef()
 	case "present":
-		fallthrough
+		return f.undef()
 	case "symlink":
-		fallthrough
+		return f.undef()
 	default:
 		// TODO define error type
 		return types.Result{Succeeded: false, Failed: true, Changed: false, Changes: nil}, fmt.Errorf("method %s undefined", f.method)
@@ -104,17 +131,61 @@ func (f File) PropertiesForMethod(method string) (map[string]string, error) {
 	case "absent":
 		return map[string]string{"name": "string"}, nil
 	case "append":
-		fallthrough
+		return map[string]string{
+			"name": "string", "text": "[]string", "makedirs": "bool",
+			"source": "string", "source_hash": "string",
+			"template": "bool", "sources": "[]string",
+			"source_hashes": "[]string", "ignore_whitespace": "bool",
+		}, nil
+	case "cached":
+		return map[string]string{
+			"source": "string", "source_hash": "string",
+		}, nil
 	case "contains":
-		fallthrough
-	case "content":
-		fallthrough
+		return map[string]string{
+			"name": "string", "text": "[]string",
+			"makedirs": "bool", "source": "string",
+			"source_hash": "string", "template": "bool",
+			"sources": "[]string", "source_hashes": "[]string",
+		}, nil
+	case "directory":
+		return map[string]string{
+			"name": "string", "user": "string", "group": "string", "recurse": "bool",
+			"max_depth": "int", "dir_mode": "string", "file_mode": "string", "makedirs": "bool",
+			"clean": "bool", "follow_symlinks": "bool", "force": "bool", "backupname": "string", "allow_symlink": "bool",
+		}, nil
 	case "managed":
-		fallthrough
+		return map[string]string{
+			"name": "string", "source": "string", "source_hash": "string", "user": "string",
+			"group": "string", "mode": "string", "attrs": "string", "template": "bool",
+			"makedirs": "bool", "dir_mode": "string", "replace": "bool", "backup": "string", "show_changes": "bool",
+			"create":          "bool",
+			"follow_symlinks": "bool", "skip_verify": "bool",
+		}, nil
+	case "missing":
+		return map[string]string{"name": "string"}, nil
+	case "prepend":
+		return map[string]string{
+			"name": "string", "text": "[]string", "makedirs": "bool",
+			"source": "string", "source_hash": "string",
+			"template": "bool", "sources": "[]string",
+			"source_hashes": "[]string", "ignore_whitespace": "bool",
+		}, nil
 	case "present":
-		fallthrough
+		return map[string]string{
+			"name": "string", "target": "string", "force": "bool", "backupname": "string",
+			"makedirs": "bool", "user": "string", "group": "string", "mode": "string",
+		}, nil
 	case "symlink":
-		fallthrough
+		return map[string]string{
+			"name": "string", "target": "string", "force": "bool", "backupname": "string",
+			"makedirs": "bool", "user": "string", "group": "string", "mode": "string",
+		}, nil
+	case "touch":
+		return map[string]string{
+			"name": "string", "atime": "string",
+			"mtime": "string", "makedirs": "bool",
+		}, nil
 	default:
 		// TODO define error type
 		return nil, fmt.Errorf("method %s undefined", f.method)
@@ -126,11 +197,16 @@ func (f File) Methods() (string, []string) {
 	return "file", []string{
 		"absent",
 		"append",
+		"cached",
 		"contains",
 		"content",
+		"directory",
 		"managed",
+		"missing",
+		"prepend",
 		"present",
 		"symlink",
+		"touch",
 	}
 }
 
@@ -145,6 +221,5 @@ func (f File) Properties() (map[string]interface{}, error) {
 }
 
 func init() {
-	fmt.Println("file initialized")
 	ingredients.RegisterAllMethods(File{})
 }
