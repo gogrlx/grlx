@@ -2,6 +2,7 @@ package ingredients
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/gogrlx/grlx/types"
@@ -20,7 +21,10 @@ func RegisterAllMethods(step types.RecipeCooker) {
 	ingTex.Lock()
 	defer ingTex.Unlock()
 	name, methods := step.Methods()
-	ingMap[types.Ingredient(name)] = make(map[string]types.RecipeCooker)
+	_, ok := ingMap[types.Ingredient(name)]
+	if !ok {
+		ingMap[types.Ingredient(name)] = make(map[string]types.RecipeCooker)
+	}
 	for _, method := range methods {
 		ingMap[types.Ingredient(name)][method] = step
 	}
@@ -32,8 +36,10 @@ var (
 )
 
 func NewRecipeCooker(id types.StepID, ingredient types.Ingredient, method string, params map[string]interface{}) (types.RecipeCooker, error) {
+	fmt.Printf("cooking %s %s %s\n", id, ingredient, method)
 	ingTex.Lock()
 	defer ingTex.Unlock()
+	fmt.Printf("%v\n", ingMap)
 	if r, ok := ingMap[ingredient]; ok {
 		if ing, ok := r[method]; ok {
 			return ing.Parse(string(id), method, params)

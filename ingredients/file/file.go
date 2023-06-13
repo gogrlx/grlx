@@ -149,5 +149,6 @@ func (f File) Properties() (map[string]interface{}, error) {
 }
 
 func init() {
+	fmt.Println("file initialized")
 	ingredients.RegisterAllMethods(File{})
 }
