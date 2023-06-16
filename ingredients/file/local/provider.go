@@ -7,14 +7,6 @@ import (
 	"github.com/gogrlx/grlx/types"
 )
 
-//	FileProvider interface {
-//		Download(context.Context) error
-//		Properties() (map[string]interface{}, error)
-//		Parse(id, source, destination, hash string, properties map[string]interface{}) (FileProvider, error)
-//		Protocols() []string
-//		Verify(context.Context) (bool, error)
-//	}
-
 type LocalFile struct {
 	ID          string
 	Source      string
