@@ -18,4 +18,7 @@ var (
 	ErrNotImplemented           = errors.New("this feature is not yet implemented")
 	ErrInvalidKeyState          = errors.New("code bug: an invalid key state was supplied")
 	ErrConfirmationLengthIsZero = errors.New("code bug: confirmation options muct not be 0-length")
+
+	ErrInvalidMethod = errors.New("invalid method")
+	ErrMissingName   = errors.New("recipe is missing a name")
 )

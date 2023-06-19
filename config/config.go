@@ -126,3 +126,7 @@ func BasePathValid() bool {
 func CacheDir() string {
 	return viper.GetString("CacheDir")
 }
+
+func Init() string {
+	return viper.GetString("init")
+}

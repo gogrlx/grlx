@@ -34,13 +34,13 @@ func (r RequisiteSet) AllSteps() []*Step {
 type (
 	ServiceProvider interface {
 		Properties() (map[string]interface{}, error)
-		Parse(id, source, destination, hash string, properties map[string]interface{}) (ServiceProvider, error)
+		Parse(id, method string, properties map[string]interface{}) (ServiceProvider, error)
 
 		Start(context.Context) error
 		Stop(context.Context) error
 		Status(context.Context) (string, error)
 
-		Enable(context.Context) (bool, error)
+		Enable(context.Context) error
 		Disable(context.Context) error
 		IsEnabled(context.Context) (bool, error)
 
@@ -50,6 +50,9 @@ type (
 		Mask(context.Context) error
 		Unmask(context.Context) error
 		IsMasked(context.Context) (bool, error)
+
+		InitName() string
+		IsInit() bool
 	}
 	FileProvider interface {
 		Download(context.Context) error
