@@ -37,7 +37,7 @@ func (cf CacheFile) Verify(ctx context.Context) (bool, error) {
 	}
 	hash, matches, err := hf(f, cf.Hash)
 	if err != nil {
-		return false, errors.Join(err, fmt.Errorf("recipe step %s: hash for %s failed: expected %s but found %s", cf.ID, cf.Destination, cf.Hash, hash))
+		return false, errors.Join(err, types.ErrHashMismatch, fmt.Errorf("recipe step %s: hash for %s failed: expected %s but found %s", cf.ID, cf.Destination, cf.Hash, hash))
 	}
 	return matches, err
 }

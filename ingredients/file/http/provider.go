@@ -2,6 +2,11 @@ package http
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"io"
+	httpc "net/http"
+	"os"
 
 	"github.com/gogrlx/grlx/ingredients/file"
 	"github.com/gogrlx/grlx/ingredients/file/hashers"
@@ -16,7 +21,60 @@ type HTTPFile struct {
 	Props       map[string]interface{}
 }
 
-func (hf HTTPFile) Download(context.Context) error {
+func (hf HTTPFile) Download(ctx context.Context) error {
+	ok, err := hf.Verify(ctx)
+	if err != nil {
+		if !errors.Is(err, types.ErrFileNotFound) && !errors.Is(err, types.ErrHashMismatch) {
+			return err
+		}
+	}
+	if ok {
+		return nil
+	}
+	dest, err := os.Create(hf.Destination)
+	if err != nil {
+		return err
+	}
+	defer dest.Close()
+
+	client := httpc.DefaultClient
+	method := httpc.MethodGet
+	if hf.Props["method"] != nil {
+		if m, okM := hf.Props["method"].(string); okM {
+			method = m
+		}
+	}
+	// TODO add headers, other body settings, etc here
+	req, err := httpc.NewRequestWithContext(ctx, method, hf.Source, nil)
+	if err != nil {
+		return err
+	}
+	res, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+	expectedCode := httpc.StatusOK
+	if hf.Props["expectedCode"] != nil {
+		if ec, okEC := hf.Props["expectedCode"].(int); okEC {
+			expectedCode = ec
+		}
+	}
+	if res.StatusCode != expectedCode {
+		// TODO standardize this error message
+		return fmt.Errorf("unexpected HTTP status code %d", res.StatusCode)
+	}
+	_, err = io.Copy(dest, res.Body)
+	if err != nil {
+		return err
+	}
+	ok, err = hf.Verify(ctx)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return types.ErrHashMismatch
+	}
 	return nil
 }
 
@@ -25,6 +83,9 @@ func (hf HTTPFile) Properties() (map[string]interface{}, error) {
 }
 
 func (hf HTTPFile) Parse(id, source, destination, hash string, properties map[string]interface{}) (types.FileProvider, error) {
+	if properties == nil {
+		properties = make(map[string]interface{})
+	}
 	return HTTPFile{ID: id, Source: source, Destination: destination, Hash: hash, Props: properties}, nil
 }
 

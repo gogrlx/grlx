@@ -23,4 +23,5 @@ var (
 	ErrMissingName   = errors.New("recipe is missing a name")
 
 	ErrFileNotFound = errors.New("file not found")
+	ErrHashMismatch = errors.New("file hash mismatch")
 )
