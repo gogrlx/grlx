@@ -28,7 +28,7 @@ func (cf CacheFile) Verify(ctx context.Context) (bool, error) {
 		return false, err
 	}
 	defer f.Close()
-	if cf.HashType != "" {
+	if cf.HashType == "" {
 		cf.HashType = GuessHashType(cf.Hash)
 	}
 	hf, err := GetHashFunc(cf.HashType)
