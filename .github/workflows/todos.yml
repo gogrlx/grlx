@@ -21,4 +21,3 @@ jobs:
       uses: "alstr/todo-to-issue-action@v4"
       with:
         AUTO_ASSIGN: true
-        GITHUB_URL: https://github.com
