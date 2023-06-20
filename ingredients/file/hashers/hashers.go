@@ -52,6 +52,10 @@ func GetHashFunc(hashType string) (HashFunc, error) {
 	return nil, errors.Join(ErrorHashFuncNotFound, fmt.Errorf("hasher %s not found", hashType))
 }
 
+func GuessHashType(hash string) string {
+	return "unknown"
+}
+
 // Given a filename, return a reader for the file
 // or an error if the file cannot be opened
 func FileToReader(file string) (io.Reader, error) {
