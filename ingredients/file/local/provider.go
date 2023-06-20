@@ -3,7 +3,6 @@ package local
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"os"
 
@@ -41,8 +40,12 @@ func (lf LocalFile) Download(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	defer dest.Close()
 	_, err = io.Copy(dest, f)
+	dest.Close()
+	if err != nil {
+		return err
+	}
+	_, err = lf.Verify(ctx)
 	return err
 }
 
@@ -63,17 +66,6 @@ func (lf LocalFile) Protocols() []string {
 }
 
 func (lf LocalFile) Verify(ctx context.Context) (bool, error) {
-	_, err := os.Stat(lf.Destination)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return false, errors.Join(err, types.ErrFileNotFound)
-		}
-	}
-	f, err := os.Open(lf.Destination)
-	if err != nil {
-		return false, err
-	}
-	defer f.Close()
 	hashType := ""
 	if lf.Props["hashType"] == nil {
 		hashType = hashers.GuessHashType(lf.Hash)
@@ -82,15 +74,13 @@ func (lf LocalFile) Verify(ctx context.Context) (bool, error) {
 	} else {
 		hashType = ht
 	}
-	hf, err := hashers.GetHashFunc(hashType)
-	if err != nil {
-		return false, err
+	cf := hashers.CacheFile{
+		ID:          lf.ID,
+		Destination: lf.Destination,
+		Hash:        lf.Hash,
+		HashType:    hashType,
 	}
-	hash, matches, err := hf(f, lf.Hash)
-	if err != nil {
-		return false, errors.Join(err, fmt.Errorf("recipe step %s: hash for %s failed: expected %s but found %s", lf.ID, lf.Destination, lf.Hash, hash))
-	}
-	return matches, err
+	return cf.Verify(ctx)
 }
 
 func init() {

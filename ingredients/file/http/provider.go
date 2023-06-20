@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/gogrlx/grlx/ingredients/file"
+	"github.com/gogrlx/grlx/ingredients/file/hashers"
 	"github.com/gogrlx/grlx/types"
 )
 
@@ -31,8 +32,22 @@ func (hf HTTPFile) Protocols() []string {
 	return []string{"http", "https"}
 }
 
-func (hf HTTPFile) Verify(context.Context) (bool, error) {
-	return false, nil
+func (lf HTTPFile) Verify(ctx context.Context) (bool, error) {
+	hashType := ""
+	if lf.Props["hashType"] == nil {
+		hashType = hashers.GuessHashType(lf.Hash)
+	} else if ht, ok := lf.Props["hashType"].(string); !ok {
+		hashType = hashers.GuessHashType(lf.Hash)
+	} else {
+		hashType = ht
+	}
+	cf := hashers.CacheFile{
+		ID:          lf.ID,
+		Destination: lf.Destination,
+		Hash:        lf.Hash,
+		HashType:    hashType,
+	}
+	return cf.Verify(ctx)
 }
 
 func init() {
