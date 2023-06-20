@@ -24,6 +24,9 @@ func (sf S3File) Properties() (map[string]interface{}, error) {
 }
 
 func (sf S3File) Parse(id, source, destination, hash string, properties map[string]interface{}) (types.FileProvider, error) {
+	if properties == nil {
+		properties = make(map[string]interface{})
+	}
 	return S3File{ID: id, Source: source, Destination: destination, Hash: hash, Props: properties}, nil
 }
 
