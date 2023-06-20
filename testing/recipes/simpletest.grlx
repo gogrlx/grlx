@@ -1,0 +1,7 @@
+steps:
+  create test file:
+    file.cached:
+      - name: /tmp/testFile
+      - source: http://taigrr.com
+      - hash: ""
+      - destination: /tmp/testFile

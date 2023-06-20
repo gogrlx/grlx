@@ -37,6 +37,7 @@ func SendCookEvent(sproutID string, recipeID types.RecipeName, JID string) error
 		// load all imported files into recipefile list
 		fp, fpErr := ResolveRecipeFilePath(basepath, inc)
 		if fpErr != nil {
+			log.Errorf("could not find include %s: %v", inc, err)
 			return errors.Join(ErrNoRecipe, fpErr)
 		}
 		f, fpErr := os.ReadFile(fp)

@@ -9,11 +9,12 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/nats-io/nats.go"
+	"gopkg.in/yaml.v3"
+
 	"github.com/gogrlx/grlx/config"
 	"github.com/gogrlx/grlx/cook/rootball"
 	"github.com/gogrlx/grlx/types"
-	"github.com/nats-io/nats.go"
-	"gopkg.in/yaml.v3"
 )
 
 var ec *nats.EncodedConn
@@ -96,6 +97,7 @@ func collectAllIncludes(sproutID, basepath string, recipeID types.RecipeName) ([
 	if err != nil {
 		return []types.RecipeName{}, err
 	}
+	starterIncludes = append(starterIncludes, recipeID)
 	includeSet := make(map[types.RecipeName]bool)
 	for _, si := range starterIncludes {
 		includeSet[si] = false

@@ -36,6 +36,7 @@ type StepCompletion struct {
 }
 
 func CookRecipeEnvelope(envelope types.RecipeEnvelope) error {
+	log.Debugf("received new envelope: %v", envelope)
 	completionMap := map[types.StepID]StepCompletion{}
 	for _, step := range envelope.Steps {
 		completionMap[step.ID] = StepCompletion{
@@ -68,7 +69,7 @@ func CookRecipeEnvelope(envelope types.RecipeEnvelope) error {
 		// each time a step completes, check if any other steps can be started
 		case completion := <-completionChan:
 			ec.Publish("grlx.cook."+pki.GetSproutID()+"."+envelope.JobID, completion)
-			log.Printf("Step %s completed with status %v", completion.ID, completion)
+			log.Infof("Step %s completed with status %v", completion.ID, completion)
 			wg.Done()
 			// TODO also collect the results of the step and store them into a log folder by JID
 			completionMap[completion.ID] = completion
