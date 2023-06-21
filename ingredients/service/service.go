@@ -110,6 +110,7 @@ func (s Service) Apply(ctx context.Context) (types.Result, error) {
 }
 
 func (s Service) Test(context.Context) (types.Result, error) {
+	// TODO implement test applies
 	switch s.method {
 	case "masked":
 	case "unmasked":
