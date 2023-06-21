@@ -41,7 +41,7 @@ func FPing(target string) (TargetedResults, error) {
 		return tr, err
 	}
 	req.Header.Set("Authorization", newToken)
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := pki.APIClient.Do(req)
 	if err != nil {
 		return tr, err
 	}

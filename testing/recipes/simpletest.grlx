@@ -2,7 +2,8 @@ steps:
   create test file:
     file.cached:
       - name: /tmp/testFile
+      {{/* TODO: change this to a local / unchanging source */}}
       - source: http://taigrr.com
-      - hash: "asd"
+      - hash: "9010b3b776c74a3c1425d4a54c6d9de9"
       - hashType: md5
       - destination: /tmp/testFile
