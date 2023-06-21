@@ -6,6 +6,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/taigrr/log-socket/log"
+
 	"github.com/gogrlx/grlx/types"
 )
 
@@ -45,11 +47,15 @@ func RegisterProvider(provider types.FileProvider) error {
 
 func guessProtocol(source string) string {
 	if strings.HasPrefix(source, "/") {
+		log.Tracef("guessing protocol %s for source %s", "file", source)
 		return "file"
 	}
 	if strings.Contains(source, "://") {
-		return strings.Split(source, "://")[0]
+		proto := strings.Split(source, "://")[0]
+		log.Tracef("guessing protocol %s for source %s", proto, source)
+		return proto
 	}
+	log.Tracef("unknown protocol for source %s", source)
 	return ""
 }
 

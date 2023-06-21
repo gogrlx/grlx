@@ -7,10 +7,11 @@ import (
 	"os"
 
 	"github.com/fatih/color"
-	gpki "github.com/gogrlx/grlx/pkg/grlx/pki"
+	"github.com/spf13/cobra"
+
+	gpki "github.com/gogrlx/grlx/api/client"
 	"github.com/gogrlx/grlx/pkg/grlx/util"
 	"github.com/gogrlx/grlx/types"
-	"github.com/spf13/cobra"
 )
 
 var (

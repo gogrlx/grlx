@@ -3,5 +3,6 @@ steps:
     file.cached:
       - name: /tmp/testFile
       - source: http://taigrr.com
-      - hash: ""
+      - hash: "asd"
+      - hashType: md5
       - destination: /tmp/testFile

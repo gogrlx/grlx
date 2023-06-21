@@ -35,6 +35,7 @@ var (
 )
 
 func main() {
+	os.MkdirAll(config.CacheDir(), os.ModeDir)
 	config.LoadConfig("sprout")
 	defer log.Flush()
 	certs.GenNKey(false)

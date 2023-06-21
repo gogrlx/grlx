@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -373,7 +374,10 @@ func RootCACached(binary string) bool {
 	return err == nil
 }
 
+var nkeyClient *http.Client
+
 func LoadRootCA(binary string) error {
+	nkeyClient = &http.Client{}
 	var RootCA string
 	switch binary {
 	case "grlx":
@@ -394,11 +398,24 @@ func LoadRootCA(binary string) error {
 		log.Errorf("nats: failed to parse root certificate from %q", RootCA)
 		return types.ErrCannotParseRootCA
 	}
-	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{
-		RootCAs:    certPool,
-		MinVersion: tls.VersionTLS12,
+	var nkeyTransport http.RoundTripper = &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		DialContext: (&net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).DialContext,
+		ForceAttemptHTTP2:     true,
+		MaxIdleConns:          100,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+		TLSClientConfig: &tls.Config{
+			RootCAs:    certPool,
+			MinVersion: tls.VersionTLS12,
+		},
 	}
-	http.DefaultClient.Timeout = time.Second * 10
+	nkeyClient.Transport = nkeyTransport
+	nkeyClient.Timeout = time.Second * 10
 	return nil
 }
 
@@ -417,7 +434,7 @@ func PutNKey(id string) error {
 		// handle error
 		log.Fatal(err)
 	}
-	_, err = http.DefaultClient.Do(req)
+	_, err = nkeyClient.Do(req)
 	if err != nil {
 		// handle error
 		return err

@@ -83,7 +83,7 @@ func (f File) cached(ctx context.Context, test bool) (types.Result, error) {
 	}
 	// TODO allow for skip_verify here
 	valid, errVal := fp.Verify(ctx)
-	if errVal != nil {
+	if errVal != nil && !errors.Is(errVal, types.ErrFileNotFound) {
 		return types.Result{Succeeded: false, Failed: true}, errVal
 	}
 	if !valid {

@@ -26,7 +26,7 @@ func GetVersion() (types.Version, error) {
 		return farmerVersion, err
 	}
 	req.Header.Set("Authorization", newToken)
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := APIClient.Do(req)
 	if err != nil {
 		return farmerVersion, err
 	}

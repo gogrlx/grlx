@@ -1,4 +1,4 @@
-package pki
+package client
 
 import (
 	"bytes"
@@ -20,7 +20,6 @@ func ListKeys() (types.KeysByType, error) {
 	if err != nil {
 		return keys, err
 	}
-
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 	newToken, err := auth.NewToken()
@@ -28,7 +27,7 @@ func ListKeys() (types.KeysByType, error) {
 		return keys, err
 	}
 	req.Header.Set("Authorization", newToken)
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := APIClient.Do(req)
 	if err != nil {
 		return keys, err
 	}
@@ -64,7 +63,6 @@ func UnacceptKey(id string) (bool, error) {
 				return false, types.ErrAlreadyUnaccepted
 			}
 		}
-
 		return false, types.ErrSproutIDNotFound
 	}
 	var success types.Inline
@@ -76,7 +74,6 @@ func UnacceptKey(id string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 	newToken, err := auth.NewToken()
@@ -84,7 +81,7 @@ func UnacceptKey(id string) (bool, error) {
 		return false, err
 	}
 	req.Header.Set("Authorization", newToken)
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := APIClient.Do(req)
 	if err != nil {
 		return false, err
 	}
@@ -134,7 +131,6 @@ func DenyKey(id string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 	newToken, err := auth.NewToken()
@@ -142,7 +138,7 @@ func DenyKey(id string) (bool, error) {
 		return false, err
 	}
 	req.Header.Set("Authorization", newToken)
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := APIClient.Do(req)
 	if err != nil {
 		return false, err
 	}
@@ -180,7 +176,6 @@ func RejectKey(id string) (bool, error) {
 				return false, types.ErrAlreadyRejected
 			}
 		}
-
 		return false, types.ErrSproutIDNotFound
 	}
 	var success types.Inline
@@ -200,7 +195,7 @@ func RejectKey(id string) (bool, error) {
 		return false, err
 	}
 	req.Header.Set("Authorization", newToken)
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := APIClient.Do(req)
 	if err != nil {
 		return false, err
 	}
@@ -253,7 +248,7 @@ func DeleteKey(id string) (bool, error) {
 		return false, err
 	}
 	req.Header.Set("Authorization", newToken)
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := APIClient.Do(req)
 	if err != nil {
 		return false, err
 	}
@@ -310,7 +305,7 @@ func AcceptKey(id string) (bool, error) {
 		return false, err
 	}
 	req.Header.Set("Authorization", newToken)
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := APIClient.Do(req)
 	if err != nil {
 		return false, err
 	}

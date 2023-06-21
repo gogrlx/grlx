@@ -37,7 +37,7 @@ func (hf HTTPFile) Download(ctx context.Context) error {
 	}
 	defer dest.Close()
 
-	client := httpc.DefaultClient
+	client := httpc.Client{}
 	method := httpc.MethodGet
 	if hf.Props["method"] != nil {
 		if m, okM := hf.Props["method"].(string); okM {

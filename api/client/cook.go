@@ -10,17 +10,16 @@ import (
 
 	"github.com/gogrlx/grlx/api"
 	"github.com/gogrlx/grlx/auth"
-	"github.com/gogrlx/grlx/pkg/grlx/util"
 	"github.com/gogrlx/grlx/types"
 )
 
 func Cook(target string, cmdCook types.CmdCook) (types.CmdCook, error) {
 	// util target split
 	// check targets valid
-	client := http.Client{}
+	client := APIClient
 	ctx := context.Background()
 	FarmerURL := viper.GetString("FarmerURL")
-	targets, err := util.ResolveTargets(target)
+	targets, err := ResolveTargets(target)
 	if err != nil {
 		return cmdCook, err
 	}

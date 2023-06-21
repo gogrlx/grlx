@@ -17,14 +17,11 @@ type CacheFile struct {
 }
 
 func (cf CacheFile) Verify(ctx context.Context) (bool, error) {
-	_, err := os.Stat(cf.Destination)
+	f, err := os.Open(cf.Destination)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return false, errors.Join(err, types.ErrFileNotFound)
 		}
-	}
-	f, err := os.Open(cf.Destination)
-	if err != nil {
 		return false, err
 	}
 	defer f.Close()
