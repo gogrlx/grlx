@@ -5,10 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 
+	nats "github.com/nats-io/nats.go"
+
+	"github.com/gogrlx/grlx/config"
 	"github.com/gogrlx/grlx/ingredients"
 	"github.com/gogrlx/grlx/types"
-	nats "github.com/nats-io/nats.go"
-	"github.com/spf13/viper"
 )
 
 var (
@@ -33,7 +34,7 @@ func RegisterEC(n *nats.EncodedConn) {
 }
 
 func init() {
-	FarmerInterface = viper.GetString("FarmerInterface")
+	FarmerInterface = config.FarmerInterface
 }
 
 func New(id, method string, params map[string]interface{}) Cmd {

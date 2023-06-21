@@ -7,20 +7,20 @@ import (
 	"os"
 
 	"github.com/nats-io/nats.go"
-	"github.com/spf13/viper"
 	"github.com/taigrr/log-socket/log"
 
 	"github.com/gogrlx/grlx/auth"
+	"github.com/gogrlx/grlx/config"
 )
 
 func NewNatsClient() (*nats.Conn, error) {
-	URL := viper.GetString("FarmerBusInterface")
+	URL := config.FarmerBusInterface
 	pubkey, err := auth.GetPubkey()
 	if err != nil {
 		return nil, err
 	}
 	auth.NewToken()
-	rootCA := viper.GetString("GrlxRootCA")
+	rootCA := config.GrlxRootCA
 	certPool := x509.NewCertPool()
 	rootPEM, err := os.ReadFile(rootCA)
 	if err != nil || rootPEM == nil {
@@ -31,7 +31,7 @@ func NewNatsClient() (*nats.Conn, error) {
 		log.Errorf("nats: failed to parse root certificate from %q", rootCA)
 	}
 	config := &tls.Config{
-		ServerName: viper.GetString("FarmerInterface"),
+		ServerName: config.FarmerInterface,
 		RootCAs:    certPool,
 		MinVersion: tls.VersionTLS12,
 	}

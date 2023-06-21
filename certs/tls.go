@@ -16,8 +16,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/spf13/viper"
 	log "github.com/taigrr/log-socket/log"
+
+	"github.com/gogrlx/grlx/config"
 )
 
 func publicKey(priv interface{}) interface{} {
@@ -36,8 +37,8 @@ func publicKey(priv interface{}) interface{} {
 var notBefore = time.Now()
 
 func genCACert() {
-	RootCAPriv := viper.GetString("RootCAPriv")
-	RootCA := viper.GetString("RootCA")
+	RootCAPriv := config.RootCAPriv
+	RootCA := config.RootCA
 	_, err := os.Stat(RootCAPriv)
 	if !os.IsNotExist(err) {
 		_, err = os.Stat(RootCAPriv)
@@ -51,10 +52,10 @@ func genCACert() {
 	caCert := x509.Certificate{
 		SerialNumber: serialNumber,
 		Subject: pkix.Name{
-			Organization: viper.GetStringSlice("Organization"),
+			Organization: config.Organization,
 		},
 		NotBefore:             notBefore,
-		NotAfter:              notBefore.Add(viper.GetDuration("CertificateValidTime")),
+		NotAfter:              notBefore.Add(config.CertificateValidTime),
 		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
 		BasicConstraintsValid: true,
@@ -89,7 +90,7 @@ func genCACert() {
 		log.Fatalf("%v", err)
 	}
 	log.Debugf("wrote %s", RootCA)
-	keyOut, err := os.OpenFile(RootCAPriv, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	keyOut, err := os.OpenFile(RootCAPriv, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
 	if err != nil {
 		log.Fatalf("%v", err)
 	}
@@ -104,11 +105,12 @@ func genCACert() {
 		log.Fatalf("Error closing key.pem: %v", err)
 	}
 }
+
 func GenCert() {
 	// check if certificates already exist first
-	CertFile := viper.GetString("CertFile")
-	KeyFile := viper.GetString("KeyFile")
-	RootCA := viper.GetString("RootCA")
+	CertFile := config.CertFile
+	KeyFile := config.KeyFile
+	RootCA := config.RootCA
 	_, err := os.Stat(CertFile)
 	if !os.IsNotExist(err) {
 		_, err = os.Stat(KeyFile)
@@ -137,7 +139,7 @@ func GenCert() {
 	if err != nil {
 		log.Panic(err.Error())
 	}
-	file2, err := os.Open(viper.GetString("RootCAPriv"))
+	file2, err := os.Open(config.RootCAPriv)
 	if err != nil {
 		log.Panic(err)
 	}
@@ -155,7 +157,7 @@ func GenCert() {
 	if err != nil {
 		log.Panic(err.Error())
 	}
-	hosts := viper.GetStringSlice("CertHosts")
+	hosts := config.CertHosts
 	var priv interface{}
 	priv, err = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
@@ -173,10 +175,10 @@ func GenCert() {
 	template := x509.Certificate{
 		SerialNumber: serialNumber,
 		Subject: pkix.Name{
-			Organization: viper.GetStringSlice("Organization"),
+			Organization: config.Organization,
 		},
 		NotBefore:             notBefore,
-		NotAfter:              notBefore.Add(viper.GetDuration("CertificateValidTime")),
+		NotAfter:              notBefore.Add(config.CertificateValidTime),
 		KeyUsage:              keyUsage,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 		BasicConstraintsValid: true,
@@ -205,7 +207,7 @@ func GenCert() {
 		log.Fatalf("Error closing cert.pem: %v", err)
 	}
 	log.Debug("wrote cert.pem")
-	keyOut, err := os.OpenFile(KeyFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	keyOut, err := os.OpenFile(KeyFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
 	if err != nil {
 		log.Fatalf("Failed to open key.pem for writing: %v", err)
 		return
@@ -224,5 +226,5 @@ func GenCert() {
 }
 
 func RotateTLSCerts() {
-	//TODO
+	// TODO
 }

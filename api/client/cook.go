@@ -6,10 +6,9 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/spf13/viper"
-
 	"github.com/gogrlx/grlx/api"
 	"github.com/gogrlx/grlx/auth"
+	"github.com/gogrlx/grlx/config"
 	"github.com/gogrlx/grlx/types"
 )
 
@@ -18,7 +17,7 @@ func Cook(target string, cmdCook types.CmdCook) (types.CmdCook, error) {
 	// check targets valid
 	client := APIClient
 	ctx := context.Background()
-	FarmerURL := viper.GetString("FarmerURL")
+	FarmerURL := config.FarmerURL
 	targets, err := ResolveTargets(target)
 	if err != nil {
 		return cmdCook, err

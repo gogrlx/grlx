@@ -5,16 +5,15 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/spf13/viper"
-
 	"github.com/gogrlx/grlx/api"
 	"github.com/gogrlx/grlx/auth"
+	"github.com/gogrlx/grlx/config"
 	"github.com/gogrlx/grlx/types"
 )
 
 func ListKeys() (types.KeysByType, error) {
 	var keys types.KeysByType
-	FarmerURL := viper.GetString("FarmerURL")
+	FarmerURL := config.FarmerURL
 	url := FarmerURL + api.Routes["ListID"].Pattern
 	req, err := http.NewRequest(http.MethodPost, url, nil)
 	if err != nil {
@@ -37,7 +36,7 @@ func ListKeys() (types.KeysByType, error) {
 
 func UnacceptKey(id string) (bool, error) {
 	keyList, err := ListKeys()
-	FarmerURL := viper.GetString("FarmerURL")
+	FarmerURL := config.FarmerURL
 	if err != nil {
 		return false, err
 	}
@@ -123,7 +122,7 @@ func DenyKey(id string) (bool, error) {
 		return false, types.ErrSproutIDNotFound
 	}
 	var success types.Inline
-	FarmerURL := viper.GetString("FarmerURL")
+	FarmerURL := config.FarmerURL
 	url := FarmerURL + api.Routes["DenyID"].Pattern
 	km := types.KeyManager{SproutID: id}
 	jw, _ := json.Marshal(km)
@@ -179,7 +178,7 @@ func RejectKey(id string) (bool, error) {
 		return false, types.ErrSproutIDNotFound
 	}
 	var success types.Inline
-	FarmerURL := viper.GetString("FarmerURL")
+	FarmerURL := config.FarmerURL
 	url := FarmerURL + "/pki/rejectnkey"
 	km := types.KeyManager{SproutID: id}
 	jw, _ := json.Marshal(km)
@@ -232,7 +231,7 @@ func DeleteKey(id string) (bool, error) {
 		return false, types.ErrSproutIDNotFound
 	}
 	var success types.Inline
-	FarmerURL := viper.GetString("FarmerURL")
+	FarmerURL := config.FarmerURL
 	url := FarmerURL + "/pki/deletenkey"
 	km := types.KeyManager{SproutID: id}
 	jw, _ := json.Marshal(km)
@@ -289,7 +288,7 @@ func AcceptKey(id string) (bool, error) {
 		return false, types.ErrSproutIDNotFound
 	}
 	var success types.Inline
-	FarmerURL := viper.GetString("FarmerURL")
+	FarmerURL := config.FarmerURL
 	url := FarmerURL + api.Routes["AcceptID"].Pattern
 	km := types.KeyManager{SproutID: id}
 	jw, _ := json.Marshal(km)

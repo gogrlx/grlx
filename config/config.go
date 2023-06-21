@@ -8,8 +8,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gogrlx/grlx/types"
 	"github.com/spf13/viper"
+
+	"github.com/gogrlx/grlx/types"
 )
 
 const GrlxExt = "grlx"
@@ -18,11 +19,40 @@ var BuildInfo types.Version
 
 var configLoaded sync.Once
 
-// TODO move all references to viper to this file
+var (
+	CacheDir             string
+	CertFile             string
+	CertHosts            []string
+	CertificateValidTime time.Duration
+	ConfigRoot           string
+	FarmerAPIPort        string
+	FarmerBusInterface   string
+	FarmerBusPort        string
+	FarmerInterface      string
+	FarmerPKI            string
+	FarmerURL            string
+	GrlxRootCA           string
+	KeyFile              string
+	NKeyFarmerPrivFile   string
+	NKeyFarmerPubFile    string
+	NKeySproutPrivFile   string
+	NKeySproutPubFile    string
+	Organization         []string
+	RootCA               string
+	RootCAPriv           string
+	SproutID             string
+	SproutPKI            string
+	SproutRootCA         string
+)
+
+func SetConfigFile(path string) {
+	viper.SetConfigFile(path)
+}
+
 // TODO use enum for binary as elsewhere
+
 func LoadConfig(binary string) {
 	configLoaded.Do(func() {
-		// TODO if config doesn't exist, write out the default one
 		viper.SetConfigType("yaml")
 		switch binary {
 		case "grlx":
@@ -116,6 +146,30 @@ func LoadConfig(binary string) {
 		viper.Set("FarmerURL", "https://"+viper.GetString("FarmerInterface")+":"+viper.GetString("FarmerAPIPort"))
 		viper.WriteConfig()
 	})
+
+	CacheDir = viper.GetString("CacheDir")
+	CertFile = viper.GetString("CertFile")
+	CertHosts = viper.GetStringSlice("CertHosts")
+	CertificateValidTime = viper.GetDuration("CertificateValidTime")
+	ConfigRoot = viper.GetString("ConfigRoot")
+	FarmerAPIPort = viper.GetString("FarmerAPIPort")
+	FarmerBusInterface = viper.GetString("FarmerBusInterface")
+	FarmerBusPort = viper.GetString("FarmerBusPort")
+	FarmerInterface = viper.GetString("FarmerInterface")
+	FarmerPKI = viper.GetString("FarmerPKI")
+	FarmerURL = viper.GetString("FarmerURL")
+	GrlxRootCA = viper.GetString("GrlxRootCA")
+	KeyFile = viper.GetString("KeyFile")
+	NKeyFarmerPrivFile = viper.GetString("NKeyFarmerPrivFile")
+	NKeyFarmerPubFile = viper.GetString("NKeyFarmerPubFile")
+	NKeySproutPrivFile = viper.GetString("NKeySproutPrivFile")
+	NKeySproutPubFile = viper.GetString("NKeySproutPubFile")
+	Organization = viper.GetStringSlice("Organization")
+	RootCA = viper.GetString("RootCA")
+	RootCAPriv = viper.GetString("RootCAPriv")
+	SproutID = viper.GetString("SproutID")
+	SproutPKI = viper.GetString("SproutPKI")
+	SproutRootCA = viper.GetString("SproutRootCA")
 }
 
 // TODO actually validate the base path exists
@@ -123,10 +177,11 @@ func BasePathValid() bool {
 	return true
 }
 
-func CacheDir() string {
-	return viper.GetString("CacheDir")
-}
-
 func Init() string {
 	return viper.GetString("init")
+}
+
+func SetSproutID(id string) {
+	viper.Set("SproutID", id)
+	viper.WriteConfig()
 }

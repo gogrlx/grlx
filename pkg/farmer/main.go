@@ -8,7 +8,6 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/spf13/viper"
 	log "github.com/taigrr/log-socket/log"
 
 	"github.com/gogrlx/grlx/api"
@@ -56,7 +55,7 @@ func main() {
 }
 
 func createConfigRoot() {
-	ConfigRoot := viper.GetString("ConfigRoot")
+	ConfigRoot := config.ConfigRoot
 	_, err := os.Stat(ConfigRoot)
 	if err == nil {
 		return
@@ -73,10 +72,10 @@ func createConfigRoot() {
 }
 
 func StartAPIServer() {
-	CertFile := viper.GetString("CertFile")
-	FarmerInterface := viper.GetString("FarmerInterface")
-	FarmerAPIPort := viper.GetString("FarmerAPIPort")
-	KeyFile := viper.GetString("KeyFile")
+	CertFile := config.CertFile
+	FarmerInterface := config.FarmerInterface
+	FarmerAPIPort := config.FarmerAPIPort
+	KeyFile := config.KeyFile
 	r := api.NewRouter(types.Version{
 		Arch:      runtime.GOOS,
 		Compiler:  runtime.Version(),
@@ -141,14 +140,14 @@ func RunNATSServer() {
 func ConnectFarmer() {
 	connectionAttempts := 1
 	maxFarmerReconnect := 30
-	RootCA := viper.GetString("RootCA")
-	FarmerBusPort := viper.GetString("FarmerBusPort")
-	FarmerInterface := viper.GetString("FarmerInterface")
+	RootCA := config.RootCA
+	FarmerBusPort := config.FarmerBusPort
+	FarmerInterface := config.FarmerInterface
 	if FarmerInterface == "0.0.0.0" {
 		FarmerInterface = "localhost"
 	}
 	var err error
-	opt, err := nats.NkeyOptionFromSeed(viper.GetString("NKeyFarmerPrivFile"))
+	opt, err := nats.NkeyOptionFromSeed(config.NKeyFarmerPrivFile)
 	_ = opt
 	if err != nil {
 		// TODO: handle error

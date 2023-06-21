@@ -76,7 +76,7 @@ func (f File) cached(ctx context.Context, test bool) (types.Result, error) {
 		return types.Result{Succeeded: false, Failed: true}, fmt.Errorf("hash not defined")
 	}
 	// TODO determine filename scheme for skip_verify downloads
-	cacheDest := filepath.Join(config.CacheDir(), hash)
+	cacheDest := filepath.Join(config.CacheDir, hash)
 	fp, err := NewFileProvider(f.id, source, cacheDest, hash, f.params)
 	if err != nil {
 		return types.Result{Succeeded: false, Failed: true}, err

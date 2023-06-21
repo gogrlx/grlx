@@ -16,9 +16,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/spf13/viper"
 	log "github.com/taigrr/log-socket/log"
 
+	"github.com/gogrlx/grlx/config"
 	"github.com/gogrlx/grlx/types"
 )
 
@@ -38,7 +38,7 @@ func init() {
 
 // TODO: look into merging this package with the auth and certs packages
 func SetupPKIFarmer() {
-	FarmerPKI := viper.GetString("FarmerPKI")
+	FarmerPKI := config.FarmerPKI
 	_, err := os.Stat(FarmerPKI)
 	if os.IsNotExist(err) {
 		err = os.MkdirAll(FarmerPKI, os.ModePerm)
@@ -70,7 +70,7 @@ func SetupPKIFarmer() {
 }
 
 func SetupPKISprout() {
-	SproutPKI := viper.GetString("SproutPKI")
+	SproutPKI := config.SproutPKI
 	_, err := os.Stat(SproutPKI)
 	if err == nil {
 		return
@@ -137,7 +137,7 @@ func AcceptNKey(id string) error {
 		DeleteNKey(strings.SplitN(id, "_", 2)[0])
 	}
 	id = strings.SplitN(id, "_", 2)[0]
-	newDest := filepath.Join(viper.GetString("FarmerPKI") + "sprouts/accepted/" + id)
+	newDest := filepath.Join(config.FarmerPKI + "sprouts/accepted/" + id)
 	if fname == newDest {
 		return types.ErrAlreadyAccepted
 	}
@@ -155,7 +155,7 @@ func DeleteNKey(id string) error {
 
 func DenyNKey(id string) error {
 	defer ReloadNKeys()
-	newDest := filepath.Join(viper.GetString("FarmerPKI") + "sprouts/denied/" + id)
+	newDest := filepath.Join(config.FarmerPKI + "sprouts/denied/" + id)
 	fname, err := findNKey(id)
 	if err != nil {
 		return err
@@ -168,7 +168,7 @@ func DenyNKey(id string) error {
 
 func UnacceptNKey(id string, nkey string) error {
 	defer ReloadNKeys()
-	newDest := filepath.Join(viper.GetString("FarmerPKI") + "sprouts/unaccepted/" + id)
+	newDest := filepath.Join(config.FarmerPKI + "sprouts/unaccepted/" + id)
 	fname, err := findNKey(id)
 	if nkey != "" && err == types.ErrSproutIDNotFound {
 		file, errCreate := os.Create(newDest)
@@ -203,7 +203,7 @@ func GetNKeysByType(set string) types.KeySet {
 	default:
 		return keySet
 	}
-	setPath := filepath.Join(viper.GetString("FarmerPKI"), "sprouts", set)
+	setPath := filepath.Join(config.FarmerPKI, "sprouts", set)
 	filepath.WalkDir(setPath, func(path string, _ fs.DirEntry, _ error) error {
 		_, id := filepath.Split(path)
 		if setPath == path {
@@ -226,7 +226,7 @@ func ListNKeysByType() types.KeysByType {
 
 func RejectNKey(id string, nkey string) error {
 	defer ReloadNKeys()
-	newDest := filepath.Join(viper.GetString("FarmerPKI"), "sprouts", "rejected", id)
+	newDest := filepath.Join(config.FarmerPKI, "sprouts", "rejected", id)
 	fname, err := findNKey(id)
 	if nkey != "" && err == types.ErrSproutIDNotFound {
 		file, errCreate := os.Create(newDest)
@@ -247,7 +247,7 @@ func RejectNKey(id string, nkey string) error {
 }
 
 func GetNKey(id string) (string, error) {
-	FarmerPKI := viper.GetString("FarmerPKI")
+	FarmerPKI := config.FarmerPKI
 	if !IsValidSproutID(id) {
 		return "", types.ErrSproutIDInvalid
 	}
@@ -275,7 +275,7 @@ func GetNKey(id string) (string, error) {
 }
 
 func findNKey(id string) (string, error) {
-	FarmerPKI := viper.GetString("FarmerPKI")
+	FarmerPKI := config.FarmerPKI
 	if !IsValidSproutID(id) {
 		return "", types.ErrSproutIDInvalid
 	}
@@ -302,7 +302,7 @@ func findNKey(id string) (string, error) {
 }
 
 func NKeyExists(id string, nkey string) (Registered bool, Matches bool) {
-	FarmerPKI := viper.GetString("FarmerPKI")
+	FarmerPKI := config.FarmerPKI
 	filename := ""
 	filepath.WalkDir(filepath.Join(FarmerPKI, "sprouts"), func(path string, _ fs.DirEntry, _ error) error {
 		switch path {
@@ -350,7 +350,7 @@ func fetchRootCA(filename string) error {
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
 	client := &http.Client{Transport: tr, Timeout: time.Second * 10}
-	r, err := client.Get(fmt.Sprintf("https://%s:%s/auth/cert/", viper.GetString("FarmerInterface"), viper.GetString("FarmerAPIPort")))
+	r, err := client.Get(fmt.Sprintf("https://%s:%s/auth/cert/", config.FarmerInterface, config.FarmerAPIPort))
 	if err != nil {
 		os.Remove(RootCA)
 		return err
@@ -366,9 +366,9 @@ func RootCACached(binary string) bool {
 	var RootCA string
 	switch binary {
 	case "grlx":
-		RootCA = viper.GetString("GrlxRootCA")
+		RootCA = config.GrlxRootCA
 	case "sprout":
-		RootCA = viper.GetString("SproutRootCA")
+		RootCA = config.SproutRootCA
 	}
 	_, err := os.Stat(RootCA)
 	return err == nil
@@ -381,9 +381,9 @@ func LoadRootCA(binary string) error {
 	var RootCA string
 	switch binary {
 	case "grlx":
-		RootCA = viper.GetString("GrlxRootCA")
+		RootCA = config.GrlxRootCA
 	case "sprout":
-		RootCA = viper.GetString("SproutRootCA")
+		RootCA = config.SproutRootCA
 	}
 	if err := fetchRootCA(RootCA); err != nil {
 		return err
@@ -428,7 +428,7 @@ func PutNKey(id string) error {
 	keySub := types.KeySubmission{NKey: nkey, SproutID: id}
 
 	jw, _ := json.Marshal(keySub)
-	url := viper.GetString("FarmerURL") + "/pki/putnkey"
+	url := config.FarmerURL + "/pki/putnkey"
 	req, err := http.NewRequest(http.MethodPut, url, bytes.NewBuffer(jw))
 	if err != nil {
 		// handle error
@@ -446,11 +446,11 @@ func GetPubNKey(keyType PubKeyType) (string, error) {
 	var pubFile string
 	switch keyType {
 	case SproutPubNKey:
-		pubFile = viper.GetString("NKeySproutPubFile")
+		pubFile = config.NKeySproutPubFile
 	case FarmerPubNKey:
-		pubFile = viper.GetString("NKeyFarmerPubFile")
-	case CliPubNKey:
-		pubFile = viper.GetString("NKeyGrlxPubFile")
+		pubFile = config.NKeyFarmerPubFile
+		// case CliPubNKey:
+		//	pubFile = config.NKeyGrlxPubFile
 	}
 	pubKeyBytes, err := os.ReadFile(pubFile)
 	if err != nil {
@@ -460,11 +460,10 @@ func GetPubNKey(keyType PubKeyType) (string, error) {
 }
 
 func GetSproutID() string {
-	SproutID := viper.GetString("SproutID")
+	SproutID := config.SproutID
 	if SproutID == "" {
 		SproutID = createSproutID()
-		viper.Set("SproutID", SproutID)
-		viper.WriteConfig()
+		config.SetSproutID(SproutID)
 	}
 	return SproutID
 }

@@ -6,7 +6,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/spf13/viper"
 	log "github.com/taigrr/log-socket/log"
 
 	certs "github.com/gogrlx/grlx/certs"
@@ -35,7 +34,7 @@ var (
 )
 
 func main() {
-	os.MkdirAll(config.CacheDir(), os.ModeDir)
+	os.MkdirAll(config.CacheDir, os.ModeDir)
 	config.LoadConfig("sprout")
 	defer log.Flush()
 	certs.GenNKey(false)
@@ -62,7 +61,7 @@ func main() {
 }
 
 func createConfigRoot() {
-	ConfigRoot := viper.GetString("ConfigRoot")
+	ConfigRoot := config.ConfigRoot
 	_, err := os.Stat(ConfigRoot)
 	if err == nil {
 		return
@@ -81,10 +80,10 @@ func createConfigRoot() {
 func ConnectSprout() {
 	connectionAttempts := 0
 	var err error
-	SproutRootCA := viper.GetString("SproutRootCA")
-	FarmerInterface := viper.GetString("FarmerInterface")
-	FarmerBusPort := viper.GetString("FarmerBusPort")
-	opt, err := nats.NkeyOptionFromSeed(viper.GetString("NKeySproutPrivFile"))
+	SproutRootCA := config.SproutRootCA
+	FarmerInterface := config.FarmerInterface
+	FarmerBusPort := config.FarmerBusPort
+	opt, err := nats.NkeyOptionFromSeed(config.NKeySproutPrivFile)
 	if err != nil {
 		// TODO: handle error
 		log.Panic(err)

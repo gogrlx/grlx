@@ -4,16 +4,15 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/spf13/viper"
-
 	"github.com/gogrlx/grlx/api"
 	"github.com/gogrlx/grlx/auth"
+	"github.com/gogrlx/grlx/config"
 	"github.com/gogrlx/grlx/types"
 )
 
 func GetVersion() (types.Version, error) {
 	farmerVersion := types.Version{}
-	FarmerURL := viper.GetString("FarmerURL")
+	FarmerURL := config.FarmerURL
 	url := FarmerURL + api.Routes["GetVersion"].Pattern // "/test/ping"
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {

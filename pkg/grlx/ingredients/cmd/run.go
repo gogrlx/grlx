@@ -7,10 +7,9 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/spf13/viper"
-
 	pki "github.com/gogrlx/grlx/api/client"
 	"github.com/gogrlx/grlx/auth"
+	"github.com/gogrlx/grlx/config"
 	. "github.com/gogrlx/grlx/types"
 )
 
@@ -22,7 +21,7 @@ func FRun(target string, command CmdRun) (TargetedResults, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), command.Timeout)
 	defer cancel()
 	var tr TargetedResults
-	FarmerURL := viper.GetString("FarmerURL")
+	FarmerURL := config.FarmerURL
 	targets, err := pki.ResolveTargets(target)
 	if err != nil {
 		return tr, err

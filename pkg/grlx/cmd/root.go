@@ -5,12 +5,13 @@ import (
 	"os"
 
 	"github.com/fatih/color"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+
 	"github.com/gogrlx/grlx/config"
 	"github.com/gogrlx/grlx/pkg/grlx/util"
 	"github.com/gogrlx/grlx/pki"
 	"github.com/gogrlx/grlx/types"
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var (
@@ -74,7 +75,7 @@ func init() {
 	err := pki.LoadRootCA("grlx")
 	if err != nil {
 		fmt.Printf("%v", err)
-		color.Red("The RootCA could not be loaded from %s. Exiting!", viper.GetString("GrlxRootCA"))
+		color.Red("The RootCA could not be loaded from %s. Exiting!", config.GrlxRootCA)
 		os.Exit(1)
 	}
 }
@@ -83,9 +84,8 @@ func init() {
 func initConfig() {
 	if cfgFile != "" {
 		// Use config file from the flag.
-		viper.SetConfigFile(cfgFile)
-	} else {
-		config.LoadConfig("grlx")
+		config.SetConfigFile(cfgFile)
 	}
+	config.LoadConfig("grlx")
 	viper.AutomaticEnv() // read in environment variables that match
 }

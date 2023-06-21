@@ -4,14 +4,15 @@ import (
 	"os"
 
 	"github.com/nats-io/nkeys"
-	"github.com/spf13/viper"
 	log "github.com/taigrr/log-socket/log"
+
+	"github.com/gogrlx/grlx/config"
 )
 
 func GetPubNKey(isFarmer bool) (string, error) {
-	pubFile := viper.GetString("NKeySproutPubFile")
+	pubFile := config.NKeySproutPubFile
 	if isFarmer {
-		pubFile = viper.GetString("NKeyFarmerPubFile")
+		pubFile = config.NKeyFarmerPubFile
 	}
 	pubKeyBytes, err := os.ReadFile(pubFile)
 	if err != nil {
@@ -19,12 +20,13 @@ func GetPubNKey(isFarmer bool) (string, error) {
 	}
 	return string(pubKeyBytes), nil
 }
+
 func GenNKey(isFarmer bool) {
-	privFile := viper.GetString("NKeySproutPrivFile")
-	pubFile := viper.GetString("NKeySproutPubFile")
+	privFile := config.NKeySproutPrivFile
+	pubFile := config.NKeySproutPubFile
 	if isFarmer {
-		privFile = viper.GetString("NKeyFarmerPrivFile")
-		pubFile = viper.GetString("NKeyFarmerPubFile")
+		privFile = config.NKeyFarmerPrivFile
+		pubFile = config.NKeyFarmerPubFile
 	}
 	_, err := os.Stat(privFile)
 	if err == nil {
@@ -37,7 +39,7 @@ func GenNKey(isFarmer bool) {
 		}
 		pubKey, err := os.OpenFile(pubFile,
 			os.O_WRONLY|os.O_TRUNC|os.O_CREATE,
-			0600,
+			0o600,
 		)
 		if err != nil {
 			log.Panic(err.Error())
@@ -51,7 +53,7 @@ func GenNKey(isFarmer bool) {
 
 		privKey, err := os.OpenFile(privFile,
 			os.O_WRONLY|os.O_TRUNC|os.O_CREATE,
-			0600,
+			0o600,
 		)
 		if err != nil {
 			log.Panic(err.Error())
@@ -65,5 +67,4 @@ func GenNKey(isFarmer bool) {
 		return
 	}
 	log.Panic(err)
-
 }

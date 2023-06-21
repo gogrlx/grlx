@@ -8,7 +8,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/spf13/viper"
 	"github.com/taigrr/log-socket/log"
 
 	"github.com/gogrlx/grlx/config"
@@ -25,7 +24,7 @@ func init() {
 	if err != nil {
 		log.Error(err)
 	}
-	RootCA := viper.GetString("GrlxRootCA")
+	RootCA := config.GrlxRootCA
 	certPool := x509.NewCertPool()
 	rootPEM, err := os.ReadFile(RootCA)
 	if err != nil || rootPEM == nil {

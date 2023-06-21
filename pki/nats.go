@@ -6,10 +6,10 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/spf13/viper"
 	log "github.com/taigrr/log-socket/log"
 
 	"github.com/gogrlx/grlx/auth"
+	"github.com/gogrlx/grlx/config"
 
 	nats_server "github.com/nats-io/nats-server/v2/server"
 )
@@ -23,15 +23,15 @@ var (
 
 func ConfigureNats() nats_server.Options {
 	var NatsConfig nats_server.Options
-	FarmerInterface := viper.GetString("FarmerInterface")
-	FBusPort := viper.GetString("FarmerBusPort")
+	FarmerInterface := config.FarmerInterface
+	FBusPort := config.FarmerBusPort
 	FarmerBusPort, err := strconv.Atoi(FBusPort)
 	if err != nil {
 		log.Panic(err)
 	}
-	RootCA := viper.GetString("RootCA")
-	CertFile := viper.GetString("CertFile")
-	KeyFile := viper.GetString("KeyFile")
+	RootCA := config.RootCA
+	CertFile := config.CertFile
+	KeyFile := config.KeyFile
 	NatsConfig = nats_server.Options{
 		Host:                  FarmerInterface,
 		Port:                  FarmerBusPort,
