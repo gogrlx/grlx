@@ -54,7 +54,6 @@ func (lf LocalFile) Properties() (map[string]interface{}, error) {
 }
 
 func (lf LocalFile) Parse(id, source, destination, hash string, properties map[string]interface{}) (types.FileProvider, error) {
-	// TODO make this properties nil check in other places
 	if properties == nil {
 		properties = make(map[string]interface{})
 	}

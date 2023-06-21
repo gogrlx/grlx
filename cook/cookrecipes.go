@@ -157,9 +157,5 @@ func ResolveRecipeFilePath(basepath string, recipeID types.RecipeName) (string, 
 	}
 }
 
-// func ParseRecipeFile(recipeName types.RecipeName) []types.RecipeCooker {
-// 	return nil
-// }
-
 // TODO ensure ability to only run individual state (+ dependencies),
 // i.e. start from a root of a given dependency tree

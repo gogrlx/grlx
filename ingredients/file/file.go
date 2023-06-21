@@ -21,6 +21,9 @@ type File struct {
 
 // TODO error check, set id, properly parse
 func (f File) Parse(id, method string, params map[string]interface{}) (types.RecipeCooker, error) {
+	if params == nil {
+		params = make(map[string]interface{})
+	}
 	return File{id: id, method: method, params: params}, nil
 }
 
