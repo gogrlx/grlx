@@ -80,9 +80,7 @@ It's your donations that allow development to continue so that grlx can grow.
 
 If you or your company use grlx and you'd like to be added to this list, create an issue to let me know!
 
-## <p align="left"><a href="https://newleafsolutions.dev"><img src="docs/logos/newleaf.png" width="125"></a> <a href="https://github.com/ADAtomic"><img src="docs/logos/adatomic.png" width="125"></a></p>
-## <p align="left"><a href="https://google.com"><img src="docs/logos/google.png" width="125"></a> <a href="https://dendra.science"><img src="docs/logos/dendrascience.png" width="125"></a></p>
-## <p align="left"><a href="https://cellpointsystems.com"><img src="docs/logos/cellpointsystems.png" width="125"></p>
+## <p align="left"><a href="https://newleafsolutions.dev"><img src="docs/logos/newleaf.png" width="125"></a> <a href="https://github.com/ADAtomic"><img src="docs/logos/adatomic.png" width="125"></a><a href="https://cellpointsystems.com"><img src="docs/logos/cellpointsystems.png" width="125"><a href="https://dendra.science"><img src="docs/logos/dendrascience.png" width="125"></a><a href="https://google.com"><img src="docs/logos/google.png" width="125"></a></p>
 
 ## License
 
