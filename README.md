@@ -33,6 +33,8 @@ Because the `farmer` exposes an API, `grlx` is by no means the only way to creat
 Some features (not yet ordered) that are coming to grlx:
 
 - [x] Command execution
+- [x] Service management
+- [x] Template rendering
 - [ ] BSD + Windows support (`grlx` client support already exists, but management does not)
 - [ ] Encrypted secrets management
 - [ ] Environments
@@ -44,11 +46,9 @@ Some features (not yet ordered) that are coming to grlx:
 - [ ] RBAC
 - [ ] Remote shell access (dropshell)
 - [ ] S3 object storage support
-- [ ] Service management
 - [ ] Simple monitoring data and collection
 - [ ] Standardized error handling
 - [ ] Support for non-systemd init systems
-- [ ] Template rendering
 - ... Many more!
 
 
