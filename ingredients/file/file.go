@@ -41,6 +41,7 @@ func (f File) Test(ctx context.Context) (types.Result, error) {
 	case "append":
 		return f.undef()
 	case "directory":
+		return f.directory(ctx, true)
 		return f.undef()
 	case "missing":
 		return f.undef()
@@ -106,18 +107,32 @@ func (f File) cached(ctx context.Context, test bool) (types.Result, error) {
 	return types.Result{Succeeded: true, Failed: false, Changed: false}, nil
 }
 
-func (f File) absent(ctx context.Context, test bool) (types.Result, error) {
+func (f File) directory(ctx context.Context, test bool) (types.Result, error) {
 	name, ok := f.params["name"].(string)
 	if !ok {
-		// TODO join with an error type for missing params
-		return types.Result{Succeeded: false, Failed: true}, fmt.Errorf("name not defined")
+		return types.Result{Succeeded: false, Failed: true}, types.ErrMissingName
 	}
 	name = filepath.Clean(name)
 	if name == "" {
-		return types.Result{Succeeded: false, Failed: true}, fmt.Errorf("name not defined")
+		return types.Result{Succeeded: false, Failed: true}, types.ErrMissingName
 	}
 	if name == "/" {
 		return types.Result{Succeeded: false, Failed: true}, fmt.Errorf("refusing to delete root")
+	}
+	return f.undef()
+}
+
+func (f File) absent(ctx context.Context, test bool) (types.Result, error) {
+	name, ok := f.params["name"].(string)
+	if !ok {
+		return types.Result{Succeeded: false, Failed: true}, types.ErrMissingName
+	}
+	name = filepath.Clean(name)
+	if name == "" {
+		return types.Result{Succeeded: false, Failed: true}, types.ErrMissingName
+	}
+	if name == "/" {
+		return types.Result{Succeeded: false, Failed: true}, types.ErrDeleteRoot
 	}
 	_, err := os.Stat(name)
 	if errors.Is(err, os.ErrNotExist) {
