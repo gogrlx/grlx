@@ -289,7 +289,7 @@ func (f File) absent(ctx context.Context, test bool) (types.Result, error) {
 	if err != nil {
 		return types.Result{Succeeded: false, Failed: true}, err
 	}
-	return types.Result{Succeeded: true, Failed: false, Changed: true, Changes: struct{ Removed []string }{Removed: []string{name}}}, nil
+	return types.Result{Succeeded: true, Failed: false, Changed: true, Changes: []fmt.Stringer{types.SimpleChange(fmt.Sprintf("removed %v", name))}}, nil
 }
 
 func (f File) Apply(ctx context.Context) (types.Result, error) {
