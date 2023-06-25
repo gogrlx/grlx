@@ -96,20 +96,22 @@ func (f File) cached(ctx context.Context, test bool) (types.Result, error) {
 		if test {
 			return types.Result{
 				Succeeded: true, Failed: false,
-				Changed: true, Changes: fp,
+				// TODO: make changes a proper stringer
+				Changed: true, Changes: []fmt.Stringer{types.SimpleChange(fmt.Sprintf("%v", fp))},
 			}, nil
 		} else {
 			err = fp.Download(ctx)
 			if err != nil {
 				return types.Result{Succeeded: false, Failed: true}, err
 			}
-			return types.Result{Succeeded: true, Failed: false, Changed: true, Changes: fp}, nil
+			return types.Result{Succeeded: true, Failed: false, Changed: true, Changes: []fmt.Stringer{types.SimpleChange(fmt.Sprintf("%v", fp))}}, nil
 		}
 	}
 	return types.Result{Succeeded: true, Failed: false, Changed: false}, nil
 }
 
 func (f File) directory(ctx context.Context, test bool) (types.Result, error) {
+	changes := []fmt.Stringer{}
 	type dir struct {
 		user           string
 		group          string
@@ -126,7 +128,7 @@ func (f File) directory(ctx context.Context, test bool) (types.Result, error) {
 	}
 	name, ok := f.params["name"].(string)
 	if !ok {
-		return types.Result{Succeeded: false, Failed: true}, types.ErrMissingName
+		return types.Result{Succeeded: false, Failed: true, Changes: changes, Changed: changes != nil}, types.ErrMissingName
 	}
 	name = filepath.Clean(name)
 	if name == "" {

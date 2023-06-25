@@ -2,6 +2,7 @@ package types
 
 import (
 	"context"
+	"fmt"
 	"time"
 )
 
@@ -107,9 +108,10 @@ type (
 		Succeeded bool
 		Failed    bool
 		Changed   bool
-		Changes   any
+		Changes   []fmt.Stringer
 	}
-	Startup struct {
+	SimpleChange string
+	Startup      struct {
 		Version  Version `json:"version"`
 		SproutID string  `json:"id"`
 	}
@@ -241,4 +243,8 @@ func (r Requisite) Equals(other Requisite) bool {
 		}
 	}
 	return true
+}
+
+func (s SimpleChange) String() string {
+	return string(s)
 }
