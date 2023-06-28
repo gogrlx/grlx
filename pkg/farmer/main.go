@@ -66,7 +66,7 @@ func createConfigRoot() {
 			log.Panicf(err.Error())
 		}
 	} else {
-		// TODO: work out what the other errors could be here
+		// TODO work out what the other errors could be here
 		log.Panicf(err.Error())
 	}
 }
@@ -83,7 +83,7 @@ func StartAPIServer() {
 		Tag:       Tag,
 	}, CertFile)
 	srv := http.Server{
-		// TODO: add all below settings to configuration
+		// TODO add all below settings to configuration
 		Addr:         FarmerInterface + ":" + FarmerAPIPort,
 		WriteTimeout: time.Second * 120,
 		ReadTimeout:  time.Second * 120,
@@ -129,8 +129,7 @@ func RunNATSServer() {
 	s.SetLogger(logger, true, true)
 	// Wait for accept loop(s) to be started
 	if !s.ReadyForConnections(10 * time.Second) {
-		// TODO handle case where nats server port is already taken
-		log.Panicf("Unable to start NATS Server in Go Routine")
+		log.Panicf("Unable to start NATS Server")
 	}
 	// s.ReloadOptions(opts)
 	pki.SetNATSServer(s)
@@ -150,7 +149,7 @@ func ConnectFarmer() {
 	opt, err := nats.NkeyOptionFromSeed(config.NKeyFarmerPrivFile)
 	_ = opt
 	if err != nil {
-		// TODO: handle error
+		// TODO handle error
 		log.Panic(err)
 	}
 	certPool := x509.NewCertPool()
@@ -196,11 +195,6 @@ func ConnectFarmer() {
 	}
 	log.Debugf("Successfully joined Farmer to NATS bus")
 
-	//	nc, err := nats.Connect(serverUrl, opt)
-	//	if err != nil {
-	//		//TODO: handle error
-	//		panic(err)
-	//	}
 	_, err = nc.Subscribe("grlx.sprouts.announce.>", func(m *nats.Msg) {
 		log.Printf("Received a join event: %s\n", string(m.Data))
 	})

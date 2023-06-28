@@ -50,7 +50,6 @@ func SetConfigFile(path string) {
 }
 
 // TODO use enum for binary as elsewhere
-
 func LoadConfig(binary string) {
 	configLoaded.Do(func() {
 		viper.SetConfigType("yaml")
@@ -103,7 +102,6 @@ func LoadConfig(binary string) {
 				}
 			}
 		} else if err != nil {
-			// TODO create default config
 			log.Printf("%T\n", err)
 			panic(fmt.Errorf("fatal error config file: %w", err))
 		}

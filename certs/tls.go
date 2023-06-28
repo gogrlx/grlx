@@ -225,6 +225,6 @@ func GenCert() {
 	log.Debug("wrote key.pem")
 }
 
+// TODO: add TLS cert rotation
 func RotateTLSCerts() {
-	// TODO
 }

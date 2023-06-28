@@ -36,14 +36,13 @@ func init() {
 	sproutMatcher = regexp.MustCompile(`^[0-9a-z\.][-0-9_a-z\.]*$`)
 }
 
-// TODO: look into merging this package with the auth and certs packages
 func SetupPKIFarmer() {
 	FarmerPKI := config.FarmerPKI
 	_, err := os.Stat(FarmerPKI)
 	if os.IsNotExist(err) {
 		err = os.MkdirAll(FarmerPKI, os.ModePerm)
 		if err != nil {
-			// TODO check if no permissions to create, log, and exit
+			// TODO check if no permissions to create, log, and then exit
 			log.Panicf(err.Error())
 		}
 	}
@@ -99,7 +98,7 @@ func SetupPKISprout() {
 func createSproutID() string {
 	id, err := os.Hostname()
 	if err != nil {
-		// TODO don't panic, use another method of derivation
+		// TODO use another method of derivation instead of panicking
 		panic(err)
 	}
 	id = strings.ReplaceAll(id, "_", "-")
@@ -324,7 +323,7 @@ func NKeyExists(id string, nkey string) (Registered bool, Matches bool) {
 	}
 	file, err := os.ReadFile(filename)
 	if err != nil {
-		// TODO determine how we could get an error here!
+		// TODO determine how we could get an error here
 		log.Fatalf("Error reading in %s: %v", filename, err)
 	}
 	content := string(file)
@@ -341,7 +340,7 @@ func fetchRootCA(filename string) error {
 		return err
 	}
 	file, err := os.Create(RootCA)
-	// TODO: sort out this panic
+	// TODO sort out this panic
 	if err != nil {
 		return err
 	}
@@ -419,7 +418,6 @@ func LoadRootCA(binary string) error {
 	return nil
 }
 
-// TODO handle return body
 func PutNKey(id string) error {
 	nkey, err := GetPubNKey(SproutPubNKey)
 	if err != nil {
@@ -436,7 +434,7 @@ func PutNKey(id string) error {
 	}
 	_, err = nkeyClient.Do(req)
 	if err != nil {
-		// handle error
+		// TODO handle error
 		return err
 	}
 	return nil

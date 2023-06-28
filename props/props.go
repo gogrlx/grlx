@@ -6,7 +6,7 @@ func GetPropFunc(sproutID string) func(string) string {
 	}
 }
 
-// TODO: implement
+// TODO: implement GetProp
 func GetProp(sproutID, name string) string {
 	return "props"
 }
@@ -17,7 +17,7 @@ func SetPropFunc(sproutID string) func(string, string) error {
 	}
 }
 
-// TODO: implement
+// TODO: implement SetProp
 func SetProp(sproutID, name, value string) error {
 	return nil
 }
@@ -28,7 +28,7 @@ func GetDeletePropFunc(sproutID string) func(string) error {
 	}
 }
 
-// TODO: implement
+// TODO: implement DeleteProp
 func DeleteProp(sproutID, name string) error {
 	return nil
 }
@@ -39,7 +39,7 @@ func GetPropsFunc(sproutID string) func() map[string]string {
 	}
 }
 
-// TODO: implement
+// TODO: implement GetProps
 func GetProps(sproutID string) map[string]string {
 	return nil
 }
@@ -50,7 +50,7 @@ func GetHostnameFunc(sproutID string) func() string {
 	}
 }
 
-// TODO: implement
+// TODO: implement GetHostname
 func Hostname(sproutID string) string {
 	return "hostname"
 }

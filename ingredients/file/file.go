@@ -66,7 +66,6 @@ func (f File) Test(ctx context.Context) (types.Result, error) {
 	default:
 		// TODO define error type
 		return types.Result{Succeeded: false, Failed: true, Changed: false, Changes: nil}, fmt.Errorf("method %s undefined", f.method)
-
 	}
 }
 

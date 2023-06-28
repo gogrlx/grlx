@@ -60,7 +60,7 @@ func NewToken() (string, error) {
 	return createSignedToken(kp)
 }
 
-// TODO move sprout auth into this package
+// TODO move sprout auth into same package as CLI
 func Sign(nonce []byte) ([]byte, error) {
 	seed, err := getPrivateSeed()
 	if err != nil {

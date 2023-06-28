@@ -72,7 +72,6 @@ func SetNATSServer(s *nats_server.Server) {
 	NatsServer = s
 }
 
-// TODO
 func ReloadNKeys() error {
 	// AuthorizedKeys
 	authorizedKeys := GetNKeysByType("accepted")
@@ -113,7 +112,7 @@ func ReloadNKeys() error {
 		// sproutAccount.Name = account.SproutID
 		key, errGet := GetNKey(account.SproutID)
 		if errGet != nil {
-			// TODO update panic to handle error
+			// TODO handle error
 			panic(errGet)
 		}
 		accountSubscribe := nats_server.SubjectPermission{Allow: []string{"grlx.sprouts." + account.SproutID + ".>"}}
