@@ -226,6 +226,10 @@ func ListNKeysByType() types.KeysByType {
 func RejectNKey(id string, nkey string) error {
 	defer ReloadNKeys()
 	newDest := filepath.Join(config.FarmerPKI, "sprouts", "rejected", id)
+	cleanDest := filepath.Clean(newDest)
+	if newDest != cleanDest {
+		return types.ErrSproutIDInvalid
+	}
 	fname, err := findNKey(id)
 	if nkey != "" && err == types.ErrSproutIDNotFound {
 		file, errCreate := os.Create(newDest)
