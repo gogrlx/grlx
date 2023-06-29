@@ -162,6 +162,8 @@ github.com/nats-io/nats-server/v2 v2.9.19 h1:OF9jSKZGo425C/FcVVIvNgpd36CUe7aVTTX
 github.com/nats-io/nats-server/v2 v2.9.19/go.mod h1:aTb/xtLCGKhfTFLxP591CMWfkdgBmcUUSkiSOe5A3gw=
 github.com/nats-io/nats.go v1.27.0 h1:3o9fsPhmoKm+yK7rekH2GtWoE+D9jFbw8N3/ayI1C00=
 github.com/nats-io/nats.go v1.27.0/go.mod h1:XpbWUlOElGwTYbMR7imivs7jJj9GtK7ypv321Wp6pjc=
+github.com/nats-io/nats.go v1.27.1 h1:OuYnal9aKVSnOzLQIzf7554OXMCG7KbaTkCSBHRcSoo=
+github.com/nats-io/nats.go v1.27.1/go.mod h1:XpbWUlOElGwTYbMR7imivs7jJj9GtK7ypv321Wp6pjc=
 github.com/nats-io/nkeys v0.4.4 h1:xvBJ8d69TznjcQl9t6//Q5xXuVhyYiSos6RPtvQNTwA=
 github.com/nats-io/nkeys v0.4.4/go.mod h1:XUkxdLPTufzlihbamfzQ7mw/VGx6ObUs+0bN5sNvt64=
 github.com/nats-io/nuid v1.0.1 h1:5iA8DT8V7q8WK2EScv2padNa/rTESc1KdnPw4TC2paw=
@@ -203,8 +205,8 @@ github.com/subosito/gotenv v1.4.2 h1:X1TuBLAMDFbaTAChgCBLu3DU3UPyELpnF2jjJ2cz/S8
 github.com/subosito/gotenv v1.4.2/go.mod h1:ayKnFf/c6rvx/2iiLrJUk1e6plDbT3edrFNGqEflhK0=
 github.com/taigrr/log-socket v1.0.1 h1:cxdxYEB+JbBQrs5/kKJzTIjs8z5SWp99pKyJcFoywc8=
 github.com/taigrr/log-socket v1.0.1/go.mod h1:km7dTI5T0ncBCr1xsUwdNXi6UWQptdDZuwhvKntLSN4=
-github.com/taigrr/systemctl v1.0.5 h1:PzRjtJWImTw8Lm/HPUMRm7ERjq3vvWBxNHKwalbT7T0=
-github.com/taigrr/systemctl v1.0.5/go.mod h1:TpeHkNuHgYT63FI5jVLBf5VNAGbxEFH3FHqg5ReXnd0=
+github.com/taigrr/systemctl v1.0.6 h1:ko+KmLvMOt10kYQcS01CMPpsuks/npKPUJO4Wn9N7Ek=
+github.com/taigrr/systemctl v1.0.6/go.mod h1:TpeHkNuHgYT63FI5jVLBf5VNAGbxEFH3FHqg5ReXnd0=
 github.com/yuin/goldmark v1.1.25/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.1.27/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.1.32/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=

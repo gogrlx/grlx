@@ -7,12 +7,12 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
 	github.com/nats-io/nats-server/v2 v2.9.19
-	github.com/nats-io/nats.go v1.27.0
+	github.com/nats-io/nats.go v1.27.1
 	github.com/nats-io/nkeys v0.4.4
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/viper v1.16.0
 	github.com/taigrr/log-socket v1.0.1
-	github.com/taigrr/systemctl v1.0.5
+	github.com/taigrr/systemctl v1.0.6
 	gopkg.in/yaml.v3 v3.0.1
 )
 
