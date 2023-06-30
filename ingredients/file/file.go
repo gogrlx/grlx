@@ -50,7 +50,7 @@ func (f File) Test(ctx context.Context) (types.Result, error) {
 	case "missing":
 		return f.missing(ctx, true)
 	case "prepend":
-		return f.prepent(ctx, true)
+		return f.prepend(ctx, true)
 	case "touch":
 		return f.touch(ctx, true)
 	case "cached":
