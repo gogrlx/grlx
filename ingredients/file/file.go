@@ -65,7 +65,7 @@ func (f File) Test(ctx context.Context) (types.Result, error) {
 		return f.undef()
 	default:
 		// TODO define error type
-		return types.Result{Succeeded: false, Failed: true, Changed: false, Notes: nil}, fmt.Errorf("method %s undefined", f.method)
+		return f.undef()
 	}
 }
 
@@ -429,6 +429,13 @@ func (f File) PropertiesForMethod(method string) (map[string]string, error) {
 			"source": "string", "source_hash": "string",
 		}, nil
 	case "contains":
+		return map[string]string{
+			"name": "string", "text": "[]string",
+			"makedirs": "bool", "source": "string",
+			"source_hash": "string", "template": "bool",
+			"sources": "[]string", "source_hashes": "[]string",
+		}, nil
+	case "content":
 		return map[string]string{
 			"name": "string", "text": "[]string",
 			"makedirs": "bool", "source": "string",
