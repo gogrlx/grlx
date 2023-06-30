@@ -110,8 +110,8 @@ type (
 		Changed   bool
 		Notes     []fmt.Stringer
 	}
-	SimpleChange string
-	Startup      struct {
+	SimpleNote string
+	Startup    struct {
 		Version  Version `json:"version"`
 		SproutID string  `json:"id"`
 	}
@@ -245,6 +245,6 @@ func (r Requisite) Equals(other Requisite) bool {
 	return true
 }
 
-func (s SimpleChange) String() string {
+func (s SimpleNote) String() string {
 	return string(s)
 }

@@ -46,7 +46,7 @@ func (f File) Test(ctx context.Context) (types.Result, error) {
 	case "directory":
 		return f.directory(ctx, true)
 	case "missing":
-		return f.undef()
+		return f.missing(ctx, true)
 	case "prepend":
 		return f.undef()
 	case "touch":
@@ -96,14 +96,14 @@ func (f File) cached(ctx context.Context, test bool) (types.Result, error) {
 			return types.Result{
 				Succeeded: true, Failed: false,
 				// TODO: make changes a proper stringer
-				Changed: true, Notes: []fmt.Stringer{types.SimpleChange(fmt.Sprintf("%v", fp))},
+				Changed: true, Notes: []fmt.Stringer{types.SimpleNote(fmt.Sprintf("%v", fp))},
 			}, nil
 		} else {
 			err = fp.Download(ctx)
 			if err != nil {
 				return types.Result{Succeeded: false, Failed: true}, err
 			}
-			return types.Result{Succeeded: true, Failed: false, Changed: true, Notes: []fmt.Stringer{types.SimpleChange(fmt.Sprintf("%v", fp))}}, nil
+			return types.Result{Succeeded: true, Failed: false, Changed: true, Notes: []fmt.Stringer{types.SimpleNote(fmt.Sprintf("%v", fp))}}, nil
 		}
 	}
 	return types.Result{Succeeded: true, Failed: false, Changed: false}, nil
@@ -274,23 +274,20 @@ func (f File) missing(ctx context.Context, test bool) (types.Result, error) {
 			Changed: false, Notes: nil,
 		}, types.ErrMissingName
 	}
-	if name == "/" {
-		return types.Result{
-			Succeeded: false, Failed: true,
-			Changed: false, Notes: []fmt.Stringer{
-				types.SimpleChange("root path cannot be missing"),
-			},
-		}, nil
-	}
 	_, err := os.Stat(name)
 	if errors.Is(err, os.ErrNotExist) {
-		return types.Result{Succeeded: true, Failed: false, Changed: false, Notes: nil}, nil
+		return types.Result{
+			Succeeded: true, Failed: false,
+			Changed: false, Notes: []fmt.Stringer{
+				types.SimpleNote(fmt.Sprintf("file %s is missing", name)),
+			},
+		}, nil
 	}
 	if err != nil {
 		return types.Result{
 			Succeeded: false, Failed: true,
 			Changed: false, Notes: []fmt.Stringer{
-				types.SimpleChange(fmt.Sprintf("error checking file %s is missing: %s", name, err)),
+				types.SimpleNote(fmt.Sprintf("error checking file %s is missing: %s", name, err)),
 			},
 		}, err
 	}
@@ -299,7 +296,7 @@ func (f File) missing(ctx context.Context, test bool) (types.Result, error) {
 		Failed:    true,
 		Changed:   false,
 		Notes: []fmt.Stringer{
-			types.SimpleChange(fmt.Sprintf("file %s is not missing", name)),
+			types.SimpleNote(fmt.Sprintf("file %s is not missing", name)),
 		},
 	}, err
 }
@@ -339,7 +336,7 @@ func (f File) absent(ctx context.Context, test bool) (types.Result, error) {
 	return types.Result{
 		Succeeded: true, Failed: false,
 		Changed: true, Notes: []fmt.Stringer{
-			types.SimpleChange(fmt.Sprintf("removed %v", name)),
+			types.SimpleNote(fmt.Sprintf("removed %v", name)),
 		},
 	}, nil
 }
@@ -353,7 +350,7 @@ func (f File) Apply(ctx context.Context) (types.Result, error) {
 	case "directory":
 		return f.undef()
 	case "missing":
-		return f.undef()
+		return f.missing(ctx, false)
 	case "prepend":
 		return f.undef()
 	case "touch":

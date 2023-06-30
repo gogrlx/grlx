@@ -34,10 +34,10 @@ func (s Service) Apply(ctx context.Context) (types.Result, error) {
 			if err != nil {
 				return types.Result{Succeeded: false, Failed: true, Changed: false, Notes: nil}, err
 			}
-			return types.Result{Succeeded: true, Failed: false, Changed: true, Notes: []fmt.Stringer{types.SimpleChange(fmt.Sprintf("%s has been masked", s.name))}}, err
+			return types.Result{Succeeded: true, Failed: false, Changed: true, Notes: []fmt.Stringer{types.SimpleNote(fmt.Sprintf("%s has been masked", s.name))}}, err
 
 		}
-		return types.Result{Succeeded: true, Failed: false, Changed: false, Notes: []fmt.Stringer{types.SimpleChange(fmt.Sprintf("%s is already masked.", s.name))}}, err
+		return types.Result{Succeeded: true, Failed: false, Changed: false, Notes: []fmt.Stringer{types.SimpleNote(fmt.Sprintf("%s is already masked.", s.name))}}, err
 	case "unmasked":
 		var isMasked bool
 		if isMasked, err = sp.IsMasked(ctx); err != nil {
@@ -47,9 +47,9 @@ func (s Service) Apply(ctx context.Context) (types.Result, error) {
 			if err != nil {
 				return types.Result{Succeeded: false, Failed: true, Changed: false, Notes: nil}, err
 			}
-			return types.Result{Succeeded: true, Failed: false, Changed: true, Notes: []fmt.Stringer{types.SimpleChange(fmt.Sprintf("%s has been unmasked", s.name))}}, err
+			return types.Result{Succeeded: true, Failed: false, Changed: true, Notes: []fmt.Stringer{types.SimpleNote(fmt.Sprintf("%s has been unmasked", s.name))}}, err
 		}
-		return types.Result{Succeeded: true, Failed: false, Changed: false, Notes: []fmt.Stringer{types.SimpleChange(fmt.Sprintf("%s is already unmasked.", s.name))}}, err
+		return types.Result{Succeeded: true, Failed: false, Changed: false, Notes: []fmt.Stringer{types.SimpleNote(fmt.Sprintf("%s is already unmasked.", s.name))}}, err
 	case "running":
 		var isRunning bool
 		if isRunning, err = sp.IsRunning(ctx); err != nil {
@@ -59,9 +59,9 @@ func (s Service) Apply(ctx context.Context) (types.Result, error) {
 			if err != nil {
 				return types.Result{Succeeded: false, Failed: true, Changed: false, Notes: nil}, err
 			}
-			return types.Result{Succeeded: true, Failed: false, Changed: true, Notes: []fmt.Stringer{types.SimpleChange(fmt.Sprintf("%s has been started", s.name))}}, err
+			return types.Result{Succeeded: true, Failed: false, Changed: true, Notes: []fmt.Stringer{types.SimpleNote(fmt.Sprintf("%s has been started", s.name))}}, err
 		}
-		return types.Result{Succeeded: true, Failed: false, Changed: false, Notes: []fmt.Stringer{types.SimpleChange(fmt.Sprintf("%s is already running.", s.name))}}, err
+		return types.Result{Succeeded: true, Failed: false, Changed: false, Notes: []fmt.Stringer{types.SimpleNote(fmt.Sprintf("%s is already running.", s.name))}}, err
 	case "stopped":
 		var isRunning bool
 		if isRunning, err = sp.IsRunning(ctx); err != nil {
@@ -71,9 +71,9 @@ func (s Service) Apply(ctx context.Context) (types.Result, error) {
 			if err != nil {
 				return types.Result{Succeeded: false, Failed: true, Changed: false, Notes: nil}, err
 			}
-			return types.Result{Succeeded: true, Failed: false, Changed: true, Notes: []fmt.Stringer{types.SimpleChange(fmt.Sprintf("%s has been stopped", s.name))}}, err
+			return types.Result{Succeeded: true, Failed: false, Changed: true, Notes: []fmt.Stringer{types.SimpleNote(fmt.Sprintf("%s has been stopped", s.name))}}, err
 		}
-		return types.Result{Succeeded: true, Failed: false, Changed: false, Notes: []fmt.Stringer{types.SimpleChange(fmt.Sprintf("%s is already stopped.", s.name))}}, err
+		return types.Result{Succeeded: true, Failed: false, Changed: false, Notes: []fmt.Stringer{types.SimpleNote(fmt.Sprintf("%s is already stopped.", s.name))}}, err
 	case "enabled":
 		var isEnabled bool
 		if isEnabled, err = sp.IsEnabled(ctx); err != nil {
@@ -83,9 +83,9 @@ func (s Service) Apply(ctx context.Context) (types.Result, error) {
 			if err != nil {
 				return types.Result{Succeeded: false, Failed: true, Changed: false, Notes: nil}, err
 			}
-			return types.Result{Succeeded: true, Failed: false, Changed: true, Notes: []fmt.Stringer{types.SimpleChange(fmt.Sprintf("%s has been enabled", s.name))}}, err
+			return types.Result{Succeeded: true, Failed: false, Changed: true, Notes: []fmt.Stringer{types.SimpleNote(fmt.Sprintf("%s has been enabled", s.name))}}, err
 		}
-		return types.Result{Succeeded: true, Failed: false, Changed: false, Notes: []fmt.Stringer{types.SimpleChange(fmt.Sprintf("%s is already enabled.", s.name))}}, err
+		return types.Result{Succeeded: true, Failed: false, Changed: false, Notes: []fmt.Stringer{types.SimpleNote(fmt.Sprintf("%s is already enabled.", s.name))}}, err
 	case "disabled":
 		var isEnabled bool
 		if isEnabled, err = sp.IsEnabled(ctx); err != nil {
@@ -95,15 +95,15 @@ func (s Service) Apply(ctx context.Context) (types.Result, error) {
 			if err != nil {
 				return types.Result{Succeeded: false, Failed: true, Changed: false, Notes: nil}, err
 			}
-			return types.Result{Succeeded: true, Failed: false, Changed: true, Notes: []fmt.Stringer{types.SimpleChange(fmt.Sprintf("%s has been disabled", s.name))}}, err
+			return types.Result{Succeeded: true, Failed: false, Changed: true, Notes: []fmt.Stringer{types.SimpleNote(fmt.Sprintf("%s has been disabled", s.name))}}, err
 		}
-		return types.Result{Succeeded: true, Failed: false, Changed: false, Notes: []fmt.Stringer{types.SimpleChange(fmt.Sprintf("%s is already disabled.", s.name))}}, err
+		return types.Result{Succeeded: true, Failed: false, Changed: false, Notes: []fmt.Stringer{types.SimpleNote(fmt.Sprintf("%s is already disabled.", s.name))}}, err
 	case "restarted":
 		err = sp.Restart(ctx)
 		if err != nil {
 			return types.Result{Succeeded: false, Failed: true, Changed: false, Notes: nil}, err
 		}
-		return types.Result{Succeeded: true, Failed: false, Changed: true, Notes: []fmt.Stringer{types.SimpleChange(fmt.Sprintf("%s has been restarted", s.name))}}, err
+		return types.Result{Succeeded: true, Failed: false, Changed: true, Notes: []fmt.Stringer{types.SimpleNote(fmt.Sprintf("%s has been restarted", s.name))}}, err
 	default:
 		return types.Result{}, types.ErrInvalidMethod
 	}
