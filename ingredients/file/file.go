@@ -42,7 +42,7 @@ func (f File) Test(ctx context.Context) (types.Result, error) {
 	case "absent":
 		return f.absent(ctx, true)
 	case "append":
-		return f.undef()
+		return f.append(ctx, true)
 	case "directory":
 		return f.directory(ctx, true)
 	case "exists":
@@ -50,23 +50,67 @@ func (f File) Test(ctx context.Context) (types.Result, error) {
 	case "missing":
 		return f.missing(ctx, true)
 	case "prepend":
-		return f.undef()
+		return f.prepent(ctx, true)
 	case "touch":
-		return f.undef()
+		return f.touch(ctx, true)
 	case "cached":
 		return f.cached(ctx, true)
 	case "contains":
-		return f.undef()
+		return f.contains(ctx, true)
 	case "content":
-		return f.undef()
+		return f.content(ctx, true)
 	case "managed":
-		return f.undef()
+		return f.managed(ctx, true)
 	case "symlink":
-		return f.undef()
+		return f.symlink(ctx, true)
 	default:
 		// TODO define error type
 		return f.undef()
 	}
+}
+
+func (f File) absent(ctx context.Context, test bool) (types.Result, error) {
+	name, ok := f.params["name"].(string)
+	if !ok {
+		return types.Result{Succeeded: false, Failed: true}, types.ErrMissingName
+	}
+	name = filepath.Clean(name)
+	if name == "" {
+		return types.Result{Succeeded: false, Failed: true}, types.ErrMissingName
+	}
+	if name == "/" {
+		return types.Result{Succeeded: false, Failed: true}, types.ErrDeleteRoot
+	}
+	_, err := os.Stat(name)
+	if errors.Is(err, os.ErrNotExist) {
+		return types.Result{
+			Succeeded: true, Failed: false,
+			Changed: false, Notes: nil,
+		}, nil
+	}
+	if err != nil {
+		return types.Result{Succeeded: false, Failed: true}, err
+	}
+	if test {
+		return types.Result{
+			Succeeded: true, Failed: false,
+			Changed: true, Notes: nil,
+		}, nil
+	}
+	err = os.Remove(name)
+	if err != nil {
+		return types.Result{Succeeded: false, Failed: true}, err
+	}
+	return types.Result{
+		Succeeded: true, Failed: false,
+		Changed: true, Notes: []fmt.Stringer{
+			types.SimpleNote(fmt.Sprintf("removed %v", name)),
+		},
+	}, nil
+}
+
+func (f File) append(ctx context.Context, test bool) (types.Result, error) {
+	return f.undef()
 }
 
 func (f File) cached(ctx context.Context, test bool) (types.Result, error) {
@@ -340,44 +384,28 @@ func (f File) missing(ctx context.Context, test bool) (types.Result, error) {
 	}, err
 }
 
-func (f File) absent(ctx context.Context, test bool) (types.Result, error) {
-	name, ok := f.params["name"].(string)
-	if !ok {
-		return types.Result{Succeeded: false, Failed: true}, types.ErrMissingName
-	}
-	name = filepath.Clean(name)
-	if name == "" {
-		return types.Result{Succeeded: false, Failed: true}, types.ErrMissingName
-	}
-	if name == "/" {
-		return types.Result{Succeeded: false, Failed: true}, types.ErrDeleteRoot
-	}
-	_, err := os.Stat(name)
-	if errors.Is(err, os.ErrNotExist) {
-		return types.Result{
-			Succeeded: true, Failed: false,
-			Changed: false, Notes: nil,
-		}, nil
-	}
-	if err != nil {
-		return types.Result{Succeeded: false, Failed: true}, err
-	}
-	if test {
-		return types.Result{
-			Succeeded: true, Failed: false,
-			Changed: true, Notes: nil,
-		}, nil
-	}
-	err = os.Remove(name)
-	if err != nil {
-		return types.Result{Succeeded: false, Failed: true}, err
-	}
-	return types.Result{
-		Succeeded: true, Failed: false,
-		Changed: true, Notes: []fmt.Stringer{
-			types.SimpleNote(fmt.Sprintf("removed %v", name)),
-		},
-	}, nil
+func (f File) prepend(ctx context.Context, test bool) (types.Result, error) {
+	return f.undef()
+}
+
+func (f File) touch(ctx context.Context, test bool) (types.Result, error) {
+	return f.undef()
+}
+
+func (f File) contains(ctx context.Context, test bool) (types.Result, error) {
+	return f.undef()
+}
+
+func (f File) content(ctx context.Context, test bool) (types.Result, error) {
+	return f.undef()
+}
+
+func (f File) managed(ctx context.Context, test bool) (types.Result, error) {
+	return f.undef()
+}
+
+func (f File) symlink(ctx context.Context, test bool) (types.Result, error) {
+	return f.undef()
 }
 
 func (f File) Apply(ctx context.Context) (types.Result, error) {
@@ -385,27 +413,27 @@ func (f File) Apply(ctx context.Context) (types.Result, error) {
 	case "absent":
 		return f.absent(ctx, false)
 	case "append":
-		return f.undef()
+		return f.append(ctx, false)
 	case "directory":
-		return f.undef()
+		return f.directory(ctx, false)
 	case "exists":
 		return f.exists(ctx, false)
 	case "missing":
 		return f.missing(ctx, false)
 	case "prepend":
-		return f.undef()
+		return f.prepend(ctx, false)
 	case "touch":
-		return f.undef()
+		return f.touch(ctx, false)
 	case "cached":
 		return f.cached(ctx, false)
 	case "contains":
-		return f.undef()
+		return f.contains(ctx, false)
 	case "content":
-		return f.undef()
+		return f.content(ctx, false)
 	case "managed":
-		return f.undef()
+		return f.managed(ctx, false)
 	case "symlink":
-		return f.undef()
+		return f.symlink(ctx, false)
 	default:
 		// TODO define error type
 		return types.Result{Succeeded: false, Failed: true, Changed: false, Notes: nil}, fmt.Errorf("method %s undefined", f.method)
