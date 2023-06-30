@@ -51,7 +51,7 @@ func (c Cmd) Apply(ctx context.Context) (types.Result, error) {
 		fallthrough
 	default:
 		// TODO define error type
-		return types.Result{Succeeded: false, Failed: true, Changed: false, Changes: nil}, fmt.Errorf("method %s undefined", c.Method)
+		return types.Result{Succeeded: false, Failed: true, Changed: false, Notes: nil}, fmt.Errorf("method %s undefined", c.Method)
 
 	}
 }

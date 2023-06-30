@@ -108,7 +108,7 @@ type (
 		Succeeded bool
 		Failed    bool
 		Changed   bool
-		Changes   []fmt.Stringer
+		Notes     []fmt.Stringer
 	}
 	SimpleChange string
 	Startup      struct {

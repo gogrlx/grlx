@@ -34,7 +34,7 @@ func (f File) Parse(id, method string, params map[string]interface{}) (types.Rec
 // cases sorted alphabetically. It's not exported and won't stick around.
 // TODO remove undef func
 func (f File) undef() (types.Result, error) {
-	return types.Result{Succeeded: false, Failed: true, Changed: false, Changes: nil}, fmt.Errorf("method %s undefined", f.method)
+	return types.Result{Succeeded: false, Failed: true, Changed: false, Notes: nil}, fmt.Errorf("method %s undefined", f.method)
 }
 
 func (f File) Test(ctx context.Context) (types.Result, error) {
@@ -65,7 +65,7 @@ func (f File) Test(ctx context.Context) (types.Result, error) {
 		return f.undef()
 	default:
 		// TODO define error type
-		return types.Result{Succeeded: false, Failed: true, Changed: false, Changes: nil}, fmt.Errorf("method %s undefined", f.method)
+		return types.Result{Succeeded: false, Failed: true, Changed: false, Notes: nil}, fmt.Errorf("method %s undefined", f.method)
 	}
 }
 
@@ -96,14 +96,14 @@ func (f File) cached(ctx context.Context, test bool) (types.Result, error) {
 			return types.Result{
 				Succeeded: true, Failed: false,
 				// TODO: make changes a proper stringer
-				Changed: true, Changes: []fmt.Stringer{types.SimpleChange(fmt.Sprintf("%v", fp))},
+				Changed: true, Notes: []fmt.Stringer{types.SimpleChange(fmt.Sprintf("%v", fp))},
 			}, nil
 		} else {
 			err = fp.Download(ctx)
 			if err != nil {
 				return types.Result{Succeeded: false, Failed: true}, err
 			}
-			return types.Result{Succeeded: true, Failed: false, Changed: true, Changes: []fmt.Stringer{types.SimpleChange(fmt.Sprintf("%v", fp))}}, nil
+			return types.Result{Succeeded: true, Failed: false, Changed: true, Notes: []fmt.Stringer{types.SimpleChange(fmt.Sprintf("%v", fp))}}, nil
 		}
 	}
 	return types.Result{Succeeded: true, Failed: false, Changed: false}, nil
@@ -127,7 +127,7 @@ func (f File) directory(ctx context.Context, test bool) (types.Result, error) {
 	}
 	name, ok := f.params["name"].(string)
 	if !ok {
-		return types.Result{Succeeded: false, Failed: true, Changes: changes, Changed: changes != nil}, types.ErrMissingName
+		return types.Result{Succeeded: false, Failed: true, Notes: changes, Changed: changes != nil}, types.ErrMissingName
 	}
 	name = filepath.Clean(name)
 	if name == "" {
@@ -262,6 +262,48 @@ func (f File) directory(ctx context.Context, test bool) (types.Result, error) {
 	return f.undef()
 }
 
+func (f File) missing(ctx context.Context, test bool) (types.Result, error) {
+	name, ok := f.params["name"].(string)
+	if !ok {
+		return types.Result{Succeeded: false, Failed: true}, types.ErrMissingName
+	}
+	name = filepath.Clean(name)
+	if name == "" {
+		return types.Result{
+			Succeeded: false, Failed: true,
+			Changed: false, Notes: nil,
+		}, types.ErrMissingName
+	}
+	if name == "/" {
+		return types.Result{
+			Succeeded: false, Failed: true,
+			Changed: false, Notes: []fmt.Stringer{
+				types.SimpleChange("root path cannot be missing"),
+			},
+		}, nil
+	}
+	_, err := os.Stat(name)
+	if errors.Is(err, os.ErrNotExist) {
+		return types.Result{Succeeded: true, Failed: false, Changed: false, Notes: nil}, nil
+	}
+	if err != nil {
+		return types.Result{
+			Succeeded: false, Failed: true,
+			Changed: false, Notes: []fmt.Stringer{
+				types.SimpleChange(fmt.Sprintf("error checking file %s is missing: %s", name, err)),
+			},
+		}, err
+	}
+	return types.Result{
+		Succeeded: false,
+		Failed:    true,
+		Changed:   false,
+		Notes: []fmt.Stringer{
+			types.SimpleChange(fmt.Sprintf("file %s is not missing", name)),
+		},
+	}, err
+}
+
 func (f File) absent(ctx context.Context, test bool) (types.Result, error) {
 	name, ok := f.params["name"].(string)
 	if !ok {
@@ -276,19 +318,30 @@ func (f File) absent(ctx context.Context, test bool) (types.Result, error) {
 	}
 	_, err := os.Stat(name)
 	if errors.Is(err, os.ErrNotExist) {
-		return types.Result{Succeeded: true, Failed: false, Changed: false, Changes: nil}, nil
+		return types.Result{
+			Succeeded: true, Failed: false,
+			Changed: false, Notes: nil,
+		}, nil
 	}
 	if err != nil {
 		return types.Result{Succeeded: false, Failed: true}, err
 	}
 	if test {
-		return types.Result{Succeeded: true, Failed: false, Changed: true, Changes: nil}, nil
+		return types.Result{
+			Succeeded: true, Failed: false,
+			Changed: true, Notes: nil,
+		}, nil
 	}
 	err = os.Remove(name)
 	if err != nil {
 		return types.Result{Succeeded: false, Failed: true}, err
 	}
-	return types.Result{Succeeded: true, Failed: false, Changed: true, Changes: []fmt.Stringer{types.SimpleChange(fmt.Sprintf("removed %v", name))}}, nil
+	return types.Result{
+		Succeeded: true, Failed: false,
+		Changed: true, Notes: []fmt.Stringer{
+			types.SimpleChange(fmt.Sprintf("removed %v", name)),
+		},
+	}, nil
 }
 
 func (f File) Apply(ctx context.Context) (types.Result, error) {
@@ -319,7 +372,7 @@ func (f File) Apply(ctx context.Context) (types.Result, error) {
 		return f.undef()
 	default:
 		// TODO define error type
-		return types.Result{Succeeded: false, Failed: true, Changed: false, Changes: nil}, fmt.Errorf("method %s undefined", f.method)
+		return types.Result{Succeeded: false, Failed: true, Changed: false, Notes: nil}, fmt.Errorf("method %s undefined", f.method)
 
 	}
 }

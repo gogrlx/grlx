@@ -128,7 +128,7 @@ func CookRecipeEnvelope(envelope types.RecipeEnvelope) error {
 							ID:               step.ID,
 							CompletionStatus: Completed,
 							ChangesMade:      res.Changed,
-							Changes:          res.Changes,
+							Changes:          res.Notes,
 							Error:            err,
 						}
 					} else {
@@ -136,7 +136,7 @@ func CookRecipeEnvelope(envelope types.RecipeEnvelope) error {
 							ID:               step.ID,
 							CompletionStatus: Failed,
 							ChangesMade:      res.Changed,
-							Changes:          res.Changes,
+							Changes:          res.Notes,
 							Error:            err,
 						}
 					}
