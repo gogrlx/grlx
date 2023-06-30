@@ -45,6 +45,8 @@ func (f File) Test(ctx context.Context) (types.Result, error) {
 		return f.undef()
 	case "directory":
 		return f.directory(ctx, true)
+	case "exists":
+		return f.exists(ctx, true)
 	case "missing":
 		return f.missing(ctx, true)
 	case "prepend":
@@ -58,8 +60,6 @@ func (f File) Test(ctx context.Context) (types.Result, error) {
 	case "content":
 		return f.undef()
 	case "managed":
-		return f.undef()
-	case "present":
 		return f.undef()
 	case "symlink":
 		return f.undef()
@@ -262,6 +262,45 @@ func (f File) directory(ctx context.Context, test bool) (types.Result, error) {
 	return f.undef()
 }
 
+func (f File) exists(ctx context.Context, test bool) (types.Result, error) {
+	name, ok := f.params["name"].(string)
+	if !ok {
+		return types.Result{Succeeded: false, Failed: true}, types.ErrMissingName
+	}
+	name = filepath.Clean(name)
+	if name == "" {
+		return types.Result{
+			Succeeded: false, Failed: true,
+			Changed: false, Notes: nil,
+		}, types.ErrMissingName
+	}
+	_, err := os.Stat(name)
+	if errors.Is(err, os.ErrNotExist) {
+		return types.Result{
+			Succeeded: false, Failed: true,
+			Changed: false, Notes: []fmt.Stringer{
+				types.SimpleNote(fmt.Sprintf("file or directory `%s` does not exist", name)),
+			},
+		}, nil
+	}
+	if err != nil {
+		return types.Result{
+			Succeeded: false, Failed: true,
+			Changed: false, Notes: []fmt.Stringer{
+				types.SimpleNote(fmt.Sprintf("error checking if file or directory `%s` exists: %s", name, err.Error())),
+			},
+		}, err
+	}
+	return types.Result{
+		Succeeded: true,
+		Failed:    false,
+		Changed:   false,
+		Notes: []fmt.Stringer{
+			types.SimpleNote(fmt.Sprintf("file %s exists", name)),
+		},
+	}, err
+}
+
 func (f File) missing(ctx context.Context, test bool) (types.Result, error) {
 	name, ok := f.params["name"].(string)
 	if !ok {
@@ -279,7 +318,7 @@ func (f File) missing(ctx context.Context, test bool) (types.Result, error) {
 		return types.Result{
 			Succeeded: true, Failed: false,
 			Changed: false, Notes: []fmt.Stringer{
-				types.SimpleNote(fmt.Sprintf("file %s is missing", name)),
+				types.SimpleNote(fmt.Sprintf("file `%s` is missing", name)),
 			},
 		}, nil
 	}
@@ -287,7 +326,7 @@ func (f File) missing(ctx context.Context, test bool) (types.Result, error) {
 		return types.Result{
 			Succeeded: false, Failed: true,
 			Changed: false, Notes: []fmt.Stringer{
-				types.SimpleNote(fmt.Sprintf("error checking file %s is missing: %s", name, err)),
+				types.SimpleNote(fmt.Sprintf("error checking file `%s` is missing: %s", name, err.Error())),
 			},
 		}, err
 	}
@@ -296,7 +335,7 @@ func (f File) missing(ctx context.Context, test bool) (types.Result, error) {
 		Failed:    true,
 		Changed:   false,
 		Notes: []fmt.Stringer{
-			types.SimpleNote(fmt.Sprintf("file %s is not missing", name)),
+			types.SimpleNote(fmt.Sprintf("file `%s` is not missing", name)),
 		},
 	}, err
 }
@@ -349,6 +388,8 @@ func (f File) Apply(ctx context.Context) (types.Result, error) {
 		return f.undef()
 	case "directory":
 		return f.undef()
+	case "exists":
+		return f.exists(ctx, false)
 	case "missing":
 		return f.missing(ctx, false)
 	case "prepend":
@@ -362,8 +403,6 @@ func (f File) Apply(ctx context.Context) (types.Result, error) {
 	case "content":
 		return f.undef()
 	case "managed":
-		return f.undef()
-	case "present":
 		return f.undef()
 	case "symlink":
 		return f.undef()
@@ -419,10 +458,9 @@ func (f File) PropertiesForMethod(method string) (map[string]string, error) {
 			"template": "bool", "sources": "[]string",
 			"source_hashes": "[]string", "ignore_whitespace": "bool",
 		}, nil
-	case "present":
+	case "exists":
 		return map[string]string{
-			"name": "string", "target": "string", "force": "bool", "backupname": "string",
-			"makedirs": "bool", "user": "string", "group": "string", "mode": "string",
+			"name": "string",
 		}, nil
 	case "symlink":
 		return map[string]string{
@@ -452,7 +490,7 @@ func (f File) Methods() (string, []string) {
 		"managed",
 		"missing",
 		"prepend",
-		"present",
+		"exists",
 		"symlink",
 		"touch",
 	}
