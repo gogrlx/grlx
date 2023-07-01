@@ -26,4 +26,5 @@ var (
 	ErrHashMismatch = errors.New("file hash mismatch")
 	ErrDeleteRoot   = errors.New("cannot delete root directory")
 	ErrModifyRoot   = errors.New("cannot modify root directory")
+	ErrPathNotFound = errors.New("path not found")
 )

@@ -434,6 +434,14 @@ func (f File) touch(ctx context.Context, test bool) (types.Result, error) {
 			atime = at
 		}
 	}
+	mkdirs := false
+	{
+		mkd, ok := f.params["makedirs"].(bool)
+		if ok && mkd {
+			mkdirs = true
+		}
+	}
+
 	name = filepath.Clean(name)
 	if name == "" {
 		return types.Result{Succeeded: false, Failed: true}, types.ErrMissingName
@@ -443,20 +451,52 @@ func (f File) touch(ctx context.Context, test bool) (types.Result, error) {
 	}
 	_, err := os.Stat(name)
 	if errors.Is(err, os.ErrNotExist) {
-		// TODO pull in makedirs param
-		if test {
-			return types.Result{
-				Succeeded: true, Failed: false,
-				Changed: true, Notes: []fmt.Stringer{
-					types.SimpleNote(fmt.Sprintf("file `%s` to be created with provided timestamps", name)),
-				},
-			}, nil
+		needsMkdirs := false
+		fileDir := filepath.Dir(name)
+		_, dirErr := os.Stat(fileDir)
+		if errors.Is(dirErr, os.ErrNotExist) {
+			needsMkdirs = true
 		}
-	}
-	if err != nil {
-		return types.Result{Succeeded: false, Failed: true}, err
+		if !mkdirs && needsMkdirs {
+			return types.Result{
+				Succeeded: false, Failed: true,
+				Changed: false, Notes: []fmt.Stringer{
+					types.SimpleNote(fmt.Sprintf("filepath `%s` is missing and `makedirs` is false", fileDir)),
+				},
+			}, types.ErrPathNotFound
+		}
+		if needsMkdirs {
+			if test {
+				return types.Result{
+					Succeeded: true, Failed: false,
+					Changed: true, Notes: []fmt.Stringer{
+						types.SimpleNote(fmt.Sprintf("file `%s` to be created with provided timestamps", name)),
+					},
+				}, nil
+			}
+			dirErr = os.MkdirAll(fileDir, 0o755)
+			if dirErr != nil {
+				return types.Result{
+					Succeeded: false, Failed: true,
+					Changed: false, Notes: []fmt.Stringer{
+						types.SimpleNote(fmt.Sprintf("failed to create parent directory %s", fileDir)),
+					},
+				}, dirErr
+			}
+		}
+		f, errCreate := os.Create(name)
+		if errCreate != nil {
+			return types.Result{
+				Succeeded: false, Failed: true,
+				Changed: false, Notes: []fmt.Stringer{
+					types.SimpleNote(fmt.Sprintf("failed to create file %s", name)),
+				},
+			}, errCreate
+		}
+		f.Close()
 	}
 	if test {
+		// TODO add notes for each changed timestamp if changed
 		return types.Result{
 			Succeeded: true, Failed: false,
 			Changed: true, Notes: nil,
