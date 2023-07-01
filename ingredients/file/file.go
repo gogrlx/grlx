@@ -110,6 +110,11 @@ func (f File) absent(ctx context.Context, test bool) (types.Result, error) {
 }
 
 func (f File) append(ctx context.Context, test bool) (types.Result, error) {
+	// "name": "string", "text": "[]string", "makedirs": "bool",
+	// "source": "string", "source_hash": "string",
+	// "template": "bool", "sources": "[]string",
+	// "source_hashes": "[]string", "ignore_whitespace": "bool",
+
 	return f.undef()
 }
 
@@ -385,26 +390,50 @@ func (f File) missing(ctx context.Context, test bool) (types.Result, error) {
 }
 
 func (f File) prepend(ctx context.Context, test bool) (types.Result, error) {
+	// "name": "string", "text": "[]string", "makedirs": "bool",
+	// "source": "string", "source_hash": "string",
+	// "template": "bool", "sources": "[]string",
+	// "source_hashes": "[]string", "ignore_whitespace": "bool",
 	return f.undef()
 }
 
 func (f File) touch(ctx context.Context, test bool) (types.Result, error) {
+	// "name": "string", "atime": "string",
+	// "mtime": "string", "makedirs": "bool",
 	return f.undef()
 }
 
 func (f File) contains(ctx context.Context, test bool) (types.Result, error) {
+	// "name": "string", "text": "[]string",
+	// "makedirs": "bool", "source": "string",
+	// "source_hash": "string", "template": "bool",
+	// "sources": "[]string", "source_hashes": "[]string",
+
 	return f.undef()
 }
 
 func (f File) content(ctx context.Context, test bool) (types.Result, error) {
+	// "name": "string", "text": "[]string",
+	// "makedirs": "bool", "source": "string",
+	// "source_hash": "string", "template": "bool",
+	// "sources": "[]string", "source_hashes": "[]string",
+
 	return f.undef()
 }
 
 func (f File) managed(ctx context.Context, test bool) (types.Result, error) {
+	// "name": "string", "source": "string", "source_hash": "string", "user": "string",
+	// "group": "string", "mode": "string", "attrs": "string", "template": "bool",
+	// "makedirs": "bool", "dir_mode": "string", "replace": "bool", "backup": "string", "show_changes": "bool",
+	// "create":          "bool",
+	// "follow_symlinks": "bool", "skip_verify": "bool",
+
 	return f.undef()
 }
 
 func (f File) symlink(ctx context.Context, test bool) (types.Result, error) {
+	// "name": "string", "target": "string", "force": "bool", "backupname": "string",
+	// "makedirs": "bool", "user": "string", "group": "string", "mode": "string",
 	return f.undef()
 }
 
