@@ -10,6 +10,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"strconv"
+	"time"
 
 	"github.com/gogrlx/grlx/config"
 	"github.com/gogrlx/grlx/ingredients"
@@ -110,6 +111,7 @@ func (f File) absent(ctx context.Context, test bool) (types.Result, error) {
 }
 
 func (f File) append(ctx context.Context, test bool) (types.Result, error) {
+	// TODO
 	// "name": "string", "text": "[]string", "makedirs": "bool",
 	// "source": "string", "source_hash": "string",
 	// "template": "bool", "sources": "[]string",
@@ -390,6 +392,7 @@ func (f File) missing(ctx context.Context, test bool) (types.Result, error) {
 }
 
 func (f File) prepend(ctx context.Context, test bool) (types.Result, error) {
+	// TODO
 	// "name": "string", "text": "[]string", "makedirs": "bool",
 	// "source": "string", "source_hash": "string",
 	// "template": "bool", "sources": "[]string",
@@ -398,12 +401,80 @@ func (f File) prepend(ctx context.Context, test bool) (types.Result, error) {
 }
 
 func (f File) touch(ctx context.Context, test bool) (types.Result, error) {
+	// TODO
+	return f.undef()
+	name, ok := f.params["name"].(string)
+	if !ok {
+		return types.Result{Succeeded: false, Failed: true}, types.ErrMissingName
+	}
+
 	// "name": "string", "atime": "string",
 	// "mtime": "string", "makedirs": "bool",
-	return f.undef()
+	atime := time.Now()
+	mtime := time.Now()
+	{
+		// parse atime
+		atimeStr, ok := f.params["atime"].(string)
+		if ok && atimeStr != "" {
+			at, err := time.Parse(time.RFC3339, atimeStr)
+			if err != nil {
+				return types.Result{Succeeded: false, Failed: true, Changed: false, Notes: []fmt.Stringer{types.SimpleNote("")}}, err
+			}
+			atime = at
+		}
+	}
+	{
+		// parse mtime
+		mtimeStr, ok := f.params["mtime"].(string)
+		if ok && mtimeStr != "" {
+			at, err := time.Parse(time.RFC3339, mtimeStr)
+			if err != nil {
+				return types.Result{Succeeded: false, Failed: true, Changed: false, Notes: []fmt.Stringer{types.SimpleNote("")}}, err
+			}
+			atime = at
+		}
+	}
+	name = filepath.Clean(name)
+	if name == "" {
+		return types.Result{Succeeded: false, Failed: true}, types.ErrMissingName
+	}
+	if name == "/" {
+		return types.Result{Succeeded: false, Failed: true}, types.ErrModifyRoot
+	}
+	_, err := os.Stat(name)
+	if errors.Is(err, os.ErrNotExist) {
+		// TODO pull in makedirs param
+		if test {
+			return types.Result{
+				Succeeded: true, Failed: false,
+				Changed: true, Notes: []fmt.Stringer{
+					types.SimpleNote(fmt.Sprintf("file `%s` to be created with provided timestamps", name)),
+				},
+			}, nil
+		}
+	}
+	if err != nil {
+		return types.Result{Succeeded: false, Failed: true}, err
+	}
+	if test {
+		return types.Result{
+			Succeeded: true, Failed: false,
+			Changed: true, Notes: nil,
+		}, nil
+	}
+
+	err = os.Chtimes(name, atime, mtime)
+	if err != nil {
+		return types.Result{Succeeded: false, Failed: true}, err
+	}
+	return types.Result{
+		Succeeded: true, Failed: false,
+		Changed: true, Notes: nil,
+	}, nil
 }
 
 func (f File) contains(ctx context.Context, test bool) (types.Result, error) {
+	// TODO
 	// "name": "string", "text": "[]string",
 	// "makedirs": "bool", "source": "string",
 	// "source_hash": "string", "template": "bool",
@@ -413,6 +484,7 @@ func (f File) contains(ctx context.Context, test bool) (types.Result, error) {
 }
 
 func (f File) content(ctx context.Context, test bool) (types.Result, error) {
+	// TODO
 	// "name": "string", "text": "[]string",
 	// "makedirs": "bool", "source": "string",
 	// "source_hash": "string", "template": "bool",
@@ -422,6 +494,7 @@ func (f File) content(ctx context.Context, test bool) (types.Result, error) {
 }
 
 func (f File) managed(ctx context.Context, test bool) (types.Result, error) {
+	// TODO
 	// "name": "string", "source": "string", "source_hash": "string", "user": "string",
 	// "group": "string", "mode": "string", "attrs": "string", "template": "bool",
 	// "makedirs": "bool", "dir_mode": "string", "replace": "bool", "backup": "string", "show_changes": "bool",
