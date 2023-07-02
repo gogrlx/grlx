@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/djherbis/atime"
 	"github.com/gogrlx/grlx/config"
 	"github.com/gogrlx/grlx/ingredients"
 	"github.com/gogrlx/grlx/types"
@@ -408,10 +409,10 @@ func (f File) touch(ctx context.Context, test bool) (types.Result, error) {
 		return types.Result{Succeeded: false, Failed: true}, types.ErrMissingName
 	}
 
-	// "name": "string", "atime": "string",
+	// "name": "string", "aTime": "string",
 	// "mtime": "string", "makedirs": "bool",
-	atime := time.Now()
-	mtime := time.Now()
+	aTime := time.Now()
+	mTime := time.Now()
 	{
 		// parse atime
 		atimeStr, ok := f.params["atime"].(string)
@@ -420,7 +421,7 @@ func (f File) touch(ctx context.Context, test bool) (types.Result, error) {
 			if err != nil {
 				return types.Result{Succeeded: false, Failed: true, Changed: false, Notes: []fmt.Stringer{types.SimpleNote("")}}, err
 			}
-			atime = at
+			aTime = at
 		}
 	}
 	{
@@ -431,7 +432,7 @@ func (f File) touch(ctx context.Context, test bool) (types.Result, error) {
 			if err != nil {
 				return types.Result{Succeeded: false, Failed: true, Changed: false, Notes: []fmt.Stringer{types.SimpleNote("")}}, err
 			}
-			atime = at
+			aTime = at
 		}
 	}
 	mkdirs := false
@@ -449,7 +450,7 @@ func (f File) touch(ctx context.Context, test bool) (types.Result, error) {
 	if name == "/" {
 		return types.Result{Succeeded: false, Failed: true}, types.ErrModifyRoot
 	}
-	_, err := os.Stat(name)
+	stt, err := os.Stat(name)
 	if errors.Is(err, os.ErrNotExist) {
 		needsMkdirs := false
 		fileDir := filepath.Dir(name)
@@ -495,6 +496,13 @@ func (f File) touch(ctx context.Context, test bool) (types.Result, error) {
 		}
 		f.Close()
 	}
+	omt := stt.ModTime()
+	oat, err := atime.Stat(name)
+	if err != nil {
+		oat = time.Now()
+	}
+	_ = omt
+	_ = oat
 	if test {
 		// TODO add notes for each changed timestamp if changed
 		return types.Result{
@@ -503,7 +511,7 @@ func (f File) touch(ctx context.Context, test bool) (types.Result, error) {
 		}, nil
 	}
 
-	err = os.Chtimes(name, atime, mtime)
+	err = os.Chtimes(name, aTime, mTime)
 	if err != nil {
 		return types.Result{Succeeded: false, Failed: true}, err
 	}
