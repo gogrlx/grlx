@@ -119,6 +119,18 @@ func (f File) append(ctx context.Context, test bool) (types.Result, error) {
 	// "source_hashes": "[]string", "ignore_whitespace": "bool",
 
 	return f.undef()
+	name, ok := f.params["name"].(string)
+	if !ok {
+		return types.Result{Succeeded: false, Failed: true}, types.ErrMissingName
+	}
+	name = filepath.Clean(name)
+	if name == "" {
+		return types.Result{Succeeded: false, Failed: true}, types.ErrMissingName
+	}
+	if name == "/" {
+		return types.Result{Succeeded: false, Failed: true}, types.ErrModifyRoot
+	}
+	return f.undef()
 }
 
 func (f File) cached(ctx context.Context, test bool) (types.Result, error) {
@@ -399,6 +411,18 @@ func (f File) prepend(ctx context.Context, test bool) (types.Result, error) {
 	// "template": "bool", "sources": "[]string",
 	// "source_hashes": "[]string", "ignore_whitespace": "bool",
 	return f.undef()
+	name, ok := f.params["name"].(string)
+	if !ok {
+		return types.Result{Succeeded: false, Failed: true}, types.ErrMissingName
+	}
+	name = filepath.Clean(name)
+	if name == "" {
+		return types.Result{Succeeded: false, Failed: true}, types.ErrMissingName
+	}
+	if name == "/" {
+		return types.Result{Succeeded: false, Failed: true}, types.ErrModifyRoot
+	}
+	return f.undef()
 }
 
 func (f File) touch(ctx context.Context, test bool) (types.Result, error) {
@@ -529,6 +553,18 @@ func (f File) contains(ctx context.Context, test bool) (types.Result, error) {
 	// "sources": "[]string", "source_hashes": "[]string",
 
 	return f.undef()
+	name, ok := f.params["name"].(string)
+	if !ok {
+		return types.Result{Succeeded: false, Failed: true}, types.ErrMissingName
+	}
+	name = filepath.Clean(name)
+	if name == "" {
+		return types.Result{Succeeded: false, Failed: true}, types.ErrMissingName
+	}
+	if name == "/" {
+		return types.Result{Succeeded: false, Failed: true}, types.ErrModifyRoot
+	}
+	return f.undef()
 }
 
 func (f File) content(ctx context.Context, test bool) (types.Result, error) {
@@ -538,6 +574,18 @@ func (f File) content(ctx context.Context, test bool) (types.Result, error) {
 	// "source_hash": "string", "template": "bool",
 	// "sources": "[]string", "source_hashes": "[]string",
 
+	return f.undef()
+	name, ok := f.params["name"].(string)
+	if !ok {
+		return types.Result{Succeeded: false, Failed: true}, types.ErrMissingName
+	}
+	name = filepath.Clean(name)
+	if name == "" {
+		return types.Result{Succeeded: false, Failed: true}, types.ErrMissingName
+	}
+	if name == "/" {
+		return types.Result{Succeeded: false, Failed: true}, types.ErrModifyRoot
+	}
 	return f.undef()
 }
 
@@ -550,11 +598,35 @@ func (f File) managed(ctx context.Context, test bool) (types.Result, error) {
 	// "follow_symlinks": "bool", "skip_verify": "bool",
 
 	return f.undef()
+	name, ok := f.params["name"].(string)
+	if !ok {
+		return types.Result{Succeeded: false, Failed: true}, types.ErrMissingName
+	}
+	name = filepath.Clean(name)
+	if name == "" {
+		return types.Result{Succeeded: false, Failed: true}, types.ErrMissingName
+	}
+	if name == "/" {
+		return types.Result{Succeeded: false, Failed: true}, types.ErrModifyRoot
+	}
+	return f.undef()
 }
 
 func (f File) symlink(ctx context.Context, test bool) (types.Result, error) {
 	// "name": "string", "target": "string", "force": "bool", "backupname": "string",
 	// "makedirs": "bool", "user": "string", "group": "string", "mode": "string",
+	return f.undef()
+	name, ok := f.params["name"].(string)
+	if !ok {
+		return types.Result{Succeeded: false, Failed: true}, types.ErrMissingName
+	}
+	name = filepath.Clean(name)
+	if name == "" {
+		return types.Result{Succeeded: false, Failed: true}, types.ErrMissingName
+	}
+	if name == "/" {
+		return types.Result{Succeeded: false, Failed: true}, types.ErrModifyRoot
+	}
 	return f.undef()
 }
 
