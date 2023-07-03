@@ -110,6 +110,12 @@ type (
 		Changed   bool
 		Notes     []fmt.Stringer
 	}
+	Summary struct {
+		Succeeded  int
+		InProgress bool
+		Failures   int
+		Changed    int
+	}
 	SimpleNote string
 	Startup    struct {
 		Version  Version `json:"version"`

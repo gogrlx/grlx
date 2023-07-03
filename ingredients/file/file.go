@@ -1,6 +1,7 @@
 package file
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"errors"
@@ -40,6 +41,11 @@ func (f File) undef() (types.Result, error) {
 }
 
 func (f File) Test(ctx context.Context) (types.Result, error) {
+	// Technically, we should be able to do the name check here, but
+	// I'm not sure if that's a good idea or not.
+	// For now, the name check is done in the method functions.
+	// it is more concise to do it here, but it also opens up the
+	// possibility of an error in the logic later on.
 	switch f.method {
 	case "absent":
 		return f.absent(ctx, true)
@@ -131,6 +137,21 @@ func (f File) append(ctx context.Context, test bool) (types.Result, error) {
 		return types.Result{Succeeded: false, Failed: true}, types.ErrModifyRoot
 	}
 	return f.undef()
+}
+
+func (f File) dest() (string, error) {
+	name, ok := f.params["name"].(string)
+	if !ok || name == "" {
+		return "", types.ErrMissingName
+	}
+	hash, ok := f.params["hash"].(string)
+	if !ok || hash == "" {
+		if sv, ok := f.params["skip_verify"].(bool); ok && sv {
+			return filepath.Join(config.CacheDir, "skip_"+name), nil
+		}
+		return "", types.ErrMissingHash
+	}
+	return filepath.Join(config.CacheDir, hash), nil
 }
 
 func (f File) cached(ctx context.Context, test bool) (types.Result, error) {
@@ -547,9 +568,7 @@ func (f File) touch(ctx context.Context, test bool) (types.Result, error) {
 
 func (f File) contains(ctx context.Context, test bool) (types.Result, error) {
 	// TODO
-	// "name": "string", "text": "[]string",
-	// "makedirs": "bool", "source": "string",
-	// "source_hash": "string", "template": "bool",
+	// "template": "bool",
 	// "sources": "[]string", "source_hashes": "[]string",
 
 	return f.undef()
@@ -563,6 +582,155 @@ func (f File) contains(ctx context.Context, test bool) (types.Result, error) {
 	}
 	if name == "/" {
 		return types.Result{Succeeded: false, Failed: true}, types.ErrModifyRoot
+	}
+	lines := []string{}
+	{
+		if text, ok := f.params["text"].(string); ok && text != "" {
+			lines = append(lines, text)
+		} else if texti, ok := f.params["text"].([]interface{}); ok {
+			for _, v := range texti {
+				// need to make sure it's a string and not yaml parsing as an int
+				lines = append(lines, fmt.Sprintf("%v", v))
+			}
+		}
+	}
+	{
+		sourceDest := ""
+		if src, ok := f.params["source"].(string); ok && src != "" {
+			if srcHash, ok := f.params["source_hash"].(string); ok && srcHash != "" {
+				srcFile, err := f.Parse(f.id+"-source", "cached", map[string]interface{}{
+					"source": src, "hash": srcHash,
+					"name": name + "-source",
+				})
+				if err != nil {
+					return types.Result{
+						Succeeded: false, Failed: true,
+						Changed: false, Notes: []fmt.Stringer{
+							types.SimpleNote(fmt.Sprintf("failed to cache source %s", srcFile)),
+						},
+					}, err
+				}
+				cacheRes, err := srcFile.Apply(ctx)
+				if err != nil || !cacheRes.Succeeded {
+					return types.Result{
+						Succeeded: false, Failed: true,
+						Changed: false, Notes: []fmt.Stringer{
+							types.SimpleNote(fmt.Sprintf("failed to cache source %s", srcFile)),
+						},
+					}, errors.Join(err, types.ErrCacheFailure)
+				}
+				sourceDest, err = srcFile.(*File).dest()
+			} else if skipVerify, ok := f.params["skip_verify"].(bool); ok && skipVerify {
+				srcFile, err := f.Parse(f.id+"-source", "cached", map[string]interface{}{
+					"source":      src,
+					"skip_verify": skipVerify, "name": name + "-source",
+				})
+				if err != nil {
+					return types.Result{
+						Succeeded: false, Failed: true,
+						Changed: false, Notes: []fmt.Stringer{
+							types.SimpleNote(fmt.Sprintf("failed to cache source %s", srcFile)),
+						},
+					}, err
+				}
+				cacheRes, err := srcFile.Apply(ctx)
+				if err != nil || !cacheRes.Succeeded {
+					return types.Result{
+						Succeeded: false, Failed: true,
+						Changed: false, Notes: []fmt.Stringer{
+							types.SimpleNote(fmt.Sprintf("failed to cache source %s", srcFile)),
+						},
+					}, errors.Join(err, types.ErrCacheFailure)
+				}
+				sourceDest, err = srcFile.(*File).dest()
+			} else {
+				return types.Result{Succeeded: false, Failed: true}, types.ErrMissingHash
+			}
+		}
+		f, err := os.Open(sourceDest)
+		if err != nil {
+			return types.Result{
+				Succeeded: false, Failed: true,
+				Changed: false, Notes: []fmt.Stringer{
+					types.SimpleNote(fmt.Sprintf("failed to open cached source %s", sourceDest)),
+				},
+			}, err
+		}
+		defer f.Close()
+		scanner := bufio.NewScanner(f)
+		for scanner.Scan() {
+			lines = append(lines, scanner.Text())
+		}
+	}
+	{
+		if src, ok := f.params["sources"].([]interface{}); ok && len(src) > 0 {
+		}
+		sourceDest := ""
+		if src, ok := f.params["source"].(string); ok && src != "" {
+			if srcHash, ok := f.params["source_hash"].(string); ok && srcHash != "" {
+				srcFile, err := f.Parse(f.id+"-source", "cached", map[string]interface{}{
+					"source": src, "hash": srcHash,
+					"name": name + "-source",
+				})
+				if err != nil {
+					return types.Result{
+						Succeeded: false, Failed: true,
+						Changed: false, Notes: []fmt.Stringer{
+							types.SimpleNote(fmt.Sprintf("failed to cache source %s", srcFile)),
+						},
+					}, err
+				}
+				cacheRes, err := srcFile.Apply(ctx)
+				if err != nil || !cacheRes.Succeeded {
+					return types.Result{
+						Succeeded: false, Failed: true,
+						Changed: false, Notes: []fmt.Stringer{
+							types.SimpleNote(fmt.Sprintf("failed to cache source %s", srcFile)),
+						},
+					}, errors.Join(err, types.ErrCacheFailure)
+				}
+				sourceDest, err = srcFile.(*File).dest()
+			} else if skipVerify, ok := f.params["skip_verify"].(bool); ok && skipVerify {
+				srcFile, err := f.Parse(f.id+"-source", "cached", map[string]interface{}{
+					"source":      src,
+					"skip_verify": skipVerify, "name": name + "-source",
+				})
+				if err != nil {
+					return types.Result{
+						Succeeded: false, Failed: true,
+						Changed: false, Notes: []fmt.Stringer{
+							types.SimpleNote(fmt.Sprintf("failed to cache source %s", srcFile)),
+						},
+					}, err
+				}
+				cacheRes, err := srcFile.Apply(ctx)
+				if err != nil || !cacheRes.Succeeded {
+					return types.Result{
+						Succeeded: false, Failed: true,
+						Changed: false, Notes: []fmt.Stringer{
+							types.SimpleNote(fmt.Sprintf("failed to cache source %s", srcFile)),
+						},
+					}, errors.Join(err, types.ErrCacheFailure)
+				}
+				sourceDest, err = srcFile.(*File).dest()
+			} else {
+				return types.Result{Succeeded: false, Failed: true}, types.ErrMissingHash
+			}
+		}
+		f, err := os.Open(sourceDest)
+		if err != nil {
+			return types.Result{
+				Succeeded: false, Failed: true,
+				Changed: false, Notes: []fmt.Stringer{
+					types.SimpleNote(fmt.Sprintf("failed to open cached source %s", sourceDest)),
+				},
+			}, err
+		}
+		defer f.Close()
+		scanner := bufio.NewScanner(f)
+		for scanner.Scan() {
+			lines = append(lines, scanner.Text())
+		}
 	}
 	return f.undef()
 }
@@ -681,7 +849,7 @@ func (f File) PropertiesForMethod(method string) (map[string]string, error) {
 	case "contains":
 		return map[string]string{
 			"name": "string", "text": "[]string",
-			"makedirs": "bool", "source": "string",
+			"source":      "string",
 			"source_hash": "string", "template": "bool",
 			"sources": "[]string", "source_hashes": "[]string",
 		}, nil
