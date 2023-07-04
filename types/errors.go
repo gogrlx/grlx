@@ -19,11 +19,12 @@ var (
 	ErrInvalidKeyState          = errors.New("code bug: an invalid key state was supplied")
 	ErrConfirmationLengthIsZero = errors.New("code bug: confirmation options muct not be 0-length")
 
-	ErrInvalidMethod = errors.New("invalid method")
-	ErrMissingName   = errors.New("recipe is missing a name")
-	ErrMissingSource = errors.New("recipe is missing a source")
-	ErrMissingHash   = errors.New("file is missing a hash")
-	ErrCacheFailure  = errors.New("file caching failed")
+	ErrInvalidMethod  = errors.New("invalid method")
+	ErrMissingName    = errors.New("recipe is missing a name")
+	ErrMissingSource  = errors.New("recipe is missing a source")
+	ErrMissingHash    = errors.New("file is missing a hash")
+	ErrCacheFailure   = errors.New("file caching failed")
+	ErrMissingContent = errors.New("file is missing content")
 
 	ErrFileNotFound = errors.New("file not found")
 	ErrHashMismatch = errors.New("file hash mismatch")
