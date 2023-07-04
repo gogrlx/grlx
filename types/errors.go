@@ -21,6 +21,7 @@ var (
 
 	ErrInvalidMethod = errors.New("invalid method")
 	ErrMissingName   = errors.New("recipe is missing a name")
+	ErrMissingSource = errors.New("recipe is missing a source")
 	ErrMissingHash   = errors.New("file is missing a hash")
 	ErrCacheFailure  = errors.New("file caching failed")
 

@@ -144,11 +144,11 @@ func (f File) dest() (string, error) {
 	if !ok || name == "" {
 		return "", types.ErrMissingName
 	}
+	if sv, okSkip := f.params["skip_verify"].(bool); okSkip && sv {
+		return filepath.Join(config.CacheDir, "skip_"+name), nil
+	}
 	hash, ok := f.params["hash"].(string)
 	if !ok || hash == "" {
-		if sv, ok := f.params["skip_verify"].(bool); ok && sv {
-			return filepath.Join(config.CacheDir, "skip_"+name), nil
-		}
 		return "", types.ErrMissingHash
 	}
 	return filepath.Join(config.CacheDir, hash), nil
@@ -663,7 +663,88 @@ func (f File) contains(ctx context.Context, test bool) (types.Result, error) {
 		}
 	}
 	{
-		if src, ok := f.params["sources"].([]interface{}); ok && len(src) > 0 {
+		var srces []interface{}
+		var srcHashes []interface{}
+		var ok bool
+		skip := false
+		if srces, ok = f.params["sources"].([]interface{}); ok && len(srces) > 0 {
+			if srcHashes, ok = f.params["source_hashes"].([]interface{}); ok {
+				if skipVerify, ok := f.params["skip_verify"].(bool); ok && skipVerify {
+					skip = true
+				} else if len(srces) != len(srcHashes) {
+					return types.Result{
+						Succeeded: false, Failed: true,
+						Changed: false, Notes: []fmt.Stringer{
+							types.SimpleNote("sources and source_hashes must be the same length"),
+						},
+					}, types.ErrMissingHash
+				}
+			}
+		}
+		for i, src := range srces {
+			var file types.RecipeCooker
+			var err error
+			if srcStr, ok := src.(string); ok && srcStr != "" {
+				cachedName := fmt.Sprintf("%s-source-%d", f.id, i)
+				if !skip {
+					if srcHash, ok := srcHashes[i].(string); ok && srcHash != "" {
+						cachedName = srcHash
+					} else {
+						return types.Result{
+							Succeeded: false, Failed: true,
+							Changed: false, Notes: []fmt.Stringer{
+								types.SimpleNote(fmt.Sprintf("missing source_hash for source %s", srcStr)),
+							},
+						}, types.ErrMissingHash
+					}
+				}
+				file, err = f.Parse(fmt.Sprintf("%s-source-%d", f.id, i), "cached", map[string]interface{}{
+					"source":      srcStr,
+					"skip_verify": skip, "name": cachedName,
+				})
+				if err != nil {
+					return types.Result{
+						Succeeded: false, Failed: true,
+						Changed: false, Notes: []fmt.Stringer{
+							types.SimpleNote(fmt.Sprintf("failed to cache source %s", srcStr)),
+						},
+					}, err
+				}
+			} else {
+				return types.Result{
+					Succeeded: false, Failed: true,
+					Changed: false, Notes: []fmt.Stringer{
+						types.SimpleNote(fmt.Sprintf("invalid source %v", src)),
+					},
+				}, types.ErrMissingSource
+			}
+			cacheRes, err := file.Apply(ctx)
+			if err != nil || !cacheRes.Succeeded {
+				return types.Result{
+					Succeeded: false, Failed: true,
+					Changed: false, Notes: []fmt.Stringer{
+						types.SimpleNote(fmt.Sprintf("failed to cache source %s", src)),
+					},
+				}, errors.Join(err, types.ErrCacheFailure)
+			}
+			sourceDest, err := file.(*File).dest()
+			if err != nil {
+				f, err := os.Open(sourceDest)
+				if err != nil {
+					return types.Result{
+						Succeeded: false, Failed: true,
+						Changed: false, Notes: []fmt.Stringer{
+							types.SimpleNote(fmt.Sprintf("failed to open cached source %s", sourceDest)),
+						},
+					}, err
+				}
+				defer f.Close()
+				scanner := bufio.NewScanner(f)
+				for scanner.Scan() {
+					lines = append(lines, scanner.Text())
+				}
+			}
+
 		}
 		sourceDest := ""
 		if src, ok := f.params["source"].(string); ok && src != "" {
