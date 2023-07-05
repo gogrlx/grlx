@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"os/user"
@@ -150,11 +151,9 @@ func (f File) append(ctx context.Context, test bool) (types.Result, error) {
 			return types.Result{Succeeded: false, Failed: true}, err
 		}
 		defer f.Close()
-		for _, line := range missing {
-			_, err := f.WriteString(line)
-			if err != nil {
-				return types.Result{Succeeded: false, Failed: true}, err
-			}
+		_, writeErr := missing.WriteTo(f)
+		if writeErr != nil {
+			return types.Result{Succeeded: false, Failed: true}, err
 		}
 		return types.Result{
 			Succeeded: true, Failed: false,
@@ -894,29 +893,29 @@ func (f File) touch(ctx context.Context, test bool) (types.Result, error) {
 	}, nil
 }
 
-func (f File) contains(ctx context.Context, test bool) (types.Result, []string, error) {
+func (f File) contains(ctx context.Context, test bool) (types.Result, bytes.Buffer, error) {
 	// TODO
 	// "template": "bool",
 
+	content := bytes.Buffer{}
 	name, ok := f.params["name"].(string)
 	if !ok {
-		return types.Result{Succeeded: false, Failed: true}, []string{}, types.ErrMissingName
+		return types.Result{Succeeded: false, Failed: true}, content, types.ErrMissingName
 	}
 	name = filepath.Clean(name)
 	if name == "" {
-		return types.Result{Succeeded: false, Failed: true}, []string{}, types.ErrMissingName
+		return types.Result{Succeeded: false, Failed: true}, content, types.ErrMissingName
 	}
 	if name == "/" {
-		return types.Result{Succeeded: false, Failed: true}, []string{}, types.ErrModifyRoot
+		return types.Result{Succeeded: false, Failed: true}, content, types.ErrModifyRoot
 	}
-	lines := []string{}
 	{
 		if text, ok := f.params["text"].(string); ok && text != "" {
-			lines = append(lines, text)
+			content.WriteString(text)
 		} else if texti, ok := f.params["text"].([]interface{}); ok {
 			for _, v := range texti {
 				// need to make sure it's a string and not yaml parsing as an int
-				lines = append(lines, fmt.Sprintf("%v", v))
+				content.WriteString(fmt.Sprintf("%v", v))
 			}
 		}
 	}
@@ -934,7 +933,7 @@ func (f File) contains(ctx context.Context, test bool) (types.Result, []string, 
 						Changed: false, Notes: []fmt.Stringer{
 							types.SimpleNote(fmt.Sprintf("failed to cache source %s", srcFile)),
 						},
-					}, []string{}, err
+					}, content, err
 				}
 				cacheRes, err := srcFile.Apply(ctx)
 				if err != nil || !cacheRes.Succeeded {
@@ -943,7 +942,7 @@ func (f File) contains(ctx context.Context, test bool) (types.Result, []string, 
 						Changed: false, Notes: []fmt.Stringer{
 							types.SimpleNote(fmt.Sprintf("failed to cache source %s", srcFile)),
 						},
-					}, []string{}, errors.Join(err, types.ErrCacheFailure)
+					}, content, errors.Join(err, types.ErrCacheFailure)
 				}
 				sourceDest, err = srcFile.(*File).dest()
 			} else if skipVerify, ok := f.params["skip_verify"].(bool); ok && skipVerify {
@@ -957,7 +956,7 @@ func (f File) contains(ctx context.Context, test bool) (types.Result, []string, 
 						Changed: false, Notes: []fmt.Stringer{
 							types.SimpleNote(fmt.Sprintf("failed to cache source %s", srcFile)),
 						},
-					}, []string{}, err
+					}, content, err
 				}
 				cacheRes, err := srcFile.Apply(ctx)
 				if err != nil || !cacheRes.Succeeded {
@@ -966,11 +965,11 @@ func (f File) contains(ctx context.Context, test bool) (types.Result, []string, 
 						Changed: false, Notes: []fmt.Stringer{
 							types.SimpleNote(fmt.Sprintf("failed to cache source %s", srcFile)),
 						},
-					}, []string{}, errors.Join(err, types.ErrCacheFailure)
+					}, content, errors.Join(err, types.ErrCacheFailure)
 				}
 				sourceDest, err = srcFile.(*File).dest()
 			} else {
-				return types.Result{Succeeded: false, Failed: true}, []string{}, types.ErrMissingHash
+				return types.Result{Succeeded: false, Failed: true}, content, types.ErrMissingHash
 			}
 		}
 		f, err := os.Open(sourceDest)
@@ -980,13 +979,10 @@ func (f File) contains(ctx context.Context, test bool) (types.Result, []string, 
 				Changed: false, Notes: []fmt.Stringer{
 					types.SimpleNote(fmt.Sprintf("failed to open cached source %s", sourceDest)),
 				},
-			}, []string{}, err
+			}, content, err
 		}
 		defer f.Close()
-		scanner := bufio.NewScanner(f)
-		for scanner.Scan() {
-			lines = append(lines, scanner.Text())
-		}
+		io.Copy(&content, f)
 	}
 	{
 		var srces []interface{}
@@ -1003,7 +999,7 @@ func (f File) contains(ctx context.Context, test bool) (types.Result, []string, 
 						Changed: false, Notes: []fmt.Stringer{
 							types.SimpleNote("sources and source_hashes must be the same length"),
 						},
-					}, []string{}, types.ErrMissingHash
+					}, content, types.ErrMissingHash
 				}
 			}
 		}
@@ -1021,7 +1017,7 @@ func (f File) contains(ctx context.Context, test bool) (types.Result, []string, 
 							Changed: false, Notes: []fmt.Stringer{
 								types.SimpleNote(fmt.Sprintf("missing source_hash for source %s", srcStr)),
 							},
-						}, []string{}, types.ErrMissingHash
+						}, content, types.ErrMissingHash
 					}
 				}
 				file, err = f.Parse(fmt.Sprintf("%s-source-%d", f.id, i), "cached", map[string]interface{}{
@@ -1034,7 +1030,7 @@ func (f File) contains(ctx context.Context, test bool) (types.Result, []string, 
 						Changed: false, Notes: []fmt.Stringer{
 							types.SimpleNote(fmt.Sprintf("failed to cache source %s", srcStr)),
 						},
-					}, []string{}, err
+					}, content, err
 				}
 			} else {
 				return types.Result{
@@ -1042,7 +1038,7 @@ func (f File) contains(ctx context.Context, test bool) (types.Result, []string, 
 					Changed: false, Notes: []fmt.Stringer{
 						types.SimpleNote(fmt.Sprintf("invalid source %v", src)),
 					},
-				}, []string{}, types.ErrMissingSource
+				}, content, types.ErrMissingSource
 			}
 			cacheRes, err := file.Apply(ctx)
 			if err != nil || !cacheRes.Succeeded {
@@ -1051,7 +1047,7 @@ func (f File) contains(ctx context.Context, test bool) (types.Result, []string, 
 					Changed: false, Notes: []fmt.Stringer{
 						types.SimpleNote(fmt.Sprintf("failed to cache source %s", src)),
 					},
-				}, []string{}, errors.Join(err, types.ErrCacheFailure)
+				}, content, errors.Join(err, types.ErrCacheFailure)
 			}
 			sourceDest, err := file.(*File).dest()
 			if err != nil {
@@ -1062,13 +1058,10 @@ func (f File) contains(ctx context.Context, test bool) (types.Result, []string, 
 						Changed: false, Notes: []fmt.Stringer{
 							types.SimpleNote(fmt.Sprintf("failed to open cached source %s", sourceDest)),
 						},
-					}, []string{}, err
+					}, content, err
 				}
 				defer f.Close()
-				scanner := bufio.NewScanner(f)
-				for scanner.Scan() {
-					lines = append(lines, scanner.Text())
-				}
+				io.Copy(&content, f)
 			}
 
 		}
@@ -1085,7 +1078,7 @@ func (f File) contains(ctx context.Context, test bool) (types.Result, []string, 
 						Changed: false, Notes: []fmt.Stringer{
 							types.SimpleNote(fmt.Sprintf("failed to cache source %s", srcFile)),
 						},
-					}, []string{}, err
+					}, content, err
 				}
 				cacheRes, err := srcFile.Apply(ctx)
 				if err != nil || !cacheRes.Succeeded {
@@ -1094,7 +1087,7 @@ func (f File) contains(ctx context.Context, test bool) (types.Result, []string, 
 						Changed: false, Notes: []fmt.Stringer{
 							types.SimpleNote(fmt.Sprintf("failed to cache source %s", srcFile)),
 						},
-					}, []string{}, errors.Join(err, types.ErrCacheFailure)
+					}, content, errors.Join(err, types.ErrCacheFailure)
 				}
 				sourceDest, err = srcFile.(*File).dest()
 			} else if skipVerify, ok := f.params["skip_verify"].(bool); ok && skipVerify {
@@ -1108,7 +1101,7 @@ func (f File) contains(ctx context.Context, test bool) (types.Result, []string, 
 						Changed: false, Notes: []fmt.Stringer{
 							types.SimpleNote(fmt.Sprintf("failed to cache source %s", srcFile)),
 						},
-					}, []string{}, err
+					}, content, err
 				}
 				cacheRes, err := srcFile.Apply(ctx)
 				if err != nil || !cacheRes.Succeeded {
@@ -1117,11 +1110,11 @@ func (f File) contains(ctx context.Context, test bool) (types.Result, []string, 
 						Changed: false, Notes: []fmt.Stringer{
 							types.SimpleNote(fmt.Sprintf("failed to cache source %s", srcFile)),
 						},
-					}, []string{}, errors.Join(err, types.ErrCacheFailure)
+					}, content, errors.Join(err, types.ErrCacheFailure)
 				}
 				sourceDest, err = srcFile.(*File).dest()
 			} else {
-				return types.Result{Succeeded: false, Failed: true}, []string{}, types.ErrMissingHash
+				return types.Result{Succeeded: false, Failed: true}, content, types.ErrMissingHash
 			}
 		}
 		f, err := os.Open(sourceDest)
@@ -1131,13 +1124,10 @@ func (f File) contains(ctx context.Context, test bool) (types.Result, []string, 
 				Changed: false, Notes: []fmt.Stringer{
 					types.SimpleNote(fmt.Sprintf("failed to open cached source %s", sourceDest)),
 				},
-			}, []string{}, err
+			}, content, err
 		}
 		defer f.Close()
-		scanner := bufio.NewScanner(f)
-		for scanner.Scan() {
-			lines = append(lines, scanner.Text())
-		}
+		io.Copy(&content, f)
 	}
 	file, err := os.Open(name)
 	if err != nil {
@@ -1146,10 +1136,10 @@ func (f File) contains(ctx context.Context, test bool) (types.Result, []string, 
 			Changed: false, Notes: []fmt.Stringer{
 				types.SimpleNote(fmt.Sprintf("failed to open %s", name)),
 			},
-		}, lines, err
+		}, content, err
 	}
 	// TODO look into effects of sorting vs not sorting this slice
-	sort.Strings(lines)
+	sort.Strings(content)
 	contents := []string{}
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
@@ -1157,7 +1147,7 @@ func (f File) contains(ctx context.Context, test bool) (types.Result, []string, 
 	}
 	file.Close()
 	sort.Strings(contents)
-	isSubset, missing := stringSliceIsSubset(lines, contents)
+	isSubset, missing := stringSliceIsSubset(content, contents)
 	if isSubset {
 		return types.Result{Succeeded: true, Failed: false}, []string{}, nil
 	}
