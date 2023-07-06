@@ -1,7 +1,6 @@
 package file
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -9,7 +8,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
 
 	"github.com/gogrlx/grlx/config"
 	"github.com/gogrlx/grlx/ingredients"
@@ -91,20 +89,20 @@ func (f File) dest() (string, error) {
 	return filepath.Join(config.CacheDir, hash), nil
 }
 
-func (f File) cacheSources(ctx context.Context, test bool) (types.Result, []byte, error) {
+func (f File) cacheSources(ctx context.Context, test bool) (types.Result, error) {
 	name, ok := f.params["name"].(string)
 	if !ok {
-		return types.Result{Succeeded: false, Failed: true}, nil, types.ErrMissingName
+		return types.Result{Succeeded: false, Failed: true}, types.ErrMissingName
 	}
 	name = filepath.Clean(name)
 	if name == "" {
-		return types.Result{Succeeded: false, Failed: true}, nil, types.ErrMissingName
+		return types.Result{Succeeded: false, Failed: true}, types.ErrMissingName
 	}
 	if name == "/" {
-		return types.Result{Succeeded: false, Failed: true}, nil, types.ErrModifyRoot
+		return types.Result{Succeeded: false, Failed: true}, types.ErrModifyRoot
 	}
 	res, err := f.undef()
-	return res, nil, err
+	return res, err
 	lines := bytes.Buffer{}
 	{
 		if text, ok := f.params["text"].(string); ok && text != "" {
@@ -131,7 +129,7 @@ func (f File) cacheSources(ctx context.Context, test bool) (types.Result, []byte
 						Changed: false, Notes: []fmt.Stringer{
 							types.SimpleNote(fmt.Sprintf("failed to cache source %s", srcFile)),
 						},
-					}, nil, err
+					}, err
 				}
 				cacheRes, err := srcFile.Apply(ctx)
 				if err != nil || !cacheRes.Succeeded {
@@ -140,7 +138,7 @@ func (f File) cacheSources(ctx context.Context, test bool) (types.Result, []byte
 						Changed: false, Notes: []fmt.Stringer{
 							types.SimpleNote(fmt.Sprintf("failed to cache source %s", srcFile)),
 						},
-					}, nil, errors.Join(err, types.ErrCacheFailure)
+					}, errors.Join(err, types.ErrCacheFailure)
 				}
 				sourceDest, err = srcFile.(*File).dest()
 			} else if skipVerify, ok := f.params["skip_verify"].(bool); ok && skipVerify {
@@ -154,7 +152,7 @@ func (f File) cacheSources(ctx context.Context, test bool) (types.Result, []byte
 						Changed: false, Notes: []fmt.Stringer{
 							types.SimpleNote(fmt.Sprintf("failed to cache source %s", srcFile)),
 						},
-					}, nil, err
+					}, err
 				}
 				cacheRes, err := srcFile.Apply(ctx)
 				if err != nil || !cacheRes.Succeeded {
@@ -163,26 +161,21 @@ func (f File) cacheSources(ctx context.Context, test bool) (types.Result, []byte
 						Changed: false, Notes: []fmt.Stringer{
 							types.SimpleNote(fmt.Sprintf("failed to cache source %s", srcFile)),
 						},
-					}, nil, errors.Join(err, types.ErrCacheFailure)
+					}, errors.Join(err, types.ErrCacheFailure)
 				}
 				sourceDest, err = srcFile.(*File).dest()
 			} else {
-				return types.Result{Succeeded: false, Failed: true}, nil, types.ErrMissingHash
+				return types.Result{Succeeded: false, Failed: true}, types.ErrMissingHash
 			}
 		}
-		f, err := os.Open(sourceDest)
+		_, err := os.Stat(sourceDest)
 		if err != nil {
 			return types.Result{
 				Succeeded: false, Failed: true,
 				Changed: false, Notes: []fmt.Stringer{
 					types.SimpleNote(fmt.Sprintf("failed to open cached source %s", sourceDest)),
 				},
-			}, []string{}, err
-		}
-		defer f.Close()
-		scanner := bufio.NewScanner(f)
-		for scanner.Scan() {
-			lines = append(lines, scanner.Text())
+			}, err
 		}
 	}
 	{
@@ -200,7 +193,7 @@ func (f File) cacheSources(ctx context.Context, test bool) (types.Result, []byte
 						Changed: false, Notes: []fmt.Stringer{
 							types.SimpleNote("sources and source_hashes must be the same length"),
 						},
-					}, []string{}, types.ErrMissingHash
+					}, types.ErrMissingHash
 				}
 			}
 		}
@@ -218,7 +211,7 @@ func (f File) cacheSources(ctx context.Context, test bool) (types.Result, []byte
 							Changed: false, Notes: []fmt.Stringer{
 								types.SimpleNote(fmt.Sprintf("missing source_hash for source %s", srcStr)),
 							},
-						}, []string{}, types.ErrMissingHash
+						}, types.ErrMissingHash
 					}
 				}
 				file, err = f.Parse(fmt.Sprintf("%s-source-%d", f.id, i), "cached", map[string]interface{}{
@@ -231,7 +224,7 @@ func (f File) cacheSources(ctx context.Context, test bool) (types.Result, []byte
 						Changed: false, Notes: []fmt.Stringer{
 							types.SimpleNote(fmt.Sprintf("failed to cache source %s", srcStr)),
 						},
-					}, []string{}, err
+					}, err
 				}
 			} else {
 				return types.Result{
@@ -239,7 +232,7 @@ func (f File) cacheSources(ctx context.Context, test bool) (types.Result, []byte
 					Changed: false, Notes: []fmt.Stringer{
 						types.SimpleNote(fmt.Sprintf("invalid source %v", src)),
 					},
-				}, []string{}, types.ErrMissingSource
+				}, types.ErrMissingSource
 			}
 			cacheRes, err := file.Apply(ctx)
 			if err != nil || !cacheRes.Succeeded {
@@ -248,23 +241,18 @@ func (f File) cacheSources(ctx context.Context, test bool) (types.Result, []byte
 					Changed: false, Notes: []fmt.Stringer{
 						types.SimpleNote(fmt.Sprintf("failed to cache source %s", src)),
 					},
-				}, []string{}, errors.Join(err, types.ErrCacheFailure)
+				}, errors.Join(err, types.ErrCacheFailure)
 			}
 			sourceDest, err := file.(*File).dest()
 			if err != nil {
-				f, err := os.Open(sourceDest)
+				_, err := os.Stat(sourceDest)
 				if err != nil {
 					return types.Result{
 						Succeeded: false, Failed: true,
 						Changed: false, Notes: []fmt.Stringer{
 							types.SimpleNote(fmt.Sprintf("failed to open cached source %s", sourceDest)),
 						},
-					}, []string{}, err
-				}
-				defer f.Close()
-				scanner := bufio.NewScanner(f)
-				for scanner.Scan() {
-					lines = append(lines, scanner.Text())
+					}, err
 				}
 			}
 
@@ -282,7 +270,7 @@ func (f File) cacheSources(ctx context.Context, test bool) (types.Result, []byte
 						Changed: false, Notes: []fmt.Stringer{
 							types.SimpleNote(fmt.Sprintf("failed to cache source %s", srcFile)),
 						},
-					}, []string{}, err
+					}, err
 				}
 				cacheRes, err := srcFile.Apply(ctx)
 				if err != nil || !cacheRes.Succeeded {
@@ -291,7 +279,7 @@ func (f File) cacheSources(ctx context.Context, test bool) (types.Result, []byte
 						Changed: false, Notes: []fmt.Stringer{
 							types.SimpleNote(fmt.Sprintf("failed to cache source %s", srcFile)),
 						},
-					}, []string{}, errors.Join(err, types.ErrCacheFailure)
+					}, errors.Join(err, types.ErrCacheFailure)
 				}
 				sourceDest, err = srcFile.(*File).dest()
 			} else if skipVerify, ok := f.params["skip_verify"].(bool); ok && skipVerify {
@@ -305,7 +293,7 @@ func (f File) cacheSources(ctx context.Context, test bool) (types.Result, []byte
 						Changed: false, Notes: []fmt.Stringer{
 							types.SimpleNote(fmt.Sprintf("failed to cache source %s", srcFile)),
 						},
-					}, []string{}, err
+					}, err
 				}
 				cacheRes, err := srcFile.Apply(ctx)
 				if err != nil || !cacheRes.Succeeded {
@@ -314,56 +302,31 @@ func (f File) cacheSources(ctx context.Context, test bool) (types.Result, []byte
 						Changed: false, Notes: []fmt.Stringer{
 							types.SimpleNote(fmt.Sprintf("failed to cache source %s", srcFile)),
 						},
-					}, []string{}, errors.Join(err, types.ErrCacheFailure)
+					}, errors.Join(err, types.ErrCacheFailure)
 				}
 				sourceDest, err = srcFile.(*File).dest()
 			} else {
-				return types.Result{Succeeded: false, Failed: true}, []string{}, types.ErrMissingHash
+				return types.Result{Succeeded: false, Failed: true}, types.ErrMissingHash
 			}
 		}
-		f, err := os.Open(sourceDest)
+		_, err := os.Stat(sourceDest)
 		if err != nil {
 			return types.Result{
 				Succeeded: false, Failed: true,
 				Changed: false, Notes: []fmt.Stringer{
 					types.SimpleNote(fmt.Sprintf("failed to open cached source %s", sourceDest)),
 				},
-			}, []string{}, err
+			}, err
 		}
-		defer f.Close()
-		scanner := bufio.NewScanner(f)
-		for scanner.Scan() {
-			lines = append(lines, scanner.Text())
-		}
-	}
-	file, err := os.Open(name)
-	if err != nil {
-		return types.Result{
-			Succeeded: false, Failed: true,
-			Changed: false, Notes: []fmt.Stringer{
-				types.SimpleNote(fmt.Sprintf("failed to open %s", name)),
-			},
-		}, lines, err
-	}
-	// TODO look into effects of sorting vs not sorting this slice
-	sort.Strings(lines)
-	contents := []string{}
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		contents = append(contents, scanner.Text())
-	}
-	file.Close()
-	sort.Strings(contents)
-	isSubset, missing := stringSliceIsSubset(lines, contents)
-	if isSubset {
-		return types.Result{Succeeded: true, Failed: false}, []string{}, nil
 	}
 	return types.Result{
 		Succeeded: false, Failed: true,
 		Changed: false, Notes: []fmt.Stringer{
-			types.SimpleNote(fmt.Sprintf("file %s does not contain all specified content", name)),
+			types.SimpleNote(fmt.Sprintf("failed to open %s", name)),
 		},
-	}, missing, types.ErrMissingContent
+	}, err
+	// TODO look into effects of sorting vs not sorting this slice
+	return types.Result{Succeeded: true, Failed: false}, nil
 }
 
 func stringSliceIsSubset(a, b []string) (bool, []string) {
