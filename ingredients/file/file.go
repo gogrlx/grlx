@@ -1,7 +1,6 @@
 package file
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -100,20 +99,6 @@ func (f File) cacheSources(ctx context.Context, test bool) (types.Result, error)
 	}
 	if name == "/" {
 		return types.Result{Succeeded: false, Failed: true}, types.ErrModifyRoot
-	}
-	res, err := f.undef()
-	return res, err
-	lines := bytes.Buffer{}
-	{
-		if text, ok := f.params["text"].(string); ok && text != "" {
-			lines.WriteString(text)
-		} else if texti, ok := f.params["text"].([]interface{}); ok {
-			for _, v := range texti {
-				// need to make sure it's a string and not yaml parsing as an int
-				line := fmt.Sprintf("%v", v)
-				lines.WriteString(line)
-			}
-		}
 	}
 	{
 		sourceDest := ""
@@ -319,13 +304,6 @@ func (f File) cacheSources(ctx context.Context, test bool) (types.Result, error)
 			}, err
 		}
 	}
-	return types.Result{
-		Succeeded: false, Failed: true,
-		Changed: false, Notes: []fmt.Stringer{
-			types.SimpleNote(fmt.Sprintf("failed to open %s", name)),
-		},
-	}, err
-	// TODO look into effects of sorting vs not sorting this slice
 	return types.Result{Succeeded: true, Failed: false}, nil
 }
 
