@@ -26,7 +26,9 @@ func (f File) absent(ctx context.Context, test bool) (types.Result, error) {
 	if errors.Is(err, os.ErrNotExist) {
 		return types.Result{
 			Succeeded: true, Failed: false,
-			Changed: false, Notes: nil,
+			Changed: false, Notes: []fmt.Stringer{
+				types.SimpleNote(fmt.Sprintf("%v is already absent", name)),
+			},
 		}, nil
 	}
 	if err != nil {
@@ -35,7 +37,9 @@ func (f File) absent(ctx context.Context, test bool) (types.Result, error) {
 	if test {
 		return types.Result{
 			Succeeded: true, Failed: false,
-			Changed: true, Notes: nil,
+			Changed: true, Notes: []fmt.Stringer{
+				types.SimpleNote(fmt.Sprintf("%v would be deleted", name)),
+			},
 		}, nil
 	}
 	err = os.Remove(name)
@@ -45,7 +49,7 @@ func (f File) absent(ctx context.Context, test bool) (types.Result, error) {
 	return types.Result{
 		Succeeded: true, Failed: false,
 		Changed: true, Notes: []fmt.Stringer{
-			types.SimpleNote(fmt.Sprintf("removed %v", name)),
+			types.SimpleNote(fmt.Sprintf("%s has been deleted", name)),
 		},
 	}, nil
 }
