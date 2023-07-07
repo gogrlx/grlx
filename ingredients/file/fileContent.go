@@ -113,13 +113,11 @@ func (f File) content(ctx context.Context, test bool) (types.Result, error) {
 	{
 		if texts, ok := f.params["text"].(string); ok && texts != "" {
 			text = []string{texts}
-			foundSource = true
 		} else if texti, ok := f.params["text"].([]interface{}); ok {
 			for _, v := range texti {
 				// need to make sure it's a string and not yaml parsing as an int
 				text = append(text, fmt.Sprintf("%v", v))
 			}
-			foundSource = true
 		}
 	}
 	{
@@ -128,6 +126,7 @@ func (f File) content(ctx context.Context, test bool) (types.Result, error) {
 		var ok bool
 		if srces, ok = f.params["sources"].([]interface{}); ok && len(srces) > 0 {
 			if srcHashes, ok = f.params["source_hashes"].([]interface{}); ok {
+				foundSource = true
 				if skipVerify {
 				} else if len(srces) != len(srcHashes) {
 					notedChanges = append(notedChanges, types.SimpleNote("sources and source_hashes must be the same length"))
