@@ -2,7 +2,9 @@ package file
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -83,6 +85,28 @@ func (f File) content(ctx context.Context, test bool) (types.Result, error) {
 		if source != "" && sourceHash == "" && !skipVerify {
 			return types.Result{Succeeded: false, Failed: true}, types.ErrMissingHash
 		} else if source != "" {
+			cachedName := fmt.Sprintf("%s-source", f.id)
+			file, err := f.Parse(cachedName, "cached", map[string]interface{}{
+				"source": source, "hash": sourceHash,
+				"skip_verify": skipVerify, "name": cachedName,
+			})
+			if err != nil {
+				return types.Result{
+					Succeeded: false, Failed: true,
+					Changed: false, Notes: []fmt.Stringer{
+						types.SimpleNote(fmt.Sprintf("failed to cache source %s", source)),
+					},
+				}, err
+			}
+			cacheRes, err := file.Apply(ctx)
+			if err != nil || !cacheRes.Succeeded {
+				return types.Result{
+					Succeeded: false, Failed: true,
+					Changed: false, Notes: []fmt.Stringer{
+						types.SimpleNote(fmt.Sprintf("failed to cache source %s", source)),
+					},
+				}, errors.Join(err, types.ErrCacheFailure)
+			}
 			foundSource = true
 		}
 	}
@@ -97,6 +121,148 @@ func (f File) content(ctx context.Context, test bool) (types.Result, error) {
 			}
 			foundSource = true
 		}
+	}
+	{
+		var srces []interface{}
+		var srcHashes []interface{}
+		var ok bool
+		if srces, ok = f.params["sources"].([]interface{}); ok && len(srces) > 0 {
+			if srcHashes, ok = f.params["source_hashes"].([]interface{}); ok {
+				if skipVerify {
+				} else if len(srces) != len(srcHashes) {
+					notedChanges = append(notedChanges, types.SimpleNote("sources and source_hashes must be the same length"))
+					return types.Result{
+						Succeeded: false, Failed: true,
+						Changed: len(notedChanges) != 1, Notes: notedChanges,
+					}, types.ErrMissingHash
+				}
+			}
+		}
+		for i, src := range srces {
+			var file types.RecipeCooker
+			var err error
+			if srcStr, ok := src.(string); ok && srcStr != "" {
+				cachedName := fmt.Sprintf("%s-source-%d", f.id, i)
+				if !skipVerify {
+					if srcHash, ok := srcHashes[i].(string); ok && srcHash != "" {
+						cachedName = srcHash
+					} else {
+						return types.Result{
+							Succeeded: false, Failed: true,
+							Changed: false, Notes: []fmt.Stringer{
+								types.SimpleNote(fmt.Sprintf("missing source_hash for source %s", srcStr)),
+							},
+						}, types.ErrMissingHash
+					}
+				}
+				file, err = f.Parse(cachedName, "cached", map[string]interface{}{
+					"source":      srcStr,
+					"skip_verify": skipVerify, "name": cachedName,
+				})
+				if err != nil {
+					return types.Result{
+						Succeeded: false, Failed: true,
+						Changed: false, Notes: []fmt.Stringer{
+							types.SimpleNote(fmt.Sprintf("failed to cache source %s", srcStr)),
+						},
+					}, err
+				}
+			} else {
+				return types.Result{
+					Succeeded: false, Failed: true,
+					Changed: false, Notes: []fmt.Stringer{
+						types.SimpleNote(fmt.Sprintf("invalid source %v", src)),
+					},
+				}, types.ErrMissingSource
+			}
+			cacheRes, err := file.Apply(ctx)
+			if err != nil || !cacheRes.Succeeded {
+				return types.Result{
+					Succeeded: false, Failed: true,
+					Changed: false, Notes: []fmt.Stringer{
+						types.SimpleNote(fmt.Sprintf("failed to cache source %s", src)),
+					},
+				}, errors.Join(err, types.ErrCacheFailure)
+			}
+			sourceDest, err := file.(*File).dest()
+			if err != nil {
+				f, err := os.Open(sourceDest)
+				if err != nil {
+					return types.Result{
+						Succeeded: false, Failed: true,
+						Changed: false, Notes: []fmt.Stringer{
+							types.SimpleNote(fmt.Sprintf("failed to open cached source %s", sourceDest)),
+						},
+					}, content, err
+				}
+				defer f.Close()
+				io.Copy(&content, f)
+			}
+
+		}
+		sourceDest := ""
+		if src, ok := f.params["source"].(string); ok && src != "" {
+			if srcHash, ok := f.params["source_hash"].(string); ok && srcHash != "" {
+				srcFile, err := f.Parse(f.id+"-source", "cached", map[string]interface{}{
+					"source": src, "hash": srcHash,
+					"name": name + "-source",
+				})
+				if err != nil {
+					return types.Result{
+						Succeeded: false, Failed: true,
+						Changed: false, Notes: []fmt.Stringer{
+							types.SimpleNote(fmt.Sprintf("failed to cache source %s", srcFile)),
+						},
+					}, content, err
+				}
+				cacheRes, err := srcFile.Apply(ctx)
+				if err != nil || !cacheRes.Succeeded {
+					return types.Result{
+						Succeeded: false, Failed: true,
+						Changed: false, Notes: []fmt.Stringer{
+							types.SimpleNote(fmt.Sprintf("failed to cache source %s", srcFile)),
+						},
+					}, content, errors.Join(err, types.ErrCacheFailure)
+				}
+				sourceDest, err = srcFile.(*File).dest()
+			} else if skipVerify, ok := f.params["skip_verify"].(bool); ok && skipVerify {
+				srcFile, err := f.Parse(f.id+"-source", "cached", map[string]interface{}{
+					"source":      src,
+					"skip_verify": skipVerify, "name": name + "-source",
+				})
+				if err != nil {
+					return types.Result{
+						Succeeded: false, Failed: true,
+						Changed: false, Notes: []fmt.Stringer{
+							types.SimpleNote(fmt.Sprintf("failed to cache source %s", srcFile)),
+						},
+					}, content, err
+				}
+				cacheRes, err := srcFile.Apply(ctx)
+				if err != nil || !cacheRes.Succeeded {
+					return types.Result{
+						Succeeded: false, Failed: true,
+						Changed: false, Notes: []fmt.Stringer{
+							types.SimpleNote(fmt.Sprintf("failed to cache source %s", srcFile)),
+						},
+					}, content, errors.Join(err, types.ErrCacheFailure)
+				}
+				sourceDest, err = srcFile.(*File).dest()
+			} else {
+				return types.Result{Succeeded: false, Failed: true}, content, types.ErrMissingHash
+			}
+		}
+		f, err := os.Open(sourceDest)
+		if err != nil {
+			return types.Result{
+				Succeeded: false, Failed: true,
+				Changed: false, Notes: []fmt.Stringer{
+					types.SimpleNote(fmt.Sprintf("failed to open cached source %s", sourceDest)),
+				},
+			}, content, err
+		}
+		defer f.Close()
+		io.Copy(&content, f)
 	}
 
 	return f.undef()
