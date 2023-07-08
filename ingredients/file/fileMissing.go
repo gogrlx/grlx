@@ -13,7 +13,9 @@ import (
 func (f File) missing(ctx context.Context, test bool) (types.Result, error) {
 	name, ok := f.params["name"].(string)
 	if !ok {
-		return types.Result{Succeeded: false, Failed: true}, types.ErrMissingName
+		return types.Result{
+			Succeeded: false, Failed: true,
+		}, types.ErrMissingName
 	}
 	name = filepath.Clean(name)
 	if name == "" {
@@ -40,10 +42,8 @@ func (f File) missing(ctx context.Context, test bool) (types.Result, error) {
 		}, err
 	}
 	return types.Result{
-		Succeeded: false,
-		Failed:    true,
-		Changed:   false,
-		Notes: []fmt.Stringer{
+		Succeeded: false, Failed: true,
+		Changed: false, Notes: []fmt.Stringer{
 			types.SimpleNote(fmt.Sprintf("file `%s` is not missing", name)),
 		},
 	}, err

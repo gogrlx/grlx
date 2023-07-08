@@ -21,14 +21,20 @@ func (f File) contains(ctx context.Context, test bool) (types.Result, bytes.Buff
 	content := bytes.Buffer{}
 	name, ok := f.params["name"].(string)
 	if !ok {
-		return types.Result{Succeeded: false, Failed: true}, content, types.ErrMissingName
+		return types.Result{
+			Succeeded: false, Failed: true,
+		}, content, types.ErrMissingName
 	}
 	name = filepath.Clean(name)
 	if name == "" {
-		return types.Result{Succeeded: false, Failed: true}, content, types.ErrMissingName
+		return types.Result{
+			Succeeded: false, Failed: true,
+		}, content, types.ErrMissingName
 	}
 	if name == "/" {
-		return types.Result{Succeeded: false, Failed: true}, content, types.ErrModifyRoot
+		return types.Result{
+			Succeeded: false, Failed: true,
+		}, content, types.ErrModifyRoot
 	}
 	{
 		if text, ok := f.params["text"].(string); ok && text != "" {
@@ -235,7 +241,9 @@ func (f File) contains(ctx context.Context, test bool) (types.Result, bytes.Buff
 				}
 				sourceDest, err = srcFile.(*File).dest()
 			} else {
-				return types.Result{Succeeded: false, Failed: true}, content, types.ErrMissingHash
+				return types.Result{
+					Succeeded: false, Failed: true,
+				}, content, types.ErrMissingHash
 			}
 		}
 		f, err := os.Open(sourceDest)
@@ -270,7 +278,9 @@ func (f File) contains(ctx context.Context, test bool) (types.Result, bytes.Buff
 	sort.Strings(contents)
 	isSubset, missing := stringSliceIsSubset(content, contents)
 	if isSubset {
-		return types.Result{Succeeded: true, Failed: false}, []string{}, nil
+		return types.Result{
+			Succeeded: true, Failed: false,
+		}, []string{}, nil
 	}
 	return types.Result{
 		Succeeded: false, Failed: true,
