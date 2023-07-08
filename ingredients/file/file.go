@@ -24,14 +24,20 @@ func (f File) Parse(id, method string, params map[string]interface{}) (types.Rec
 	if params == nil {
 		params = make(map[string]interface{})
 	}
-	return File{id: id, method: method, params: params}, nil
+	return File{
+		id: id, method: method,
+		params: params,
+	}, nil
 }
 
 // this is a helper func to replace fallthroughs so I can keep the
 // cases sorted alphabetically. It's not exported and won't stick around.
 // TODO remove undef func
 func (f File) undef() (types.Result, error) {
-	return types.Result{Succeeded: false, Failed: true, Changed: false, Notes: nil}, fmt.Errorf("method %s undefined", f.method)
+	return types.Result{
+		Succeeded: false, Failed: true,
+		Changed: false, Notes: nil,
+	}, fmt.Errorf("method %s undefined", f.method)
 }
 
 func (f File) Test(ctx context.Context) (types.Result, error) {
@@ -91,14 +97,20 @@ func (f File) dest() (string, error) {
 func (f File) cacheSources(ctx context.Context, test bool) (types.Result, error) {
 	name, ok := f.params["name"].(string)
 	if !ok {
-		return types.Result{Succeeded: false, Failed: true}, types.ErrMissingName
+		return types.Result{
+			Succeeded: false, Failed: true,
+		}, types.ErrMissingName
 	}
 	name = filepath.Clean(name)
 	if name == "" {
-		return types.Result{Succeeded: false, Failed: true}, types.ErrMissingName
+		return types.Result{
+			Succeeded: false, Failed: true,
+		}, types.ErrMissingName
 	}
 	if name == "/" {
-		return types.Result{Succeeded: false, Failed: true}, types.ErrModifyRoot
+		return types.Result{
+			Succeeded: false, Failed: true,
+		}, types.ErrModifyRoot
 	}
 	{
 		sourceDest := ""
@@ -150,7 +162,9 @@ func (f File) cacheSources(ctx context.Context, test bool) (types.Result, error)
 				}
 				sourceDest, err = srcFile.(*File).dest()
 			} else {
-				return types.Result{Succeeded: false, Failed: true}, types.ErrMissingHash
+				return types.Result{
+					Succeeded: false, Failed: true,
+				}, types.ErrMissingHash
 			}
 		}
 		_, err := os.Stat(sourceDest)
@@ -291,7 +305,9 @@ func (f File) cacheSources(ctx context.Context, test bool) (types.Result, error)
 				}
 				sourceDest, err = srcFile.(*File).dest()
 			} else {
-				return types.Result{Succeeded: false, Failed: true}, types.ErrMissingHash
+				return types.Result{
+					Succeeded: false, Failed: true,
+				}, types.ErrMissingHash
 			}
 		}
 		_, err := os.Stat(sourceDest)
@@ -304,7 +320,9 @@ func (f File) cacheSources(ctx context.Context, test bool) (types.Result, error)
 			}, err
 		}
 	}
-	return types.Result{Succeeded: true, Failed: false}, nil
+	return types.Result{
+		Succeeded: true, Failed: false,
+	}, nil
 }
 
 func stringSliceIsSubset(a, b []string) (bool, []string) {
@@ -360,7 +378,10 @@ func (f File) Apply(ctx context.Context) (types.Result, error) {
 		return f.symlink(ctx, false)
 	default:
 		// TODO define error type
-		return types.Result{Succeeded: false, Failed: true, Changed: false, Notes: nil}, fmt.Errorf("method %s undefined", f.method)
+		return types.Result{
+			Succeeded: false, Failed: true,
+			Changed: false, Notes: nil,
+		}, fmt.Errorf("method %s undefined", f.method)
 
 	}
 }
