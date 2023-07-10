@@ -15,14 +15,20 @@ func (f File) prepend(ctx context.Context, test bool) (types.Result, error) {
 
 	name, ok := f.params["name"].(string)
 	if !ok {
-		return types.Result{Succeeded: false, Failed: true}, types.ErrMissingName
+		return types.Result{
+			Succeeded: false, Failed: true,
+		}, types.ErrMissingName
 	}
 	name = filepath.Clean(name)
 	if name == "" {
-		return types.Result{Succeeded: false, Failed: true}, types.ErrMissingName
+		return types.Result{
+			Succeeded: false, Failed: true,
+		}, types.ErrMissingName
 	}
 	if name == "/" {
-		return types.Result{Succeeded: false, Failed: true}, types.ErrModifyRoot
+		return types.Result{
+			Succeeded: false, Failed: true,
+		}, types.ErrModifyRoot
 	}
 
 	return f.undef()

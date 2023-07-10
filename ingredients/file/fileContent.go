@@ -32,14 +32,20 @@ func (f File) content(ctx context.Context, test bool) (types.Result, error) {
 	{
 		name, ok = f.params["name"].(string)
 		if !ok {
-			return types.Result{Succeeded: false, Failed: true}, types.ErrMissingName
+			return types.Result{
+				Succeeded: false, Failed: true,
+			}, types.ErrMissingName
 		}
 		name = filepath.Clean(name)
 		if name == "" {
-			return types.Result{Succeeded: false, Failed: true}, types.ErrMissingName
+			return types.Result{
+				Succeeded: false, Failed: true,
+			}, types.ErrMissingName
 		}
 		if name == "/" {
-			return types.Result{Succeeded: false, Failed: true}, types.ErrModifyRoot
+			return types.Result{
+				Succeeded: false, Failed: true,
+			}, types.ErrModifyRoot
 		}
 	}
 	{
@@ -83,7 +89,9 @@ func (f File) content(ctx context.Context, test bool) (types.Result, error) {
 		source, _ = f.params["source"].(string)
 		sourceHash, _ = f.params["source_hash"].(string)
 		if source != "" && sourceHash == "" && !skipVerify {
-			return types.Result{Succeeded: false, Failed: true}, types.ErrMissingHash
+			return types.Result{
+				Succeeded: false, Failed: true,
+			}, types.ErrMissingHash
 		} else if source != "" {
 			cachedName := fmt.Sprintf("%s-source", f.id)
 			file, err := f.Parse(cachedName, "cached", map[string]interface{}{
@@ -248,7 +256,9 @@ func (f File) content(ctx context.Context, test bool) (types.Result, error) {
 				}
 				sourceDest, err = srcFile.(*File).dest()
 			} else {
-				return types.Result{Succeeded: false, Failed: true}, content, types.ErrMissingHash
+				return types.Result{
+					Succeeded: false, Failed: true,
+				}, content, types.ErrMissingHash
 			}
 		}
 		f, err := os.Open(sourceDest)

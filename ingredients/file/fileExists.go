@@ -13,7 +13,9 @@ import (
 func (f File) exists(ctx context.Context, test bool) (types.Result, error) {
 	name, ok := f.params["name"].(string)
 	if !ok {
-		return types.Result{Succeeded: false, Failed: true}, types.ErrMissingName
+		return types.Result{
+			Succeeded: false, Failed: true,
+		}, types.ErrMissingName
 	}
 	name = filepath.Clean(name)
 	if name == "" {

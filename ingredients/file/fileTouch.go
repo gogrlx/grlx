@@ -17,11 +17,11 @@ func (f File) touch(ctx context.Context, test bool) (types.Result, error) {
 	return f.undef()
 	name, ok := f.params["name"].(string)
 	if !ok {
-		return types.Result{Succeeded: false, Failed: true}, types.ErrMissingName
+		return types.Result{
+			Succeeded: false, Failed: true,
+		}, types.ErrMissingName
 	}
 
-	// "name": "string", "aTime": "string",
-	// "mtime": "string", "makedirs": "bool",
 	aTime := time.Now()
 	mTime := time.Now()
 	{
@@ -66,10 +66,14 @@ func (f File) touch(ctx context.Context, test bool) (types.Result, error) {
 
 	name = filepath.Clean(name)
 	if name == "" {
-		return types.Result{Succeeded: false, Failed: true}, types.ErrMissingName
+		return types.Result{
+			Succeeded: false, Failed: true,
+		}, types.ErrMissingName
 	}
 	if name == "/" {
-		return types.Result{Succeeded: false, Failed: true}, types.ErrModifyRoot
+		return types.Result{
+			Succeeded: false, Failed: true,
+		}, types.ErrModifyRoot
 	}
 	stt, err := os.Stat(name)
 	if errors.Is(err, os.ErrNotExist) {
@@ -134,7 +138,9 @@ func (f File) touch(ctx context.Context, test bool) (types.Result, error) {
 
 	err = os.Chtimes(name, aTime, mTime)
 	if err != nil {
-		return types.Result{Succeeded: false, Failed: true}, err
+		return types.Result{
+			Succeeded: false, Failed: true,
+		}, err
 	}
 	return types.Result{
 		Succeeded: true, Failed: false,

@@ -96,7 +96,9 @@ func (f File) contains(ctx context.Context, test bool) (types.Result, bytes.Buff
 				}
 				sourceDest, err = srcFile.(*File).dest()
 			} else {
-				return types.Result{Succeeded: false, Failed: true}, content, types.ErrMissingHash
+				return types.Result{
+					Succeeded: false, Failed: true,
+				}, content, types.ErrMissingHash
 			}
 		}
 		f, err := os.Open(sourceDest)
