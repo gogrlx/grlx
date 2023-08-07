@@ -2,6 +2,7 @@ package file
 
 import (
 	"context"
+	"os"
 	"testing"
 
 	"github.com/gogrlx/grlx/types"
@@ -9,7 +10,9 @@ import (
 
 func TestRecipeStepUsage(t *testing.T) {
 	var x types.RecipeCooker
-	x, err := (File{}).Parse("testFile", "append", map[string]any{})
+	x, err := (File{}).Parse("testFile", "append", map[string]any{
+		"name": "testFile",
+	})
 	if err != nil {
 		t.Error(err)
 		return
@@ -22,4 +25,8 @@ func TestRecipeStepUsage(t *testing.T) {
 	if !res.Succeeded {
 		t.Errorf("error running %v", x)
 	}
+	t.Cleanup(func() {
+		// remove file
+		os.Remove("testFile")
+	})
 }
