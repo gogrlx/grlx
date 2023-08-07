@@ -21,17 +21,21 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/nats-io/nats.go"
+
 	"github.com/gogrlx/grlx/types"
 )
 
 // Job represents a job
 
 type Job struct {
-	Id      string         `json:"id"`
+	ID      string         `json:"id"`
 	Results []types.Result `json:"results"`
 	Sprout  string         `json:"sprout"`
 	Summary types.Summary  `json:"summary"`
 }
+
+var natsConn *nats.Conn
 
 func logJobs() {
 	// Create the jobs directory if it does not exist
@@ -60,7 +64,7 @@ func logJobs() {
 		}
 
 		// Create the job file
-		jobFile := filepath.Join("jobs", fmt.Sprintf("%s.jsonl", job.Id))
+		jobFile := filepath.Join("jobs", fmt.Sprintf("%s.jsonl", job.ID))
 		f, err := os.Create(jobFile)
 		if err != nil {
 			log.Fatal(err)
@@ -87,7 +91,7 @@ func logJobs() {
 		}
 
 		// Log the job
-		log.Printf("Job %s received\n", job.Id)
+		log.Printf("Job %s received\n", job.ID)
 
 		// Acknowledge the message
 		err = msg.Ack()

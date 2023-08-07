@@ -269,25 +269,31 @@ func (f File) contains(ctx context.Context, test bool) (types.Result, bytes.Buff
 			},
 		}, content, err
 	}
-	// TODO look into effects of sorting vs not sorting this slice
-	sort.Strings(content)
-	contents := []string{}
+	currentContents := []string{}
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
-		contents = append(contents, scanner.Text())
+		currentContents = append(currentContents, scanner.Text())
 	}
 	file.Close()
-	sort.Strings(contents)
-	isSubset, missing := stringSliceIsSubset(content, contents)
+	sort.Strings(currentContents)
+
+	shouldContents := []string{}
+	scanner = bufio.NewScanner(&content)
+	for scanner.Scan() {
+		shouldContents = append(shouldContents, scanner.Text())
+	}
+	sort.Strings(shouldContents)
+
+	isSubset, _ := stringSliceIsSubset(shouldContents, currentContents)
 	if isSubset {
 		return types.Result{
 			Succeeded: true, Failed: false,
-		}, []string{}, nil
+		}, bytes.Buffer{}, nil
 	}
 	return types.Result{
 		Succeeded: false, Failed: true,
 		Changed: false, Notes: []fmt.Stringer{
 			types.SimpleNote(fmt.Sprintf("file %s does not contain all specified content", name)),
 		},
-	}, missing, types.ErrMissingContent
+	}, content, types.ErrMissingContent
 }

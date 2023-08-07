@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 
@@ -28,6 +27,7 @@ func (f File) content(ctx context.Context, test bool) (types.Result, error) {
 	skipVerify := false
 	foundSource := false
 	notedChanges := []fmt.Stringer{}
+	_, _, _, _ = template, sources, sourceHashes, foundSource
 	var ok bool
 	{
 		name, ok = f.params["name"].(string)
@@ -200,10 +200,10 @@ func (f File) content(ctx context.Context, test bool) (types.Result, error) {
 						Changed: false, Notes: []fmt.Stringer{
 							types.SimpleNote(fmt.Sprintf("failed to open cached source %s", sourceDest)),
 						},
-					}, content, err
+					}, err
 				}
 				defer f.Close()
-				io.Copy(&content, f)
+				//			io.Copy(&content, f)
 			}
 
 		}
@@ -220,7 +220,7 @@ func (f File) content(ctx context.Context, test bool) (types.Result, error) {
 						Changed: false, Notes: []fmt.Stringer{
 							types.SimpleNote(fmt.Sprintf("failed to cache source %s", srcFile)),
 						},
-					}, content, err
+					}, err
 				}
 				cacheRes, err := srcFile.Apply(ctx)
 				if err != nil || !cacheRes.Succeeded {
@@ -229,7 +229,7 @@ func (f File) content(ctx context.Context, test bool) (types.Result, error) {
 						Changed: false, Notes: []fmt.Stringer{
 							types.SimpleNote(fmt.Sprintf("failed to cache source %s", srcFile)),
 						},
-					}, content, errors.Join(err, types.ErrCacheFailure)
+					}, errors.Join(err, types.ErrCacheFailure)
 				}
 				sourceDest, err = srcFile.(*File).dest()
 			} else if skipVerify, ok := f.params["skip_verify"].(bool); ok && skipVerify {
@@ -243,7 +243,7 @@ func (f File) content(ctx context.Context, test bool) (types.Result, error) {
 						Changed: false, Notes: []fmt.Stringer{
 							types.SimpleNote(fmt.Sprintf("failed to cache source %s", srcFile)),
 						},
-					}, content, err
+					}, err
 				}
 				cacheRes, err := srcFile.Apply(ctx)
 				if err != nil || !cacheRes.Succeeded {
@@ -252,13 +252,13 @@ func (f File) content(ctx context.Context, test bool) (types.Result, error) {
 						Changed: false, Notes: []fmt.Stringer{
 							types.SimpleNote(fmt.Sprintf("failed to cache source %s", srcFile)),
 						},
-					}, content, errors.Join(err, types.ErrCacheFailure)
+					}, errors.Join(err, types.ErrCacheFailure)
 				}
 				sourceDest, err = srcFile.(*File).dest()
 			} else {
 				return types.Result{
 					Succeeded: false, Failed: true,
-				}, content, types.ErrMissingHash
+				}, types.ErrMissingHash
 			}
 		}
 		f, err := os.Open(sourceDest)
@@ -268,10 +268,10 @@ func (f File) content(ctx context.Context, test bool) (types.Result, error) {
 				Changed: false, Notes: []fmt.Stringer{
 					types.SimpleNote(fmt.Sprintf("failed to open cached source %s", sourceDest)),
 				},
-			}, content, err
+			}, err
 		}
 		defer f.Close()
-		io.Copy(&content, f)
+		//	io.Copy(&content, f)
 	}
 
 	return f.undef()

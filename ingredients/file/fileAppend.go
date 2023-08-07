@@ -1,6 +1,7 @@
 package file
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"fmt"
@@ -69,7 +70,10 @@ func (f File) append(ctx context.Context, test bool) (types.Result, error) {
 			}, err
 		}
 		defer f.Close()
-		for _, line := range missing {
+		scanner := bufio.NewScanner(&missing)
+		line := ""
+		for scanner.Scan() {
+			line = scanner.Text()
 			_, err := f.WriteString(line)
 			if err != nil {
 				return types.Result{
@@ -89,6 +93,4 @@ func (f File) append(ctx context.Context, test bool) (types.Result, error) {
 			Changed: false, Notes: res.Notes,
 		}, err
 	}
-
-	return f.undef()
 }
