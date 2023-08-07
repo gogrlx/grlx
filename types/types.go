@@ -254,3 +254,7 @@ func (r Requisite) Equals(other Requisite) bool {
 func (s SimpleNote) String() string {
 	return string(s)
 }
+
+func Snprintf(format string, a ...any) SimpleNote {
+	return SimpleNote(fmt.Sprintf(string(format), a...))
+}
