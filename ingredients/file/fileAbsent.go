@@ -11,55 +11,53 @@ import (
 )
 
 func (f File) absent(ctx context.Context, test bool) (types.Result, error) {
+	var notes []fmt.Stringer
 	name, ok := f.params["name"].(string)
 	if !ok {
 		return types.Result{
-			Succeeded: false, Failed: true,
+			Succeeded: false, Failed: true, Notes: notes,
 		}, types.ErrMissingName
 	}
 	name = filepath.Clean(name)
 	if name == "" {
 		return types.Result{
-			Succeeded: false, Failed: true,
+			Succeeded: false, Failed: true, Notes: notes,
 		}, types.ErrMissingName
 	}
 	if name == "/" {
 		return types.Result{
-			Succeeded: false, Failed: true,
+			Succeeded: false, Failed: true, Notes: notes,
 		}, types.ErrDeleteRoot
 	}
 	_, err := os.Stat(name)
 	if errors.Is(err, os.ErrNotExist) {
+		notes = append(notes, types.Snprintf("%v is already absent", name))
 		return types.Result{
 			Succeeded: true, Failed: false,
-			Changed: false, Notes: []fmt.Stringer{
-				types.SimpleNote(fmt.Sprintf("%v is already absent", name)),
-			},
+			Changed: false, Notes: notes,
 		}, nil
 	}
 	if err != nil {
 		return types.Result{
-			Succeeded: false, Failed: true,
+			Succeeded: false, Failed: true, Notes: notes,
 		}, err
 	}
 	if test {
+		notes = append(notes, types.Snprintf("%v would be deleted", name))
 		return types.Result{
 			Succeeded: true, Failed: false,
-			Changed: true, Notes: []fmt.Stringer{
-				types.SimpleNote(fmt.Sprintf("%v would be deleted", name)),
-			},
+			Changed: true, Notes: notes,
 		}, nil
 	}
 	err = os.Remove(name)
 	if err != nil {
 		return types.Result{
-			Succeeded: false, Failed: true,
+			Succeeded: false, Failed: true, Notes: notes,
 		}, err
 	}
+	notes = append(notes, types.Snprintf("%s has been deleted", name))
 	return types.Result{
 		Succeeded: true, Failed: false,
-		Changed: true, Notes: []fmt.Stringer{
-			types.SimpleNote(fmt.Sprintf("%s has been deleted", name)),
-		},
+		Changed: true, Notes: notes,
 	}, nil
 }
