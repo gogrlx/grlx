@@ -32,7 +32,7 @@ func (f File) directory(ctx context.Context, test bool) (types.Result, error) {
 	if !ok {
 		return types.Result{
 			Succeeded: false, Failed: true,
-			Notes: notes, Changed: notes != nil,
+			Notes: notes, Changed: false,
 		}, types.ErrMissingName
 	}
 	name = filepath.Clean(name)

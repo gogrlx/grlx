@@ -99,6 +99,7 @@ func (f File) content(ctx context.Context, test bool) (types.Result, error) {
 				"skip_verify": skipVerify, "name": cachedName,
 			})
 			if err != nil {
+				notes = append(notes, types.Snprintf("failed to cache source %s", source))
 				return types.Result{
 					Succeeded: false, Failed: true,
 					Changed: false, Notes: notes,
