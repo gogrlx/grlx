@@ -11,6 +11,7 @@ import (
 )
 
 func (f File) exists(ctx context.Context, test bool) (types.Result, error) {
+	var notes []fmt.Stringer
 	name, ok := f.params["name"].(string)
 	if !ok {
 		return types.Result{
@@ -26,27 +27,23 @@ func (f File) exists(ctx context.Context, test bool) (types.Result, error) {
 	}
 	_, err := os.Stat(name)
 	if errors.Is(err, os.ErrNotExist) {
+		notes = append(notes, types.Snprintf("file `%s` does not exist", name))
 		return types.Result{
 			Succeeded: false, Failed: true,
-			Changed: false, Notes: []fmt.Stringer{
-				types.SimpleNote(fmt.Sprintf("file or directory `%s` does not exist", name)),
-			},
+			Changed: false, Notes: notes,
 		}, nil
 	}
 	if err != nil {
 		return types.Result{
 			Succeeded: false, Failed: true,
-			Changed: false, Notes: []fmt.Stringer{
-				types.SimpleNote(fmt.Sprintf("error checking if file or directory `%s` exists: %s", name, err.Error())),
-			},
+			Changed: false, Notes: notes,
 		}, err
 	}
+	notes = append(notes, types.Snprintf("file `%s` exists", name))
 	return types.Result{
 		Succeeded: true,
 		Failed:    false,
 		Changed:   false,
-		Notes: []fmt.Stringer{
-			types.SimpleNote(fmt.Sprintf("file %s exists", name)),
-		},
+		Notes:     notes,
 	}, err
 }

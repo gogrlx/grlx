@@ -10,11 +10,12 @@ import (
 )
 
 func (f File) cached(ctx context.Context, test bool) (types.Result, error) {
+	var notes []fmt.Stringer
 	source, ok := f.params["source"].(string)
 	if !ok || source == "" {
 		// TODO join with an error type for missing params
 		return types.Result{
-			Succeeded: false, Failed: true,
+			Succeeded: false, Failed: true, Notes: notes,
 		}, types.ErrMissingSource
 	}
 
@@ -22,7 +23,7 @@ func (f File) cached(ctx context.Context, test bool) (types.Result, error) {
 	hash, ok := f.params["hash"].(string)
 	if (!ok || hash == "") && !skipVerify {
 		return types.Result{
-			Succeeded: false, Failed: true,
+			Succeeded: false, Failed: true, Notes: notes,
 		}, types.ErrMissingHash
 	}
 	cacheDest, err := f.dest()
@@ -40,11 +41,10 @@ func (f File) cached(ctx context.Context, test bool) (types.Result, error) {
 	if skipVerify {
 		_, statErr := os.Stat(cacheDest)
 		if statErr == nil {
+			notes = append(notes, types.Snprintf("%s alreadys exists and skipVerify is true", cacheDest))
 			return types.Result{
 				Succeeded: true, Failed: false,
-				Changed: false, Notes: []fmt.Stringer{
-					types.SimpleNote(fmt.Sprintf("%s is already exists and skipVerify is true", cacheDest)),
-				},
+				Changed: false, Notes: notes,
 			}, nil
 		}
 	}
@@ -56,27 +56,27 @@ func (f File) cached(ctx context.Context, test bool) (types.Result, error) {
 	}
 	if !valid {
 		if test {
+			notes = append(notes, types.Snprintf("%s would be cached", cacheDest))
 			return types.Result{
 				Succeeded: true, Failed: false,
-				Changed: true, Notes: []fmt.Stringer{types.SimpleNote(fmt.Sprintf("%s would be cached", cacheDest))},
-			}, nil
-		} else {
-			err = fp.Download(ctx)
-			if err != nil {
-				return types.Result{
-					Succeeded: false, Failed: true,
-				}, err
-			}
-			return types.Result{
-				Succeeded: true, Failed: false,
-				Changed: true, Notes: []fmt.Stringer{
-					types.SimpleNote(fmt.Sprintf("%s has been cached", cacheDest)),
-				},
+				Changed: true, Notes: notes,
 			}, nil
 		}
+		err = fp.Download(ctx)
+		if err != nil {
+			return types.Result{
+				Succeeded: false, Failed: true,
+			}, err
+		}
+		notes = append(notes, types.Snprintf("%s has been cached", cacheDest))
+		return types.Result{
+			Succeeded: true, Failed: false,
+			Changed: true, Notes: notes,
+		}, nil
+
 	}
 	return types.Result{
 		Succeeded: true, Failed: false,
-		Changed: false,
+		Changed: false, Notes: notes,
 	}, nil
 }

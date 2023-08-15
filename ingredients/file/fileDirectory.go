@@ -13,7 +13,7 @@ import (
 )
 
 func (f File) directory(ctx context.Context, test bool) (types.Result, error) {
-	changes := []fmt.Stringer{}
+	notes := []fmt.Stringer{}
 	type dir struct {
 		user           string
 		group          string
@@ -32,18 +32,18 @@ func (f File) directory(ctx context.Context, test bool) (types.Result, error) {
 	if !ok {
 		return types.Result{
 			Succeeded: false, Failed: true,
-			Notes: changes, Changed: changes != nil,
+			Notes: notes, Changed: false,
 		}, types.ErrMissingName
 	}
 	name = filepath.Clean(name)
 	if name == "" {
 		return types.Result{
-			Succeeded: false, Failed: true,
+			Succeeded: false, Failed: true, Notes: notes,
 		}, types.ErrMissingName
 	}
 	if name == "/" {
 		return types.Result{
-			Succeeded: false, Failed: true,
+			Succeeded: false, Failed: true, Notes: notes,
 		}, fmt.Errorf("refusing to delete root")
 	}
 	d := dir{}
@@ -53,125 +53,153 @@ func (f File) directory(ctx context.Context, test bool) (types.Result, error) {
 		if val, ok := f.params["makedirs"].(bool); ok && val || !ok {
 			d.makeDirs = true
 			errCreate := os.MkdirAll(name, 0o755)
+			notes = append(notes, types.Snprintf("creating directory %s", name))
 			if errCreate != nil {
 				return types.Result{
-					Succeeded: false, Failed: true,
+					Succeeded: false, Failed: true, Notes: notes,
 				}, errCreate
 			}
 
 		}
+		if test {
+			notes = append(notes, types.Snprintf("would create directory %s", name))
+		}
 	}
 	// chown the directory to the named user
-	// TODO add test apply path here
 	{
 		if val, ok := f.params["user"].(string); ok {
 			d.user = val
 			userL, lookupErr := user.Lookup(d.user)
 			if lookupErr != nil {
 				return types.Result{
-					Succeeded: false, Failed: true,
+					Succeeded: false, Failed: true, Notes: notes,
 				}, lookupErr
 			}
 			uid, parseErr := strconv.ParseUint(userL.Uid, 10, 32)
 			if parseErr != nil {
 				return types.Result{
-					Succeeded: false, Failed: true,
+					Succeeded: false, Failed: true, Notes: notes,
 				}, parseErr
 			}
 
-			chownErr := os.Chown(name, int(uid), -1)
-			if chownErr != nil {
-				return types.Result{
-					Succeeded: false, Failed: true,
-				}, chownErr
+			if test {
+				notes = append(notes, types.Snprintf("would chown %s to %s", name, d.user))
+			} else {
+				chownErr := os.Chown(name, int(uid), -1)
+				if chownErr != nil {
+					return types.Result{
+						Succeeded: false, Failed: true, Notes: notes,
+					}, chownErr
+				}
+				notes = append(notes, types.Snprintf("chown %s to %s", name, d.user))
 			}
 			if val, ok := f.params["recurse"].(bool); ok && val {
 				walkErr := filepath.WalkDir(name, func(path string, d fs.DirEntry, err error) error {
+					if test {
+						notes = append(notes, types.Snprintf("would chown %s to %s", name, val))
+						return nil
+					}
+					notes = append(notes, types.Snprintf("chown %s to %s", name, val))
 					return os.Chown(path, int(uid), -1)
 				})
 				if walkErr != nil {
 					return types.Result{
-						Succeeded: false, Failed: true,
+						Succeeded: false, Failed: true, Notes: notes,
 					}, walkErr
 				}
 			}
 		}
 	}
 	// chown the directory to the named group
-	// TODO add test apply path here
 	{
 		if val, ok := f.params["group"].(string); ok {
 			d.group = val
 			group, lookupErr := user.LookupGroup(d.group)
 			if lookupErr != nil {
 				return types.Result{
-					Succeeded: false, Failed: true,
+					Succeeded: false, Failed: true, Notes: notes,
 				}, lookupErr
 			}
 			gid, parseErr := strconv.ParseUint(group.Gid, 10, 32)
 			if parseErr != nil {
 				return types.Result{
-					Succeeded: false, Failed: true,
+					Succeeded: false, Failed: true, Notes: notes,
 				}, parseErr
 			}
-			chownErr := os.Chown(name, -1, int(gid))
-			if chownErr != nil {
-				return types.Result{
-					Succeeded: false, Failed: true,
-				}, chownErr
+			if test {
+				notes = append(notes, types.Snprintf("would chown %s to %s", name, d.group))
+			} else {
+				chownErr := os.Chown(name, -1, int(gid))
+				if chownErr != nil {
+					return types.Result{
+						Succeeded: false, Failed: true, Notes: notes,
+					}, chownErr
+				}
+				notes = append(notes, types.Snprintf("chown %s to %s", name, d.group))
 			}
 			if val, ok := f.params["recurse"].(bool); ok && val {
 				walkErr := filepath.WalkDir(name, func(path string, d fs.DirEntry, err error) error {
+					if test {
+						notes = append(notes, types.Snprintf("would chown %s to %s", name, val))
+						return nil
+					}
+					notes = append(notes, types.Snprintf("chown %s to %s", name, val))
 					return os.Chown(path, -1, int(gid))
 				})
 				if walkErr != nil {
 					return types.Result{
-						Succeeded: false, Failed: true,
+						Succeeded: false, Failed: true, Notes: notes,
 					}, walkErr
 				}
 			}
 		}
 	}
 	// chmod the directory to the named dirmode if it is defined
-	// TODO add test apply path here
 	{
 		if val, ok := f.params["dir_mode"].(string); ok {
 			d.dirMode = val
 			modeVal, _ := strconv.ParseUint(d.dirMode, 8, 32)
 			// "dir_mode": "string", "file_mode": "string"
 			//"clean": "bool", "follow_symlinks": "bool", "force": "bool", "backupname": "string", "allow_symlink": "bool",
-			err := os.Chmod(name, os.FileMode(modeVal))
-			if err != nil {
-				return types.Result{
-					Succeeded: false, Failed: true,
-				}, err
+			if test {
+				notes = append(notes, types.Snprintf("would chmod %s to %s", name, val))
+			} else {
+				err := os.Chmod(name, os.FileMode(modeVal))
+				if err != nil {
+					return types.Result{
+						Succeeded: false, Failed: true, Notes: notes,
+					}, err
+				}
+				notes = append(notes, types.Snprintf("chmod %s to %s", name, val))
 			}
 		}
 	}
 	// chmod the directory to the named dirmode if it is defined
-	// TODO add test apply path here
 	{
 		if val, ok := f.params["file_mode"].(string); ok {
 			d.fileMode = val
 			modeVal, _ := strconv.ParseUint(d.fileMode, 8, 32)
 			// "makedirs": "bool",
 			//"clean": "bool", "follow_symlinks": "bool", "force": "bool", "backupname": "string", "allow_symlink": "bool",
-			err := os.Chmod(name, os.FileMode(modeVal))
-			if err != nil {
-				return types.Result{
-					Succeeded: false, Failed: true,
-				}, err
+			if test {
+				notes = append(notes, types.Snprintf("would chmod %s to %s", name, val))
+			} else {
+				err := os.Chmod(name, os.FileMode(modeVal))
+				if err != nil {
+					return types.Result{
+						Succeeded: false, Failed: true, Notes: notes,
+					}, err
+				}
 			}
 		}
 	} // recurse the file_mode if it is defined
-	// TODO add test apply path here
 	{
 		if val, ok := f.params["group"].(string); ok {
 			d.group = val
 			group, lookupErr := user.LookupGroup(d.group)
 			if lookupErr != nil {
 				return types.Result{
-					Succeeded: false, Failed: true,
+					Succeeded: false, Failed: true, Notes: notes,
 				}, lookupErr
 			}
 			gid, parseErr := strconv.ParseUint(group.Gid, 10, 32)
@@ -180,14 +208,24 @@ func (f File) directory(ctx context.Context, test bool) (types.Result, error) {
 					Succeeded: false, Failed: true,
 				}, parseErr
 			}
-			chownErr := os.Chown(name, -1, int(gid))
-			if chownErr != nil {
-				return types.Result{
-					Succeeded: false, Failed: true,
-				}, chownErr
+			if test {
+				notes = append(notes, types.Snprintf("would chown %s to %s", name, d.group))
+			} else {
+				chownErr := os.Chown(name, -1, int(gid))
+				if chownErr != nil {
+					return types.Result{
+						Succeeded: false, Failed: true,
+					}, chownErr
+				}
+				notes = append(notes, types.Snprintf("chown %s to %s", name, d.group))
 			}
 			if val, ok := f.params["recurse"].(bool); ok && val {
 				walkErr := filepath.WalkDir(name, func(path string, d fs.DirEntry, err error) error {
+					if test {
+						notes = append(notes, types.Snprintf("would chown %s to %s", name, val))
+						return nil
+					}
+					notes = append(notes, types.Snprintf("chown %s to %s", name, val))
 					return os.Chown(path, -1, int(gid))
 				})
 				if walkErr != nil {

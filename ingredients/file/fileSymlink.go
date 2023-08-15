@@ -25,6 +25,7 @@ func (f File) symlink(ctx context.Context, test bool) (types.Result, error) {
 	// parameters to implement:
 	// "name": "string", "target": "string", "force": "bool", "backupname": "string",
 	// "makedirs": "bool", "user": "string", "group": "string", "mode": "string",
+	var notes []fmt.Stringer
 	name, ok := f.params["name"].(string)
 	if !ok {
 		return types.Result{
@@ -58,15 +59,26 @@ func (f File) symlink(ctx context.Context, test bool) (types.Result, error) {
 	nameStat, err := os.Stat(name)
 	if os.IsNotExist(err) {
 		if test {
+			notes = append(notes, types.Snprintf("would create symlink %s pointing to %s", name, target))
 			return types.Result{
 				Succeeded: true, Failed: false,
-				Changed: true, Notes: []fmt.Stringer{
-					types.SimpleNote(fmt.Sprintf("symlink would be created %s -> %s", name, target)),
-				},
+				Changed: true, Notes: notes,
 			}, nil
 		}
 		// check if it's not already a symlink
 		if nameStat.Mode()&os.ModeSymlink == 0 {
+			// create the symlink
+			err = os.Symlink(target, name)
+			if err != nil {
+				return types.Result{
+					Succeeded: false, Failed: true,
+				}, err
+			}
+			notes = append(notes, types.Snprintf("created symlink %s pointing to %s", name, target))
+			return types.Result{
+				Succeeded: true, Failed: false,
+				Changed: true, Notes: notes,
+			}, nil
 		}
 	} else if err != nil {
 		return types.Result{

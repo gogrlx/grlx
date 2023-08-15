@@ -16,6 +16,7 @@ func (f File) content(ctx context.Context, test bool) (types.Result, error) {
 	// "makedirs": "bool", "source": "string",
 	// "source_hash": "string", "template": "bool",
 	// "sources": "[]string", "source_hashes": "[]string",
+	var notes []fmt.Stringer
 	name := ""
 	makedirs := false
 	source := ""
@@ -26,7 +27,6 @@ func (f File) content(ctx context.Context, test bool) (types.Result, error) {
 	sourceHashes := []string{}
 	skipVerify := false
 	foundSource := false
-	notedChanges := []fmt.Stringer{}
 	_, _, _, _ = template, sources, sourceHashes, foundSource
 	var ok bool
 	{
@@ -57,14 +57,14 @@ func (f File) content(ctx context.Context, test bool) (types.Result, error) {
 			if err != nil {
 				return types.Result{
 					Succeeded: false, Failed: true,
-					Changed: false, Notes: nil,
+					Changed: false, Notes: notes,
 				}, err
 			}
-			notedChanges = append(notedChanges, types.SimpleNote(fmt.Sprintf("created directory %s", dir)))
+			notes = append(notes, types.Snprintf("created directory %s", dir))
 		} else if statErr != nil {
 			return types.Result{
 				Succeeded: false, Failed: true,
-				Changed: false, Notes: nil,
+				Changed: false, Notes: notes,
 			}, statErr
 		}
 	}
@@ -75,12 +75,12 @@ func (f File) content(ctx context.Context, test bool) (types.Result, error) {
 			if statErr == nil {
 				return types.Result{
 					Succeeded: false, Failed: true,
-					Changed: len(notedChanges) != 0, Notes: notedChanges,
+					Changed: len(notes) != 0, Notes: notes,
 				}, nil
 			} else if !os.IsNotExist(statErr) {
 				return types.Result{
 					Succeeded: false, Failed: true,
-					Changed: len(notedChanges) != 0, Notes: notedChanges,
+					Changed: len(notes) != 0, Notes: notes,
 				}, statErr
 			}
 		}
@@ -90,7 +90,7 @@ func (f File) content(ctx context.Context, test bool) (types.Result, error) {
 		sourceHash, _ = f.params["source_hash"].(string)
 		if source != "" && sourceHash == "" && !skipVerify {
 			return types.Result{
-				Succeeded: false, Failed: true,
+				Succeeded: false, Failed: true, Notes: notes,
 			}, types.ErrMissingHash
 		} else if source != "" {
 			cachedName := fmt.Sprintf("%s-source", f.id)
@@ -99,20 +99,19 @@ func (f File) content(ctx context.Context, test bool) (types.Result, error) {
 				"skip_verify": skipVerify, "name": cachedName,
 			})
 			if err != nil {
+				notes = append(notes, types.Snprintf("failed to cache source %s", source))
 				return types.Result{
 					Succeeded: false, Failed: true,
-					Changed: false, Notes: []fmt.Stringer{
-						types.SimpleNote(fmt.Sprintf("failed to cache source %s", source)),
-					},
+					Changed: false, Notes: notes,
 				}, err
 			}
 			cacheRes, err := file.Apply(ctx)
+			// Append the cache apply to the notes and append the rest
+			notes = append(notes, cacheRes.Notes...)
 			if err != nil || !cacheRes.Succeeded {
 				return types.Result{
 					Succeeded: false, Failed: true,
-					Changed: false, Notes: []fmt.Stringer{
-						types.SimpleNote(fmt.Sprintf("failed to cache source %s", source)),
-					},
+					Changed: false, Notes: notes,
 				}, errors.Join(err, types.ErrCacheFailure)
 			}
 			foundSource = true
@@ -136,11 +135,12 @@ func (f File) content(ctx context.Context, test bool) (types.Result, error) {
 			if srcHashes, ok = f.params["source_hashes"].([]interface{}); ok {
 				foundSource = true
 				if skipVerify {
+					// TODO
 				} else if len(srces) != len(srcHashes) {
-					notedChanges = append(notedChanges, types.SimpleNote("sources and source_hashes must be the same length"))
+					notes = append(notes, types.SimpleNote("sources and source_hashes must be the same length"))
 					return types.Result{
 						Succeeded: false, Failed: true,
-						Changed: len(notedChanges) != 1, Notes: notedChanges,
+						Changed: len(notes) != 1, Notes: notes,
 					}, types.ErrMissingHash
 				}
 			}
@@ -154,11 +154,10 @@ func (f File) content(ctx context.Context, test bool) (types.Result, error) {
 					if srcHash, ok := srcHashes[i].(string); ok && srcHash != "" {
 						cachedName = srcHash
 					} else {
+						notes = append(notes, types.Snprintf("missing source_hash for source %s", srcStr))
 						return types.Result{
 							Succeeded: false, Failed: true,
-							Changed: false, Notes: []fmt.Stringer{
-								types.SimpleNote(fmt.Sprintf("missing source_hash for source %s", srcStr)),
-							},
+							Changed: false, Notes: notes,
 						}, types.ErrMissingHash
 					}
 				}
@@ -167,39 +166,37 @@ func (f File) content(ctx context.Context, test bool) (types.Result, error) {
 					"skip_verify": skipVerify, "name": cachedName,
 				})
 				if err != nil {
+					notes = append(notes, types.Snprintf("failed to cache source %s", srcStr))
 					return types.Result{
 						Succeeded: false, Failed: true,
-						Changed: false, Notes: []fmt.Stringer{
-							types.SimpleNote(fmt.Sprintf("failed to cache source %s", srcStr)),
-						},
+						Changed: false, Notes: notes,
 					}, err
 				}
 			} else {
+				notes = append(notes, types.Snprintf("invalid source %v", src))
 				return types.Result{
 					Succeeded: false, Failed: true,
-					Changed: false, Notes: []fmt.Stringer{
-						types.SimpleNote(fmt.Sprintf("invalid source %v", src)),
-					},
+					Changed: false, Notes: notes,
 				}, types.ErrMissingSource
 			}
 			cacheRes, err := file.Apply(ctx)
+			// Append the cache apply to the notes and append the rest
+			notes = append(notes, cacheRes.Notes...)
 			if err != nil || !cacheRes.Succeeded {
+				notes = append(notes, types.Snprintf("failed to cache source %s", src))
 				return types.Result{
 					Succeeded: false, Failed: true,
-					Changed: false, Notes: []fmt.Stringer{
-						types.SimpleNote(fmt.Sprintf("failed to cache source %s", src)),
-					},
+					Changed: false, Notes: notes,
 				}, errors.Join(err, types.ErrCacheFailure)
 			}
 			sourceDest, err := file.(*File).dest()
 			if err != nil {
 				f, err := os.Open(sourceDest)
 				if err != nil {
+					notes = append(notes, types.Snprintf("failed to open cached source %s", sourceDest))
 					return types.Result{
 						Succeeded: false, Failed: true,
-						Changed: false, Notes: []fmt.Stringer{
-							types.SimpleNote(fmt.Sprintf("failed to open cached source %s", sourceDest)),
-						},
+						Changed: false, Notes: notes,
 					}, err
 				}
 				defer f.Close()
@@ -215,20 +212,20 @@ func (f File) content(ctx context.Context, test bool) (types.Result, error) {
 					"name": name + "-source",
 				})
 				if err != nil {
+					notes = append(notes, types.Snprintf("failed to cache source %s", src))
 					return types.Result{
 						Succeeded: false, Failed: true,
-						Changed: false, Notes: []fmt.Stringer{
-							types.SimpleNote(fmt.Sprintf("failed to cache source %s", srcFile)),
-						},
+						Changed: false, Notes: notes,
 					}, err
 				}
 				cacheRes, err := srcFile.Apply(ctx)
+				// Append the cache apply to the notes and append the rest
+				notes = append(notes, cacheRes.Notes...)
 				if err != nil || !cacheRes.Succeeded {
+					notes = append(notes, types.Snprintf("failed to cache source %s", src))
 					return types.Result{
 						Succeeded: false, Failed: true,
-						Changed: false, Notes: []fmt.Stringer{
-							types.SimpleNote(fmt.Sprintf("failed to cache source %s", srcFile)),
-						},
+						Changed: false, Notes: notes,
 					}, errors.Join(err, types.ErrCacheFailure)
 				}
 				sourceDest, err = srcFile.(*File).dest()
@@ -238,36 +235,35 @@ func (f File) content(ctx context.Context, test bool) (types.Result, error) {
 					"skip_verify": skipVerify, "name": name + "-source",
 				})
 				if err != nil {
+					notes = append(notes, types.Snprintf("failed to cache source %s", srcFile))
 					return types.Result{
 						Succeeded: false, Failed: true,
-						Changed: false, Notes: []fmt.Stringer{
-							types.SimpleNote(fmt.Sprintf("failed to cache source %s", srcFile)),
-						},
+						Changed: false, Notes: notes,
 					}, err
 				}
 				cacheRes, err := srcFile.Apply(ctx)
+				// Append the cache apply to the notes and append the rest
+				notes = append(notes, cacheRes.Notes...)
 				if err != nil || !cacheRes.Succeeded {
+					notes = append(notes, types.Snprintf("failed to cache source %s", srcFile))
 					return types.Result{
 						Succeeded: false, Failed: true,
-						Changed: false, Notes: []fmt.Stringer{
-							types.SimpleNote(fmt.Sprintf("failed to cache source %s", srcFile)),
-						},
+						Changed: false, Notes: notes,
 					}, errors.Join(err, types.ErrCacheFailure)
 				}
 				sourceDest, err = srcFile.(*File).dest()
 			} else {
 				return types.Result{
-					Succeeded: false, Failed: true,
+					Succeeded: false, Failed: true, Notes: notes,
 				}, types.ErrMissingHash
 			}
 		}
 		f, err := os.Open(sourceDest)
 		if err != nil {
+			notes = append(notes, types.Snprintf("failed to open cached source %s", sourceDest))
 			return types.Result{
 				Succeeded: false, Failed: true,
-				Changed: false, Notes: []fmt.Stringer{
-					types.SimpleNote(fmt.Sprintf("failed to open cached source %s", sourceDest)),
-				},
+				Changed: false, Notes: notes,
 			}, err
 		}
 		defer f.Close()

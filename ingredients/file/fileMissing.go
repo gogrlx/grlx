@@ -11,6 +11,7 @@ import (
 )
 
 func (f File) missing(ctx context.Context, test bool) (types.Result, error) {
+	var notes []fmt.Stringer
 	name, ok := f.params["name"].(string)
 	if !ok {
 		return types.Result{
@@ -26,25 +27,22 @@ func (f File) missing(ctx context.Context, test bool) (types.Result, error) {
 	}
 	_, err := os.Stat(name)
 	if errors.Is(err, os.ErrNotExist) {
+		notes = append(notes, types.Snprintf("file `%s` is missing", name))
 		return types.Result{
 			Succeeded: true, Failed: false,
-			Changed: false, Notes: []fmt.Stringer{
-				types.SimpleNote(fmt.Sprintf("file `%s` is missing", name)),
-			},
+			Changed: false, Notes: notes,
 		}, nil
 	}
 	if err != nil {
 		return types.Result{
 			Succeeded: false, Failed: true,
-			Changed: false, Notes: []fmt.Stringer{
-				types.SimpleNote(fmt.Sprintf("error checking file `%s` is missing: %s", name, err.Error())),
-			},
+			Changed: false, Notes: notes,
 		}, err
 	}
+
+	notes = append(notes, types.Snprintf("file `%s` is not missing", name))
 	return types.Result{
 		Succeeded: false, Failed: true,
-		Changed: false, Notes: []fmt.Stringer{
-			types.SimpleNote(fmt.Sprintf("file `%s` is not missing", name)),
-		},
+		Changed: false, Notes: notes,
 	}, err
 }
