@@ -203,6 +203,8 @@ github.com/stretchr/testify v1.8.4 h1:CcVxjf3Q8PM0mHUKJCdn+eZZtm5yQwehR5yeSVQQcU
 github.com/stretchr/testify v1.8.4/go.mod h1:sz/lmYIOXD/1dqDmKjjqLyZ2RngseejIcXlSw2iwfAo=
 github.com/subosito/gotenv v1.4.2 h1:X1TuBLAMDFbaTAChgCBLu3DU3UPyELpnF2jjJ2cz/S8=
 github.com/subosito/gotenv v1.4.2/go.mod h1:ayKnFf/c6rvx/2iiLrJUk1e6plDbT3edrFNGqEflhK0=
+github.com/subosito/gotenv v1.6.0 h1:9NlTDc1FTs4qu0DDq7AEtTPNw6SVm7uBMsUCUjABIf8=
+github.com/subosito/gotenv v1.6.0/go.mod h1:Dk4QP5c2W3ibzajGcXpNraDfq2IrhjMIvMSWPKKo0FU=
 github.com/taigrr/log-socket v1.0.1 h1:cxdxYEB+JbBQrs5/kKJzTIjs8z5SWp99pKyJcFoywc8=
 github.com/taigrr/log-socket v1.0.1/go.mod h1:km7dTI5T0ncBCr1xsUwdNXi6UWQptdDZuwhvKntLSN4=
 github.com/taigrr/systemctl v1.0.6 h1:ko+KmLvMOt10kYQcS01CMPpsuks/npKPUJO4Wn9N7Ek=
