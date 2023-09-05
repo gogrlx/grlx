@@ -1,4 +1,4 @@
-name: govulncheck
+name: "govulncheck"
 on: 
   push:
     branches: [ master ]
@@ -13,7 +13,7 @@ jobs:
     name: Run govulncheck
     steps:
       - uses: actions/checkout@v3
-      - Name: Extract Go version
+      - name: Extract Go version
         run:
           GO_VERSION=$(grep "^go [0-9]\+\.[0-9]\+" go.mod | awk '{print $2}')
           echo "GO_VERSION=$GO_VERSION" >> $GITHUB_ENV
