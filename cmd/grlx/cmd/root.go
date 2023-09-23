@@ -8,8 +8,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	"github.com/gogrlx/grlx/cmd/grlx/util"
 	"github.com/gogrlx/grlx/config"
-	"github.com/gogrlx/grlx/pkg/grlx/util"
 	"github.com/gogrlx/grlx/pki"
 	"github.com/gogrlx/grlx/types"
 )

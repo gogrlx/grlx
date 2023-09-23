@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/fatih/color"
-	gcmd "github.com/gogrlx/grlx/pkg/grlx/ingredients/cmd"
+	gcmd "github.com/gogrlx/grlx/cmd/grlx/ingredients/cmd"
 	"github.com/gogrlx/grlx/types"
 	"github.com/spf13/cobra"
 )

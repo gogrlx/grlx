@@ -7,7 +7,7 @@ import (
 	"log"
 
 	"github.com/fatih/color"
-	test "github.com/gogrlx/grlx/pkg/grlx/ingredients/test"
+	test "github.com/gogrlx/grlx/cmd/grlx/ingredients/test"
 	"github.com/gogrlx/grlx/types"
 	"github.com/spf13/cobra"
 )

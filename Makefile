@@ -11,7 +11,7 @@ endif
 
 all:  sprout grlx farmer
 
-sprout: pkg/sprout/*.go
+sprout: cmd/sprout/*.go
 ifeq ($(GOOS),)
 	@printf "OS not specified, defaulting to: \e[33m$(UNAME)\e[39m\n"
 else
@@ -23,11 +23,11 @@ endif
 	export CGO_ENABLED=0;\
 	export GitCommit=`git rev-parse HEAD | cut -c -7`;\
 	export GitTag=$$(TAG=`git tag --contains $$(git rev-parse HEAD) | sort -R | tr '\n' ' '`; if [ "$$(printf "$$TAG")" ]; then printf "$$TAG"; else printf "undefined"; fi);\
-	go build -ldflags "-X main.GitCommit=$$GitCommit -X main.Tag=$$GitTag" -o "bin/sprout" ./pkg/sprout/*.go
+	go build -ldflags "-X main.GitCommit=$$GitCommit -X main.Tag=$$GitTag" -o "bin/sprout" ./cmd/sprout/*.go
 	@printf "\e[32mSuccess!\e[39m\n"
 
 
-grlx: pkg/grlx/*.go
+grlx: cmd/grlx/*.go
 ifeq ($(GOOS),)
 	@printf "OS not specified, defaulting to: \e[33m$(UNAME)\e[39m\n"
 else
@@ -40,11 +40,11 @@ endif
 	export GitCommit=`git rev-parse HEAD | cut -c -7`;\
 	export BuildTime=`date -u +%Y%m%d.%H%M%S`;\
 	export GitTag=$$(TAG=`git tag --contains $$(git rev-parse HEAD) | sort -R | tr '\n' ' '`; if [ "$$(printf "$$TAG")" ]; then printf "$$TAG"; else printf "undefined"; fi);\
-	go build -ldflags "-X main.GitCommit=$$GitCommit -X main.Tag=$$GitTag" -o "bin/grlx" ./pkg/grlx/main.go
+	go build -ldflags "-X main.GitCommit=$$GitCommit -X main.Tag=$$GitTag" -o "bin/grlx" ./cmd/grlx/main.go
 	@printf "\e[32mSuccess!\e[39m\n"
 
 
-farmer: pkg/farmer/*.go
+farmer: cmd/farmer/*.go
 ifeq ($(GOOS),)
 	@printf "OS not specified, defaulting to: \e[33m$(UNAME)\e[39m\n"
 else
@@ -57,7 +57,7 @@ endif
 	export GitCommit=`git rev-parse HEAD | cut -c -7`;\
 	export BuildTime=`date -u +%Y%m%d.%H%M%S`;\
 	export GitTag=$$(TAG=`git tag --contains $$(git rev-parse HEAD) | sort -R | tr '\n' ' '`; if [ "$$(printf "$$TAG")" ]; then printf "$$TAG"; else printf "undefined"; fi);\
-	go build -ldflags "-X main.GitCommit=$$GitCommit -X main.Tag=$$GitTag" -o "bin/farmer" ./pkg/farmer/main.go
+	go build -ldflags "-X main.GitCommit=$$GitCommit -X main.Tag=$$GitTag" -o "bin/farmer" ./cmd/farmer/main.go
 	@printf "\e[32mSuccess!\e[39m\n"
 
 

@@ -5,7 +5,7 @@ import (
 
 	log "github.com/taigrr/log-socket/log"
 
-	"github.com/gogrlx/grlx/pkg/grlx/cmd"
+	"github.com/gogrlx/grlx/cmd/grlx/cmd"
 	"github.com/gogrlx/grlx/types"
 )
 
