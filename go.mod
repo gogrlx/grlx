@@ -1,6 +1,6 @@
 module github.com/gogrlx/grlx
 
-go 1.21.1
+go 1.21
 
 require (
 	github.com/djherbis/atime v1.1.0
