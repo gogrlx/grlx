@@ -44,7 +44,7 @@ func (f File) directory(ctx context.Context, test bool) (types.Result, error) {
 	if name == "/" {
 		return types.Result{
 			Succeeded: false, Failed: true, Notes: notes,
-		}, fmt.Errorf("refusing to delete root")
+		}, types.ErrDeleteRoot
 	}
 	d := dir{}
 	// create the directory if it doesn't exist
