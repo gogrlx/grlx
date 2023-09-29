@@ -1,0 +1,30 @@
+name: "go-licenses"
+on: 
+  push:
+    paths:
+      - 'go.mod'
+    branches:
+      - master
+
+jobs:
+  go-licenses:
+    runs-on: ubuntu-latest
+    name: Run go-licenses
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '>=1.21'
+      - name: Get google/go-licenses package
+        run: go install github.com/google/go-licenses@latest
+        shell: bash
+      - name: Run go-licenses and save deps
+        run: go-licenses save ./... --save_path=dependencies --force
+      - name: Push licenses
+        run: |
+          git config --global user.name "${{ env.CI_COMMIT_AUTHOR }}"
+          git config --global user.email "${{ env.CI_COMMIT_EMAIL }}"
+          git add dependencies
+          git commit -m "ci(licenses): updated licenses"
+          git push
