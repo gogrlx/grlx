@@ -23,8 +23,8 @@ jobs:
         run: go-licenses save ./... --save_path=dependencies --force
       - name: Push licenses
         run: |
-          git config --global user.name "${{ env.CI_COMMIT_AUTHOR }}"
-          git config --global user.email "${{ env.CI_COMMIT_EMAIL }}"
+          git config --global user.name "${{ CI_COMMIT_AUTHOR }}"
+          git config --global user.email "${{ CI_COMMIT_EMAIL }}"
           git add dependencies
           git commit -m "ci(licenses): updated licenses"
           git push
