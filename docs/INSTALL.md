@@ -56,7 +56,6 @@ with read/write access to `/etc/grlx`.
 ```bash
 useradd farmer
 mkdir -p /etc/grlx
-touch /etc/grlx/farmer
 chown farmer:farmer /etc/grlx
 systemctl daemon-reload
 systemctl enable --now grlx-farmer
