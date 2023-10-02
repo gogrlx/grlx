@@ -5,17 +5,20 @@ on:
       - 'go.mod'
     branches:
       - master
+  workflow_dispatch: []
 
 jobs:
   go-licenses:
     runs-on: ubuntu-latest
     name: Run go-licenses
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
       - name: Setup Go
         uses: actions/setup-go@v4
         with:
-          go-version: '>=1.21'
+          go-version-file: go.mod
       - name: Get google/go-licenses package
         run: go install github.com/google/go-licenses@latest
         shell: bash
