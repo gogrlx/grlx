@@ -5,7 +5,7 @@ on:
       - 'go.mod'
     branches:
       - master
-  workflow_dispatch: []
+  workflow_dispatch: 
 
 jobs:
   go-licenses:
