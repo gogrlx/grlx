@@ -4,3 +4,4 @@ configs/
 etc
 .env
 *.zip
+coverage.out
