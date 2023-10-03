@@ -443,6 +443,9 @@ func (f File) PropertiesForMethod(method string) (map[string]string, error) {
 			"name": "string",
 		}, nil
 	case "symlink":
+		//		return ingredients.MethodPropsSet{
+		//			ingredients.MethodProps{Key: "name", Val: "string", IsReq: true},
+		//		}.ToMap(), nil
 		return map[string]string{
 			"name": "string", "target": "string", "force": "bool", "backupname": "string",
 			"makedirs": "bool", "user": "string", "group": "string", "mode": "string",

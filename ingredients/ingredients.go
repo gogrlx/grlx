@@ -17,6 +17,27 @@ func init() {
 	ingMap = make(map[types.Ingredient]map[string]types.RecipeCooker)
 }
 
+type MethodProps struct {
+	Key   string
+	Val   string
+	IsReq bool
+}
+
+type MethodPropsSet []MethodProps
+
+func (m MethodPropsSet) ToMap() map[string]string {
+	ret := make(map[string]string)
+	for _, v := range m {
+		ret[v.Key] = v.Val
+		if v.IsReq {
+			ret[v.Key] = ret[v.Key] + ",req"
+		} else {
+			ret[v.Key] = ret[v.Key] + ",opt"
+		}
+	}
+	return ret
+}
+
 func RegisterAllMethods(step types.RecipeCooker) {
 	ingTex.Lock()
 	defer ingTex.Unlock()
