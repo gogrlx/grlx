@@ -3,6 +3,7 @@ package ingredients
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/gogrlx/grlx/types"
@@ -19,16 +20,49 @@ func init() {
 
 type MethodProps struct {
 	Key   string
-	Val   string
+	Type  string
 	IsReq bool
 }
 
 type MethodPropsSet []MethodProps
 
+func PropMapToPropSet(pmap map[string]string) (MethodPropsSet, error) {
+	propset := MethodPropsSet{}
+	for k, v := range pmap {
+		if v == "" {
+			return nil, fmt.Errorf("empty value for key %s", k)
+		}
+		split := strings.Split(v, ",")
+		if len(split) > 2 {
+			return nil, fmt.Errorf("invalid value for key %s", k)
+		}
+		isReq := false
+		if len(split) == 2 {
+			if split[1] == "req" {
+				isReq = true
+			} else if split[1] != "opt" {
+				return nil, fmt.Errorf("invalid value for key %s", k)
+			}
+		}
+		switch split[0] {
+		case "string":
+			fallthrough
+		case "[]string":
+			fallthrough
+		case "bool":
+			propset = append(propset, MethodProps{Key: k, Type: split[0], IsReq: isReq})
+		default:
+			return nil, fmt.Errorf("invalid Type value for key %s", k)
+		}
+
+	}
+	return propset, nil
+}
+
 func (m MethodPropsSet) ToMap() map[string]string {
 	ret := make(map[string]string)
 	for _, v := range m {
-		ret[v.Key] = v.Val
+		ret[v.Key] = v.Type
 		if v.IsReq {
 			ret[v.Key] = ret[v.Key] + ",req"
 		} else {
