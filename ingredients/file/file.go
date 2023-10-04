@@ -30,6 +30,37 @@ func (f File) Parse(id, method string, params map[string]interface{}) (types.Rec
 	}, nil
 }
 
+func (f File) validate() error {
+	set, err := f.PropertiesForMethod(f.method)
+	if err != nil {
+		return err
+	}
+	propSet, err := ingredients.PropMapToPropSet(set)
+	if err != nil {
+		return err
+	}
+	for _, v := range propSet {
+		if v.IsReq {
+			if v.Key == "name" {
+				name, ok := f.params[v.Key].(string)
+				if !ok {
+					return types.ErrMissingName
+				}
+				if name == "" {
+					return types.ErrMissingName
+				}
+
+			} else {
+				// TODO: this might need to be changed to be more deterministic
+				if _, ok := f.params[v.Key]; !ok {
+					return fmt.Errorf("missing required property %s", v.Key)
+				}
+			}
+		}
+	}
+	return nil
+}
+
 // this is a helper func to replace fallthroughs so I can keep the
 // cases sorted alphabetically. It's not exported and won't stick around.
 // TODO remove undef func
@@ -389,7 +420,9 @@ func (f File) Apply(ctx context.Context) (types.Result, error) {
 func (f File) PropertiesForMethod(method string) (map[string]string, error) {
 	switch f.method {
 	case "absent":
-		return map[string]string{"name": "string"}, nil
+		return ingredients.MethodPropsSet{
+			ingredients.MethodProps{Key: "name", Type: "string", IsReq: true},
+		}.ToMap(), nil
 	case "append":
 		return map[string]string{
 			"name": "string", "text": "[]string", "makedirs": "bool",
@@ -443,9 +476,6 @@ func (f File) PropertiesForMethod(method string) (map[string]string, error) {
 			"name": "string",
 		}, nil
 	case "symlink":
-		//		return ingredients.MethodPropsSet{
-		//			ingredients.MethodProps{Key: "name", Val: "string", IsReq: true},
-		//		}.ToMap(), nil
 		return map[string]string{
 			"name": "string", "target": "string", "force": "bool", "backupname": "string",
 			"makedirs": "bool", "user": "string", "group": "string", "mode": "string",

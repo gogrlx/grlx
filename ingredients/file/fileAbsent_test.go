@@ -18,11 +18,11 @@ func compareResults(t *testing.T, result types.Result, expected types.Result) {
 		t.Errorf("expected failed to be %v, got %v", expected.Failed, result.Failed)
 	}
 	if len(result.Notes) != len(expected.Notes) {
-		t.Errorf("expected %v notes, got %v.\nGot %v", len(expected.Notes), len(result.Notes), result.Notes)
+		t.Errorf("expected %v notes, got %v. Got %v", len(expected.Notes), len(result.Notes), result.Notes)
 	}
 	for i, note := range result.Notes {
 		if note.String() != expected.Notes[i].String() {
-			t.Errorf("expected note %v to be %v, got %v", i, expected.Notes[i], note)
+			t.Errorf("expected note %v to be %s, got %s", i, expected.Notes[i].String(), note.String())
 		}
 	}
 }
@@ -122,7 +122,7 @@ func TestAbsent(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			f := File{
 				id:     "",
-				method: "",
+				method: "absent",
 				params: test.params,
 			}
 			result, err := f.absent(context.TODO(), test.test)
