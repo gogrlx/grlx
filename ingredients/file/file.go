@@ -431,9 +431,12 @@ func (f File) PropertiesForMethod(method string) (map[string]string, error) {
 			"source_hashes": "[]string",
 		}, nil
 	case "cached":
-		return map[string]string{
-			"source": "string", "source_hash": "string",
-		}, nil
+		return ingredients.MethodPropsSet{
+			ingredients.MethodProps{Key: "name", Type: "string", IsReq: true},
+			ingredients.MethodProps{Key: "source", Type: "string", IsReq: true},
+			ingredients.MethodProps{Key: "hash", Type: "string", IsReq: true},
+			ingredients.MethodProps{Key: "skip_verify", Type: "bool", IsReq: false},
+		}.ToMap(), nil
 	case "contains":
 		return map[string]string{
 			"name": "string", "text": "[]string",
