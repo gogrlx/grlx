@@ -29,5 +29,11 @@ jobs:
           git config --global user.name "${{ vars.CI_COMMIT_AUTHOR }}"
           git config --global user.email "${{ vars.CI_COMMIT_EMAIL }}"
           git add dependencies
-          git commit -m "ci(licenses): updated licenses"
-          git push
+          git diff --quiet --exit-code --cached dependencies
+          if [ $? -eq 1 ]
+          then
+            git commit -m "ci(licenses): updated licenses"
+            git push
+          else
+            exit 0
+          end
