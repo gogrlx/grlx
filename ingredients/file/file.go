@@ -434,7 +434,7 @@ func (f File) PropertiesForMethod(method string) (map[string]string, error) {
 		return ingredients.MethodPropsSet{
 			ingredients.MethodProps{Key: "name", Type: "string", IsReq: true},
 			ingredients.MethodProps{Key: "source", Type: "string", IsReq: true},
-			ingredients.MethodProps{Key: "hash", Type: "string", IsReq: true},
+			ingredients.MethodProps{Key: "hash", Type: "string", IsReq: false},
 			ingredients.MethodProps{Key: "skip_verify", Type: "bool", IsReq: false},
 		}.ToMap(), nil
 	case "contains":

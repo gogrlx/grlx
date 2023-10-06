@@ -4,12 +4,23 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
+	"net/http"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/gogrlx/grlx/types"
 )
 
 func TestCached(t *testing.T) {
+	tempDir := t.TempDir()
+	tempFile := tempDir + "/testFile"
+	_, err := os.Create(tempFile)
+	if err != nil {
+		t.Error(err)
+	}
+
 	tests := []struct {
 		name     string
 		params   map[string]interface{}
@@ -54,7 +65,6 @@ func TestCached(t *testing.T) {
 			error: errors.Join(ErrUnknownProtocol, errors.New("unknown protocol: file")),
 		},
 	}
-
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			f := File{
@@ -75,6 +85,41 @@ func TestCached(t *testing.T) {
 	}
 }
 
-// return types.Result{
-// 	Succeeded: false, Failed: true, Notes: notes,
-// }, types.ErrMissingSource
+type testServer struct{}
+
+func (h *testServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("testData"))
+}
+
+// Caching works well when the file is being downloaded
+func TestCachedSkipVerify(t *testing.T) {
+	listener, err := net.Listen("tcp", "localhost:0")
+	if err != nil {
+		panic(err)
+	}
+
+	go func() {
+		v := &testServer{}
+		http.Serve(listener, v)
+	}()
+	port := listener.Addr().(*net.TCPAddr).Port
+	td := t.TempDir()
+	host := fmt.Sprintf("http://localhost:%d/test", port)
+	dest := filepath.Join(td, "skip_dst")
+	f := File{
+		id:     "test",
+		method: "cached",
+		params: map[string]interface{}{
+			"name":        dest,
+			"source":      host,
+			"skip_verify": true,
+		},
+	}
+	if err != nil {
+		t.Fatalf("failed to register local file provider: %v", err)
+	}
+	_, err = f.cached(context.Background(), false)
+	if err != nil {
+		t.Errorf("expected no error, got %v", err)
+	}
+}
