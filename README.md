@@ -1,10 +1,10 @@
 ## <p align="center"><img src="docs/logos/grlx.jpg" width="300"></p>
 
-# grlx - System management without the stinkin' dependencies!
+# grlx - Low-overhead System Management
 
 [![License 0BSD](https://img.shields.io/badge/License-0BSD-pink.svg)](https://opensource.org/licenses/0BSD)
 [![Go Report Card](https://goreportcard.com/badge/github.com/gogrlx/grlx)](https://goreportcard.com/report/github.com/gogrlx/grlx) [![GoDoc](https://img.shields.io/badge/GoDoc-reference-007d9c)](https://pkg.go.dev/github.com/gogrlx/grlx)
-[![Slack](https://img.shields.io/badge/chat-on%20slack-green)](https://gophers.slack.com/)
+[![Discord](https://img.shields.io/badge/chat-on%20discord-blue)](https://discord.com/invite/VruAThf)
 [![CodeQL](https://github.com/gogrlx/grlx/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/gogrlx/grlx/actions/workflows/codeql-analysis.yml)
 
 
