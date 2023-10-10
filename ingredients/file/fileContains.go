@@ -98,17 +98,17 @@ func (f File) contains(ctx context.Context, test bool) (types.Result, bytes.Buff
 					Succeeded: false, Failed: true, Notes: notes,
 				}, content, types.ErrMissingHash
 			}
+			f, err := os.Open(sourceDest)
+			if err != nil {
+				notes = append(notes, types.Snprintf("failed to open cached source %s", sourceDest))
+				return types.Result{
+					Succeeded: false, Failed: true,
+					Changed: false, Notes: notes,
+				}, content, err
+			}
+			defer f.Close()
+			io.Copy(&content, f)
 		}
-		f, err := os.Open(sourceDest)
-		if err != nil {
-			notes = append(notes, types.Snprintf("failed to open cached source %s", sourceDest))
-			return types.Result{
-				Succeeded: false, Failed: true,
-				Changed: false, Notes: notes,
-			}, content, err
-		}
-		defer f.Close()
-		io.Copy(&content, f)
 	}
 	{
 		var srces []interface{}
@@ -240,17 +240,17 @@ func (f File) contains(ctx context.Context, test bool) (types.Result, bytes.Buff
 					Succeeded: false, Failed: true,
 				}, content, types.ErrMissingHash
 			}
+			f, err := os.Open(sourceDest)
+			if err != nil {
+				notes = append(notes, types.Snprintf("failed to open cached source %s", sourceDest))
+				return types.Result{
+					Succeeded: false, Failed: true,
+					Changed: false, Notes: notes,
+				}, content, err
+			}
+			defer f.Close()
+			io.Copy(&content, f)
 		}
-		f, err := os.Open(sourceDest)
-		if err != nil {
-			notes = append(notes, types.Snprintf("failed to open cached source %s", sourceDest))
-			return types.Result{
-				Succeeded: false, Failed: true,
-				Changed: false, Notes: notes,
-			}, content, err
-		}
-		defer f.Close()
-		io.Copy(&content, f)
 	}
 	file, err := os.Open(name)
 	if err != nil {
