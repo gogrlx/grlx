@@ -6,7 +6,6 @@ import (
 	"io"
 	"os"
 
-	"github.com/gogrlx/grlx/ingredients/file"
 	"github.com/gogrlx/grlx/ingredients/file/hashers"
 	"github.com/gogrlx/grlx/types"
 )
@@ -83,5 +82,4 @@ func (lf LocalFile) Verify(ctx context.Context) (bool, error) {
 }
 
 func init() {
-	file.RegisterProvider(LocalFile{})
 }

@@ -20,10 +20,6 @@ var (
 	ErrDuplicateProtocol = errors.New("duplicate protocol")
 )
 
-func init() {
-	provMap = make(map[string]types.FileProvider)
-}
-
 func RegisterProvider(provider types.FileProvider) error {
 	provTex.Lock()
 	defer provTex.Unlock()

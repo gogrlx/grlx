@@ -3,7 +3,6 @@ package s3
 import (
 	"context"
 
-	"github.com/gogrlx/grlx/ingredients/file"
 	"github.com/gogrlx/grlx/types"
 )
 
@@ -36,8 +35,4 @@ func (sf S3File) Protocols() []string {
 
 func (sf S3File) Verify(context.Context) (bool, error) {
 	return false, nil
-}
-
-func init() {
-	file.RegisterProvider(S3File{})
 }
