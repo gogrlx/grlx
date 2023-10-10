@@ -1,7 +1,6 @@
 ## <p align="center"><img src="docs/logos/grlx.jpg" width="300"></p>
 
-# grlx - Effective Configuration Management
-
+# grlx - Effective Fleet Configuration Management
 
 [![License 0BSD](https://img.shields.io/badge/License-0BSD-pink.svg)](https://opensource.org/licenses/0BSD)
 [![Go Report Card](https://goreportcard.com/badge/github.com/gogrlx/grlx)](https://goreportcard.com/report/github.com/gogrlx/grlx) [![GoDoc](https://img.shields.io/badge/GoDoc-reference-007d9c)](https://pkg.go.dev/github.com/gogrlx/grlx)
@@ -12,7 +11,7 @@
 [![Discord](https://img.shields.io/badge/chat-on%20discord-blue)](https://discord.com/invite/VruAThf)
 
 
-grlx (pronounced "garlic") is a pure-[Go](http://golang.org) DevOps automation engine, designed to use few system resources to keep your application front and center.
+grlx (pronounced like "garlic") is a pure-[Go](http://golang.org) DevOps automation engine, designed to use few system resources and keep your application front and center.
 
 ## Quick Start
 
@@ -67,7 +66,7 @@ For more information, please [contact the team](mailto:grlx@adatomic.com) via em
 If you or your company use grlx and you'd like to be added to this list, [Create an Issue](https://github.com/gogrlx/grlx/issues/new?assignees=taigrr&labels=docs&projects=&template=add_my_company.md&title=%5BUSER%5D).
 
 <p align="left">
-    <a href="https://cellpointsystems.com">
+    <a href="https://www.cellpointsystems.com/software-development">
         <img src="docs/logos/cellpointsystems.png" width="125">
     </a>
     <a href="https://dendra.science">
