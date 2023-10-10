@@ -25,11 +25,6 @@ func (f File) append(ctx context.Context, test bool) (types.Result, error) {
 		}, types.ErrMissingName
 	}
 	name = filepath.Clean(name)
-	if name == "" {
-		return types.Result{
-			Succeeded: false, Failed: true, Notes: notes,
-		}, types.ErrMissingName
-	}
 	if name == "/" {
 		return types.Result{
 			Succeeded: false, Failed: true, Notes: notes,
