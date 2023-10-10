@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/gogrlx/grlx/config"
 	_ "github.com/gogrlx/grlx/ingredients/file/hashers"
 
 	"github.com/gogrlx/grlx/types"
@@ -65,6 +66,35 @@ func TestCached(t *testing.T) {
 			},
 			error: nil,
 		},
+		{
+			name: "TestSuccesfulCachedTest",
+			params: map[string]interface{}{
+				"name":        "testName",
+				"source":      "/test",
+				"skip_verify": true,
+			},
+			expected: types.Result{
+				Succeeded: true,
+				Failed:    false,
+				Notes:     []fmt.Stringer{types.SimpleNote("skip_testName would be cached")},
+			},
+			error: nil,
+			test:  true,
+		},
+		{
+			name: "TestMissingName",
+			params: map[string]interface{}{
+				"name":        "",
+				"source":      "/test",
+				"skip_verify": true,
+			},
+			expected: types.Result{
+				Succeeded: false,
+				Failed:    true,
+				Notes:     []fmt.Stringer{},
+			},
+			error: types.ErrMissingName,
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -107,6 +137,17 @@ func TestCachedSkipVerify(t *testing.T) {
 	td := t.TempDir()
 	host := fmt.Sprintf("http://localhost:%d/test", port)
 	dest := filepath.Join(td, "skip_dst")
+	skipped := filepath.Join(td, "skip_skip_dst")
+	config.CacheDir = td
+	// Unset the cache dir so that we don't interfere with other tests
+	defer func() {
+		config.CacheDir = ""
+	}()
+	expected := types.Result{
+		Succeeded: true,
+		Failed:    false,
+		Notes:     []fmt.Stringer{types.Snprintf("%s already exists and skipVerify is true", skipped)},
+	}
 	f := File{
 		id:     "test",
 		method: "cached",
@@ -116,6 +157,7 @@ func TestCachedSkipVerify(t *testing.T) {
 			"skip_verify": true,
 		},
 	}
+	out, _ := f.dest()
 	if err != nil {
 		t.Fatalf("failed to register local file provider: %v", err)
 	}
@@ -123,4 +165,6 @@ func TestCachedSkipVerify(t *testing.T) {
 	if err != nil {
 		t.Errorf("expected no error, got %v", err)
 	}
+	res, _ := f.cached(context.Background(), false)
+	compareResults(t, res, expected)
 }
