@@ -23,9 +23,23 @@ func TestAppend(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create read-only file %s: %v", fileReadOnly, err)
 	}
-	err = os.Chmod(fileReadOnly, 0o555)
+	err = os.Chmod(fileReadOnly, 0o444)
 	if err != nil {
 		t.Fatalf("failed to chmod read-only file %s: %v", fileReadOnly, err)
+	}
+
+	fileWithContent := filepath.Join(tempDir, "there-is-a-file-with-content-here")
+	f, err := os.Create(fileWithContent)
+	if err != nil {
+		t.Fatalf("failed to create file with content %s: %v", fileWithContent, err)
+	}
+	_, err = f.WriteString("test")
+	f.Close()
+
+	fileWithoutContent := filepath.Join(tempDir, "there-is-a-file-without-content-here")
+	_, err = os.Create(fileWithoutContent)
+	if err != nil {
+		t.Fatalf("failed to create file without content %s: %v", fileWithoutContent, err)
 	}
 
 	tests := []struct {
@@ -59,7 +73,6 @@ func TestAppend(t *testing.T) {
 			},
 			error: types.ErrModifyRoot,
 		},
-		// TODO: Should this be a failure? We should not be getting an open error as we SHOULD be able to open but not write.
 		{
 			name: "AppendFileInvalidPermissions",
 			params: map[string]interface{}{
@@ -70,7 +83,29 @@ func TestAppend(t *testing.T) {
 				Succeeded: false,
 				Failed:    true,
 				Changed:   false,
-				Notes:     []fmt.Stringer{types.SimpleNote("")},
+				Notes:     []fmt.Stringer{types.Snprintf("file %s does not contain all specified content", fileReadOnly)},
+			},
+			error: fmt.Errorf("open %s: permission denied", fileReadOnly),
+		},
+		{
+			name:   "AppendFileWithContent",
+			params: map[string]interface{}{"name": fileWithContent, "text": "test"},
+			expected: types.Result{
+				Succeeded: true,
+				Failed:    false,
+				Changed:   false,
+				Notes:     []fmt.Stringer{},
+			},
+			error: nil,
+		},
+		{
+			name:   "AppendFileWithoutContent",
+			params: map[string]interface{}{"name": fileWithoutContent, "text": "test"},
+			expected: types.Result{
+				Succeeded: true,
+				Failed:    false,
+				Changed:   false,
+				Notes:     []fmt.Stringer{types.Snprintf("file %s does not contain all specified content", fileWithoutContent), types.Snprintf("appended %s", fileWithoutContent)},
 			},
 			error: nil,
 		},
@@ -85,7 +120,7 @@ func TestAppend(t *testing.T) {
 			result, err := f.append(context.TODO(), test.test)
 			if err != nil || test.error != nil {
 				if (err == nil && test.error != nil) || (err != nil && test.error == nil) {
-					t.Errorf("expected error %v, got %v", test.error, err)
+					t.Errorf("expected error `%v`, got `%v`", test.error, err)
 				} else if err.Error() != test.error.Error() {
 					t.Errorf("expected error %v, got %v", test.error, err)
 				}
