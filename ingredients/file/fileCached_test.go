@@ -2,13 +2,14 @@ package file
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net"
 	"net/http"
 	"os"
 	"path/filepath"
 	"testing"
+
+	_ "github.com/gogrlx/grlx/ingredients/file/hashers"
 
 	"github.com/gogrlx/grlx/types"
 )
@@ -51,18 +52,18 @@ func TestCached(t *testing.T) {
 			error: types.ErrMissingHash,
 		},
 		{
-			name: "TestCachedUnkwnownProtocol",
+			name: "TestSuccesfulCached",
 			params: map[string]interface{}{
 				"name":        "testName",
 				"source":      "/test",
 				"skip_verify": true,
 			},
 			expected: types.Result{
-				Succeeded: false,
-				Failed:    true,
-				Notes:     []fmt.Stringer{},
+				Succeeded: true,
+				Failed:    false,
+				Notes:     []fmt.Stringer{types.SimpleNote("skip_testName has been cached")},
 			},
-			error: errors.Join(ErrUnknownProtocol, errors.New("unknown protocol: file")),
+			error: nil,
 		},
 	}
 	for _, test := range tests {
