@@ -14,6 +14,7 @@
 grlx (pronounced like "garlic") is a pure-[Go](http://golang.org) DevOps automation engine, designed to use few system resources and keep your application front and center.
 
 ## Quick Start
+Coming soon!
 
 ## Why grlx?
 
