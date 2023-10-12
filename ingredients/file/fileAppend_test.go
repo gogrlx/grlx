@@ -42,6 +42,8 @@ func TestAppend(t *testing.T) {
 		t.Fatalf("failed to create file without content %s: %v", fileWithoutContent, err)
 	}
 
+	fakePath := filepath.Join("/", "fakepath")
+
 	tests := []struct {
 		name     string
 		params   map[string]interface{}
@@ -108,6 +110,28 @@ func TestAppend(t *testing.T) {
 				Notes:     []fmt.Stringer{types.Snprintf("file %s does not contain all specified content", fileWithoutContent), types.Snprintf("appended %s", fileWithoutContent)},
 			},
 			error: nil,
+		},
+		{
+			name:   "AppendFileWithoutContent",
+			params: map[string]interface{}{"name": fileWithoutContent, "text": "test"},
+			expected: types.Result{
+				Succeeded: true,
+				Failed:    false,
+				Changed:   false,
+				Notes:     []fmt.Stringer{types.Snprintf("file %s does not contain all specified content", fileWithoutContent), types.Snprintf("appended %s", fileWithoutContent)},
+			},
+			error: nil,
+		},
+		{
+			name:   "AppendDirectory",
+			params: map[string]interface{}{"name": fakePath},
+			expected: types.Result{
+				Succeeded: false,
+				Failed:    true,
+				Changed:   false,
+				Notes:     []fmt.Stringer{types.Snprintf("failed to open %s", fakePath)},
+			},
+			error: fmt.Errorf("open %s: permission denied", fakePath),
 		},
 	}
 	for _, test := range tests {
