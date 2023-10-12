@@ -61,6 +61,7 @@ func (f File) directory(ctx context.Context, test bool) (types.Result, error) {
 			}
 
 		}
+		// TODO: Bug, this should be moved to potentially NOT create the directory
 		if test {
 			notes = append(notes, types.Snprintf("would create directory %s", name))
 		}
@@ -156,6 +157,7 @@ func (f File) directory(ctx context.Context, test bool) (types.Result, error) {
 	}
 	// chmod the directory to the named dirmode if it is defined
 	{
+		// TODO: Bug, this should at least be able to return a successful result
 		if val, ok := f.params["dir_mode"].(string); ok {
 			d.dirMode = val
 			modeVal, _ := strconv.ParseUint(d.dirMode, 8, 32)
@@ -237,5 +239,8 @@ func (f File) directory(ctx context.Context, test bool) (types.Result, error) {
 		}
 	}
 
-	return f.undef()
+	// TODO: Bug, any directory operations will report as a failure and can never succeed
+	out, err := f.undef()
+	out.Notes = append(notes, out.Notes...)
+	return out, err
 }
