@@ -55,9 +55,51 @@ func TestDirectory(t *testing.T) {
 			expected: types.Result{
 				Succeeded: false,
 				Failed:    true,
-				Notes:     nil,
+				Notes:     []fmt.Stringer{types.Snprintf("creating directory %s", sampleDir)},
 			},
-			error: fmt.Errorf("method  undefined"),
+			error: nil,
+		},
+		{
+			name: "DirectoryChangeMode",
+			params: map[string]interface{}{
+				"name":     sampleDir,
+				"dir_mode": "755",
+			},
+			expected: types.Result{
+				Succeeded: true,
+				Failed:    false,
+				Notes:     []fmt.Stringer{types.Snprintf("creating directory %s", sampleDir), types.Snprintf("chmod %s to 755", sampleDir)},
+			},
+			error: nil,
+		},
+		{
+			name: "DirectoryTestChangeMode",
+			params: map[string]interface{}{
+				"name":     sampleDir,
+				"dir_mode": "755",
+				"makeDirs": true,
+			},
+			expected: types.Result{
+				Succeeded: true,
+				Failed:    false,
+				Notes:     []fmt.Stringer{types.Snprintf("would create directory %s", sampleDir), types.Snprintf("would chmod %s to 755", sampleDir), types.SimpleNote("")},
+			},
+			test:  true,
+			error: nil,
+		},
+		{
+			name: "DirectoryChangeModeNotExist",
+			params: map[string]interface{}{
+				"name":     sampleDir,
+				"dir_mode": "755",
+				"makedirs": false,
+			},
+			expected: types.Result{
+				Succeeded: true,
+				Failed:    false,
+				Notes:     []fmt.Stringer{types.Snprintf("would create directory %s", sampleDir), types.Snprintf("would chmod %s to 755", sampleDir), types.SimpleNote("")},
+			},
+			error: nil,
 		},
 	}
 	for _, test := range tests {
@@ -68,8 +110,12 @@ func TestDirectory(t *testing.T) {
 				params: test.params,
 			}
 			result, err := f.directory(context.Background(), test.test)
-			if err.Error() != test.error.Error() {
-				t.Errorf("expected error to be %v, got %v", test.error, err)
+			if err != nil || test.error != nil {
+				if (err == nil && test.error != nil) || (err != nil && test.error == nil) {
+					t.Errorf("expected error `%v`, got `%v`", test.error, err)
+				} else if err.Error() != test.error.Error() {
+					t.Errorf("expected error %v, got %v", test.error, err)
+				}
 			}
 			compareResults(t, result, test.expected)
 		})
