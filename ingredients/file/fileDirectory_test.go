@@ -16,6 +16,7 @@ func TestDirectory(t *testing.T) {
 	os.Mkdir(sampleDir, 0o755)
 	file := filepath.Join(sampleDir, "there-is-a-file-here")
 	os.Create(file)
+	fileModeDNE := filepath.Join(sampleDir, "file-mode-does-not-exist")
 	tests := []struct {
 		name     string
 		params   map[string]interface{}
@@ -73,16 +74,16 @@ func TestDirectory(t *testing.T) {
 			error: nil,
 		},
 		{
-			name: "DirectoryTestChangeMode",
+			name: "DirectoryTestChangeDirMode",
 			params: map[string]interface{}{
 				"name":     sampleDir,
 				"dir_mode": "755",
-				"makeDirs": true,
+				"makedirs": true,
 			},
 			expected: types.Result{
 				Succeeded: true,
 				Failed:    false,
-				Notes:     []fmt.Stringer{types.Snprintf("would create directory %s", sampleDir), types.Snprintf("would chmod %s to 755", sampleDir), types.SimpleNote("")},
+				Notes:     []fmt.Stringer{types.Snprintf("would create directory %s", sampleDir), types.Snprintf("would chmod %s to 755", sampleDir)},
 			},
 			test:  true,
 			error: nil,
@@ -90,16 +91,46 @@ func TestDirectory(t *testing.T) {
 		{
 			name: "DirectoryChangeModeNotExist",
 			params: map[string]interface{}{
-				"name":     sampleDir,
+				"name":     fileModeDNE,
 				"dir_mode": "755",
 				"makedirs": false,
 			},
 			expected: types.Result{
+				Succeeded: false,
+				Failed:    true,
+				Notes:     []fmt.Stringer{},
+			},
+			error: fmt.Errorf("chmod %s: no such file or directory", fileModeDNE),
+		},
+		{
+			name: "DirectoryTestChageFileMode",
+			params: map[string]interface{}{
+				"name":      sampleDir,
+				"file_mode": "755",
+				"makedirs":  true,
+			},
+			expected: types.Result{
 				Succeeded: true,
 				Failed:    false,
-				Notes:     []fmt.Stringer{types.Snprintf("would create directory %s", sampleDir), types.Snprintf("would chmod %s to 755", sampleDir), types.SimpleNote("")},
+				Notes:     []fmt.Stringer{types.Snprintf("would create directory %s", sampleDir), types.Snprintf("would chmod %s to 755", sampleDir)},
 			},
+			test:  true,
 			error: nil,
+		},
+		{
+			// TODO: Update to match error for a directory that doesn't exist
+			name: "DirectoryChangeFileModeNotExist",
+			params: map[string]interface{}{
+				"name":      fileModeDNE,
+				"file_mode": "755",
+				"makedirs":  false,
+			},
+			expected: types.Result{
+				Succeeded: false,
+				Failed:    true,
+				Notes:     []fmt.Stringer{},
+			},
+			error: fmt.Errorf("chmod %s: no such file or directory", fileModeDNE),
 		},
 	}
 	for _, test := range tests {
