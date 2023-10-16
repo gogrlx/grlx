@@ -15,6 +15,7 @@ func compareResults(t *testing.T, result types.Result, expected types.Result) {
 	}
 	if len(result.Notes) != len(expected.Notes) {
 		t.Errorf("expected %v notes, got %v. Got %v", len(expected.Notes), len(result.Notes), result.Notes)
+		return
 	}
 	for i, note := range result.Notes {
 		if note.String() != expected.Notes[i].String() {
