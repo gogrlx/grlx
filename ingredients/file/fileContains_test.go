@@ -7,13 +7,28 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/gogrlx/grlx/config"
 	"github.com/gogrlx/grlx/types"
 )
 
 func TestContains(t *testing.T) {
 	tempDir := t.TempDir()
 	existingFile := filepath.Join(tempDir, "there-is-a-file-here")
-	os.Create(existingFile)
+	f, _ := os.Create(existingFile)
+	defer f.Close()
+	if _, err := f.WriteString("hello world"); err != nil {
+		t.Fatal(err)
+	}
+	existingFileSrc := filepath.Join(tempDir, "there-is-a-src-here")
+	f, _ = os.Create(existingFileSrc)
+	defer f.Close()
+	if _, err := f.WriteString("hello world"); err != nil {
+		t.Fatal(err)
+	}
+
+	config.CacheDir = tempDir
+	defer func() { config.CacheDir = "" }()
+
 	tests := []struct {
 		name     string
 		params   map[string]interface{}
@@ -45,18 +60,6 @@ func TestContains(t *testing.T) {
 			},
 			error: types.ErrModifyRoot,
 		},
-		// {
-		// 	name: "ContainsTest",
-		// 	params: map[string]interface{}{
-		// 		"name": existingFile,
-		// 	},
-		// 	expected: types.Result{
-		// 		Succeeded: false,
-		// 		Failed:    true,
-		// 		Notes:     []fmt.Stringer{types.Snprintf("failed to open cached source")},
-		// 	},
-		// 	error: nil,
-		// },
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
