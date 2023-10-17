@@ -54,9 +54,9 @@ func TestDirectory(t *testing.T) {
 				"name": sampleDir,
 			},
 			expected: types.Result{
-				Succeeded: false,
-				Failed:    true,
-				Notes:     []fmt.Stringer{types.Snprintf("creating directory %s", sampleDir)},
+				Succeeded: true,
+				Failed:    false,
+				Notes:     []fmt.Stringer{types.Snprintf("directory %s already exists", sampleDir)},
 			},
 			error: nil,
 		},

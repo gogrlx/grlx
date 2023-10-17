@@ -241,8 +241,7 @@ func (f File) directory(ctx context.Context, test bool) (types.Result, error) {
 		}
 	}
 
-	// TODO: Bug, any directory operations will report as a failure and can never succeed
-	out, err := f.undef()
-	out.Notes = append(notes, out.Notes...)
-	return out, err
+	return types.Result{
+		Succeeded: true, Failed: false, Notes: notes,
+	}, nil
 }
