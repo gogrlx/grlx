@@ -25,11 +25,6 @@ func (f File) append(ctx context.Context, test bool) (types.Result, error) {
 		}, types.ErrMissingName
 	}
 	name = filepath.Clean(name)
-	if name == "" {
-		return types.Result{
-			Succeeded: false, Failed: true, Notes: notes,
-		}, types.ErrMissingName
-	}
 	if name == "/" {
 		return types.Result{
 			Succeeded: false, Failed: true, Notes: notes,
@@ -65,6 +60,7 @@ func (f File) append(ctx context.Context, test bool) (types.Result, error) {
 	}
 	if errors.Is(err, types.ErrMissingContent) {
 		f, err := os.OpenFile(name, os.O_APPEND|os.O_WRONLY, 0o644)
+		// TODO: Bug consider muxing errors to make this more descriptive of the issue that occurred
 		if err != nil {
 			return types.Result{
 				Succeeded: false, Failed: true, Notes: notes,

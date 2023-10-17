@@ -8,7 +8,7 @@ import (
 	httpc "net/http"
 	"os"
 
-	"github.com/gogrlx/grlx/ingredients/file"
+	// "github.com/gogrlx/grlx/ingredients/file"
 	"github.com/gogrlx/grlx/ingredients/file/hashers"
 	"github.com/gogrlx/grlx/types"
 )
@@ -110,6 +110,6 @@ func (lf HTTPFile) Verify(ctx context.Context) (bool, error) {
 	return cf.Verify(ctx)
 }
 
-func init() {
-	file.RegisterProvider(HTTPFile{})
-}
+// func init() {
+// 	file.RegisterProvider(HTTPFile{})
+// }

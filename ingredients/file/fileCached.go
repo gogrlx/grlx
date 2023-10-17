@@ -41,7 +41,7 @@ func (f File) cached(ctx context.Context, test bool) (types.Result, error) {
 	if skipVerify {
 		_, statErr := os.Stat(cacheDest)
 		if statErr == nil {
-			notes = append(notes, types.Snprintf("%s alreadys exists and skipVerify is true", cacheDest))
+			notes = append(notes, types.Snprintf("%s already exists and skipVerify is true", cacheDest))
 			return types.Result{
 				Succeeded: true, Failed: false,
 				Changed: false, Notes: notes,

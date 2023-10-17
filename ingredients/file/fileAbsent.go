@@ -12,24 +12,20 @@ import (
 
 func (f File) absent(ctx context.Context, test bool) (types.Result, error) {
 	var notes []fmt.Stringer
-	name, ok := f.params["name"].(string)
-	if !ok {
+	err := f.validate()
+	if err != nil {
 		return types.Result{
 			Succeeded: false, Failed: true, Notes: notes,
-		}, types.ErrMissingName
+		}, err
 	}
+	name := f.params["name"].(string)
 	name = filepath.Clean(name)
-	if name == "" {
-		return types.Result{
-			Succeeded: false, Failed: true, Notes: notes,
-		}, types.ErrMissingName
-	}
 	if name == "/" {
 		return types.Result{
 			Succeeded: false, Failed: true, Notes: notes,
 		}, types.ErrDeleteRoot
 	}
-	_, err := os.Stat(name)
+	_, err = os.Stat(name)
 	if errors.Is(err, os.ErrNotExist) {
 		notes = append(notes, types.Snprintf("%v is already absent", name))
 		return types.Result{
