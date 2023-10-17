@@ -7,8 +7,8 @@ require (
 	github.com/fatih/color v1.15.0
 	github.com/google/uuid v1.3.1
 	github.com/gorilla/mux v1.8.0
-	github.com/nats-io/nats-server/v2 v2.10.2
-	github.com/nats-io/nats.go v1.30.2
+	github.com/nats-io/nats-server/v2 v2.10.3
+	github.com/nats-io/nats.go v1.31.0
 	github.com/nats-io/nkeys v0.4.5
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/viper v1.17.0
@@ -22,7 +22,7 @@ require (
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
-	github.com/klauspost/compress v1.17.0 // indirect
+	github.com/klauspost/compress v1.17.1 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.19 // indirect
