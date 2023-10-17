@@ -40,13 +40,13 @@ func main() {
 	certs.GenNKey(false)
 	for err := pki.LoadRootCA("sprout"); err != nil; err = pki.LoadRootCA("sprout") {
 		log.Debugf("Error with RootCA: %v", err)
-		// TODO make this delay configureable
+		// TODO make this delay configurable
 		time.Sleep(time.Second * 5)
 	}
 	for err := pki.PutNKey(sproutID); err != nil; err = pki.PutNKey(sproutID) {
 		log.Debugf("Error submitting NKey: %v", err)
 
-		// TODO make this delay configureable
+		// TODO make this delay configurable
 		time.Sleep(time.Second * 5)
 	}
 	go ConnectSprout()

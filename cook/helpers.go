@@ -210,7 +210,7 @@ func resolveRelativeFilePath(relatedRecipePath string, recipeID types.RecipeName
 		}
 		// TODO allow for init.grlx types etc. in the future
 		if stat.IsDir() {
-			// TODO standardize this error type, this happend when the state points to a folder ending in .grlx
+			// TODO standardize this error type, this happened when the state points to a folder ending in .grlx
 			return "", errors.New("path provided is a directory")
 		}
 		return recipeExtFile, nil
