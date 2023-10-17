@@ -2,7 +2,6 @@ package http
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	httpc "net/http"
@@ -22,15 +21,6 @@ type HTTPFile struct {
 }
 
 func (hf HTTPFile) Download(ctx context.Context) error {
-	ok, err := hf.Verify(ctx)
-	if err != nil {
-		if !errors.Is(err, types.ErrFileNotFound) && !errors.Is(err, types.ErrHashMismatch) {
-			return err
-		}
-	}
-	if ok {
-		return nil
-	}
 	dest, err := os.Create(hf.Destination)
 	if err != nil {
 		return err
@@ -66,13 +56,6 @@ func (hf HTTPFile) Download(ctx context.Context) error {
 	_, err = io.Copy(dest, res.Body)
 	if err != nil {
 		return err
-	}
-	ok, err = hf.Verify(ctx)
-	if err != nil {
-		return err
-	}
-	if !ok {
-		return types.ErrHashMismatch
 	}
 	return nil
 }

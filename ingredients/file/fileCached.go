@@ -18,7 +18,6 @@ func (f File) cached(ctx context.Context, test bool) (types.Result, error) {
 			Succeeded: false, Failed: true, Notes: notes,
 		}, types.ErrMissingSource
 	}
-
 	skipVerify, _ := f.params["skip_verify"].(bool)
 	hash, ok := f.params["hash"].(string)
 	if (!ok || hash == "") && !skipVerify {
@@ -46,6 +45,26 @@ func (f File) cached(ctx context.Context, test bool) (types.Result, error) {
 				Succeeded: true, Failed: false,
 				Changed: false, Notes: notes,
 			}, nil
+		} else {
+			if test {
+				notes = append(notes, types.Snprintf("%s would be cached", cacheDest))
+				return types.Result{
+					Succeeded: true, Failed: false,
+					Changed: true, Notes: notes,
+				}, nil
+			}
+			err = fp.Download(ctx)
+			if err != nil {
+				return types.Result{
+					Succeeded: false, Failed: true,
+				}, err
+			}
+			notes = append(notes, types.Snprintf("%s has been cached", cacheDest))
+			return types.Result{
+				Succeeded: true, Failed: false,
+				Changed: true, Notes: notes,
+			}, nil
+
 		}
 	}
 	valid, errVal := fp.Verify(ctx)
