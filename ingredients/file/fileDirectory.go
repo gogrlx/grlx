@@ -52,18 +52,25 @@ func (f File) directory(ctx context.Context, test bool) (types.Result, error) {
 		// create the dir if "makeDirs" is true or not defined
 		if val, ok := f.params["makedirs"].(bool); ok && val || !ok {
 			d.makeDirs = true
+			st, _ := os.Stat(name)
 			if test {
-				notes = append(notes, types.Snprintf("would create directory %s", name))
-			} else {
-				// TODO: Bug, this should check if the directory exists to correctly return that a directory altready exists and it is being skipped for creation
-				errCreate := os.MkdirAll(name, 0o755)
-				notes = append(notes, types.Snprintf("creating directory %s", name))
-				if errCreate != nil {
-					return types.Result{
-						Succeeded: false, Failed: true, Notes: notes,
-					}, errCreate
+				if st.IsDir() {
+					notes = append(notes, types.Snprintf("directory %s already exists", name))
+				} else {
+					notes = append(notes, types.Snprintf("would create directory %s", name))
 				}
-
+			} else {
+				if st.IsDir() {
+					notes = append(notes, types.Snprintf("directory %s already exists", name))
+				} else {
+					errCreate := os.MkdirAll(name, 0o755)
+					notes = append(notes, types.Snprintf("creating directory %s", name))
+					if errCreate != nil {
+						return types.Result{
+							Succeeded: false, Failed: true, Notes: notes,
+						}, errCreate
+					}
+				}
 			}
 
 		}
@@ -159,7 +166,6 @@ func (f File) directory(ctx context.Context, test bool) (types.Result, error) {
 	}
 	// chmod the directory to the named dirmode if it is defined
 	{
-		// TODO: Bug, this should at least be able to return a successful result
 		if val, ok := f.params["dir_mode"].(string); ok {
 			d.dirMode = val
 			modeVal, _ := strconv.ParseUint(d.dirMode, 8, 32)

@@ -69,7 +69,7 @@ func TestDirectory(t *testing.T) {
 			expected: types.Result{
 				Succeeded: true,
 				Failed:    false,
-				Notes:     []fmt.Stringer{types.Snprintf("creating directory %s", sampleDir), types.Snprintf("chmod %s to 755", sampleDir)},
+				Notes:     []fmt.Stringer{types.Snprintf("directory %s already exists", sampleDir), types.Snprintf("chmod %s to 755", sampleDir)},
 			},
 			error: nil,
 		},
@@ -83,7 +83,7 @@ func TestDirectory(t *testing.T) {
 			expected: types.Result{
 				Succeeded: true,
 				Failed:    false,
-				Notes:     []fmt.Stringer{types.Snprintf("would create directory %s", sampleDir), types.Snprintf("would chmod %s to 755", sampleDir)},
+				Notes:     []fmt.Stringer{types.Snprintf("directory %s already exists", sampleDir), types.Snprintf("would chmod %s to 755", sampleDir)},
 			},
 			test:  true,
 			error: nil,
@@ -103,7 +103,7 @@ func TestDirectory(t *testing.T) {
 			error: fmt.Errorf("chmod %s: no such file or directory", fileModeDNE),
 		},
 		{
-			name: "DirectoryTestChageFileMode",
+			name: "DirectoryTestChangeFileMode",
 			params: map[string]interface{}{
 				"name":      sampleDir,
 				"file_mode": "755",
@@ -112,7 +112,7 @@ func TestDirectory(t *testing.T) {
 			expected: types.Result{
 				Succeeded: true,
 				Failed:    false,
-				Notes:     []fmt.Stringer{types.Snprintf("would create directory %s", sampleDir), types.Snprintf("would chmod %s to 755", sampleDir)},
+				Notes:     []fmt.Stringer{types.Snprintf("directory %s already exists", sampleDir), types.Snprintf("would chmod %s to 755", sampleDir)},
 			},
 			test:  true,
 			error: nil,
