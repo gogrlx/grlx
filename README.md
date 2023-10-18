@@ -6,7 +6,7 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/gogrlx/grlx)](https://goreportcard.com/report/github.com/gogrlx/grlx) [![GoDoc](https://img.shields.io/badge/GoDoc-reference-007d9c)](https://pkg.go.dev/github.com/gogrlx/grlx)
 [![CodeQL](https://github.com/gogrlx/grlx/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/gogrlx/grlx/actions/workflows/codeql-analysis.yml)
 [![govulncheck](https://github.com/gogrlx/grlx/actions/workflows/govulncheck.yml/badge.svg)](https://github.com/gogrlx/grlx/actions/workflows/govulncheck.yml)
-[![GitHub commit activity (branch)](https://img.shields.io/github/commit-activity/m/gogrlx/grlx)](https:/github.com/gogrlx/grlx)
+[![GitHub commit activity (branch)](https://img.shields.io/github/commit-activity/m/gogrlx/grlx)](https://github.com/gogrlx/grlx)
 [![Twitter](https://img.shields.io/twitter/follow/gogrlx)](https://x.com/gogrlx)
 [![Discord](https://img.shields.io/badge/chat-on%20discord-blue)](https://discord.com/invite/VruAThf)
 
