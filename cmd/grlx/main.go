@@ -10,10 +10,10 @@ import (
 )
 
 func init() {
-	log.SetLogLevel(log.LDebug)
+	log.SetLogLevel(log.LError)
 }
 
-const DocumentationURL = "https://grlx.org"
+const DocumentationURL = "https://docs.grlx.dev"
 
 var (
 	GitCommit string

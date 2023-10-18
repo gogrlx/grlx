@@ -388,9 +388,6 @@ func LoadRootCA(binary string) error {
 	case "sprout":
 		RootCA = config.SproutRootCA
 	}
-	if err := fetchRootCA(RootCA); err != nil {
-		return err
-	}
 	certPool := x509.NewCertPool()
 	rootPEM, err := os.ReadFile(RootCA)
 	if err != nil || rootPEM == nil {

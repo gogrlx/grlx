@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	"github.com/gogrlx/grlx/api/client"
 	"github.com/gogrlx/grlx/cmd/grlx/util"
 	"github.com/gogrlx/grlx/config"
 	"github.com/gogrlx/grlx/pki"
@@ -74,10 +75,11 @@ func init() {
 	}
 	err := pki.LoadRootCA("grlx")
 	if err != nil {
-		fmt.Printf("%v", err)
+		fmt.Printf("error: %v\n", err)
 		color.Red("The RootCA could not be loaded from %s. Exiting!", config.GrlxRootCA)
 		os.Exit(1)
 	}
+	client.CreateSecureTransport()
 }
 
 // initConfig reads in config file and ENV variables if set.

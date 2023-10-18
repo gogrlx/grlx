@@ -18,6 +18,10 @@ import (
 var APIClient *http.Client
 
 func init() {
+	CreateSecureTransport()
+}
+
+func CreateSecureTransport() {
 	APIClient = &http.Client{}
 	config.LoadConfig("grlx")
 	err := pki.LoadRootCA("grlx")
