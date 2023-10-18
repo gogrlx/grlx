@@ -74,12 +74,23 @@ func init() {
 		}
 	}
 	err := pki.LoadRootCA("grlx")
-	if err != nil {
+	isVersionOrHelp := false
+	if len(os.Args) > 1 {
+		isVersionOrHelp = os.Args[1] == "version" || os.Args[1] == "help"
+	}
+	if err != nil && !isVersionOrHelp {
 		fmt.Printf("error: %v\n", err)
 		color.Red("The RootCA could not be loaded from %s. Exiting!", config.GrlxRootCA)
 		os.Exit(1)
 	}
-	client.CreateSecureTransport()
+	err = client.CreateSecureTransport()
+	if err != nil && !isVersionOrHelp {
+		if os.Args[1] != "version" {
+			fmt.Printf("error: %v\n", err)
+			color.Red("The API client could not be created. Exiting!")
+			os.Exit(1)
+		}
+	}
 }
 
 // initConfig reads in config file and ENV variables if set.

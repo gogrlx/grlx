@@ -3,12 +3,12 @@ package client
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
+	"fmt"
 	"net"
 	"net/http"
 	"os"
 	"time"
-
-	"github.com/taigrr/log-socket/log"
 
 	"github.com/gogrlx/grlx/config"
 	"github.com/gogrlx/grlx/pki"
@@ -17,27 +17,22 @@ import (
 
 var APIClient *http.Client
 
-func init() {
-	CreateSecureTransport()
-}
-
-func CreateSecureTransport() {
+func CreateSecureTransport() error {
 	APIClient = &http.Client{}
 	config.LoadConfig("grlx")
 	err := pki.LoadRootCA("grlx")
 	if err != nil {
-		log.Error(err)
+		return err
 	}
 	RootCA := config.GrlxRootCA
 	certPool := x509.NewCertPool()
 	rootPEM, err := os.ReadFile(RootCA)
 	if err != nil || rootPEM == nil {
-		log.Error(err)
+		return err
 	}
 	ok := certPool.AppendCertsFromPEM(rootPEM)
 	if !ok {
-		log.Errorf("apiClient: failed to parse root certificate from %q", RootCA)
-		log.Error(types.ErrCannotParseRootCA)
+		return errors.Join(types.ErrCannotParseRootCA, fmt.Errorf("apiClient: failed to parse root certificate from %q", RootCA))
 	}
 	var apiTransport http.RoundTripper = &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
@@ -57,4 +52,5 @@ func CreateSecureTransport() {
 	}
 	APIClient.Transport = apiTransport
 	APIClient.Timeout = time.Second * 10
+	return nil
 }
