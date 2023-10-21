@@ -23,7 +23,9 @@ jobs:
         run: go install github.com/google/go-licenses@latest
         shell: bash
       - name: Run go-licenses and save deps
-        run: go-licenses save ./... --save_path=dependencies --force
+        run: |
+          go-licenses save ./... --save_path=dependencies --force
+          go-licenses check ./... --disallowed_types="forbidden,restricted"
       - name: Push licenses
         run: |
           git config --global user.name "${{ vars.CI_COMMIT_AUTHOR }}"
