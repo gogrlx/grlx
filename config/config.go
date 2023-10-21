@@ -76,7 +76,7 @@ func LoadConfig(binary string) {
 			switch binary {
 			case "grlx":
 				dirname, errHomeDir := os.UserHomeDir()
-				if err != nil {
+				if errHomeDir != nil {
 					log.Fatal(errHomeDir)
 				}
 				cfgPath := filepath.Join(dirname, ".config/grlx/")

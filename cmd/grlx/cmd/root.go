@@ -60,31 +60,34 @@ func init() {
 		}
 	}
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.config/grlx/grlx)")
-	// Cobra also supports local flags, which will only run
-	// when this action is called directly.
-	if !pki.RootCACached("grlx") {
+	noFailForCert := false
+	if len(os.Args) > 1 {
+		noFailForCert = os.Args[1] == "version" || os.Args[1] == "help" || os.Args[1] == "auth" || os.Args[1] == "init"
+	}
+	isInit := false
+	if len(os.Args) > 1 {
+		isInit = os.Args[1] == "init"
+	}
+	if !pki.RootCACached("grlx") && !isInit {
 		fmt.Print("The TLS certificate for this farmer is unknown. Would you like to download and trust it? ")
 		shouldDownload, err := util.UserConfirmWithDefault(true)
 		for err != nil {
 			shouldDownload, err = util.UserConfirmWithDefault(true)
 		}
-		if !shouldDownload {
+		if !shouldDownload && !noFailForCert {
 			fmt.Println("No certificate, exiting!")
 			os.Exit(1)
 		}
 	}
 	err := pki.LoadRootCA("grlx")
-	isVersionOrHelp := false
-	if len(os.Args) > 1 {
-		isVersionOrHelp = os.Args[1] == "version" || os.Args[1] == "help"
-	}
-	if err != nil && !isVersionOrHelp {
+
+	if err != nil && !noFailForCert {
 		fmt.Printf("error: %v\n", err)
 		color.Red("The RootCA could not be loaded from %s. Exiting!", config.GrlxRootCA)
 		os.Exit(1)
 	}
 	err = client.CreateSecureTransport()
-	if err != nil && !isVersionOrHelp {
+	if err != nil && !noFailForCert {
 		if os.Args[1] != "version" {
 			fmt.Printf("error: %v\n", err)
 			color.Red("The API client could not be created. Exiting!")
