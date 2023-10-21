@@ -72,7 +72,7 @@ func SRun(cmd types.CmdRun) (types.CmdRun, error) {
 		if err != nil {
 			return cmd, err
 		}
-		if uid64 > math.MaxUint32 {
+		if uid64 > math.MaxInt32 {
 			return cmd, fmt.Errorf("UID %d is invalid", uid64)
 		}
 		uid = uint32(uid64)
