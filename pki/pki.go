@@ -334,7 +334,7 @@ func NKeyExists(id string, nkey string) (Registered bool, Matches bool) {
 	return true, content == nkey
 }
 
-func fetchRootCA(filename string) error {
+func FetchRootCA(filename string) error {
 	RootCA := filename
 	_, err := os.Stat(RootCA)
 	if err == nil {
@@ -387,6 +387,7 @@ func LoadRootCA(binary string) error {
 		RootCA = config.GrlxRootCA
 	case "sprout":
 		RootCA = config.SproutRootCA
+		FetchRootCA(RootCA)
 	}
 	certPool := x509.NewCertPool()
 	rootPEM, err := os.ReadFile(RootCA)

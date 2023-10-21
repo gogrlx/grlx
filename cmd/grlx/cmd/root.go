@@ -78,6 +78,7 @@ func init() {
 			fmt.Println("No certificate, exiting!")
 			os.Exit(1)
 		}
+		pki.FetchRootCA(config.GrlxRootCA)
 	}
 	err := pki.LoadRootCA("grlx")
 
