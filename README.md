@@ -46,8 +46,9 @@ curl -L bootstrap.grlx.dev/latest/sprout | FARMER_INTERFACE=localhost sudo -E ba
 ```
 Once the sprout is up and running, return to the CLI.
 
-4. If all is well, you're ready to `cook`!
+4. If all is well, you're ready to `cook`! Accept the TLS cert and the `sprout` keys when prompted.
 ```bash
+grlx version
 grlx keys accept -A
 sleep 15;
 grlx -T \* test ping
