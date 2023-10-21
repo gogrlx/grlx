@@ -72,6 +72,8 @@ all-arches-farmer: farmer
 		export GitTag=$$(TAG=`git tag --contains $$(git rev-parse HEAD) | sort -R | tr '\n' ' '`; if [ "$$(printf "$$TAG")" ]; then printf "$$TAG"; else printf "undefined"; fi);\
 		go build -ldflags "-X main.GitCommit=$$GitCommit -X main.Tag=$$GitTag" -o "bin/arches/"$$(printf $$GOOS)"/"$$(printf $$GOARCH)"/"$$(printf $$GitTag)"/farmer" ./cmd/farmer/main.go &&\
 		printf "\e[32mSuccess!\e[39m\n" ;\
+		mkdir -p bin/arches/"$$(printf $$GOOS)"/"$$(printf $$GOARCH)"/latest ;\
+		cp bin/arches/"$$(printf $$GOOS)"/"$$(printf $$GOARCH)"/"$$(printf $$GitTag)"/farmer bin/arches/"$$(printf $$GOOS)"/"$$(printf $$GOARCH)"/latest/farmer ;\
 	done
 
 all-arches-sprout: sprout
@@ -86,6 +88,8 @@ all-arches-sprout: sprout
 		export GitTag=$$(TAG=`git tag --contains $$(git rev-parse HEAD) | sort -R | tr '\n' ' '`; if [ "$$(printf "$$TAG")" ]; then printf "$$TAG"; else printf "undefined"; fi);\
 		go build -ldflags "-X main.GitCommit=$$GitCommit -X main.Tag=$$GitTag" -o "bin/arches/"$$(printf $$GOOS)"/"$$(printf $$GOARCH)"/"$$(printf $$GitTag)"/sprout" ./cmd/sprout/*.go &&\
 		printf "\e[32mSuccess!\e[39m\n" ;\
+		mkdir -p bin/arches/"$$(printf $$GOOS)"/"$$(printf $$GOARCH)"/latest ;\
+		cp bin/arches/"$$(printf $$GOOS)"/"$$(printf $$GOARCH)"/"$$(printf $$GitTag)"/sprout bin/arches/"$$(printf $$GOOS)"/"$$(printf $$GOARCH)"/latest/sprout ;\
 	done
 
 all-arches-grlx: grlx
@@ -100,6 +104,8 @@ all-arches-grlx: grlx
 			export GitTag=$$(TAG=`git tag --contains $$(git rev-parse HEAD) | sort -R | tr '\n' ' '`; if [ "$$(printf "$$TAG")" ]; then printf "$$TAG"; else printf "undefined"; fi);\
 			go build -ldflags "-X main.GitCommit=$$GitCommit -X main.Tag=$$GitTag" -o "bin/arches/"$$(printf $$GOOS)"/"$$(printf $$GOARCH)"/"$$(printf $$GitTag)"/grlx" ./cmd/grlx/main.go &&\
 			printf "\e[32mSuccess!\e[39m\n" ;\
+			mkdir -p bin/arches/"$$(printf $$GOOS)"/"$$(printf $$GOARCH)"/latest ;\
+			cp bin/arches/"$$(printf $$GOOS)"/"$$(printf $$GOARCH)"/"$$(printf $$GitTag)"/grlx bin/arches/"$$(printf $$GOOS)"/"$$(printf $$GOARCH)"/latest/grlx ;\
 	done
 	for arch in amd64 arm64 ; do \
 			export GOOS=darwin; \
@@ -111,6 +117,8 @@ all-arches-grlx: grlx
 			export GitTag=$$(TAG=`git tag --contains $$(git rev-parse HEAD) | sort -R | tr '\n' ' '`; if [ "$$(printf "$$TAG")" ]; then printf "$$TAG"; else printf "undefined"; fi);\
 			go build -ldflags "-X main.GitCommit=$$GitCommit -X main.Tag=$$GitTag" -o "bin/arches/"$$(printf $$GOOS)"/"$$(printf $$GOARCH)"/"$$(printf $$GitTag)"/grlx" ./cmd/grlx/main.go &&\
 			printf "\e[32mSuccess!\e[39m\n" ;\
+			mkdir -p bin/arches/"$$(printf $$GOOS)"/"$$(printf $$GOARCH)"/latest ;\
+			cp bin/arches/"$$(printf $$GOOS)"/"$$(printf $$GOARCH)"/"$$(printf $$GitTag)"/grlx bin/arches/"$$(printf $$GOOS)"/"$$(printf $$GOARCH)"/latest/grlx ;\
 	done
 
 
