@@ -20,7 +20,7 @@ Use our bootstrap scripts!
 1. Download and initialize the command line utility from our releases to your dev machine.
 ```bash
 # replace 'linux' with darwin if you're on macOS
-curl -L releases.grlx.dev/linux/amd64/grlx > grlx && chmod +x grlx
+curl -L https://releases.grlx.dev/linux/amd64/grlx > grlx && chmod +x grlx
 ./grlx init
 ```
 You'll be asked some questions, such as which interface the `farmer` is listening on, and which ports to use for communication.
@@ -30,7 +30,7 @@ Once configured, the CLI prints out your administrator public key, which you'll 
 2. On your control server, you'll need to install the `farmer`.
 ```bash
 # or, just run as root instead of sudo
-curl -L bootstrap.grlx.dev/latest/farmer | sudo bash
+curl -L https://bootstrap.grlx.dev/latest/farmer | sudo bash
 ```
 You'll be asked several questions about the interface to listen on, which ports to use, etc.
 For the quick start, it's recommended to use the default ports (make sure there's no firewall in the way!).
@@ -42,7 +42,7 @@ Make sure the certificate host name matches the external-facing interface (a dom
 # or, just run as root instead of sudo
 # FARMER_BUS_PORT and FARMER_API_PORT variables are available in case you chose
 # to use different ports.
-curl -L bootstrap.grlx.dev/latest/sprout | FARMER_INTERFACE=localhost sudo -E bash
+curl -L https://bootstrap.grlx.dev/latest/sprout | FARMER_INTERFACE=localhost sudo -E bash
 ```
 Once the sprout is up and running, return to the CLI.
 
