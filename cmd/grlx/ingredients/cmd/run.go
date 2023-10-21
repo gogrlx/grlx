@@ -16,8 +16,6 @@ import (
 func FRun(target string, command CmdRun) (TargetedResults, error) {
 	// util target split
 	// check targets valid
-	client := http.Client{}
-	client.Timeout = command.Timeout
 	ctx, cancel := context.WithTimeout(context.Background(), command.Timeout)
 	defer cancel()
 	var tr TargetedResults
@@ -45,7 +43,7 @@ func FRun(target string, command CmdRun) (TargetedResults, error) {
 		return tr, err
 	}
 	req.Header.Set("Authorization", newToken)
-	resp, err := client.Do(req)
+	resp, err := pki.APIClient.Do(req)
 	if err != nil {
 		return tr, err
 	}
