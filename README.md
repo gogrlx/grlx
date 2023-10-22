@@ -20,7 +20,7 @@ Use our bootstrap scripts!
 1. Download and initialize the command line utility from our releases to your dev machine.
 ```bash
 # replace 'linux' with darwin if you're on macOS
-curl -L https://releases.grlx.dev/linux/amd64/grlx > grlx && chmod +x grlx
+curl -L https://releases.grlx.dev/linux/amd64/latest/grlx > grlx && chmod +x grlx
 ./grlx init
 ```
 You'll be asked some questions, such as which interface the `farmer` is listening on, and which ports to use for communication.
