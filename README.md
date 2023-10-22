@@ -26,6 +26,7 @@ curl -L https://releases.grlx.dev/linux/amd64/latest/grlx > grlx && chmod +x grl
 You'll be asked some questions, such as which interface the `farmer` is listening on, and which ports to use for communication.
 Set the interface to the domain name or IP address of the `farmer`.
 Once configured, the CLI prints out your administrator public key, which you'll need for the next step!
+It's recommended you now add `grlx` somewhere in your `$PATH`.
 
 2. On your control server, you'll need to install the `farmer`.
 ```bash
