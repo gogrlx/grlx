@@ -1,3 +1,4 @@
+cachedir: /var/cache/grlx/sprout/files/provided
 configroot: /etc/grlx/
 farmerapiport: "5405"
 farmerbusinterface: ""
