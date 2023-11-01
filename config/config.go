@@ -71,6 +71,7 @@ func LoadConfig(binary string) {
 			viper.SetConfigName("sprout")
 			viper.AddConfigPath("/etc/grlx/")
 		}
+		viper.AutomaticEnv()
 		err := viper.ReadInConfig()
 
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
