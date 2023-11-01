@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -20,6 +21,7 @@ var BuildInfo types.Version
 var configLoaded sync.Once
 
 var (
+	AdminPubkeys         []string
 	CacheDir             string
 	CertFile             string
 	CertHosts            []string
@@ -119,7 +121,6 @@ func LoadConfig(binary string) {
 			viper.SetDefault("FarmerBusPort", "5406")
 			viper.SetDefault("FarmerBusInterface", viper.GetString("FarmerInterface")+":"+viper.GetString("FarmerBusPort"))
 		case "farmer":
-			viper.SetDefault("CertHosts", []string{"localhost", "127.0.0.1", "farmer", "grlx", viper.GetString("FarmerInterface")})
 			viper.SetDefault("CertificateValidTime", 365*24*time.Hour)
 			viper.Set("CertFile", "/etc/grlx/pki/farmer/tls-cert.pem")
 			viper.Set("FarmerPKI", "/etc/grlx/pki/farmer/")
@@ -131,6 +132,41 @@ func LoadConfig(binary string) {
 			viper.SetDefault("Organization", "GRLX Development")
 			viper.SetDefault("FarmerBusPort", "5406")
 			viper.SetDefault("FarmerBusInterface", viper.GetString("FarmerURL")+":"+viper.GetString("FarmerBusPort"))
+			CertHosts = viper.GetStringSlice("CertHosts")
+			AdminPubKeys := viper.GetStringMap("pubkeys")
+			envSet := os.Environ()
+			for _, v := range envSet {
+				pair := strings.SplitN(v, "=", 2)
+				if len(AdminPubKeys) == 0 {
+					if pair[0] == "ADMIN_PUBKEYS" {
+						keyList := pair[1]
+						pubkeys := strings.Split(keyList, ",")
+						adminSet := make(map[string][]string)
+						adminSet["admin"] = []string{}
+						for _, v := range pubkeys {
+							if v != "" {
+								adminSet["admin"] = append(adminSet["admin"], v)
+							}
+						}
+						viper.Set("pubkeys", adminSet)
+					}
+				}
+				if CertHosts == nil {
+					if pair[0] == "CERT_HOSTS" {
+						hostList := pair[1]
+						hosts := strings.Split(hostList, ",")
+						cleanHosts := []string{}
+						for _, v := range hosts {
+							if v != "" {
+								cleanHosts = append(cleanHosts, v)
+							}
+						}
+						viper.Set("CertHosts", cleanHosts)
+					}
+				}
+			}
+			viper.SetDefault("CertHosts", []string{"localhost", "127.0.0.1", "farmer", "grlx", viper.GetString("FarmerInterface")})
+
 		case "sprout":
 			viper.SetDefault("SproutID", "")
 			viper.Set("SproutPKI", "/etc/grlx/pki/sprout/")
@@ -147,7 +183,6 @@ func LoadConfig(binary string) {
 
 	CacheDir = viper.GetString("CacheDir")
 	CertFile = viper.GetString("CertFile")
-	CertHosts = viper.GetStringSlice("CertHosts")
 	CertificateValidTime = viper.GetDuration("CertificateValidTime")
 	ConfigRoot = viper.GetString("ConfigRoot")
 	FarmerAPIPort = viper.GetString("FarmerAPIPort")
