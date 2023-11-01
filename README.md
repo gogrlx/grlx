@@ -11,7 +11,7 @@
 [![Discord](https://img.shields.io/badge/chat-on%20discord-blue)](https://discord.com/invite/VruAThf)
 
 
-grlx (pronounced like "garlic") is a pure-[Go](http://golang.org) DevOps automation engine, designed to use few system resources and keep your application front and center.
+grlx (pronounced like "garlic") is a pure-[Go](http://golang.org) DevOps automation engine designed to use few system resources and keep your application front and center.
 
 ## Quick Start
 Want to get up and running as quickly as possible to see what all the fuss is about?
@@ -59,9 +59,9 @@ grlx -T \* cmd run --out json -- uname -a
 
 ## Why grlx?
 
-Our team started out using competing solutions, and we ran into scalabilty issues.
-Python is a memory hog, and interpreted to boot.
-Many systems struggle with installing python dependencies properly, and with so many moving parts, the probability of something going wrong increases.
+Our team started out using competing solutions, and we ran into scalability issues.
+Python is a memory hog and is interpreted to boot.
+Many systems struggle with installing Python dependencies properly, and with so many moving parts, the probability of something going wrong increases.
 
 
 
@@ -69,7 +69,7 @@ Many systems struggle with installing python dependencies properly, and with so 
 
 grlx is made up of three components: the `farmer`, one or many `sprout`s, and a CLI utility, `grlx`.
 The `farmer` binary runs as a daemon on a management server (referred to as the 'farmer'), and is controlled via the `grlx` cli.
-`grlx` can be run both locally on the management sever or remotely over a secure-by-default, TLS-encrypted API.
+`grlx` can be run both locally on the management server or remotely over a secure-by-default, TLS-encrypted API.
 The `sprout` binary should be installed as a daemon on systems that are to be managed.
 Managed systems are referred to as 'sprouts.'
 
@@ -80,8 +80,8 @@ Managed systems are referred to as 'sprouts.'
 Nodes running `sprout` subscribe to messages over the bus.
 Both the API server and the messaging bus use TLS encryption (elliptic curve by default), and sprouts authenticate using public-key cryptography.
 
-Jobs can be created with the `grlx` command-line interface, and typically come in the form of stateful targets, called 'recipes'.
-Recipies  are yaml documents which describe the desired state of a sprout after the recipe is applied (`cook`ed).
+Jobs can be created with the `grlx` command-line interface and typically come in the form of stateful targets called 'recipes'.
+Recipes are yaml documents which describe the desired state of a sprout after the recipe is applied (`cook`ed).
 Because the `farmer` exposes an API, `grlx` is by no means the only way to create or manage jobs, but it is the only supported method at the beginning.
 
 
@@ -130,6 +130,6 @@ If you or your company use grlx and you'd like to be added to this list, [Create
 Dependencies may carry their own license agreements.
 To see the licenses of dependencies, please view [DEPENDENCIES.md](https://github.com/gogrlx/grlx/blob/master/DEPENDENCIES.md).
 
-Unless otherwise noted, the grlx source files are distibuted under the 0BSD license found in the [LICENSE](https://github.com/gogrlx/grlx/blob/master/LICENSE) file.
+Unless otherwise noted, the grlx source files are distributed under the 0BSD license found in the [LICENSE](https://github.com/gogrlx/grlx/blob/master/LICENSE) file.
 
-All grlx logos are Copyright 2021 Tai Groot, and Licensed under CC BY 3.0.
+All grlx logos are Copyright 2021 Tai Groot and Licensed under CC BY 3.0.
