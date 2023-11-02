@@ -135,35 +135,29 @@ func LoadConfig(binary string) {
 			viper.SetDefault("FarmerBusInterface", viper.GetString("FarmerURL")+":"+viper.GetString("FarmerBusPort"))
 			CertHosts = viper.GetStringSlice("CertHosts")
 			AdminPubKeys := viper.GetStringMap("pubkeys")
-			envSet := os.Environ()
-			for _, v := range envSet {
-				pair := strings.SplitN(v, "=", 2)
-				if len(AdminPubKeys) == 0 {
-					if pair[0] == "ADMIN_PUBKEYS" {
-						keyList := pair[1]
-						pubkeys := strings.Split(keyList, ",")
-						adminSet := make(map[string][]string)
-						adminSet["admin"] = []string{}
-						for _, v := range pubkeys {
-							if v != "" {
-								adminSet["admin"] = append(adminSet["admin"], v)
-							}
+			if len(AdminPubKeys) == 0 {
+				if keyList, found := os.LookupEnv("ADMIN_PUBKEYS"); found {
+					pubkeys := strings.Split(keyList, ",")
+					adminSet := make(map[string][]string)
+					adminSet["admin"] = []string{}
+					for _, v := range pubkeys {
+						if v != "" {
+							adminSet["admin"] = append(adminSet["admin"], v)
 						}
-						viper.Set("pubkeys", adminSet)
 					}
+					viper.Set("pubkeys", adminSet)
 				}
-				if CertHosts == nil {
-					if pair[0] == "CERT_HOSTS" {
-						hostList := pair[1]
-						hosts := strings.Split(hostList, ",")
-						cleanHosts := []string{}
-						for _, v := range hosts {
-							if v != "" {
-								cleanHosts = append(cleanHosts, v)
-							}
+			}
+			if CertHosts == nil {
+				if hostList, found := os.LookupEnv("CERT_HOSTS"); found {
+					hosts := strings.Split(hostList, ",")
+					cleanHosts := []string{}
+					for _, v := range hosts {
+						if v != "" {
+							cleanHosts = append(cleanHosts, v)
 						}
-						viper.Set("CertHosts", cleanHosts)
 					}
+					viper.Set("CertHosts", cleanHosts)
 				}
 			}
 			viper.SetDefault("CertHosts", []string{"localhost", "127.0.0.1", "farmer", "grlx", viper.GetString("FarmerInterface")})
