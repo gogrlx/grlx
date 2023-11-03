@@ -140,7 +140,7 @@ func LoadConfig(binary string) {
 					jety.Set("pubkeys", adminSet)
 				}
 			}
-			if CertHosts == nil {
+			if len(CertHosts) == 0 {
 				if hostList, found := os.LookupEnv("CERT_HOSTS"); found {
 					hosts := strings.Split(hostList, ",")
 					cleanHosts := []string{}
@@ -162,6 +162,7 @@ func LoadConfig(binary string) {
 				chosts = append(chosts, k)
 			}
 			jety.SetDefault("CertHosts", chosts)
+			CertHosts = jety.GetStringSlice("CertHosts")
 
 		case "sprout":
 			jety.SetDefault("SproutID", "")
