@@ -4,7 +4,7 @@ import (
 	"errors"
 
 	"github.com/nats-io/nkeys"
-	"github.com/spf13/viper"
+	jety "github.com/taigrr/jety"
 )
 
 var (
@@ -41,7 +41,7 @@ func CreatePrivkey() error {
 }
 
 func getPrivateSeed() (string, error) {
-	seed := viper.GetString("privkey")
+	seed := jety.GetString("privkey")
 	if seed == "" {
 		return "", ErrNoPrivkey
 	}
@@ -88,7 +88,7 @@ func TokenHasAccess(token string, method string) bool {
 }
 
 func GetPubkeysByRole(role string) ([]string, error) {
-	authKeySet := viper.GetStringMap("pubkeys")
+	authKeySet := jety.GetStringMap("pubkeys")
 	if authKeySet == nil {
 		return []string{}, ErrNoPubkeys
 	}
@@ -135,7 +135,7 @@ func createPrivateSeed() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	viper.Set("privkey", string(seed))
-	viper.WriteConfig()
+	jety.Set("privkey", string(seed))
+	jety.WriteConfig()
 	return string(seed), nil
 }

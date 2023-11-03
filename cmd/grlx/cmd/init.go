@@ -10,9 +10,11 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/gogrlx/grlx/auth"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
+
+	jety "github.com/taigrr/jety"
+
+	"github.com/gogrlx/grlx/auth"
 )
 
 var (
@@ -44,18 +46,18 @@ var initCmd = &cobra.Command{
 			fAPIPort := mData.inputs[1].Value()
 			fBusPort := mData.inputs[2].Value()
 			if fInterface != "" {
-				viper.Set("FarmerInterface", fInterface)
+				jety.Set("FarmerInterface", fInterface)
 			}
 			if fAPIPort != "" {
-				viper.Set("FarmerAPIPort", fAPIPort)
+				jety.Set("FarmerAPIPort", fAPIPort)
 			}
 			if fBusPort != "" {
-				viper.Set("FarmerBusPort", fBusPort)
+				jety.Set("FarmerBusPort", fBusPort)
 			}
-			viper.WriteConfig()
+			jety.WriteConfig()
 			fmt.Printf("Public key: %s\n", pubKey)
 		} else {
-			fmt.Printf("Error: opening the configuration interface. Please manually edit %s\n", viper.ConfigFileUsed())
+			fmt.Printf("Error: opening the configuration interface. Please manually edit %s\n", jety.ConfigFileUsed())
 			fmt.Printf("Public key: %s\n", pubKey)
 			os.Exit(1)
 		}

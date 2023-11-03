@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -9,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/spf13/viper"
+	jety "github.com/taigrr/jety"
 
 	"github.com/gogrlx/grlx/types"
 )
@@ -47,34 +48,26 @@ var (
 	SproutRootCA         string
 )
 
-func SetConfigFile(path string) {
-	viper.SetConfigFile(path)
-}
-
 // TODO use enum for binary as elsewhere
 func LoadConfig(binary string) {
 	configLoaded.Do(func() {
-		viper.SetConfigType("yaml")
+		jety.SetConfigType("yaml")
 		switch binary {
 		case "grlx":
-			viper.SetConfigName("grlx")
 			dirname, err := os.UserHomeDir()
 			if err != nil {
 				log.Fatal(err)
 			}
 			cfgPath := filepath.Join(dirname, ".config/grlx/")
-			viper.AddConfigPath(cfgPath)
+			jety.SetConfigFile(filepath.Join(cfgPath, "grlx"))
 		case "farmer":
-			viper.SetConfigName("farmer")
-			viper.AddConfigPath("/etc/grlx/")
+			jety.SetConfigFile("/etc/grlx/farmer")
 		case "sprout":
-			viper.SetConfigName("sprout")
-			viper.AddConfigPath("/etc/grlx/")
+			jety.SetConfigFile("/etc/grlx/sprout")
 		}
-		viper.AutomaticEnv()
-		err := viper.ReadInConfig()
+		err := jety.ReadInConfig()
 
-		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+		if errors.Is(err, jety.ErrConfigFileNotFound) || errors.Is(err, jety.ErrConfigFileEmpty) {
 			log.Println("Config file not found, will create default config")
 			switch binary {
 			case "grlx":
@@ -108,9 +101,11 @@ func LoadConfig(binary string) {
 			log.Printf("%T\n", err)
 			panic(fmt.Errorf("fatal error config file: %w", err))
 		}
-		viper.Set("ConfigRoot", "/etc/grlx/")
-		viper.SetDefault("FarmerInterface", "localhost")
-		viper.SetDefault("FarmerAPIPort", "5405")
+		jety.SetDefault("ConfigRoot", "/etc/grlx/")
+		jety.SetDefault("FarmerInterface", "localhost")
+		jety.SetDefault("FarmerAPIPort", "5405")
+		jety.SetDefault("FarmerBusPort", "5406")
+		FarmerURL = "https://" + jety.GetString("FarmerInterface") + ":" + jety.GetString("FarmerAPIPort")
 		switch binary {
 		case "grlx":
 			dirname, err := os.UserHomeDir()
@@ -118,23 +113,20 @@ func LoadConfig(binary string) {
 				log.Fatal(err)
 			}
 			certPath := filepath.Join(dirname, ".config/grlx/tls-rootca.pem")
-			viper.Set("GrlxRootCA", certPath)
-			viper.SetDefault("FarmerBusPort", "5406")
-			viper.SetDefault("FarmerBusInterface", viper.GetString("FarmerInterface")+":"+viper.GetString("FarmerBusPort"))
+			jety.Set("GrlxRootCA", certPath)
 		case "farmer":
-			viper.SetDefault("CertificateValidTime", 365*24*time.Hour)
-			viper.Set("CertFile", "/etc/grlx/pki/farmer/tls-cert.pem")
-			viper.Set("FarmerPKI", "/etc/grlx/pki/farmer/")
-			viper.Set("KeyFile", "/etc/grlx/pki/farmer/tls-key.pem")
-			viper.Set("NKeyFarmerPubFile", "/etc/grlx/pki/farmer/farmer.nkey.pub")
-			viper.Set("NKeyFarmerPrivFile", "/etc/grlx/pki/farmer/farmer.nkey")
-			viper.Set("RootCA", "/etc/grlx/pki/farmer/tls-rootca.pem")
-			viper.Set("RootCAPriv", "/etc/grlx/pki/farmer/tls-rootca-key.pem")
-			viper.SetDefault("Organization", "GRLX Development")
-			viper.SetDefault("FarmerBusPort", "5406")
-			viper.SetDefault("FarmerBusInterface", viper.GetString("FarmerURL")+":"+viper.GetString("FarmerBusPort"))
-			CertHosts = viper.GetStringSlice("CertHosts")
-			AdminPubKeys := viper.GetStringMap("pubkeys")
+			jety.SetDefault("CertificateValidTime", 365*24*time.Hour)
+			jety.SetDefault("CertFile", "/etc/grlx/pki/farmer/tls-cert.pem")
+			jety.SetDefault("FarmerPKI", "/etc/grlx/pki/farmer/")
+			jety.SetDefault("KeyFile", "/etc/grlx/pki/farmer/tls-key.pem")
+			jety.SetDefault("NKeyFarmerPubFile", "/etc/grlx/pki/farmer/farmer.nkey.pub")
+			jety.SetDefault("NKeyFarmerPrivFile", "/etc/grlx/pki/farmer/farmer.nkey")
+			jety.SetDefault("RootCA", "/etc/grlx/pki/farmer/tls-rootca.pem")
+			jety.SetDefault("RootCAPriv", "/etc/grlx/pki/farmer/tls-rootca-key.pem")
+			jety.SetDefault("Organization", "GRLX Development")
+			jety.SetDefault("FarmerBusInterface", jety.GetString("FarmerInterface"))
+			CertHosts = jety.GetStringSlice("CertHosts")
+			AdminPubKeys := jety.GetStringMap("pubkeys")
 			if len(AdminPubKeys) == 0 {
 				if keyList, found := os.LookupEnv("ADMIN_PUBKEYS"); found {
 					pubkeys := strings.Split(keyList, ",")
@@ -145,7 +137,7 @@ func LoadConfig(binary string) {
 							adminSet["admin"] = append(adminSet["admin"], v)
 						}
 					}
-					viper.Set("pubkeys", adminSet)
+					jety.Set("pubkeys", adminSet)
 				}
 			}
 			if CertHosts == nil {
@@ -157,47 +149,55 @@ func LoadConfig(binary string) {
 							cleanHosts = append(cleanHosts, v)
 						}
 					}
-					viper.Set("CertHosts", cleanHosts)
+					jety.Set("CertHosts", cleanHosts)
 				}
 			}
-			viper.SetDefault("CertHosts", []string{"localhost", "127.0.0.1", "farmer", "grlx", viper.GetString("FarmerInterface")})
+			hosts := map[string]bool{"localhost": true, "127.0.0.1": true, "farmer": true, "grlx": true}
+			fi := jety.GetString("FarmerInterface")
+			if _, ok := hosts[fi]; fi != "" && !ok {
+				hosts[fi] = true
+			}
+			chosts := []string{}
+			for k := range hosts {
+				chosts = append(chosts, k)
+			}
+			jety.SetDefault("CertHosts", chosts)
 
 		case "sprout":
-			viper.SetDefault("SproutID", "")
-			viper.Set("SproutPKI", "/etc/grlx/pki/sprout/")
-			viper.Set("SproutRootCA", "/etc/grlx/pki/sprout/tls-rootca.pem")
-			viper.Set("NKeySproutPubFile", "/etc/grlx/pki/sprout/sprout.nkey.pub")
-			viper.Set("NKeySproutPrivFile", "/etc/grlx/pki/sprout/sprout.nkey")
-			viper.SetDefault("FarmerBusPort", "5406")
-			viper.SetDefault("FarmerBusInterface", viper.GetString("FarmerURL")+":"+viper.GetString("FarmerBusPort"))
-			viper.SetDefault("CacheDir", "/var/cache/grlx/sprout/files/provided")
+			jety.SetDefault("SproutID", "")
+			jety.SetDefault("SproutPKI", "/etc/grlx/pki/sprout/")
+			jety.SetDefault("SproutRootCA", "/etc/grlx/pki/sprout/tls-rootca.pem")
+			jety.SetDefault("NKeySproutPubFile", "/etc/grlx/pki/sprout/sprout.nkey.pub")
+			jety.SetDefault("NKeySproutPrivFile", "/etc/grlx/pki/sprout/sprout.nkey")
+			jety.SetDefault("FarmerBusInterface", jety.GetString("FarmerURL")+":"+jety.GetString("FarmerBusPort"))
+			jety.SetDefault("CacheDir", "/var/cache/grlx/sprout/files/provided")
 		}
-		viper.Set("FarmerURL", "https://"+viper.GetString("FarmerInterface")+":"+viper.GetString("FarmerAPIPort"))
-		viper.WriteConfig()
+		jety.WriteConfig()
 	})
 
-	CacheDir = viper.GetString("CacheDir")
-	CertFile = viper.GetString("CertFile")
-	CertificateValidTime = viper.GetDuration("CertificateValidTime")
-	ConfigRoot = viper.GetString("ConfigRoot")
-	FarmerAPIPort = viper.GetString("FarmerAPIPort")
-	FarmerBusInterface = viper.GetString("FarmerBusInterface")
-	FarmerBusPort = viper.GetString("FarmerBusPort")
-	FarmerInterface = viper.GetString("FarmerInterface")
-	FarmerPKI = viper.GetString("FarmerPKI")
-	FarmerURL = viper.GetString("FarmerURL")
-	GrlxRootCA = viper.GetString("GrlxRootCA")
-	KeyFile = viper.GetString("KeyFile")
-	NKeyFarmerPrivFile = viper.GetString("NKeyFarmerPrivFile")
-	NKeyFarmerPubFile = viper.GetString("NKeyFarmerPubFile")
-	NKeySproutPrivFile = viper.GetString("NKeySproutPrivFile")
-	NKeySproutPubFile = viper.GetString("NKeySproutPubFile")
-	Organization = viper.GetStringSlice("Organization")
-	RootCA = viper.GetString("RootCA")
-	RootCAPriv = viper.GetString("RootCAPriv")
-	SproutID = viper.GetString("SproutID")
-	SproutPKI = viper.GetString("SproutPKI")
-	SproutRootCA = viper.GetString("SproutRootCA")
+	CacheDir = jety.GetString("CacheDir")
+	CertFile = jety.GetString("CertFile")
+	CertHosts = jety.GetStringSlice("CertHosts")
+	CertificateValidTime = jety.GetDuration("CertificateValidTime")
+	ConfigRoot = jety.GetString("ConfigRoot")
+	FarmerAPIPort = jety.GetString("FarmerAPIPort")
+	FarmerBusInterface = jety.GetString("FarmerBusInterface")
+	FarmerBusPort = jety.GetString("FarmerBusPort")
+	FarmerInterface = jety.GetString("FarmerInterface")
+	FarmerPKI = jety.GetString("FarmerPKI")
+	FarmerURL = jety.GetString("FarmerURL")
+	GrlxRootCA = jety.GetString("GrlxRootCA")
+	KeyFile = jety.GetString("KeyFile")
+	NKeyFarmerPrivFile = jety.GetString("NKeyFarmerPrivFile")
+	NKeyFarmerPubFile = jety.GetString("NKeyFarmerPubFile")
+	NKeySproutPrivFile = jety.GetString("NKeySproutPrivFile")
+	NKeySproutPubFile = jety.GetString("NKeySproutPubFile")
+	Organization = jety.GetStringSlice("Organization")
+	RootCA = jety.GetString("RootCA")
+	RootCAPriv = jety.GetString("RootCAPriv")
+	SproutID = jety.GetString("SproutID")
+	SproutPKI = jety.GetString("SproutPKI")
+	SproutRootCA = jety.GetString("SproutRootCA")
 }
 
 // TODO actually validate the base path exists
@@ -206,10 +206,10 @@ func BasePathValid() bool {
 }
 
 func Init() string {
-	return viper.GetString("init")
+	return jety.GetString("init")
 }
 
 func SetSproutID(id string) {
-	viper.Set("SproutID", id)
-	viper.WriteConfig()
+	jety.Set("SproutID", id)
+	jety.WriteConfig()
 }

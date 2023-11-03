@@ -6,7 +6,6 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 
 	"github.com/gogrlx/grlx/api/client"
 	"github.com/gogrlx/grlx/cmd/grlx/util"
@@ -99,10 +98,5 @@ func init() {
 
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
-	if cfgFile != "" {
-		// Use config file from the flag.
-		config.SetConfigFile(cfgFile)
-	}
 	config.LoadConfig("grlx")
-	viper.AutomaticEnv() // read in environment variables that match
 }
