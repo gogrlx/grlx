@@ -46,13 +46,13 @@ var initCmd = &cobra.Command{
 			fAPIPort := mData.inputs[1].Value()
 			fBusPort := mData.inputs[2].Value()
 			if fInterface != "" {
-				jety.Set("FarmerInterface", fInterface)
+				jety.Set("farmerinterface", fInterface)
 			}
 			if fAPIPort != "" {
-				jety.Set("FarmerAPIPort", fAPIPort)
+				jety.Set("farmerapiport", fAPIPort)
 			}
 			if fBusPort != "" {
-				jety.Set("FarmerBusPort", fBusPort)
+				jety.Set("farmerbusport", fBusPort)
 			}
 			jety.WriteConfig()
 			fmt.Printf("Public key: %s\n", pubKey)

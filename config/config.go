@@ -101,10 +101,10 @@ func LoadConfig(binary string) {
 			log.Printf("%T\n", err)
 			panic(fmt.Errorf("fatal error config file: %w", err))
 		}
-		jety.SetDefault("ConfigRoot", "/etc/grlx/")
-		jety.SetDefault("FarmerInterface", "localhost")
-		jety.SetDefault("FarmerAPIPort", "5405")
-		jety.SetDefault("FarmerBusPort", "5406")
+		jety.SetDefault("configroot", "/etc/grlx/")
+		jety.SetDefault("farmerinterface", "localhost")
+		jety.SetDefault("farmerapiport", "5405")
+		jety.SetDefault("farmerbusport", "5406")
 		switch binary {
 		case "grlx":
 			dirname, err := os.UserHomeDir()
@@ -112,19 +112,19 @@ func LoadConfig(binary string) {
 				log.Fatal(err)
 			}
 			certPath := filepath.Join(dirname, ".config/grlx/tls-rootca.pem")
-			jety.Set("GrlxRootCA", certPath)
+			jety.Set("grlxrootca", certPath)
 		case "farmer":
-			jety.SetDefault("CertificateValidTime", 365*24*time.Hour)
-			jety.SetDefault("CertFile", "/etc/grlx/pki/farmer/tls-cert.pem")
-			jety.SetDefault("FarmerPKI", "/etc/grlx/pki/farmer/")
-			jety.SetDefault("KeyFile", "/etc/grlx/pki/farmer/tls-key.pem")
-			jety.SetDefault("NKeyFarmerPubFile", "/etc/grlx/pki/farmer/farmer.nkey.pub")
-			jety.SetDefault("NKeyFarmerPrivFile", "/etc/grlx/pki/farmer/farmer.nkey")
-			jety.SetDefault("RootCA", "/etc/grlx/pki/farmer/tls-rootca.pem")
-			jety.SetDefault("RootCAPriv", "/etc/grlx/pki/farmer/tls-rootca-key.pem")
-			jety.SetDefault("Organization", "GRLX Development")
-			jety.SetDefault("FarmerBusInterface", jety.GetString("FarmerInterface"))
-			CertHosts = jety.GetStringSlice("CertHosts")
+			jety.SetDefault("certificatevalidtime", 365*24*time.Hour)
+			jety.SetDefault("certfile", "/etc/grlx/pki/farmer/tls-cert.pem")
+			jety.SetDefault("farmerpki", "/etc/grlx/pki/farmer/")
+			jety.SetDefault("keyfile", "/etc/grlx/pki/farmer/tls-key.pem")
+			jety.SetDefault("nkeyfarmerpubfile", "/etc/grlx/pki/farmer/farmer.nkey.pub")
+			jety.SetDefault("nkeyfarmerprivfile", "/etc/grlx/pki/farmer/farmer.nkey")
+			jety.SetDefault("rootca", "/etc/grlx/pki/farmer/tls-rootca.pem")
+			jety.SetDefault("rootcapriv", "/etc/grlx/pki/farmer/tls-rootca-key.pem")
+			jety.SetDefault("organization", "GRLX Development")
+			jety.SetDefault("farmerbusinterface", jety.GetString("farmerinterface"))
+			CertHosts = jety.GetStringSlice("certhosts")
 			AdminPubKeys := jety.GetStringMap("pubkeys")
 			if len(AdminPubKeys) == 0 {
 				if keyList, found := os.LookupEnv("ADMIN_PUBKEYS"); found {
@@ -165,7 +165,7 @@ func LoadConfig(binary string) {
 
 			}
 			hosts := map[string]bool{"localhost": true, "127.0.0.1": true, "farmer": true, "grlx": true}
-			fi := jety.GetString("FarmerInterface")
+			fi := jety.GetString("farmerinterface")
 			if _, ok := hosts[fi]; fi != "" && !ok {
 				hosts[fi] = true
 			}
@@ -173,44 +173,44 @@ func LoadConfig(binary string) {
 			for k := range hosts {
 				chosts = append(chosts, k)
 			}
-			jety.SetDefault("CertHosts", chosts)
-			CertHosts = jety.GetStringSlice("CertHosts")
+			jety.SetDefault("certhosts", chosts)
+			CertHosts = jety.GetStringSlice("certhosts")
 
 		case "sprout":
-			jety.SetDefault("SproutID", "")
-			jety.SetDefault("SproutPKI", "/etc/grlx/pki/sprout/")
-			jety.SetDefault("SproutRootCA", "/etc/grlx/pki/sprout/tls-rootca.pem")
-			jety.SetDefault("NKeySproutPubFile", "/etc/grlx/pki/sprout/sprout.nkey.pub")
-			jety.SetDefault("NKeySproutPrivFile", "/etc/grlx/pki/sprout/sprout.nkey")
-			jety.SetDefault("FarmerBusInterface", FarmerInterface+":"+jety.GetString("FarmerBusPort"))
-			jety.SetDefault("CacheDir", "/var/cache/grlx/sprout/files/provided")
+			jety.SetDefault("sproutid", "")
+			jety.SetDefault("sproutpki", "/etc/grlx/pki/sprout/")
+			jety.SetDefault("sproutrootca", "/etc/grlx/pki/sprout/tls-rootca.pem")
+			jety.SetDefault("nkeysproutpubfile", "/etc/grlx/pki/sprout/sprout.nkey.pub")
+			jety.SetDefault("nkeysproutprivfile", "/etc/grlx/pki/sprout/sprout.nkey")
+			jety.SetDefault("farmerbusinterface", FarmerInterface+":"+jety.GetString("FarmerBusPort"))
+			jety.SetDefault("cachedir", "/var/cache/grlx/sprout/files/provided")
 		}
 		jety.WriteConfig()
 	})
 
-	CacheDir = jety.GetString("CacheDir")
-	CertFile = jety.GetString("CertFile")
-	CertHosts = jety.GetStringSlice("CertHosts")
-	CertificateValidTime = jety.GetDuration("CertificateValidTime")
-	ConfigRoot = jety.GetString("ConfigRoot")
-	FarmerAPIPort = jety.GetString("FarmerAPIPort")
-	FarmerBusInterface = jety.GetString("FarmerBusInterface")
-	FarmerBusPort = jety.GetString("FarmerBusPort")
-	FarmerInterface = jety.GetString("FarmerInterface")
-	FarmerPKI = jety.GetString("FarmerPKI")
-	FarmerURL = "https://" + jety.GetString("FarmerInterface") + ":" + jety.GetString("FarmerAPIPort")
-	GrlxRootCA = jety.GetString("GrlxRootCA")
-	KeyFile = jety.GetString("KeyFile")
-	NKeyFarmerPrivFile = jety.GetString("NKeyFarmerPrivFile")
-	NKeyFarmerPubFile = jety.GetString("NKeyFarmerPubFile")
-	NKeySproutPrivFile = jety.GetString("NKeySproutPrivFile")
-	NKeySproutPubFile = jety.GetString("NKeySproutPubFile")
-	Organization = jety.GetStringSlice("Organization")
-	RootCA = jety.GetString("RootCA")
-	RootCAPriv = jety.GetString("RootCAPriv")
-	SproutID = jety.GetString("SproutID")
-	SproutPKI = jety.GetString("SproutPKI")
-	SproutRootCA = jety.GetString("SproutRootCA")
+	CacheDir = jety.GetString("cachedir")
+	CertFile = jety.GetString("certfile")
+	CertHosts = jety.GetStringSlice("certhosts")
+	CertificateValidTime = jety.GetDuration("certificatevalidtime")
+	ConfigRoot = jety.GetString("configroot")
+	FarmerAPIPort = jety.GetString("farmerapiport")
+	FarmerBusInterface = jety.GetString("farmerbusinterface")
+	FarmerBusPort = jety.GetString("farmerbusport")
+	FarmerInterface = jety.GetString("farmerinterface")
+	FarmerPKI = jety.GetString("farmerpki")
+	FarmerURL = "https://" + jety.GetString("farmerinterface") + ":" + jety.GetString("farmerapiport")
+	GrlxRootCA = jety.GetString("grlxrootca")
+	KeyFile = jety.GetString("keyfile")
+	NKeyFarmerPrivFile = jety.GetString("nkeyfarmerprivfile")
+	NKeyFarmerPubFile = jety.GetString("nkeyfarmerpubfile")
+	NKeySproutPrivFile = jety.GetString("nkeysproutprivfile")
+	NKeySproutPubFile = jety.GetString("nkeysproutpubfile")
+	Organization = jety.GetStringSlice("organization")
+	RootCA = jety.GetString("rootca")
+	RootCAPriv = jety.GetString("rootcapriv")
+	SproutID = jety.GetString("sproutid")
+	SproutPKI = jety.GetString("sproutpki")
+	SproutRootCA = jety.GetString("sproutrootca")
 }
 
 // TODO actually validate the base path exists
@@ -223,6 +223,6 @@ func Init() string {
 }
 
 func SetSproutID(id string) {
-	jety.Set("SproutID", id)
+	jety.Set("sproutid", id)
 	jety.WriteConfig()
 }
