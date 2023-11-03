@@ -105,7 +105,6 @@ func LoadConfig(binary string) {
 		jety.SetDefault("FarmerInterface", "localhost")
 		jety.SetDefault("FarmerAPIPort", "5405")
 		jety.SetDefault("FarmerBusPort", "5406")
-		FarmerURL = "https://" + jety.GetString("FarmerInterface") + ":" + jety.GetString("FarmerAPIPort")
 		switch binary {
 		case "grlx":
 			dirname, err := os.UserHomeDir()
@@ -140,6 +139,7 @@ func LoadConfig(binary string) {
 					jety.Set("pubkeys", adminSet)
 				}
 			}
+			AdminPubKeys = jety.GetStringMap("pubkeys")
 			if len(CertHosts) == 0 {
 				if hostList, found := os.LookupEnv("CERT_HOSTS"); found {
 					hosts := strings.Split(hostList, ",")
@@ -151,6 +151,18 @@ func LoadConfig(binary string) {
 					}
 					jety.Set("CertHosts", cleanHosts)
 				}
+			}
+			if AdminPubKeys["admin"] != nil {
+				anyKeys, ok := AdminPubKeys["admin"].([]any)
+				if !ok {
+					log.Fatal("pubkeys > admin is not a slice")
+				}
+				for _, v := range anyKeys {
+					if v, ok := v.(string); ok {
+						AdminPubkeys = append(AdminPubkeys, v)
+					}
+				}
+
 			}
 			hosts := map[string]bool{"localhost": true, "127.0.0.1": true, "farmer": true, "grlx": true}
 			fi := jety.GetString("FarmerInterface")
@@ -186,6 +198,7 @@ func LoadConfig(binary string) {
 	FarmerBusPort = jety.GetString("FarmerBusPort")
 	FarmerInterface = jety.GetString("FarmerInterface")
 	FarmerPKI = jety.GetString("FarmerPKI")
+	FarmerURL = "https://" + jety.GetString("FarmerInterface") + ":" + jety.GetString("FarmerAPIPort")
 	GrlxRootCA = jety.GetString("GrlxRootCA")
 	KeyFile = jety.GetString("KeyFile")
 	NKeyFarmerPrivFile = jety.GetString("NKeyFarmerPrivFile")

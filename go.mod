@@ -16,7 +16,7 @@ require (
 	github.com/nats-io/nats.go v1.31.0
 	github.com/nats-io/nkeys v0.4.6
 	github.com/spf13/cobra v1.7.0
-	github.com/taigrr/jety v0.0.9
+	github.com/taigrr/jety v0.0.10
 	github.com/taigrr/log-socket v1.0.2
 	github.com/taigrr/systemctl v1.0.6
 	gopkg.in/yaml.v3 v3.0.1

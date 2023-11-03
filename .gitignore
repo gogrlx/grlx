@@ -5,3 +5,4 @@ etc
 .env
 *.zip
 coverage.out
+local/

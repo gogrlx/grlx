@@ -88,8 +88,12 @@ func TokenHasAccess(token string, method string) bool {
 }
 
 func GetPubkeysByRole(role string) ([]string, error) {
+	err := jety.ReadInConfig()
+	if err != nil {
+		return []string{}, err
+	}
 	authKeySet := jety.GetStringMap("pubkeys")
-	if authKeySet == nil {
+	if len(authKeySet) == 0 {
 		return []string{}, ErrNoPubkeys
 	}
 	i, ok := authKeySet[role]
