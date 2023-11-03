@@ -169,7 +169,7 @@ func LoadConfig(binary string) {
 			jety.SetDefault("SproutRootCA", "/etc/grlx/pki/sprout/tls-rootca.pem")
 			jety.SetDefault("NKeySproutPubFile", "/etc/grlx/pki/sprout/sprout.nkey.pub")
 			jety.SetDefault("NKeySproutPrivFile", "/etc/grlx/pki/sprout/sprout.nkey")
-			jety.SetDefault("FarmerBusInterface", jety.GetString("FarmerURL")+":"+jety.GetString("FarmerBusPort"))
+			jety.SetDefault("FarmerBusInterface", FarmerInterface+":"+jety.GetString("FarmerBusPort"))
 			jety.SetDefault("CacheDir", "/var/cache/grlx/sprout/files/provided")
 		}
 		jety.WriteConfig()
@@ -185,7 +185,6 @@ func LoadConfig(binary string) {
 	FarmerBusPort = jety.GetString("FarmerBusPort")
 	FarmerInterface = jety.GetString("FarmerInterface")
 	FarmerPKI = jety.GetString("FarmerPKI")
-	FarmerURL = jety.GetString("FarmerURL")
 	GrlxRootCA = jety.GetString("GrlxRootCA")
 	KeyFile = jety.GetString("KeyFile")
 	NKeyFarmerPrivFile = jety.GetString("NKeyFarmerPrivFile")
