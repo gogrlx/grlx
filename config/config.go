@@ -149,7 +149,7 @@ func LoadConfig(binary string) {
 							cleanHosts = append(cleanHosts, v)
 						}
 					}
-					jety.Set("CertHosts", cleanHosts)
+					jety.Set("certhosts", cleanHosts)
 				}
 			}
 			if AdminPubKeys["admin"] != nil {
