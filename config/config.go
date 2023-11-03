@@ -106,6 +106,7 @@ func LoadConfig(binary string) {
 		jety.SetDefault("FarmerAPIPort", "5405")
 		jety.SetDefault("FarmerBusPort", "5406")
 		FarmerURL = "https://" + jety.GetString("FarmerInterface") + ":" + jety.GetString("FarmerAPIPort")
+		jety.Set("FarmerURL", FarmerURL)
 		switch binary {
 		case "grlx":
 			dirname, err := os.UserHomeDir()
