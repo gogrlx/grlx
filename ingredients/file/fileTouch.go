@@ -9,12 +9,12 @@ import (
 	"time"
 
 	"github.com/djherbis/atime"
+
 	"github.com/gogrlx/grlx/types"
 )
 
 func (f File) touch(ctx context.Context, test bool) (types.Result, error) {
 	// TODO
-	return f.undef()
 	name, ok := f.params["name"].(string)
 	if !ok {
 		return types.Result{
@@ -120,6 +120,7 @@ func (f File) touch(ctx context.Context, test bool) (types.Result, error) {
 			}, errCreate
 		}
 		f.Close()
+		stt, _ = os.Stat(name)
 	}
 	omt := stt.ModTime()
 	oat, err := atime.Stat(name)

@@ -255,8 +255,7 @@ func relativeRecipeToAbsolute(basepath, relatedRecipePath string, recipeID types
 }
 
 func getBasePath() string {
-	// TODO Get basepath from environment
-	return "/home/tai/code/foss/grlx/testing/recipes"
+	return config.RecipeDir
 }
 
 func extractIncludes(sproutID, basepath, recipePath string, file []byte) ([]types.RecipeName, error) {

@@ -46,6 +46,8 @@ var (
 	SproutID             string
 	SproutPKI            string
 	SproutRootCA         string
+	// TODO the final path arg should be dynamic to allow for dev/prod/etc
+	RecipeDir = filepath.Join("/", "srv", "grlx", "recipes", "prod")
 )
 
 // TODO use enum for binary as elsewhere
