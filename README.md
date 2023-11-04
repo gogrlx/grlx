@@ -43,7 +43,7 @@ Make sure the certificate host name matches the external-facing interface (a dom
 # or, just run as root instead of sudo
 # FARMER_BUS_PORT and FARMER_API_PORT variables are available in case you chose
 # to use different ports.
-curl -L https://bootstrap.grlx.dev/latest/sprout | FARMER_INTERFACE=localhost sudo -E bash
+curl -L https://bootstrap.grlx.dev/latest/sprout | FARMERINTERFACE=localhost sudo -E bash
 ```
 Once the sprout is up and running, return to the CLI.
 
