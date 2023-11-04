@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/gogrlx/grlx/types"
-	"github.com/taigrr/log-socket/log"
 )
 
 var (
@@ -24,6 +24,15 @@ type MethodProps struct {
 	Type  string
 	IsReq bool
 }
+
+type JobRecord struct {
+	JID        types.JobID
+	SproutID   string
+	Timestamp  time.Time
+	Executor   types.Executor
+	Conpletion types.Completion
+}
+type RecordKeeper interface{}
 
 type MethodPropsSet []MethodProps
 
@@ -92,7 +101,7 @@ var (
 )
 
 func NewRecipeCooker(id types.StepID, ingredient types.Ingredient, method string, params map[string]interface{}) (types.RecipeCooker, error) {
-	log.Tracef("cooking %s %s %s\n", id, ingredient, method)
+	fmt.Printf("cooking %s %s %s\n", id, ingredient, method)
 	ingTex.Lock()
 	defer ingTex.Unlock()
 	fmt.Printf("%v\n", ingMap)

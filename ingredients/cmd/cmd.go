@@ -7,15 +7,11 @@ import (
 
 	nats "github.com/nats-io/nats.go"
 
-	"github.com/gogrlx/grlx/config"
 	"github.com/gogrlx/grlx/ingredients"
 	"github.com/gogrlx/grlx/types"
 )
 
-var (
-	ec              *nats.EncodedConn
-	FarmerInterface string
-)
+var ec *nats.EncodedConn
 
 func init() {
 	baseCMD := Cmd{}
@@ -31,10 +27,6 @@ type Cmd struct {
 
 func RegisterEC(n *nats.EncodedConn) {
 	ec = n
-}
-
-func init() {
-	FarmerInterface = config.FarmerInterface
 }
 
 func New(id, method string, params map[string]interface{}) Cmd {

@@ -36,7 +36,7 @@ type StepCompletion struct {
 }
 
 func CookRecipeEnvelope(envelope types.RecipeEnvelope) error {
-	log.Debugf("received new envelope: %v", envelope)
+	log.Tracef("received new envelope: %v", envelope)
 	completionMap := map[types.StepID]StepCompletion{}
 	for _, step := range envelope.Steps {
 		completionMap[step.ID] = StepCompletion{
