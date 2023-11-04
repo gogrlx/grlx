@@ -40,7 +40,7 @@ var (
 	NKeyFarmerPubFile    string
 	NKeySproutPrivFile   string
 	NKeySproutPubFile    string
-	Organization         []string
+	FarmerOrganization   string
 	RootCA               string
 	RootCAPriv           string
 	SproutID             string
@@ -122,7 +122,7 @@ func LoadConfig(binary string) {
 			jety.SetDefault("nkeyfarmerprivfile", "/etc/grlx/pki/farmer/farmer.nkey")
 			jety.SetDefault("rootca", "/etc/grlx/pki/farmer/tls-rootca.pem")
 			jety.SetDefault("rootcapriv", "/etc/grlx/pki/farmer/tls-rootca-key.pem")
-			jety.SetDefault("organization", "GRLX Development")
+			jety.SetDefault("organization", "grlx farmer")
 			jety.SetDefault("farmerbusinterface", jety.GetString("farmerinterface"))
 			CertHosts = jety.GetStringSlice("certhosts")
 			AdminPubKeys := jety.GetStringMap("pubkeys")
@@ -205,7 +205,7 @@ func LoadConfig(binary string) {
 	NKeyFarmerPubFile = jety.GetString("nkeyfarmerpubfile")
 	NKeySproutPrivFile = jety.GetString("nkeysproutprivfile")
 	NKeySproutPubFile = jety.GetString("nkeysproutpubfile")
-	Organization = jety.GetStringSlice("organization")
+	FarmerOrganization = jety.GetString("farmerorganization")
 	RootCA = jety.GetString("rootca")
 	RootCAPriv = jety.GetString("rootcapriv")
 	SproutID = jety.GetString("sproutid")

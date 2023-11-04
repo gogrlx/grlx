@@ -52,7 +52,7 @@ func genCACert() {
 	caCert := x509.Certificate{
 		SerialNumber: serialNumber,
 		Subject: pkix.Name{
-			Organization: config.Organization,
+			Organization: []string{config.FarmerOrganization},
 		},
 		NotBefore:             notBefore,
 		NotAfter:              notBefore.Add(config.CertificateValidTime),
@@ -175,7 +175,7 @@ func GenCert() {
 	template := x509.Certificate{
 		SerialNumber: serialNumber,
 		Subject: pkix.Name{
-			Organization: config.Organization,
+			Organization: []string{config.FarmerOrganization},
 		},
 		NotBefore:             notBefore,
 		NotAfter:              notBefore.Add(config.CertificateValidTime),
