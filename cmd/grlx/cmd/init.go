@@ -31,7 +31,7 @@ var (
 
 var initCmd = &cobra.Command{
 	Use:   "init",
-	Short: "get started with a new grlx installation",
+	Short: "Get started with a new grlx installation",
 	Run: func(cmd *cobra.Command, _ []string) {
 		auth.CreatePrivkey()
 		pubKey, err := auth.GetPubkey()

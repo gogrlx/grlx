@@ -14,7 +14,7 @@ import (
 // testCmd represents the test command
 var versionCmd = &cobra.Command{
 	Use:   "version",
-	Short: "check the cli and server versions",
+	Short: "Check the cli and farmer versions",
 	Run: func(cmd *cobra.Command, _ []string) {
 		grlxVersion := BuildInfo
 		serverVersion, err := client.GetVersion()
