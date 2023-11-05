@@ -90,6 +90,7 @@ type (
 		PropertiesForMethod(method string) (map[string]string, error)
 	}
 	Job struct {
+		JID     string   `json:"jid"`
 		ID      string   `json:"id"`
 		Results []Result `json:"results"`
 		Sprout  string   `json:"sprout"`
