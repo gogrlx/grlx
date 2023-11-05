@@ -82,7 +82,6 @@ var cmdCook = &cobra.Command{
 
 			switch outputMode {
 			case "json":
-				// TODO
 			case "":
 				fallthrough
 			case "text":
@@ -146,6 +145,42 @@ var cmdCook = &cobra.Command{
 				color.Red("Cooking timed out after 30 seconds.")
 				finished <- struct{}{}
 				break waitLoop
+			}
+		}
+		switch outputMode {
+		case "json":
+			wrapper := map[string]interface{}{}
+			wrapper["jid"] = jid
+			wrapper["sprouts"] = completionSteps
+			jsonBytes, err := json.Marshal(wrapper)
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Println(string(jsonBytes))
+		case "":
+			fallthrough
+		case "text":
+			for k, v := range completionSteps {
+				successes := -2 // -2 because we don't count the start and completed steps
+				failures := 0
+				errors := []string{}
+				for _, step := range v {
+					if step.CompletionStatus == types.StepCompleted {
+						successes++
+					} else if step.CompletionStatus == types.StepFailed {
+						failures++
+					}
+					if step.Error != nil {
+						errors = append(errors, step.Error.Error())
+					}
+				}
+				fmt.Printf("Summary for %s, JID %s:\n", k, jid)
+				fmt.Printf("\tSuccesses:\t%d\n", successes)
+				fmt.Printf("\tFailures:\t%d\n", failures)
+				fmt.Printf("\tErrors:\t\t%d\n", len(errors))
+				for _, err := range errors {
+					fmt.Printf("\t\t%s\n", err)
+				}
 			}
 		}
 	},
