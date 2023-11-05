@@ -134,11 +134,19 @@ func CookRecipeEnvelope(envelope types.RecipeEnvelope) error {
 			}
 			if noneInProgress {
 				// no steps are in progress, so we're done
-				log.Print("No steps are in progress")
+				log.Debug("No steps are in progress")
 			}
 		// All steps are done, so context will be cancelled and we'll exit
 		case <-ctx.Done():
-			log.Print("All steps completed")
+			ec.Publish("grlx.cook."+pki.GetSproutID()+"."+envelope.JobID,
+				types.StepCompletion{
+					ID:               types.StepID(fmt.Sprintf("completed-%s", envelope.JobID)),
+					CompletionStatus: types.StepCompleted,
+					ChangesMade:      false,
+					Changes:          nil,
+				},
+			)
+			log.Info("All steps completed")
 			return nil
 			// TODO add a timeout case
 		}
