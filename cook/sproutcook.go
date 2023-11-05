@@ -41,6 +41,8 @@ func CookRecipeEnvelope(envelope types.RecipeEnvelope) error {
 	completionChan <- types.StepCompletion{
 		ID:               types.StepID(fmt.Sprintf("start-%s", envelope.JobID)),
 		CompletionStatus: types.StepCompleted,
+		ChangesMade:      false,
+		Changes:          nil,
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	// spawn a goroutine to wait for all steps to complete and then cancel the context
