@@ -39,7 +39,7 @@ func CookRecipeEnvelope(envelope types.RecipeEnvelope) error {
 	wg.Add(len(envelope.Steps) + 1)
 	completionChan := make(chan types.StepCompletion, 1)
 	completionChan <- types.StepCompletion{
-		ID:               types.StepID("start"),
+		ID:               types.StepID(fmt.Sprintf("start-%s", envelope.JobID)),
 		CompletionStatus: types.StepCompleted,
 	}
 	ctx, cancel := context.WithCancel(context.Background())

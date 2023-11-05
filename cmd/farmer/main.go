@@ -11,6 +11,7 @@ import (
 	log "github.com/taigrr/log-socket/log"
 
 	"github.com/gogrlx/grlx/api"
+	"github.com/gogrlx/grlx/api/handlers"
 	"github.com/gogrlx/grlx/certs"
 	"github.com/gogrlx/grlx/config"
 	"github.com/gogrlx/grlx/cook"
@@ -208,6 +209,7 @@ func ConnectFarmer() {
 	cmd.RegisterEC(ec)
 	cook.RegisterEC(ec)
 	jobs.RegisterEC(ec)
+	handlers.RegisterEC(ec)
 	defer ec.Close()
 	select {}
 }

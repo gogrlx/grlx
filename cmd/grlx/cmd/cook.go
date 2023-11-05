@@ -43,7 +43,7 @@ var cmdCook = &cobra.Command{
 			case types.ErrSproutIDNotFound:
 				log.Fatalf("A targeted Sprout does not exist or is not accepted.")
 			default:
-				log.Panic(err)
+				log.Fatal(err)
 			}
 		}
 		// topic: grlx.cook."+envelope.JobID+"."+pki.GetSproutID()
@@ -57,7 +57,7 @@ var cmdCook = &cobra.Command{
 			log.Fatal(err)
 		}
 		complete := make(chan struct{})
-		topic := "grlx.cook.*." + jid
+		topic := fmt.Sprintf("grlx.cook.*.%s", jid)
 		sub, err := ec.Subscribe(topic, func(msg *nats.Msg) {
 			printTex.Lock()
 			defer printTex.Unlock()
@@ -70,6 +70,7 @@ var cmdCook = &cobra.Command{
 			log.Printf("Error subscribing to %s: %v\n", topic, err)
 			log.Fatal(err)
 		}
+		ec.Publish(fmt.Sprintf("grlx.farmer.cook.trigger.%s", jid), types.TriggerMsg{JID: jid})
 		defer sub.Unsubscribe()
 		defer nc.Flush()
 		<-complete

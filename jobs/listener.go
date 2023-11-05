@@ -54,11 +54,6 @@ func logJobCreation(msg *nats.Msg) {
 }
 
 func logJobs(msg *nats.Msg) {
-	// Create the jobs directory if it does not exist
-	if _, err := os.Stat("jobs"); os.IsNotExist(err) {
-		os.Mkdir("jobs", 0o755)
-	}
-
 	// Subscribe to the jobs topic
 
 	// Get the job data
@@ -70,7 +65,7 @@ func logJobs(msg *nats.Msg) {
 	}
 	f := &os.File{}
 	// Create the job file
-	jobFile := filepath.Join("jobs", fmt.Sprintf("%s.jsonl", job.ID))
+	jobFile := filepath.Join(config.JobLogDir, fmt.Sprintf("%s.jsonl", job.ID))
 	st, err := os.Stat(jobFile)
 	if errors.Is(err, os.ErrNotExist) {
 		// File does not exist, create it

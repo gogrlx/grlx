@@ -3,13 +3,17 @@ package handlers
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/gogrlx/grlx/cook"
 	"github.com/gogrlx/grlx/pki"
 	"github.com/gogrlx/grlx/types"
+	nats "github.com/nats-io/nats.go"
 	log "github.com/taigrr/log-socket/log"
 )
 
@@ -51,34 +55,46 @@ func Cook(w http.ResponseWriter, r *http.Request) {
 	}
 
 	jid := cook.GenerateJobID()
-
-	var wg sync.WaitGroup
-	var m sync.Mutex
-	errs := make(map[string]error)
-	wg.Add(len(targetAction.Target))
-
-	for _, target := range targetAction.Target {
-		go func(target types.KeyManager) {
-			defer wg.Done()
-			err := cook.SendCookEvent(target.SproutID, command.Recipe, jid)
-			if err != nil {
-				m.Lock()
-				errs[target.SproutID] = err
-				m.Unlock()
-			}
-		}(target)
+	sub, err := ec.Conn.SubscribeSync(fmt.Sprintf("grlx.farmer.cook.trigger.%s", jid))
+	if err != nil {
+		log.Errorf("error subscribing to NATS: %v", err)
+		return
 	}
-	wg.Wait()
-	for sproutID, err := range errs {
-		log.Errorf("an error occurred while cooking recipe for %s: %v", sproutID, err)
-	}
+	go func(jid string, sub *nats.Subscription) {
+		defer sub.Unsubscribe()
+		msg, err := sub.NextMsg(time.Second * 15)
+		if errors.Is(err, nats.ErrTimeout) {
+			log.Errorf("timeout waiting for message from NATS on JID `%s`, job execution cancelled", jid)
+			return
+		} else if err != nil {
+			log.Errorf("error receiving message from NATS: %v", err)
+			return
+		}
+		msg.Ack()
+		var wg sync.WaitGroup
+		var m sync.Mutex
+		errs := make(map[string]error)
+		wg.Add(len(targetAction.Target))
+
+		for _, target := range targetAction.Target {
+			go func(target types.KeyManager) {
+				defer wg.Done()
+				err := cook.SendCookEvent(target.SproutID, command.Recipe, jid)
+				if err != nil {
+					m.Lock()
+					errs[target.SproutID] = err
+					m.Unlock()
+				}
+			}(target)
+		}
+		wg.Wait()
+		for sproutID, err := range errs {
+			log.Errorf("an error occurred while cooking recipe for %s: %v", sproutID, err)
+		}
+	}(jid, sub)
+
 	command.JID = jid
-	command.Errors = errs
-	if len(errs) > 0 {
-		w.WriteHeader(http.StatusInternalServerError)
-	} else {
-		w.WriteHeader(http.StatusOK)
-	}
+	w.WriteHeader(http.StatusOK)
 	jr, _ := json.Marshal(command)
 	w.Write(jr)
 }
