@@ -7,8 +7,6 @@ import (
 	"strings"
 	"sync"
 
-	//. "github.com/gogrlx/grlx/config"
-
 	"github.com/gogrlx/grlx/cook"
 	"github.com/gogrlx/grlx/pki"
 	"github.com/gogrlx/grlx/types"

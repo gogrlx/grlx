@@ -7,6 +7,7 @@ import (
 
 	log "github.com/taigrr/log-socket/log"
 
+	"github.com/gogrlx/grlx/config"
 	"github.com/gogrlx/grlx/cook"
 	"github.com/gogrlx/grlx/ingredients/cmd"
 	"github.com/gogrlx/grlx/ingredients/test"
@@ -17,7 +18,7 @@ import (
 )
 
 func init() {
-	log.SetLogLevel(log.LTrace)
+	log.SetLogLevel(config.LogLevel)
 	createConfigRoot()
 	pki.SetupPKISprout()
 }

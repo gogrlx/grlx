@@ -14,7 +14,7 @@ import (
 // testCmd represents the test command
 var authCmd = &cobra.Command{
 	Use:   "auth",
-	Short: "commands for authentication information",
+	Short: "Commands for authentication information",
 	Run: func(cmd *cobra.Command, _ []string) {
 		cmd.Help()
 	},

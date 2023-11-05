@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"fmt"
 	"os"
 	"time"
 
@@ -51,13 +52,6 @@ func main() {
 	}
 	go ConnectSprout()
 	select {}
-
-	// Generate nkey and save or read existing
-	// Post user struct to mux
-	// Attempt nats auth
-	// Auth nats bus
-	// Cli accept key, add to config file
-	// Update auth users via api
 }
 
 func createConfigRoot() {
@@ -102,7 +96,7 @@ func ConnectSprout() {
 		RootCAs:    certPool,
 		MinVersion: tls.VersionTLS12,
 	}
-	nc, err := nats.Connect("tls://"+FarmerInterface+":"+FarmerBusPort, nats.Secure(config), opt,
+	nc, err := nats.Connect(fmt.Sprintf("tls://%s:%s", FarmerInterface, FarmerBusPort), nats.Secure(config), opt,
 		nats.MaxReconnects(-1),
 		nats.ReconnectWait(time.Second*15),
 		nats.DisconnectHandler(func(_ *nats.Conn) {
@@ -112,7 +106,7 @@ func ConnectSprout() {
 	)
 	for err != nil {
 		time.Sleep(time.Second * 15)
-		nc, err = nats.Connect("tls://"+FarmerInterface+":"+FarmerBusPort, nats.Secure(config), opt,
+		nc, err = nats.Connect(fmt.Sprintf("tls://%s:%s", FarmerInterface, FarmerBusPort), nats.Secure(config), opt,
 			nats.MaxReconnects(-1),
 			nats.ReconnectWait(time.Second*15),
 			// TODO: Add a reconnect handler

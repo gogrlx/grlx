@@ -1,33 +1,22 @@
-package ingredients
+package jobs
 
 import (
 	"errors"
 	"fmt"
 	"strings"
 	"sync"
-
-	"github.com/taigrr/log-socket/log"
+	"time"
 
 	"github.com/gogrlx/grlx/types"
 )
 
-type IngredientMap map[types.Ingredient]map[string]types.RecipeCooker
-
 var (
 	ingTex sync.Mutex
-	ingMap IngredientMap
+	ingMap map[types.Ingredient]map[string]types.RecipeCooker
 )
 
-func (m IngredientMap) String() string {
-	ret := "IngredientMap: "
-	for k, v := range m {
-		ret += fmt.Sprintf("%s: %v\n", k, v)
-	}
-	return ret
-}
-
 func init() {
-	ingMap = make(IngredientMap)
+	ingMap = make(map[types.Ingredient]map[string]types.RecipeCooker)
 }
 
 type MethodProps struct {
@@ -35,6 +24,15 @@ type MethodProps struct {
 	Type  string
 	IsReq bool
 }
+
+type JobRecord struct {
+	JID        string
+	SproutID   string
+	Timestamp  time.Time
+	Executor   types.Executor
+	Completion types.CompletionStatus
+}
+type RecordKeeper interface{}
 
 type MethodPropsSet []MethodProps
 
@@ -103,10 +101,10 @@ var (
 )
 
 func NewRecipeCooker(id types.StepID, ingredient types.Ingredient, method string, params map[string]interface{}) (types.RecipeCooker, error) {
-	log.Infof("cooking %s %s %s", id, ingredient, method)
+	fmt.Printf("cooking %s %s %s\n", id, ingredient, method)
 	ingTex.Lock()
 	defer ingTex.Unlock()
-	log.Trace(ingMap)
+	fmt.Printf("%v\n", ingMap)
 	if r, ok := ingMap[ingredient]; ok {
 		if ing, ok := r[method]; ok {
 			return ing.Parse(string(id), method, params)

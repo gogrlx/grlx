@@ -190,7 +190,7 @@ func TestCollectAllIncludes(t *testing.T) {
 		sprout: "testSprout",
 	}}
 	for _, tc := range testCases {
-		t.Run(tc.id, func(t *testing.T) {
+		t.Run(tc.id, func(_ *testing.T) {
 			recipes, err := collectAllIncludes(tc.sprout, getBasePath(), tc.recipe)
 			// TODO actually test this
 			_, _ = recipes, err

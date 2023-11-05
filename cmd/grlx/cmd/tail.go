@@ -15,7 +15,7 @@ var printTex sync.Mutex
 
 var tailCmd = &cobra.Command{
 	Use:   "tail",
-	Short: "tail the NATS bus",
+	Short: "Tail the farmer's NATS bus",
 	Run: func(cmd *cobra.Command, args []string) {
 		nc, err := client.NewNatsClient()
 		if err != nil {

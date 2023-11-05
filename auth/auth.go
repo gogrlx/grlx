@@ -4,7 +4,7 @@ import (
 	"errors"
 
 	"github.com/nats-io/nkeys"
-	jety "github.com/taigrr/jety"
+	"github.com/taigrr/jety"
 )
 
 var (
