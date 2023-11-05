@@ -49,7 +49,7 @@ type (
 		ID               StepID
 		CompletionStatus CompletionStatus
 		ChangesMade      bool
-		Changes          any
+		Changes          []string
 		Error            error
 	}
 	ServiceProvider interface {

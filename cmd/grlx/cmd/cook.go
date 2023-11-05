@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fatih/color"
 	"github.com/nats-io/nats.go"
 	"github.com/spf13/cobra"
 	"github.com/taigrr/log-socket/log"
@@ -58,7 +59,7 @@ var cmdCook = &cobra.Command{
 		if err != nil {
 			log.Fatal(err)
 		}
-		finished := make(chan struct{})
+		finished := make(chan struct{}, 1)
 		completions := make(chan types.SproutStepCompletion)
 		topic := fmt.Sprintf("grlx.cook.*.%s", jid)
 		completionSteps := make(map[string][]types.StepCompletion)
@@ -66,70 +67,87 @@ var cmdCook = &cobra.Command{
 			var step types.StepCompletion
 			err := json.Unmarshal(msg.Data, &step)
 			if err != nil {
-				log.Printf("Error unmarshalling message: %v\n", err)
+				log.Errorf("Error unmarshalling message: %v\n", err)
 				return
 			}
 			subComponents := strings.Split(msg.Subject, ".")
 			sproutID := subComponents[2]
 
 			completions <- types.SproutStepCompletion{SproutID: sproutID, CompletedStep: step}
-			printTex.Lock()
-			defer printTex.Unlock()
+			if string(step.ID) == fmt.Sprintf("completed-%s", jid) {
+				return
+			} else if string(step.ID) == fmt.Sprintf("start-%s", jid) {
+				return
+			}
+
 			switch outputMode {
 			case "json":
-				jw, _ := json.Marshal(results)
-				fmt.Println(string(jw))
-				return
+				// TODO
 			case "":
 				fallthrough
 			case "text":
-				//			for keyID, result := range results.Results {
-				//				jw, err := json.Marshal(result)
-				//				if err != nil {
-				//					color.Red("%s: \n returned an invalid message!\n", keyID)
-				//					continue
-				//				}
-				//				var value types.CmdRun
-				//				err = json.NewDecoder(bytes.NewBuffer(jw)).Decode(&value)
-				//				if err != nil {
-				//					color.Red("%s returned an invalid message!\n", keyID)
-				//					continue
-				//				}
-				//				if value.ErrCode != 0 {
-				//					color.Red("%s:\n", keyID)
-				//				} else {
-				//					fmt.Printf("%s:\n", keyID)
-				//				}
-				//				if noerr {
-				//					fmt.Printf("%s\n", value.Stdout)
-				//				} else {
-				//					fmt.Printf("%s%s\n", value.Stdout, value.Stderr)
-				//				}
-				//			}
+				var b strings.Builder
+				b.WriteString(fmt.Sprintf("%s::%s\n", sproutID, jid))
+				b.WriteString(fmt.Sprintf("ID: %s\n", step.ID))
+				switch step.CompletionStatus {
+				case types.StepCompleted:
+					b.WriteString(color.GreenString(fmt.Sprintf("\tResult: %s\n", "Success")))
+				case types.StepFailed:
+					b.WriteString(color.RedString(fmt.Sprintf("\tResult: %s\n", "Failure")))
+				default:
+					// TODO add a status for skipped steps
+					b.WriteString(color.YellowString(fmt.Sprintf("\tResult: %s\n", "Unknown")))
+				}
+				b.WriteString("\tExecution Notes: \n")
+				for _, change := range step.Changes {
+					b.WriteString(fmt.Sprintf("\t\t%s\n", change))
+				}
+				// TODO add started and duration
+				b.WriteString("----------\n")
+				printTex.Lock()
+				fmt.Print(b.String())
+				printTex.Unlock()
 			}
 		})
 		if err != nil {
 			log.Printf("Error subscribing to %s: %v\n", topic, err)
 			log.Fatal(err)
 		}
+		// TODO convert this to a request and get back the list of targeted sprouts
 		ec.Publish(fmt.Sprintf("grlx.farmer.cook.trigger.%s", jid), types.TriggerMsg{JID: jid})
 		timeout := time.After(30 * time.Second)
+		dripTimeout := time.After(120 * time.Second)
+		concurrent := 0
+		defer sub.Unsubscribe()
+		defer nc.Flush()
 	waitLoop:
 		for {
 			select {
 			case completion := <-completions:
+				if string(completion.CompletedStep.ID) == fmt.Sprintf("start-%s", jid) {
+					concurrent++
+				}
+				if string(completion.CompletedStep.ID) == fmt.Sprintf("completed-%s", jid) {
+					// waitgroups are not necesary here because we are looping sequentially over a channel
+					concurrent--
+				}
+				if concurrent == 0 {
+					dripTimeout = time.After(time.Second / 10)
+				}
+
 				completionSteps[completion.SproutID] = append(completionSteps[completion.SproutID], completion.CompletedStep)
 				timeout = time.After(30 * time.Second)
 			case <-finished:
 				break waitLoop
+			case <-dripTimeout:
+				finished <- struct{}{}
+				break waitLoop
 			case <-timeout:
-				log.Error("Cooking timed out after 30 seconds.")
+				color.Red("Cooking timed out after 30 seconds.")
+				finished <- struct{}{}
 				break waitLoop
 			}
 		}
-		defer sub.Unsubscribe()
-		defer nc.Flush()
-		<-finished
 	},
 }
 

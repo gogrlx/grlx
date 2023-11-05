@@ -112,12 +112,17 @@ func CookRecipeEnvelope(envelope types.RecipeEnvelope) error {
 					} else {
 						res, err = ingredient.Apply(bgCtx)
 					}
+
+					notes := []string{}
+					for _, change := range res.Notes {
+						notes = append(notes, change.String())
+					}
 					if res.Succeeded {
 						cChan <- types.StepCompletion{
 							ID:               step.ID,
 							CompletionStatus: types.StepCompleted,
 							ChangesMade:      res.Changed,
-							Changes:          res.Notes,
+							Changes:          notes,
 							Error:            err,
 						}
 					} else {
@@ -125,7 +130,7 @@ func CookRecipeEnvelope(envelope types.RecipeEnvelope) error {
 							ID:               step.ID,
 							CompletionStatus: types.StepFailed,
 							ChangesMade:      res.Changed,
-							Changes:          res.Notes,
+							Changes:          notes,
 							Error:            err,
 						}
 					}
