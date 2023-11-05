@@ -12,7 +12,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
 
-	jety "github.com/taigrr/jety"
+	"github.com/taigrr/jety"
 
 	"github.com/gogrlx/grlx/auth"
 )

@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	jety "github.com/taigrr/jety"
+	"github.com/taigrr/jety"
 	"github.com/taigrr/log-socket/log"
 
 	"github.com/gogrlx/grlx/types"
