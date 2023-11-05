@@ -13,35 +13,19 @@ import (
 	"github.com/gogrlx/grlx/types"
 )
 
-type CompletionStatus int
-
 var (
 	ErrStalled         = errors.New("no steps are in progress")
 	ErrRequisiteNotMet = errors.New("requisite not met")
 )
 
-const (
-	NotStarted CompletionStatus = iota
-	InProgress
-	Completed
-	Failed
-)
-
-type StepCompletion struct {
-	ID               types.StepID
-	CompletionStatus CompletionStatus
-	ChangesMade      bool
-	Changes          any
-	Error            error
-}
-
 func CookRecipeEnvelope(envelope types.RecipeEnvelope) error {
 	log.Tracef("received new envelope: %v", envelope)
-	completionMap := map[types.StepID]StepCompletion{}
+
+	completionMap := map[types.StepID]types.StepCompletion{}
 	for _, step := range envelope.Steps {
-		completionMap[step.ID] = StepCompletion{
+		completionMap[step.ID] = types.StepCompletion{
 			ID:               step.ID,
-			CompletionStatus: NotStarted,
+			CompletionStatus: types.StepNotStarted,
 			ChangesMade:      false,
 			Changes:          nil,
 		}
@@ -53,10 +37,10 @@ func CookRecipeEnvelope(envelope types.RecipeEnvelope) error {
 	// create a wait group and a channel to receive step completions
 	wg := sync.WaitGroup{}
 	wg.Add(len(envelope.Steps) + 1)
-	completionChan := make(chan StepCompletion, 1)
-	completionChan <- StepCompletion{
+	completionChan := make(chan types.StepCompletion, 1)
+	completionChan <- types.StepCompletion{
 		ID:               types.StepID("start"),
-		CompletionStatus: Completed,
+		CompletionStatus: types.StepCompleted,
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	// spawn a goroutine to wait for all steps to complete and then cancel the context
@@ -75,22 +59,22 @@ func CookRecipeEnvelope(envelope types.RecipeEnvelope) error {
 			completionMap[completion.ID] = completion
 			noneInProgress := true
 			for id, step := range completionMap {
-				if step.CompletionStatus == InProgress {
+				if step.CompletionStatus == types.StepInProgress {
 					noneInProgress = false
 				}
-				if step.CompletionStatus != NotStarted {
+				if step.CompletionStatus != types.StepNotStarted {
 					continue
 				}
 				// mark the step as in progress
 				requisitesMet, err := RequisitesAreMet(stepMap[id], completionMap)
 				if err != nil {
 					t := completionMap[id]
-					t.CompletionStatus = Failed
+					t.CompletionStatus = types.StepFailed
 					completionMap[id] = t
-					go func(cChan chan StepCompletion, id types.StepID, err error) {
-						cChan <- StepCompletion{
+					go func(cChan chan types.StepCompletion, id types.StepID, err error) {
+						cChan <- types.StepCompletion{
 							ID:               id,
-							CompletionStatus: Failed,
+							CompletionStatus: types.StepFailed,
 							Error:            err,
 						}
 					}(completionChan, id, err)
@@ -100,16 +84,16 @@ func CookRecipeEnvelope(envelope types.RecipeEnvelope) error {
 					continue
 				}
 				t := completionMap[id]
-				t.CompletionStatus = InProgress
+				t.CompletionStatus = types.StepInProgress
 				completionMap[id] = t
 				// all requisites are met, so start the step in a goroutine
-				go func(step types.Step, cChan chan StepCompletion) {
+				go func(step types.Step, cChan chan types.StepCompletion) {
 					// use the ingredient package to load and cook the step
 					ingredient, err := ingredients.NewRecipeCooker(step.ID, step.Ingredient, step.Method, step.Properties)
 					if err != nil {
-						cChan <- StepCompletion{
+						cChan <- types.StepCompletion{
 							ID:               step.ID,
-							CompletionStatus: Failed,
+							CompletionStatus: types.StepFailed,
 							Error:            err,
 						}
 						return
@@ -124,17 +108,17 @@ func CookRecipeEnvelope(envelope types.RecipeEnvelope) error {
 						res, err = ingredient.Apply(bgCtx)
 					}
 					if res.Succeeded {
-						cChan <- StepCompletion{
+						cChan <- types.StepCompletion{
 							ID:               step.ID,
-							CompletionStatus: Completed,
+							CompletionStatus: types.StepCompleted,
 							ChangesMade:      res.Changed,
 							Changes:          res.Notes,
 							Error:            err,
 						}
 					} else {
-						cChan <- StepCompletion{
+						cChan <- types.StepCompletion{
 							ID:               step.ID,
-							CompletionStatus: Failed,
+							CompletionStatus: types.StepFailed,
 							ChangesMade:      res.Changed,
 							Changes:          res.Notes,
 							Error:            err,
@@ -159,7 +143,7 @@ func CookRecipeEnvelope(envelope types.RecipeEnvelope) error {
 // RequisitesAreMet returns true if all of the requisites for the given step are met
 // All top-level requisites are ANDed together, and meta states can be combined with an ANY clauses
 // to use OR logic instead
-func RequisitesAreMet(step types.Step, completionMap map[types.StepID]StepCompletion) (bool, error) {
+func RequisitesAreMet(step types.Step, completionMap map[types.StepID]types.StepCompletion) (bool, error) {
 	if len(step.Requisites) == 0 {
 		return true, nil
 	}
@@ -171,7 +155,7 @@ func RequisitesAreMet(step types.Step, completionMap map[types.StepID]StepComple
 			for _, req := range reqSet.StepIDs {
 				reqStatus := completionMap[req]
 				// if the step is completed or failed, and no changes were made, then the requisite cannot be met
-				if reqStatus.CompletionStatus == Completed || reqStatus.CompletionStatus == Failed {
+				if reqStatus.CompletionStatus == types.StepCompleted || reqStatus.CompletionStatus == types.StepFailed {
 					if !reqStatus.ChangesMade {
 						return false, errors.Join(ErrRequisiteNotMet, fmt.Errorf(errStr, reqSet.Condition, string(req)))
 					}
@@ -184,9 +168,9 @@ func RequisitesAreMet(step types.Step, completionMap map[types.StepID]StepComple
 			for _, req := range reqSet.StepIDs {
 				reqStatus := completionMap[req]
 				// if the step is completed, then the requisite cannot be met
-				if reqStatus.CompletionStatus == Completed {
+				if reqStatus.CompletionStatus == types.StepCompleted {
 					return false, errors.Join(ErrRequisiteNotMet, fmt.Errorf(errStr, reqSet.Condition, string(req)))
-				} else if reqStatus.CompletionStatus != Failed {
+				} else if reqStatus.CompletionStatus != types.StepFailed {
 					// if the step is not completed or failed, then the requisite is not met (yet)
 					unmet = true
 				}
@@ -194,9 +178,9 @@ func RequisitesAreMet(step types.Step, completionMap map[types.StepID]StepComple
 		case types.Require:
 			for _, req := range reqSet.StepIDs {
 				reqStatus := completionMap[req]
-				if reqStatus.CompletionStatus == Failed {
+				if reqStatus.CompletionStatus == types.StepFailed {
 					return false, errors.Join(ErrRequisiteNotMet, fmt.Errorf(errStr, reqSet.Condition, string(req)))
-				} else if reqStatus.CompletionStatus != Completed {
+				} else if reqStatus.CompletionStatus != types.StepCompleted {
 					unmet = true
 				}
 			}
@@ -206,7 +190,7 @@ func RequisitesAreMet(step types.Step, completionMap map[types.StepID]StepComple
 			pendingRemaining := false
 			for _, req := range reqSet.StepIDs {
 				reqStatus := completionMap[req]
-				if reqStatus.CompletionStatus == Completed || reqStatus.CompletionStatus == Failed {
+				if reqStatus.CompletionStatus == types.StepCompleted || reqStatus.CompletionStatus == types.StepFailed {
 					if reqStatus.ChangesMade {
 						met = true
 					}
@@ -225,9 +209,9 @@ func RequisitesAreMet(step types.Step, completionMap map[types.StepID]StepComple
 			pendingRemaining := false
 			for _, req := range reqSet.StepIDs {
 				reqStatus := completionMap[req]
-				if reqStatus.CompletionStatus == Failed {
+				if reqStatus.CompletionStatus == types.StepFailed {
 					met = true
-				} else if reqStatus.CompletionStatus != Completed {
+				} else if reqStatus.CompletionStatus != types.StepCompleted {
 					pendingRemaining = true
 				}
 			}
@@ -242,9 +226,9 @@ func RequisitesAreMet(step types.Step, completionMap map[types.StepID]StepComple
 			pendingRemaining := false
 			for _, req := range reqSet.StepIDs {
 				reqStatus := completionMap[req]
-				if reqStatus.CompletionStatus == Completed {
+				if reqStatus.CompletionStatus == types.StepCompleted {
 					met = true
-				} else if reqStatus.CompletionStatus != Failed {
+				} else if reqStatus.CompletionStatus != types.StepFailed {
 					pendingRemaining = true
 				}
 			}

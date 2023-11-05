@@ -3,7 +3,6 @@ package config
 import (
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,6 +10,7 @@ import (
 	"time"
 
 	jety "github.com/taigrr/jety"
+	"github.com/taigrr/log-socket/log"
 
 	"github.com/gogrlx/grlx/types"
 )
@@ -32,22 +32,24 @@ var (
 	FarmerBusInterface   string
 	FarmerBusPort        string
 	FarmerInterface      string
+	FarmerOrganization   string
 	FarmerPKI            string
 	FarmerURL            string
 	GrlxRootCA           string
+	JobLogDir            string
 	KeyFile              string
+	LogLevel             log.Level
 	NKeyFarmerPrivFile   string
 	NKeyFarmerPubFile    string
 	NKeySproutPrivFile   string
 	NKeySproutPubFile    string
-	FarmerOrganization   string
-	RootCA               string
-	RootCAPriv           string
-	SproutID             string
-	SproutPKI            string
-	SproutRootCA         string
 	// TODO the final path arg should be dynamic to allow for dev/prod/etc
-	RecipeDir = filepath.Join("/", "srv", "grlx", "recipes", "prod")
+	RecipeDir    = filepath.Join("/", "srv", "grlx", "recipes", "prod")
+	RootCA       string
+	RootCAPriv   string
+	SproutID     string
+	SproutPKI    string
+	SproutRootCA string
 )
 
 // TODO use enum for binary as elsewhere
@@ -103,6 +105,8 @@ func LoadConfig(binary string) {
 			log.Printf("%T\n", err)
 			panic(fmt.Errorf("fatal error config file: %w", err))
 		}
+		jety.SetDefault("loglevel", "info")
+		jety.SetDefault("cachedir", "/var/cache/grlx/sprout/files/provided")
 		jety.SetDefault("configroot", "/etc/grlx/")
 		jety.SetDefault("farmerinterface", "localhost")
 		jety.SetDefault("farmerapiport", "5405")
@@ -120,13 +124,35 @@ func LoadConfig(binary string) {
 			jety.SetDefault("certfile", "/etc/grlx/pki/farmer/tls-cert.pem")
 			jety.SetDefault("farmerpki", "/etc/grlx/pki/farmer/")
 			jety.SetDefault("keyfile", "/etc/grlx/pki/farmer/tls-key.pem")
+			jety.SetDefault("joblogdir", "/var/cace/grlx/farmer/jobs")
 			jety.SetDefault("nkeyfarmerpubfile", "/etc/grlx/pki/farmer/farmer.nkey.pub")
 			jety.SetDefault("nkeyfarmerprivfile", "/etc/grlx/pki/farmer/farmer.nkey")
 			jety.SetDefault("rootca", "/etc/grlx/pki/farmer/tls-rootca.pem")
 			jety.SetDefault("rootcapriv", "/etc/grlx/pki/farmer/tls-rootca-key.pem")
 			jety.SetDefault("organization", "grlx farmer")
 			jety.SetDefault("farmerbusinterface", jety.GetString("farmerinterface"))
+			JobLogDir = jety.GetString("joblogdir")
 			CertHosts = jety.GetStringSlice("certhosts")
+			logLevel := jety.GetString("loglevel")
+			switch logLevel {
+			case "debug":
+				LogLevel = log.LDebug
+			case "info":
+				LogLevel = log.LInfo
+			case "notice":
+				LogLevel = log.LNotice
+			case "warn":
+				LogLevel = log.LWarn
+			case "error":
+				LogLevel = log.LError
+			case "panic":
+				LogLevel = log.LPanic
+			case "fatal":
+				LogLevel = log.LFatal
+			default:
+				LogLevel = log.LNotice
+			}
+
 			AdminPubKeys := jety.GetStringMap("pubkeys")
 			if len(AdminPubKeys) == 0 {
 				if keyList, found := os.LookupEnv("ADMIN_PUBKEYS"); found {
@@ -183,9 +209,30 @@ func LoadConfig(binary string) {
 			jety.SetDefault("sproutpki", "/etc/grlx/pki/sprout/")
 			jety.SetDefault("sproutrootca", "/etc/grlx/pki/sprout/tls-rootca.pem")
 			jety.SetDefault("nkeysproutpubfile", "/etc/grlx/pki/sprout/sprout.nkey.pub")
+			jety.SetDefault("joblogdir", "/var/cace/grlx/sprout/jobs")
 			jety.SetDefault("nkeysproutprivfile", "/etc/grlx/pki/sprout/sprout.nkey")
 			jety.SetDefault("farmerbusinterface", FarmerInterface+":"+jety.GetString("FarmerBusPort"))
 			jety.SetDefault("cachedir", "/var/cache/grlx/sprout/files/provided")
+			logLevel := jety.GetString("loglevel")
+			switch logLevel {
+			case "debug":
+				LogLevel = log.LDebug
+			case "info":
+				LogLevel = log.LInfo
+			case "notice":
+				LogLevel = log.LNotice
+			case "warn":
+				LogLevel = log.LWarn
+			case "error":
+				LogLevel = log.LError
+			case "panic":
+				LogLevel = log.LPanic
+			case "fatal":
+				LogLevel = log.LFatal
+			default:
+				LogLevel = log.LNotice
+			}
+			JobLogDir = jety.GetString("joblogdir")
 		}
 		jety.WriteConfig()
 	})

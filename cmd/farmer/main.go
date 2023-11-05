@@ -16,6 +16,7 @@ import (
 	"github.com/gogrlx/grlx/cook"
 	"github.com/gogrlx/grlx/ingredients/cmd"
 	"github.com/gogrlx/grlx/ingredients/test"
+	"github.com/gogrlx/grlx/jobs"
 	"github.com/gogrlx/grlx/pki"
 	"github.com/gogrlx/grlx/types"
 
@@ -25,7 +26,7 @@ import (
 
 func init() {
 	config.LoadConfig("farmer")
-	log.SetLogLevel(log.LDebug)
+	log.SetLogLevel(config.LogLevel)
 }
 
 var (

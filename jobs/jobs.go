@@ -1,4 +1,4 @@
-package ingredients
+package jobs
 
 import (
 	"errors"
@@ -26,11 +26,11 @@ type MethodProps struct {
 }
 
 type JobRecord struct {
-	JID        types.JobID
+	JID        string
 	SproutID   string
 	Timestamp  time.Time
 	Executor   types.Executor
-	Conpletion types.Completion
+	Completion types.CompletionStatus
 }
 type RecordKeeper interface{}
 

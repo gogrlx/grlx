@@ -1,4 +1,4 @@
-package cook
+package jobs
 
 // This code will subscribe to the jobs topic and record the jobs
 // to flat files in the jobs directory.  The files will be named
@@ -19,112 +19,115 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/nats-io/nats.go"
 	"github.com/taigrr/log-socket/log"
 
+	"github.com/gogrlx/grlx/config"
 	"github.com/gogrlx/grlx/types"
 )
 
 // Job represents a job
 
-type Job struct {
-	ID      string         `json:"id"`
-	Results []types.Result `json:"results"`
-	Sprout  string         `json:"sprout"`
-	Summary types.Summary  `json:"summary"`
+var ec *nats.EncodedConn
+
+func RegisterEC(conn *nats.EncodedConn) {
+	ec = conn
+	_, err := ec.Subscribe("grlx.cook.>", logJobs)
+	if err != nil {
+		log.Error(err)
+	}
+	_, err = ec.Subscribe("grlx.sprouts.*.cook", logJobCreation)
+	if err != nil {
+		log.Error(err)
+	}
 }
 
-var natsConn *nats.Conn
+func init() {
+	// Create the jobs directory if it does not exist
+	if _, err := os.Stat(config.JobLogDir); os.IsNotExist(err) {
+		os.MkdirAll(config.JobLogDir, 0o700)
+	}
+}
 
-func logJobs() {
+func logJobCreation(msg *nats.Msg) {
+}
+
+func logJobs(msg *nats.Msg) {
 	// Create the jobs directory if it does not exist
 	if _, err := os.Stat("jobs"); os.IsNotExist(err) {
 		os.Mkdir("jobs", 0o755)
 	}
 
 	// Subscribe to the jobs topic
-	sub, err := natsConn.SubscribeSync("jobs")
+
+	// Get the job data
+	var job types.Job
+	err := json.Unmarshal(msg.Data, &job)
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
+		return
+	}
+	f := &os.File{}
+	// Create the job file
+	jobFile := filepath.Join("jobs", fmt.Sprintf("%s.jsonl", job.ID))
+	st, err := os.Stat(jobFile)
+	if errors.Is(err, os.ErrNotExist) {
+		// File does not exist, create it
+		f, err = os.Create(jobFile)
+		if err != nil {
+			log.Error(err)
+			return
+		}
+	} else if err != nil {
+		log.Error(err)
+		return
+	} else if st.IsDir() {
+		log.Errorf("job file %s is a directory", jobFile)
+		return
+	} else {
+		// File exists, open it for appending
+		f, err = os.OpenFile(jobFile, os.O_APPEND|os.O_WRONLY, 0o644)
+		if err != nil {
+			log.Error(err)
+			return
+		}
 	}
 
-	// Read messages from the jobs topic
-	for {
-		msg, err := sub.NextMsg(10 * time.Second)
-		if err != nil {
-			log.Error(err)
-		}
+	// Write the job data to the file
+	b, err := json.Marshal(job)
+	if err != nil {
+		log.Error(err)
+		f.Close()
+		return
+	}
+	_, err = f.Write(b)
+	if err != nil {
+		log.Error(err)
+		f.Close()
+		return
+	}
+	_, err = f.WriteString("\n")
+	if err != nil {
+		log.Error(err)
+		f.Close()
+		return
 
-		// Get the job data
-		var job Job
-		err = json.Unmarshal(msg.Data, &job)
-		if err != nil {
-			log.Error(err)
-			continue
-		}
-		f := &os.File{}
-		// Create the job file
-		jobFile := filepath.Join("jobs", fmt.Sprintf("%s.jsonl", job.ID))
-		st, err := os.Stat(jobFile)
-		if errors.Is(err, os.ErrNotExist) {
-			// File does not exist, create it
-			f, err = os.Create(jobFile)
-			if err != nil {
-				log.Error(err)
-				continue
-			}
-		} else if err != nil {
-			log.Error(err)
-			continue
-		} else if st.IsDir() {
-			log.Errorf("job file %s is a directory", jobFile)
-			continue
-		} else {
-			// File exists, open it for appending
-			f, err = os.OpenFile(jobFile, os.O_APPEND|os.O_WRONLY, 0o644)
-			if err != nil {
-				log.Error(err)
-				continue
-			}
-		}
+	}
 
-		// Write the job data to the file
-		b, err := json.Marshal(job)
-		if err != nil {
-			log.Error(err)
-			f.Close()
-			continue
-		}
-		_, err = f.Write(b)
-		if err != nil {
-			log.Error(err)
-			f.Close()
-			continue
-		}
-		_, err = f.WriteString("\n")
-		if err != nil {
-			log.Error(err)
-			f.Close()
-			continue
+	// Close the file
+	err = f.Close()
+	if err != nil {
+		log.Error(err)
+		return
+	}
 
-		}
+	// Log the job
+	log.Tracef("Job %s received\n", job.ID)
 
-		// Close the file
-		err = f.Close()
-		if err != nil {
-			log.Error(err)
-			continue
-		}
-
-		// Log the job
-		log.Tracef("Job %s received\n", job.ID)
-
-		// Acknowledge the message
-		err = msg.Ack()
-		if err != nil {
-			log.Error(err)
-		}
+	// Acknowledge the message
+	err = msg.Ack()
+	if err != nil {
+		log.Error(err)
 	}
 }

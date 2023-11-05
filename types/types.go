@@ -32,7 +32,23 @@ func (r RequisiteSet) AllSteps() []*Step {
 	return collection
 }
 
+const (
+	StepNotStarted CompletionStatus = iota
+	StepInProgress
+	StepCompleted
+	StepFailed
+)
+
 type (
+	CompletionStatus int
+
+	StepCompletion struct {
+		ID               StepID
+		CompletionStatus CompletionStatus
+		ChangesMade      bool
+		Changes          any
+		Error            error
+	}
 	ServiceProvider interface {
 		Properties() (map[string]interface{}, error)
 		Parse(id, method string, properties map[string]interface{}) (ServiceProvider, error)
@@ -70,6 +86,12 @@ type (
 		Methods() (string, []string)
 		PropertiesForMethod(method string) (map[string]string, error)
 	}
+	Job struct {
+		ID      string   `json:"id"`
+		Results []Result `json:"results"`
+		Sprout  string   `json:"sprout"`
+		Summary Summary  `json:"summary"`
+	}
 	RecipeEnvelope struct {
 		JobID string
 		Steps []Step
@@ -79,7 +101,9 @@ type (
 		Acknowledged bool
 		JobID        string
 	}
-
+	Executor struct {
+		PubKey string
+	}
 	RecipeName string
 	Function   string
 	StepID     string

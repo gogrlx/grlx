@@ -10,22 +10,22 @@ import (
 func TestRequisitesAreMet(t *testing.T) {
 	// TODO
 
-	completionmap := map[types.StepID]StepCompletion{
+	completionmap := map[types.StepID]types.StepCompletion{
 		"failed": {
 			ID:               "failed",
-			CompletionStatus: Failed,
+			CompletionStatus: types.StepFailed,
 		},
 		"succeeded": {
 			ID:               "succeeded",
-			CompletionStatus: Completed,
+			CompletionStatus: types.StepCompleted,
 		},
 		"inprogress": {
 			ID:               "inprogress",
-			CompletionStatus: InProgress,
+			CompletionStatus: types.StepInProgress,
 		},
 		"notstarted": {
 			ID:               "notstarted",
-			CompletionStatus: NotStarted,
+			CompletionStatus: types.StepNotStarted,
 		},
 	}
 
