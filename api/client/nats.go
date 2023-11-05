@@ -3,7 +3,6 @@ package client
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"fmt"
 	"os"
 
 	"github.com/nats-io/nats.go"
@@ -39,6 +38,6 @@ func NewNatsClient() (*nats.Conn, error) {
 	// TODO: add a disconnect handler to reconnect
 	connOpts := []nats.Option{nats.Name("grlx-cli"), nats.Nkey(pubkey, auth.Sign), nats.Secure(config)}
 
-	fmt.Println("Connecting to", URL)
+	log.Noticef("Connecting to", URL)
 	return nats.Connect("nats://"+URL, connOpts...)
 }

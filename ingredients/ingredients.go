@@ -6,17 +6,28 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/gogrlx/grlx/types"
 	"github.com/taigrr/log-socket/log"
+
+	"github.com/gogrlx/grlx/types"
 )
+
+type IngredientMap map[types.Ingredient]map[string]types.RecipeCooker
 
 var (
 	ingTex sync.Mutex
-	ingMap map[types.Ingredient]map[string]types.RecipeCooker
+	ingMap IngredientMap
 )
 
+func (m IngredientMap) String() string {
+	ret := "IngredientMap: "
+	for k, v := range m {
+		ret += fmt.Sprintf("%s: %v\n", k, v)
+	}
+	return ret
+}
+
 func init() {
-	ingMap = make(map[types.Ingredient]map[string]types.RecipeCooker)
+	ingMap = make(IngredientMap)
 }
 
 type MethodProps struct {
@@ -92,10 +103,10 @@ var (
 )
 
 func NewRecipeCooker(id types.StepID, ingredient types.Ingredient, method string, params map[string]interface{}) (types.RecipeCooker, error) {
-	log.Tracef("cooking %s %s %s\n", id, ingredient, method)
+	log.Infof("cooking %s %s %s", id, ingredient, method)
 	ingTex.Lock()
 	defer ingTex.Unlock()
-	fmt.Printf("%v\n", ingMap)
+	log.Trace(ingMap)
 	if r, ok := ingMap[ingredient]; ok {
 		if ing, ok := r[method]; ok {
 			return ing.Parse(string(id), method, params)

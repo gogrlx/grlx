@@ -196,7 +196,7 @@ func ConnectFarmer() {
 	log.Debugf("Successfully joined Farmer to NATS bus")
 
 	_, err = nc.Subscribe("grlx.sprouts.announce.>", func(m *nats.Msg) {
-		log.Printf("Received a join event: %s\n", string(m.Data))
+		log.Infof("Received a join event: %s\n", string(m.Data))
 	})
 	if err != nil {
 		log.Errorf("Got an error on Subscribe: %+v\n", err)
@@ -206,6 +206,7 @@ func ConnectFarmer() {
 	test.RegisterEC(ec)
 	cmd.RegisterEC(ec)
 	cook.RegisterEC(ec)
+	jobs.RegisterEC(ec)
 	defer ec.Close()
 	select {}
 }
