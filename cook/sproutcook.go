@@ -16,9 +16,12 @@ import (
 var (
 	ErrStalled         = errors.New("no steps are in progress")
 	ErrRequisiteNotMet = errors.New("requisite not met")
+	nonCCM             = sync.Mutex{}
 )
 
 func CookRecipeEnvelope(envelope types.RecipeEnvelope) error {
+	nonCCM.Lock()
+	defer nonCCM.Unlock()
 	log.Tracef("received new envelope: %v", envelope)
 
 	completionMap := map[types.StepID]types.StepCompletion{}
