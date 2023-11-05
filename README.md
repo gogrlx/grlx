@@ -74,6 +74,8 @@ The `sprout` binary should be installed as a daemon on systems that are to be ma
 Managed systems are referred to as 'sprouts.'
 
 
+<p align="center"><img src="docs/diagrams/grlx-arch-light.png" width="100%"></p>
+
 ## Batteries Included
 
 `farmer` contains an embedded messaging Pub-Sub server ([NATS](https://github.com/nats-io/nats-server)), and an api server.
