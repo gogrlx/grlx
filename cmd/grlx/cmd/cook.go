@@ -3,10 +3,12 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"log"
+	"strings"
+	"time"
 
 	"github.com/nats-io/nats.go"
 	"github.com/spf13/cobra"
+	"github.com/taigrr/log-socket/log"
 
 	"github.com/gogrlx/grlx/api/client"
 	"github.com/gogrlx/grlx/types"
@@ -56,57 +58,78 @@ var cmdCook = &cobra.Command{
 		if err != nil {
 			log.Fatal(err)
 		}
-		complete := make(chan struct{})
+		finished := make(chan struct{})
+		completions := make(chan types.SproutStepCompletion)
 		topic := fmt.Sprintf("grlx.cook.*.%s", jid)
+		completionSteps := make(map[string][]types.StepCompletion)
 		sub, err := ec.Subscribe(topic, func(msg *nats.Msg) {
+			var step types.StepCompletion
+			err := json.Unmarshal(msg.Data, &step)
+			if err != nil {
+				log.Printf("Error unmarshalling message: %v\n", err)
+				return
+			}
+			subComponents := strings.Split(msg.Subject, ".")
+			sproutID := subComponents[2]
+
+			completions <- types.SproutStepCompletion{SproutID: sproutID, CompletedStep: step}
 			printTex.Lock()
 			defer printTex.Unlock()
-			fmt.Println(msg.Subject)
-			fmt.Println(string(msg.Data))
-			// TODO add a signal on the sprout side to indicate that the cook is complete
-			// complete <- struct{}{}
+			switch outputMode {
+			case "json":
+				jw, _ := json.Marshal(results)
+				fmt.Println(string(jw))
+				return
+			case "":
+				fallthrough
+			case "text":
+				//			for keyID, result := range results.Results {
+				//				jw, err := json.Marshal(result)
+				//				if err != nil {
+				//					color.Red("%s: \n returned an invalid message!\n", keyID)
+				//					continue
+				//				}
+				//				var value types.CmdRun
+				//				err = json.NewDecoder(bytes.NewBuffer(jw)).Decode(&value)
+				//				if err != nil {
+				//					color.Red("%s returned an invalid message!\n", keyID)
+				//					continue
+				//				}
+				//				if value.ErrCode != 0 {
+				//					color.Red("%s:\n", keyID)
+				//				} else {
+				//					fmt.Printf("%s:\n", keyID)
+				//				}
+				//				if noerr {
+				//					fmt.Printf("%s\n", value.Stdout)
+				//				} else {
+				//					fmt.Printf("%s%s\n", value.Stdout, value.Stderr)
+				//				}
+				//			}
+			}
 		})
 		if err != nil {
 			log.Printf("Error subscribing to %s: %v\n", topic, err)
 			log.Fatal(err)
 		}
 		ec.Publish(fmt.Sprintf("grlx.farmer.cook.trigger.%s", jid), types.TriggerMsg{JID: jid})
+		timeout := time.After(30 * time.Second)
+	waitLoop:
+		for {
+			select {
+			case completion := <-completions:
+				completionSteps[completion.SproutID] = append(completionSteps[completion.SproutID], completion.CompletedStep)
+				timeout = time.After(30 * time.Second)
+			case <-finished:
+				break waitLoop
+			case <-timeout:
+				log.Error("Cooking timed out after 30 seconds.")
+				break waitLoop
+			}
+		}
 		defer sub.Unsubscribe()
 		defer nc.Flush()
-		<-complete
-
-		switch outputMode {
-		case "json":
-			jw, _ := json.Marshal(results)
-			fmt.Println(string(jw))
-			return
-		case "":
-			fallthrough
-		case "text":
-			//			for keyID, result := range results.Results {
-			//				jw, err := json.Marshal(result)
-			//				if err != nil {
-			//					color.Red("%s: \n returned an invalid message!\n", keyID)
-			//					continue
-			//				}
-			//				var value types.CmdRun
-			//				err = json.NewDecoder(bytes.NewBuffer(jw)).Decode(&value)
-			//				if err != nil {
-			//					color.Red("%s returned an invalid message!\n", keyID)
-			//					continue
-			//				}
-			//				if value.ErrCode != 0 {
-			//					color.Red("%s:\n", keyID)
-			//				} else {
-			//					fmt.Printf("%s:\n", keyID)
-			//				}
-			//				if noerr {
-			//					fmt.Printf("%s\n", value.Stdout)
-			//				} else {
-			//					fmt.Printf("%s%s\n", value.Stdout, value.Stderr)
-			//				}
-			//			}
-		}
+		<-finished
 	},
 }
 
