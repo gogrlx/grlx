@@ -21,7 +21,7 @@ func (f File) touch(ctx context.Context, test bool) (types.Result, error) {
 			Succeeded: false, Failed: true,
 		}, types.ErrMissingName
 	}
-
+	notes := []fmt.Stringer{}
 	aTime := time.Now()
 	mTime := time.Now()
 	{
@@ -32,9 +32,7 @@ func (f File) touch(ctx context.Context, test bool) (types.Result, error) {
 			if err != nil {
 				return types.Result{
 					Succeeded: false, Failed: true,
-					Changed: false, Notes: []fmt.Stringer{
-						types.SimpleNote(""),
-					},
+					Changed: false, Notes: []fmt.Stringer{types.SimpleNote("failed to parse atime")},
 				}, err
 			}
 			aTime = at
@@ -49,7 +47,7 @@ func (f File) touch(ctx context.Context, test bool) (types.Result, error) {
 				return types.Result{
 					Succeeded: false, Failed: true,
 					Changed: false, Notes: []fmt.Stringer{
-						types.SimpleNote(""),
+						types.SimpleNote("failed to parse mtime"),
 					},
 				}, err
 			}
@@ -130,21 +128,40 @@ func (f File) touch(ctx context.Context, test bool) (types.Result, error) {
 	_ = omt
 	_ = oat
 	if test {
-		// TODO add notes for each changed timestamp if changed
-		return types.Result{
-			Succeeded: true, Failed: false,
-			Changed: true, Notes: nil,
-		}, nil
+		if omt.Equal(mTime) && oat.Equal(aTime) {
+			return types.Result{
+				Succeeded: true, Failed: false,
+				Changed: false, Notes: []fmt.Stringer{
+					types.SimpleNote(fmt.Sprintf("file `%s` already has provided timestamps", name)),
+				},
+			}, nil
+		} else if !omt.Equal(mTime) {
+			notes = append(notes, types.SimpleNote(fmt.Sprintf("mtime of `%s` will be changed", name)))
+			return types.Result{
+				Succeeded: true, Failed: false,
+				Changed: true, Notes: notes,
+			}, nil
+		} else if !oat.Equal(aTime) {
+			notes = append(notes, types.SimpleNote(fmt.Sprintf("atime of `%s` will be changed", name)))
+			return types.Result{
+				Succeeded: true, Failed: false,
+				Changed: true, Notes: notes,
+			}, nil
+		}
 	}
 
 	err = os.Chtimes(name, aTime, mTime)
 	if err != nil {
 		return types.Result{
 			Succeeded: false, Failed: true,
+			Changed: false, Notes: []fmt.Stringer{
+				types.SimpleNote(fmt.Sprintf("failed to change timestamps of `%s`", name)),
+			},
 		}, err
 	}
+	notes = append(notes, types.SimpleNote(fmt.Sprintf("timestamps of `%s` changed", name)))
 	return types.Result{
 		Succeeded: true, Failed: false,
-		Changed: true, Notes: nil,
+		Changed: true, Notes: notes,
 	}, nil
 }

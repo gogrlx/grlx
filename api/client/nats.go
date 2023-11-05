@@ -38,6 +38,6 @@ func NewNatsClient() (*nats.Conn, error) {
 	// TODO: add a disconnect handler to reconnect
 	connOpts := []nats.Option{nats.Name("grlx-cli"), nats.Nkey(pubkey, auth.Sign), nats.Secure(config)}
 
-	log.Noticef("Connecting to", URL)
+	log.Tracef("Connecting to %s", URL)
 	return nats.Connect("nats://"+URL, connOpts...)
 }

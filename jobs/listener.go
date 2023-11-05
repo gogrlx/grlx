@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/nats-io/nats.go"
 	"github.com/taigrr/log-socket/log"
@@ -33,7 +34,7 @@ var ec *nats.EncodedConn
 
 func RegisterEC(conn *nats.EncodedConn) {
 	ec = conn
-	_, err := ec.Subscribe("grlx.cook.>", logJobs)
+	_, err := ec.Subscribe("grlx.cook.*.*", logJobs)
 	if err != nil {
 		log.Error(err)
 	}
@@ -41,12 +42,18 @@ func RegisterEC(conn *nats.EncodedConn) {
 	if err != nil {
 		log.Error(err)
 	}
-}
 
-func init() {
 	// Create the jobs directory if it does not exist
+	// this cannot run in init, as the config is not yet loaded
 	if _, err := os.Stat(config.JobLogDir); os.IsNotExist(err) {
-		os.MkdirAll(config.JobLogDir, 0o700)
+		log.Noticef("Creating jobs directory %s\n", config.JobLogDir)
+		err = os.MkdirAll(config.JobLogDir, 0o700)
+		if err != nil {
+			log.Error(err)
+		}
+
+	} else if err != nil {
+		log.Error(err)
 	}
 }
 
@@ -54,26 +61,31 @@ func logJobCreation(msg *nats.Msg) {
 }
 
 func logJobs(msg *nats.Msg) {
-	// Create the jobs directory if it does not exist
-	if _, err := os.Stat("jobs"); os.IsNotExist(err) {
-		os.Mkdir("jobs", 0o755)
-	}
-
 	// Subscribe to the jobs topic
+	tComponents := strings.Split(msg.Subject, ".")
+	// subscription topic guaranteed to be in the form grlx.cook.<sprout>.<jid>
+	sprout := tComponents[2]
+	JID := tComponents[3]
 
-	// Get the job data
-	var job types.Job
-	err := json.Unmarshal(msg.Data, &job)
+	// Get the completedStep data
+	var completedStep types.StepCompletion
+	err := json.Unmarshal(msg.Data, &completedStep)
 	if err != nil {
 		log.Error(err)
 		return
 	}
 	f := &os.File{}
 	// Create the job file
-	jobFile := filepath.Join("jobs", fmt.Sprintf("%s.jsonl", job.ID))
+	jobFile := filepath.Join(config.JobLogDir, sprout, fmt.Sprintf("%s.jsonl", JID))
+	log.Tracef("Job file: %s\n", jobFile)
 	st, err := os.Stat(jobFile)
 	if errors.Is(err, os.ErrNotExist) {
 		// File does not exist, create it
+		err = os.MkdirAll(filepath.Dir(jobFile), 0o700)
+		if err != nil {
+			log.Error(err)
+			return
+		}
 		f, err = os.Create(jobFile)
 		if err != nil {
 			log.Error(err)
@@ -95,7 +107,7 @@ func logJobs(msg *nats.Msg) {
 	}
 
 	// Write the job data to the file
-	b, err := json.Marshal(job)
+	b, err := json.Marshal(completedStep)
 	if err != nil {
 		log.Error(err)
 		f.Close()
@@ -123,11 +135,5 @@ func logJobs(msg *nats.Msg) {
 	}
 
 	// Log the job
-	log.Tracef("Job %s received\n", job.ID)
-
-	// Acknowledge the message
-	err = msg.Ack()
-	if err != nil {
-		log.Error(err)
-	}
+	log.Tracef("Job %s received\n", completedStep.ID)
 }

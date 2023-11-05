@@ -40,13 +40,16 @@ const (
 )
 
 type (
-	CompletionStatus int
-
+	CompletionStatus     int
+	SproutStepCompletion struct {
+		SproutID      string
+		CompletedStep StepCompletion
+	}
 	StepCompletion struct {
 		ID               StepID
 		CompletionStatus CompletionStatus
 		ChangesMade      bool
-		Changes          any
+		Changes          []string
 		Error            error
 	}
 	ServiceProvider interface {
@@ -87,6 +90,7 @@ type (
 		PropertiesForMethod(method string) (map[string]string, error)
 	}
 	Job struct {
+		JID     string   `json:"jid"`
 		ID      string   `json:"id"`
 		Results []Result `json:"results"`
 		Sprout  string   `json:"sprout"`
@@ -128,17 +132,23 @@ type (
 		Steps     []*Step
 	}
 	Result struct {
-		// TODO: use a type for this
 		Succeeded bool
 		Failed    bool
 		Changed   bool
+		Notes     []fmt.Stringer
+	}
+	CookSummary struct {
+		Succeeded int
+		Failures  int
+		Changed   int
 		Notes     []fmt.Stringer
 	}
 	Summary struct {
 		Succeeded  int
 		InProgress bool
 		Failures   int
-		Changed    int
+		Changes    int
+		Errors     []error
 	}
 	SimpleNote string
 	Startup    struct {
@@ -156,7 +166,9 @@ type (
 		GitCommit string `json:"git_commit"`
 		Tag       string `json:"tag"`
 	}
-
+	TriggerMsg struct {
+		JID string `json:"jid"`
+	}
 	KeySubmission struct {
 		NKey     string `json:"nkey"`
 		SproutID string `json:"id"`
