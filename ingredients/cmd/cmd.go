@@ -19,10 +19,14 @@ func init() {
 }
 
 type Cmd struct {
-	ID     string
-	Method string
-	Name   string
-	Async  bool
+	ID         string
+	Method     string
+	Name       string
+	RunAs      string
+	Env        []string
+	Path       string
+	WorkingDir string
+	Async      bool
 }
 
 func RegisterEC(n *nats.EncodedConn) {
