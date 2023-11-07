@@ -157,9 +157,6 @@ func TestCachedSkipVerify(t *testing.T) {
 			"skip_verify": true,
 		},
 	}
-	if err != nil {
-		t.Fatalf("failed to register local file provider: %v", err)
-	}
 	_, err = f.cached(context.Background(), false)
 	if err != nil {
 		t.Errorf("expected no error, got %v", err)

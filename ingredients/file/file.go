@@ -13,6 +13,8 @@ import (
 	"github.com/gogrlx/grlx/types"
 )
 
+var ErrFileMethodUndefined = errors.New("file method undefined")
+
 type File struct {
 	id     string
 	method string
@@ -68,7 +70,7 @@ func (f File) undef() (types.Result, error) {
 	return types.Result{
 		Succeeded: false, Failed: true,
 		Changed: false, Notes: nil,
-	}, fmt.Errorf("method %s undefined", f.method)
+	}, errors.Join(ErrFileMethodUndefined, fmt.Errorf("method %s undefined", f.method))
 }
 
 func (f File) Test(ctx context.Context) (types.Result, error) {
@@ -419,6 +421,7 @@ func (f File) Apply(ctx context.Context) (types.Result, error) {
 
 func (f File) PropertiesForMethod(method string) (map[string]string, error) {
 	switch f.method {
+	// TODO use ingredients.MethodPropsSet for remaining methods
 	case "absent":
 		return ingredients.MethodPropsSet{
 			ingredients.MethodProps{Key: "name", Type: "string", IsReq: true},
@@ -490,7 +493,7 @@ func (f File) PropertiesForMethod(method string) (map[string]string, error) {
 		}, nil
 	default:
 		// TODO define error type
-		return nil, fmt.Errorf("method %s undefined", f.method)
+		return nil, errors.Join(ErrDuplicateProtocol, fmt.Errorf("method %s undefined", f.method))
 
 	}
 }

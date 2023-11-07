@@ -3,52 +3,97 @@ package cmd
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
-
-	nats "github.com/nats-io/nats.go"
 
 	"github.com/gogrlx/grlx/ingredients"
 	"github.com/gogrlx/grlx/types"
 )
 
-var ec *nats.EncodedConn
-
-func init() {
-	baseCMD := Cmd{}
-	ingredients.RegisterAllMethods(baseCMD)
-}
+var ErrCmdMethodUndefined = fmt.Errorf("cmd method undefined")
 
 type Cmd struct {
-	ID         string
-	Method     string
-	Name       string
-	RunAs      string
-	Env        []string
-	Path       string
-	WorkingDir string
-	Async      bool
+	id     string
+	method string
+	params map[string]interface{}
 }
 
-func RegisterEC(n *nats.EncodedConn) {
-	ec = n
+// TODO parse out the map here
+func (c Cmd) Parse(id, method string, params map[string]interface{}) (types.RecipeCooker, error) {
+	if params == nil {
+		params = map[string]interface{}{}
+	}
+	return Cmd{
+		id: id, method: method,
+		params: params,
+	}, nil
 }
 
-func New(id, method string, params map[string]interface{}) Cmd {
-	return Cmd{ID: id, Method: method}
+func (c Cmd) validate() error {
+	set, err := c.PropertiesForMethod(c.method)
+	if err != nil {
+		return err
+	}
+	propSet, err := ingredients.PropMapToPropSet(set)
+	if err != nil {
+		return err
+	}
+	for _, v := range propSet {
+		if v.IsReq {
+			if v.Key == "name" {
+				name, ok := c.params[v.Key].(string)
+				if !ok {
+					return types.ErrMissingName
+				}
+				if name == "" {
+					return types.ErrMissingName
+				}
+
+			} else {
+				if _, ok := c.params[v.Key]; !ok {
+					return fmt.Errorf("missing required property %s", v.Key)
+				}
+			}
+		}
+	}
+	return nil
 }
 
 func (c Cmd) Test(ctx context.Context) (types.Result, error) {
-	return types.Result{}, nil
+	return types.Result{
+		Succeeded: true,
+		Failed:    false,
+		Changed:   false,
+		Notes:     []fmt.Stringer{types.SimpleNote("cmd would have been executed")},
+	}, nil
 }
 
 func (c Cmd) Apply(ctx context.Context) (types.Result, error) {
-	switch c.Method {
+	switch c.method {
 	case "run":
 		fallthrough
 	default:
-		// TODO define error type
-		return types.Result{Succeeded: false, Failed: true, Changed: false, Notes: nil}, fmt.Errorf("method %s undefined", c.Method)
+		return types.Result{Succeeded: false, Failed: true, Changed: false, Notes: nil},
+			errors.Join(ErrCmdMethodUndefined, fmt.Errorf("method %s undefined", c.method))
 
+	}
+}
+
+// TODO create map for method: type
+func (c Cmd) PropertiesForMethod(method string) (map[string]string, error) {
+	switch method {
+	case "run":
+		return ingredients.MethodPropsSet{
+			ingredients.MethodProps{Key: "name", Type: "string", IsReq: true},
+			ingredients.MethodProps{Key: "args", Type: "string", IsReq: false},
+			ingredients.MethodProps{Key: "env", Type: "[]string", IsReq: false},
+			ingredients.MethodProps{Key: "cwd", Type: "string", IsReq: false},
+			ingredients.MethodProps{Key: "runas", Type: "string", IsReq: false},
+			ingredients.MethodProps{Key: "path", Type: "string", IsReq: false},
+			ingredients.MethodProps{Key: "timeout", Type: "string", IsReq: false},
+		}.ToMap(), nil
+	default:
+		return nil, fmt.Errorf("method %s undefined", method)
 	}
 }
 
@@ -56,22 +101,16 @@ func (c Cmd) Methods() (string, []string) {
 	return "cmd", []string{"run"}
 }
 
-// TODO create map for method: type
-func (c Cmd) PropertiesForMethod(method string) (map[string]string, error) {
-	return nil, nil
-}
-
-// TODO parse out the map here
-func (c Cmd) Parse(id, method string, params map[string]interface{}) (types.RecipeCooker, error) {
-	return New(id, method, params), nil
-}
-
 func (c Cmd) Properties() (map[string]interface{}, error) {
 	m := map[string]interface{}{}
-	b, err := json.Marshal(c)
+	b, err := json.Marshal(c.params)
 	if err != nil {
 		return m, err
 	}
 	err = json.Unmarshal(b, &m)
 	return m, err
+}
+
+func init() {
+	ingredients.RegisterAllMethods(Cmd{})
 }

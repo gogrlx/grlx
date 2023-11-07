@@ -15,14 +15,19 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/taigrr/log-socket/log"
-
 	"github.com/gogrlx/grlx/types"
+	nats "github.com/nats-io/nats.go"
+	"github.com/taigrr/log-socket/log"
 )
+
+var ec *nats.EncodedConn
+
+func RegisterEC(encodedConn *nats.EncodedConn) {
+	ec = encodedConn
+}
 
 var envMutex sync.Mutex
 
-// TODO allow selector to be more than an ID
 func FRun(target types.KeyManager, cmdRun types.CmdRun) (types.CmdRun, error) {
 	topic := "grlx.sprouts." + target.SproutID + ".cmd.run"
 	var results types.CmdRun
