@@ -3,7 +3,6 @@ package main
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"fmt"
 	"os"
 	"time"
 
@@ -76,7 +75,7 @@ func ConnectSprout() {
 	var err error
 	SproutRootCA := config.SproutRootCA
 	FarmerInterface := config.FarmerInterface
-	FarmerBusPort := config.FarmerBusPort
+	FarmerBusURL := config.FarmerBusURL
 	opt, err := nats.NkeyOptionFromSeed(config.NKeySproutPrivFile)
 	if err != nil {
 		// TODO: handle error
@@ -96,7 +95,7 @@ func ConnectSprout() {
 		RootCAs:    certPool,
 		MinVersion: tls.VersionTLS12,
 	}
-	nc, err := nats.Connect(fmt.Sprintf("tls://%s:%s", FarmerInterface, FarmerBusPort), nats.Secure(config), opt,
+	nc, err := nats.Connect(FarmerBusURL, nats.Secure(config), opt,
 		nats.MaxReconnects(-1),
 		nats.ReconnectWait(time.Second*15),
 		nats.DisconnectHandler(func(_ *nats.Conn) {
@@ -106,7 +105,7 @@ func ConnectSprout() {
 	)
 	for err != nil {
 		time.Sleep(time.Second * 15)
-		nc, err = nats.Connect(fmt.Sprintf("tls://%s:%s", FarmerInterface, FarmerBusPort), nats.Secure(config), opt,
+		nc, err = nats.Connect(FarmerBusURL, nats.Secure(config), opt,
 			nats.MaxReconnects(-1),
 			nats.ReconnectWait(time.Second*15),
 			// TODO: Add a reconnect handler

@@ -142,7 +142,7 @@ func ConnectFarmer() {
 	connectionAttempts := 1
 	maxFarmerReconnect := 30
 	RootCA := config.RootCA
-	FarmerBusPort := config.FarmerBusPort
+	BusURL := config.FarmerBusURL
 	FarmerInterface := config.FarmerInterface
 	if FarmerInterface == "0.0.0.0" {
 		FarmerInterface = "localhost"
@@ -171,7 +171,7 @@ func ConnectFarmer() {
 	}
 	_ = config
 	log.Debug("Attempting to pair Farmer to NATS bus.")
-	nc, err := nats.Connect("tls://"+FarmerInterface+":"+FarmerBusPort, // nats.RootCAs(RootCA),
+	nc, err := nats.Connect(BusURL,
 		nats.Secure(config),
 		opt,
 		nats.RetryOnFailedConnect(true),
