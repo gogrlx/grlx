@@ -60,18 +60,20 @@ func (c Cmd) validate() error {
 }
 
 func (c Cmd) Test(ctx context.Context) (types.Result, error) {
-	return types.Result{
-		Succeeded: true,
-		Failed:    false,
-		Changed:   false,
-		Notes:     []fmt.Stringer{types.SimpleNote("cmd would have been executed")},
-	}, nil
+	switch c.method {
+	case "run":
+		return c.run(ctx, true)
+	default:
+		return types.Result{Succeeded: false, Failed: true, Changed: false, Notes: nil},
+			errors.Join(ErrCmdMethodUndefined, fmt.Errorf("method %s undefined", c.method))
+
+	}
 }
 
 func (c Cmd) Apply(ctx context.Context) (types.Result, error) {
 	switch c.method {
 	case "run":
-		fallthrough
+		return c.run(ctx, false)
 	default:
 		return types.Result{Succeeded: false, Failed: true, Changed: false, Notes: nil},
 			errors.Join(ErrCmdMethodUndefined, fmt.Errorf("method %s undefined", c.method))
