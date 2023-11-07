@@ -20,7 +20,7 @@ import (
 
 func init() {
 	config.LoadConfig("sprout")
-	log.SetLogLevel(log.LTrace)
+	log.SetLogLevel(config.LogLevel)
 	sproutID = pki.GetSproutID()
 	createConfigRoot()
 	pki.SetupPKISprout()

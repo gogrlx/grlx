@@ -3,6 +3,7 @@ package cmd
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -15,9 +16,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/gogrlx/grlx/types"
 	nats "github.com/nats-io/nats.go"
 	"github.com/taigrr/log-socket/log"
+
+	"github.com/gogrlx/grlx/config"
+	"github.com/gogrlx/grlx/types"
 )
 
 var ec *nats.EncodedConn
@@ -30,8 +33,11 @@ var envMutex sync.Mutex
 
 func FRun(target types.KeyManager, cmdRun types.CmdRun) (types.CmdRun, error) {
 	topic := "grlx.sprouts." + target.SproutID + ".cmd.run"
+	log.SetLogLevel(config.LogLevel)
 	var results types.CmdRun
-	err := ec.Request(topic, cmdRun, &results, time.Second*15+cmdRun.Duration)
+	log.Infof("Sending cmdRun to %s", topic)
+	log.Infof("cmdRun: %v", ec)
+	err := errors.New("") // ec.Request(topic, cmdRun, &results, time.Second*15+cmdRun.Duration)
 	return results, err
 }
 

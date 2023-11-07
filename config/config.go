@@ -133,25 +133,6 @@ func LoadConfig(binary string) {
 			jety.SetDefault("farmerbusinterface", jety.GetString("farmerinterface")+":"+jety.GetString("FarmerBusPort"))
 			JobLogDir = jety.GetString("joblogdir")
 			CertHosts = jety.GetStringSlice("certhosts")
-			logLevel := jety.GetString("loglevel")
-			switch logLevel {
-			case "debug":
-				LogLevel = log.LDebug
-			case "info":
-				LogLevel = log.LInfo
-			case "notice":
-				LogLevel = log.LNotice
-			case "warn":
-				LogLevel = log.LWarn
-			case "error":
-				LogLevel = log.LError
-			case "panic":
-				LogLevel = log.LPanic
-			case "fatal":
-				LogLevel = log.LFatal
-			default:
-				LogLevel = log.LNotice
-			}
 
 			AdminPubKeys := jety.GetStringMap("pubkeys")
 			if len(AdminPubKeys) == 0 {
@@ -212,30 +193,30 @@ func LoadConfig(binary string) {
 			jety.SetDefault("joblogdir", "/var/cache/grlx/sprout/jobs")
 			jety.SetDefault("nkeysproutprivfile", "/etc/grlx/pki/sprout/sprout.nkey")
 			jety.SetDefault("cachedir", "/var/cache/grlx/sprout/files/provided")
-			logLevel := jety.GetString("loglevel")
-			switch logLevel {
-			case "debug":
-				LogLevel = log.LDebug
-			case "info":
-				LogLevel = log.LInfo
-			case "notice":
-				LogLevel = log.LNotice
-			case "warn":
-				LogLevel = log.LWarn
-			case "error":
-				LogLevel = log.LError
-			case "panic":
-				LogLevel = log.LPanic
-			case "fatal":
-				LogLevel = log.LFatal
-			default:
-				LogLevel = log.LNotice
-			}
+
 			JobLogDir = jety.GetString("joblogdir")
 		}
 		jety.WriteConfig()
 	})
-
+	logLevel := jety.GetString("loglevel")
+	switch logLevel {
+	case "debug":
+		LogLevel = log.LDebug
+	case "info":
+		LogLevel = log.LInfo
+	case "notice":
+		LogLevel = log.LNotice
+	case "warn":
+		LogLevel = log.LWarn
+	case "error":
+		LogLevel = log.LError
+	case "panic":
+		LogLevel = log.LPanic
+	case "fatal":
+		LogLevel = log.LFatal
+	default:
+		LogLevel = log.LNotice
+	}
 	CacheDir = jety.GetString("cachedir")
 	CertFile = jety.GetString("certfile")
 	CertHosts = jety.GetStringSlice("certhosts")
