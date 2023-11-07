@@ -29,7 +29,7 @@ var (
 	CertificateValidTime time.Duration
 	ConfigRoot           string
 	FarmerAPIPort        string
-	FarmerBusInterface   string
+	FarmerBusURL         string
 	FarmerBusPort        string
 	FarmerInterface      string
 	FarmerOrganization   string
@@ -129,8 +129,8 @@ func LoadConfig(binary string) {
 			jety.SetDefault("nkeyfarmerprivfile", "/etc/grlx/pki/farmer/farmer.nkey")
 			jety.SetDefault("rootca", "/etc/grlx/pki/farmer/tls-rootca.pem")
 			jety.SetDefault("rootcapriv", "/etc/grlx/pki/farmer/tls-rootca-key.pem")
-			jety.SetDefault("organization", "grlx farmer")
-			jety.SetDefault("farmerbusinterface", jety.GetString("farmerinterface"))
+			jety.SetDefault("farmerorganization", "grlx farmer")
+			jety.SetDefault("farmerbusinterface", jety.GetString("farmerinterface")+":"+jety.GetString("FarmerBusPort"))
 			JobLogDir = jety.GetString("joblogdir")
 			CertHosts = jety.GetStringSlice("certhosts")
 			logLevel := jety.GetString("loglevel")
@@ -211,7 +211,6 @@ func LoadConfig(binary string) {
 			jety.SetDefault("nkeysproutpubfile", "/etc/grlx/pki/sprout/sprout.nkey.pub")
 			jety.SetDefault("joblogdir", "/var/cache/grlx/sprout/jobs")
 			jety.SetDefault("nkeysproutprivfile", "/etc/grlx/pki/sprout/sprout.nkey")
-			jety.SetDefault("farmerbusinterface", FarmerInterface+":"+jety.GetString("FarmerBusPort"))
 			jety.SetDefault("cachedir", "/var/cache/grlx/sprout/files/provided")
 			logLevel := jety.GetString("loglevel")
 			switch logLevel {
@@ -243,7 +242,7 @@ func LoadConfig(binary string) {
 	CertificateValidTime = jety.GetDuration("certificatevalidtime")
 	ConfigRoot = jety.GetString("configroot")
 	FarmerAPIPort = jety.GetString("farmerapiport")
-	FarmerBusInterface = jety.GetString("farmerbusinterface")
+	FarmerBusURL = "tls://" + jety.GetString("farmerbusinterface") + ":" + jety.GetString("farmerbusport")
 	FarmerBusPort = jety.GetString("farmerbusport")
 	FarmerInterface = jety.GetString("farmerinterface")
 	FarmerPKI = jety.GetString("farmerpki")

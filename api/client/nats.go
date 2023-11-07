@@ -13,7 +13,7 @@ import (
 )
 
 func NewNatsClient() (*nats.Conn, error) {
-	URL := config.FarmerBusInterface
+	URL := config.FarmerBusURL
 	pubkey, err := auth.GetPubkey()
 	if err != nil {
 		return nil, err
@@ -39,5 +39,5 @@ func NewNatsClient() (*nats.Conn, error) {
 	connOpts := []nats.Option{nats.Name("grlx-cli"), nats.Nkey(pubkey, auth.Sign), nats.Secure(config)}
 
 	log.Tracef("Connecting to %s", URL)
-	return nats.Connect("nats://"+URL, connOpts...)
+	return nats.Connect(URL, connOpts...)
 }
