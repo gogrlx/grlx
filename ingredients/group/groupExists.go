@@ -29,8 +29,5 @@ func (g Group) exists(ctx context.Context, test bool) (types.Result, error) {
 
 func groupExists(name string) bool {
 	_, err := user.LookupGroup(name)
-	if err != nil {
-		return false
-	}
-	return true
+	return err == nil
 }
