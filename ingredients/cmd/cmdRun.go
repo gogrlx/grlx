@@ -22,6 +22,8 @@ func (c Cmd) run(ctx context.Context, test bool) (types.Result, error) {
 
 	cmd, ok := c.params["name"].(string)
 	if !ok {
+		result.Succeeded = false
+		result.Failed = true
 		return result, errors.New("invalid command; name must be a string")
 	}
 	splitCmd := strings.Split(cmd, " ")

@@ -1,4 +1,4 @@
-package user
+package group
 
 import (
 	"context"
@@ -10,26 +10,26 @@ import (
 	"github.com/gogrlx/grlx/types"
 )
 
-var ErrUserMethodUndefined = fmt.Errorf("user method undefined")
+var ErrGroupMethodUndefined = fmt.Errorf("group method undefined")
 
-type User struct {
+type Group struct {
 	id     string
 	method string
 	params map[string]interface{}
 }
 
-func (u User) Parse(id, method string, params map[string]interface{}) (types.RecipeCooker, error) {
+func (g Group) Parse(id, method string, params map[string]interface{}) (types.RecipeCooker, error) {
 	if params == nil {
 		params = map[string]interface{}{}
 	}
-	return User{
+	return Group{
 		id: id, method: method,
 		params: params,
 	}, nil
 }
 
-func (u User) validate() error {
-	set, err := u.PropertiesForMethod(u.method)
+func (g Group) validate() error {
+	set, err := g.PropertiesForMethod(g.method)
 	if err != nil {
 		return err
 	}
@@ -40,7 +40,7 @@ func (u User) validate() error {
 	for _, v := range propSet {
 		if v.IsReq {
 			if v.Key == "name" {
-				name, ok := u.params[v.Key].(string)
+				name, ok := g.params[v.Key].(string)
 				if !ok {
 					return types.ErrMissingName
 				}
@@ -49,7 +49,7 @@ func (u User) validate() error {
 				}
 
 			} else {
-				if _, ok := u.params[v.Key]; !ok {
+				if _, ok := g.params[v.Key]; !ok {
 					return fmt.Errorf("missing required property %s", v.Key)
 				}
 			}
@@ -58,36 +58,36 @@ func (u User) validate() error {
 	return nil
 }
 
-func (u User) Test(ctx context.Context) (types.Result, error) {
-	switch u.method {
+func (g Group) Test(ctx context.Context) (types.Result, error) {
+	switch g.method {
 	case "present":
-		return u.present(ctx, true)
+		return g.present(ctx, true)
 	case "exists":
-		return u.exists(ctx, true)
+		return g.exists(ctx, true)
 	case "absent":
-		return u.absent(ctx, true)
+		return g.absent(ctx, true)
 	default:
 		return types.Result{Succeeded: false, Failed: true, Changed: false, Notes: nil},
-			errors.Join(ErrUserMethodUndefined, fmt.Errorf("method %s undefined", u.method))
+			errors.Join(ErrGroupMethodUndefined, fmt.Errorf("method %s undefined", g.method))
 	}
 }
 
-func (u User) Apply(ctx context.Context) (types.Result, error) {
-	switch u.method {
+func (g Group) Apply(ctx context.Context) (types.Result, error) {
+	switch g.method {
 	case "present":
-		return u.present(ctx, false)
+		return g.present(ctx, false)
 	case "exists":
-		return u.exists(ctx, false)
+		return g.exists(ctx, false)
 	case "absent":
-		return u.absent(ctx, false)
+		return g.absent(ctx, false)
 	default:
 		return types.Result{Succeeded: false, Failed: true, Changed: false, Notes: nil},
-			errors.Join(ErrUserMethodUndefined, fmt.Errorf("method %s undefined", u.method))
+			errors.Join(ErrGroupMethodUndefined, fmt.Errorf("method %s undefined", g.method))
 
 	}
 }
 
-func (u User) PropertiesForMethod(method string) (map[string]string, error) {
+func (g Group) PropertiesForMethod(method string) (map[string]string, error) {
 	switch method {
 	case "absent":
 		return ingredients.MethodPropsSet{
@@ -100,24 +100,20 @@ func (u User) PropertiesForMethod(method string) (map[string]string, error) {
 	case "present":
 		return ingredients.MethodPropsSet{
 			ingredients.MethodProps{Key: "name", Type: "string", IsReq: true},
-			ingredients.MethodProps{Key: "uid", Type: "string", IsReq: false},
 			ingredients.MethodProps{Key: "gid", Type: "string", IsReq: false},
-			ingredients.MethodProps{Key: "groups", Type: "[]string", IsReq: false},
-			ingredients.MethodProps{Key: "shell", Type: "string", IsReq: false},
-			ingredients.MethodProps{Key: "home", Type: "string", IsReq: false},
 		}.ToMap(), nil
 	default:
 		return nil, fmt.Errorf("method %s undefined", method)
 	}
 }
 
-func (u User) Methods() (string, []string) {
-	return "user", []string{"absent", "exists", "present"}
+func (u Group) Methods() (string, []string) {
+	return "group", []string{"absent", "exists", "present"}
 }
 
-func (u User) Properties() (map[string]interface{}, error) {
+func (g Group) Properties() (map[string]interface{}, error) {
 	m := map[string]interface{}{}
-	b, err := json.Marshal(u.params)
+	b, err := json.Marshal(g.params)
 	if err != nil {
 		return m, err
 	}
@@ -126,5 +122,5 @@ func (u User) Properties() (map[string]interface{}, error) {
 }
 
 func init() {
-	ingredients.RegisterAllMethods(User{})
+	ingredients.RegisterAllMethods(Group{})
 }
