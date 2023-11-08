@@ -39,6 +39,8 @@ var (
 func main() {
 	config.LoadConfig("farmer")
 	defer log.Flush()
+	log := log.CreateClient()
+	log.LogLevel = (config.LogLevel)
 	createConfigRoot()
 	pki.SetupPKIFarmer()
 	certs.GenCert()
@@ -145,7 +147,7 @@ func ConnectFarmer() {
 	BusURL := config.FarmerBusURL
 	FarmerInterface := config.FarmerInterface
 	if FarmerInterface == "0.0.0.0" {
-		FarmerInterface = "localhost"
+		FarmerInterface = "localhost:" + config.FarmerBusPort
 	}
 	var err error
 	opt, err := nats.NkeyOptionFromSeed(config.NKeyFarmerPrivFile)
@@ -169,7 +171,6 @@ func ConnectFarmer() {
 		RootCAs:    certPool,
 		MinVersion: tls.VersionTLS12,
 	}
-	_ = config
 	log.Debug("Attempting to pair Farmer to NATS bus.")
 	nc, err := nats.Connect(BusURL,
 		nats.Secure(config),
@@ -182,7 +183,9 @@ func ConnectFarmer() {
 			log.Warnf("WARN: Reconnecting Farmer to NATS bus, attempt: %d\n", connectionAttempts)
 		}),
 	)
-
+	if err != nil {
+		log.Errorf("Got an error on Connect with Secure Options: %+v\n", err)
+	}
 	for !nc.IsConnected() {
 		connectionAttempts++
 		log.Debugf("Attempting to pair Farmer to NATS bus (attempt %d/%d).", connectionAttempts, maxFarmerReconnect)
@@ -192,9 +195,6 @@ func ConnectFarmer() {
 		time.Sleep(time.Second * 15)
 	}
 	connectionAttempts = 0
-	if err != nil {
-		log.Errorf("Got an error on Connect with Secure Options: %+v\n", err)
-	}
 	log.Debugf("Successfully joined Farmer to NATS bus")
 
 	_, err = nc.Subscribe("grlx.sprouts.announce.>", func(m *nats.Msg) {
@@ -204,7 +204,10 @@ func ConnectFarmer() {
 		log.Errorf("Got an error on Subscribe: %+v\n", err)
 	}
 
-	ec, _ := nats.NewEncodedConn(nc, nats.JSON_ENCODER)
+	ec, err := nats.NewEncodedConn(nc, nats.JSON_ENCODER)
+	if err != nil {
+		log.Errorf("Got an error on NewEncodedConn: %+v\n", err)
+	}
 	test.RegisterEC(ec)
 	cmd.RegisterEC(ec)
 	cook.RegisterEC(ec)

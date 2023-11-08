@@ -223,7 +223,7 @@ func LoadConfig(binary string) {
 	CertificateValidTime = jety.GetDuration("certificatevalidtime")
 	ConfigRoot = jety.GetString("configroot")
 	FarmerAPIPort = jety.GetString("farmerapiport")
-	FarmerBusURL = "tls://" + jety.GetString("farmerbusinterface") + ":" + jety.GetString("farmerbusport")
+	FarmerBusURL = jety.GetString("farmerbusinterface") + ":" + jety.GetString("farmerbusport")
 	FarmerBusPort = jety.GetString("farmerbusport")
 	FarmerInterface = jety.GetString("farmerinterface")
 	FarmerPKI = jety.GetString("farmerpki")
