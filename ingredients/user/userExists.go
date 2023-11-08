@@ -21,6 +21,7 @@ func (u User) exists(ctx context.Context, test bool) (types.Result, error) {
 		result.Failed = true
 		result.Succeeded = false
 		result.Notes = append(result.Notes, types.SimpleNote("user "+userName+" does not exist"))
+		return result, nil
 	}
 	result.Failed = false
 	result.Succeeded = true

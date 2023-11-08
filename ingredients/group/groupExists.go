@@ -23,6 +23,7 @@ func (g Group) exists(ctx context.Context, test bool) (types.Result, error) {
 		result.Failed = true
 		result.Succeeded = false
 		result.Notes = append(result.Notes, types.SimpleNote("group "+groupName+" does not exist"))
+		return result, nil
 	}
 	result.Notes = append(result.Notes, types.SimpleNote("group "+groupName+" exists"))
 	return result, nil
