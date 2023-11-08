@@ -130,7 +130,6 @@ func LoadConfig(binary string) {
 			jety.SetDefault("rootca", "/etc/grlx/pki/farmer/tls-rootca.pem")
 			jety.SetDefault("rootcapriv", "/etc/grlx/pki/farmer/tls-rootca-key.pem")
 			jety.SetDefault("farmerorganization", "grlx farmer")
-			jety.SetDefault("farmerbusinterface", jety.GetString("farmerinterface")+":"+jety.GetString("FarmerBusPort"))
 			JobLogDir = jety.GetString("joblogdir")
 			CertHosts = jety.GetStringSlice("certhosts")
 
@@ -223,7 +222,7 @@ func LoadConfig(binary string) {
 	CertificateValidTime = jety.GetDuration("certificatevalidtime")
 	ConfigRoot = jety.GetString("configroot")
 	FarmerAPIPort = jety.GetString("farmerapiport")
-	FarmerBusURL = jety.GetString("farmerbusinterface") + ":" + jety.GetString("farmerbusport")
+	FarmerBusURL = jety.GetString("farmerinterface") + ":" + jety.GetString("farmerbusport")
 	FarmerBusPort = jety.GetString("farmerbusport")
 	FarmerInterface = jety.GetString("farmerinterface")
 	FarmerPKI = jety.GetString("farmerpki")

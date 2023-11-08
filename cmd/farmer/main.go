@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"fmt"
 	"net/http"
 	"os"
 	"runtime"
@@ -38,6 +39,7 @@ var (
 
 func main() {
 	config.LoadConfig("farmer")
+	fmt.Println(fmt.Sprintf("Starting Farmer with URL %s", config.FarmerBusURL))
 	defer log.Flush()
 	log := log.CreateClient()
 	log.LogLevel = (config.LogLevel)
