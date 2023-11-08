@@ -149,7 +149,7 @@ func ConnectFarmer() {
 	BusURL := config.FarmerBusURL
 	FarmerInterface := config.FarmerInterface
 	if FarmerInterface == "0.0.0.0" {
-		FarmerInterface = "localhost:" + config.FarmerBusPort
+		FarmerInterface = "localhost"
 	}
 	var err error
 	opt, err := nats.NkeyOptionFromSeed(config.NKeyFarmerPrivFile)
