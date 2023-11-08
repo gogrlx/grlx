@@ -26,6 +26,6 @@ func (u User) exists(ctx context.Context, test bool) (types.Result, error) {
 }
 
 func userExists(name string) bool {
-	_, err := user.LookupGroup(name)
+	_, err := user.Lookup(name)
 	return err == nil
 }
