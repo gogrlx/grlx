@@ -61,13 +61,22 @@ func (c Cmd) run(ctx context.Context, test bool) (types.Result, error) {
 		}
 		envVars[sp[0]] = sp[1]
 	}
-	ttimeout, err := time.ParseDuration(timeout)
-	if err != nil {
-		return result, errors.Join(err, fmt.Errorf("invalid timeout %s; must be a valid duration", timeout))
+	var command *exec.Cmd
+	if timeout != "" {
+		ttimeout, err := time.ParseDuration(timeout)
+		if err != nil {
+			result.Succeeded = false
+			result.Failed = true
+			result.Changed = false
+			result.Notes = append(result.Notes, types.SimpleNote(fmt.Sprintf("invalid timeout %s; must be a valid duration", timeout)))
+			return result, errors.Join(err, fmt.Errorf("invalid timeout %s; must be a valid duration", timeout))
+		}
+		timeoutCTX, cancel := context.WithTimeout(ctx, ttimeout)
+		defer cancel()
+		command = exec.CommandContext(timeoutCTX, splitCmd[0], args...)
+	} else {
+		command = exec.CommandContext(ctx, splitCmd[0], args...)
 	}
-	timeoutCTX, cancel := context.WithTimeout(ctx, ttimeout)
-	defer cancel()
-	command := exec.CommandContext(timeoutCTX, splitCmd[0], args...)
 	if runas != "" && runtime.GOOS != "windows" {
 		u, err := user.Lookup(runas)
 		if err != nil {
