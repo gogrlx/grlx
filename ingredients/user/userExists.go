@@ -22,7 +22,9 @@ func (u User) exists(ctx context.Context, test bool) (types.Result, error) {
 		result.Succeeded = false
 		result.Notes = append(result.Notes, types.SimpleNote("user "+userName+" does not exist"))
 	}
-	result.Notes = append(result.Notes, types.SimpleNote("group "+userName+" exists"))
+	result.Failed = false
+	result.Succeeded = true
+	result.Notes = append(result.Notes, types.SimpleNote("user "+userName+" exists"))
 	return result, nil
 }
 
