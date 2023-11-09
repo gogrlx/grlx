@@ -424,35 +424,35 @@ func (f File) PropertiesForMethod(method string) (map[string]string, error) {
 	// TODO use ingredients.MethodPropsSet for remaining methods
 	case "absent":
 		return ingredients.MethodPropsSet{
-			ingredients.MethodProps{Key: "name", Type: "string", IsReq: true},
+			ingredients.MethodProps{Key: "name", Type: "string", IsReq: true, Description: "the name/path of the file to delete"},
 		}.ToMap(), nil
 	case "append":
 		return ingredients.MethodPropsSet{
-			ingredients.MethodProps{Key: "name", Type: "string", IsReq: true},
-			ingredients.MethodProps{Key: "text", Type: "[]string", IsReq: false},
-			ingredients.MethodProps{Key: "makedirs", Type: "bool", IsReq: false},
+			ingredients.MethodProps{Key: "name", Type: "string", IsReq: true, Description: "the name/path of the file to append to"},
+			ingredients.MethodProps{Key: "makedirs", Type: "bool", IsReq: false, Description: "create parent directories if they do not exist"},
 			ingredients.MethodProps{Key: "source", Type: "string", IsReq: false},
 			ingredients.MethodProps{Key: "source_hash", Type: "string", IsReq: false},
-			ingredients.MethodProps{Key: "template", Type: "bool", IsReq: false},
-			ingredients.MethodProps{Key: "sources", Type: "[]string", IsReq: false},
 			ingredients.MethodProps{Key: "source_hashes", Type: "[]string", IsReq: false},
+			ingredients.MethodProps{Key: "sources", Type: "[]string", IsReq: false},
+			ingredients.MethodProps{Key: "template", Type: "bool", IsReq: false},
+			ingredients.MethodProps{Key: "text", Type: "[]string", IsReq: false, Description: "the text to append to the file"},
 		}.ToMap(), nil
 	case "cached":
 		return ingredients.MethodPropsSet{
 			ingredients.MethodProps{Key: "name", Type: "string", IsReq: true},
-			ingredients.MethodProps{Key: "source", Type: "string", IsReq: true},
 			ingredients.MethodProps{Key: "hash", Type: "string", IsReq: false},
 			ingredients.MethodProps{Key: "skip_verify", Type: "bool", IsReq: false},
+			ingredients.MethodProps{Key: "source", Type: "string", IsReq: true},
 		}.ToMap(), nil
 	case "contains":
 		return ingredients.MethodPropsSet{
 			ingredients.MethodProps{Key: "name", Type: "string", IsReq: true},
-			ingredients.MethodProps{Key: "text", Type: "[]string", IsReq: false},
 			ingredients.MethodProps{Key: "source", Type: "string", IsReq: true},
 			ingredients.MethodProps{Key: "source_hash", Type: "string", IsReq: false},
-			ingredients.MethodProps{Key: "template", Type: "bool", IsReq: false},
-			ingredients.MethodProps{Key: "sources", Type: "[]string", IsReq: false},
 			ingredients.MethodProps{Key: "source_hashes", Type: "[]string", IsReq: false},
+			ingredients.MethodProps{Key: "sources", Type: "[]string", IsReq: false},
+			ingredients.MethodProps{Key: "template", Type: "bool", IsReq: false},
+			ingredients.MethodProps{Key: "text", Type: "[]string", IsReq: false},
 		}.ToMap(), nil
 	case "content":
 		return ingredients.MethodPropsSet{
@@ -474,11 +474,6 @@ func (f File) PropertiesForMethod(method string) (map[string]string, error) {
 			ingredients.MethodProps{Key: "dir_mode", Type: "string", IsReq: false},
 			ingredients.MethodProps{Key: "file_mode", Type: "string", IsReq: false},
 			ingredients.MethodProps{Key: "makedirs", Type: "bool", IsReq: false},
-			ingredients.MethodProps{Key: "clean", Type: "bool", IsReq: false},
-			ingredients.MethodProps{Key: "follow_symlinks", Type: "bool", IsReq: false},
-			ingredients.MethodProps{Key: "force", Type: "bool", IsReq: false},
-			ingredients.MethodProps{Key: "backupname", Type: "string", IsReq: false},
-			ingredients.MethodProps{Key: "allow_symlink", Type: "bool", IsReq: false},
 		}.ToMap(), nil
 	case "managed":
 		return ingredients.MethodPropsSet{
@@ -488,16 +483,11 @@ func (f File) PropertiesForMethod(method string) (map[string]string, error) {
 			ingredients.MethodProps{Key: "user", Type: "string", IsReq: false},
 			ingredients.MethodProps{Key: "group", Type: "string", IsReq: false},
 			ingredients.MethodProps{Key: "mode", Type: "string", IsReq: false},
-			ingredients.MethodProps{Key: "attrs", Type: "string", IsReq: false},
 			ingredients.MethodProps{Key: "template", Type: "bool", IsReq: false},
 			ingredients.MethodProps{Key: "makedirs", Type: "bool", IsReq: false},
 			ingredients.MethodProps{Key: "dir_mode", Type: "string", IsReq: false},
-			ingredients.MethodProps{Key: "replace", Type: "bool", IsReq: false},
-			ingredients.MethodProps{Key: "backup", Type: "string", IsReq: false},
-			ingredients.MethodProps{Key: "show_changes", Type: "bool", IsReq: false},
-			ingredients.MethodProps{Key: "create", Type: "bool", IsReq: false},
-			ingredients.MethodProps{Key: "follow_symlinks", Type: "bool", IsReq: false},
-			ingredients.MethodProps{Key: "skip_verify", Type: "bool", IsReq: false},
+			ingredients.MethodProps{Key: "sources", Type: "[]string", IsReq: true},
+			ingredients.MethodProps{Key: "source_hashes", Type: "[]string", IsReq: false},
 		}.ToMap(), nil
 	case "missing":
 		return ingredients.MethodPropsSet{
@@ -522,8 +512,6 @@ func (f File) PropertiesForMethod(method string) (map[string]string, error) {
 		return ingredients.MethodPropsSet{
 			ingredients.MethodProps{Key: "name", Type: "string", IsReq: true},
 			ingredients.MethodProps{Key: "target", Type: "string", IsReq: true},
-			ingredients.MethodProps{Key: "force", Type: "bool", IsReq: false},
-			ingredients.MethodProps{Key: "backupname", Type: "string", IsReq: false},
 			ingredients.MethodProps{Key: "makedirs", Type: "bool", IsReq: false},
 			ingredients.MethodProps{Key: "user", Type: "string", IsReq: false},
 			ingredients.MethodProps{Key: "group", Type: "string", IsReq: false},
