@@ -427,12 +427,16 @@ func (f File) PropertiesForMethod(method string) (map[string]string, error) {
 			ingredients.MethodProps{Key: "name", Type: "string", IsReq: true},
 		}.ToMap(), nil
 	case "append":
-		return map[string]string{
-			"name": "string", "text": "[]string", "makedirs": "bool",
-			"source": "string", "source_hash": "string",
-			"template": "bool", "sources": "[]string",
-			"source_hashes": "[]string",
-		}, nil
+		return ingredients.MethodPropsSet{
+			ingredients.MethodProps{Key: "name", Type: "string", IsReq: true},
+			ingredients.MethodProps{Key: "text", Type: "[]string", IsReq: false},
+			ingredients.MethodProps{Key: "makedirs", Type: "bool", IsReq: false},
+			ingredients.MethodProps{Key: "source", Type: "string", IsReq: false},
+			ingredients.MethodProps{Key: "source_hash", Type: "string", IsReq: false},
+			ingredients.MethodProps{Key: "template", Type: "bool", IsReq: false},
+			ingredients.MethodProps{Key: "sources", Type: "[]string", IsReq: false},
+			ingredients.MethodProps{Key: "source_hashes", Type: "[]string", IsReq: false},
+		}.ToMap(), nil
 	case "cached":
 		return ingredients.MethodPropsSet{
 			ingredients.MethodProps{Key: "name", Type: "string", IsReq: true},
@@ -441,60 +445,99 @@ func (f File) PropertiesForMethod(method string) (map[string]string, error) {
 			ingredients.MethodProps{Key: "skip_verify", Type: "bool", IsReq: false},
 		}.ToMap(), nil
 	case "contains":
-		return map[string]string{
-			"name": "string", "text": "[]string",
-			"source":      "string",
-			"source_hash": "string", "template": "bool",
-			"sources": "[]string", "source_hashes": "[]string",
-		}, nil
+		return ingredients.MethodPropsSet{
+			ingredients.MethodProps{Key: "name", Type: "string", IsReq: true},
+			ingredients.MethodProps{Key: "text", Type: "[]string", IsReq: false},
+			ingredients.MethodProps{Key: "source", Type: "string", IsReq: true},
+			ingredients.MethodProps{Key: "source_hash", Type: "string", IsReq: false},
+			ingredients.MethodProps{Key: "template", Type: "bool", IsReq: false},
+			ingredients.MethodProps{Key: "sources", Type: "[]string", IsReq: false},
+			ingredients.MethodProps{Key: "source_hashes", Type: "[]string", IsReq: false},
+		}.ToMap(), nil
 	case "content":
-		return map[string]string{
-			"name": "string", "text": "[]string",
-			"makedirs": "bool", "source": "string",
-			"source_hash": "string", "template": "bool",
-			"sources": "[]string", "source_hashes": "[]string",
-		}, nil
+		return ingredients.MethodPropsSet{
+			ingredients.MethodProps{Key: "name", Type: "string", IsReq: true},
+			ingredients.MethodProps{Key: "text", Type: "[]string", IsReq: true},
+			ingredients.MethodProps{Key: "makedirs", Type: "bool", IsReq: false},
+			ingredients.MethodProps{Key: "source", Type: "string", IsReq: false},
+			ingredients.MethodProps{Key: "source_hash", Type: "string", IsReq: false},
+			ingredients.MethodProps{Key: "template", Type: "bool", IsReq: false},
+			ingredients.MethodProps{Key: "sources", Type: "[]string", IsReq: false},
+			ingredients.MethodProps{Key: "source_hashes", Type: "[]string", IsReq: false},
+		}.ToMap(), nil
 	case "directory":
-		return map[string]string{
-			"name": "string", "user": "string", "group": "string", "recurse": "bool",
-			"dir_mode": "string", "file_mode": "string", "makedirs": "bool",
-			"clean": "bool", "follow_symlinks": "bool", "force": "bool", "backupname": "string", "allow_symlink": "bool",
-		}, nil
+		return ingredients.MethodPropsSet{
+			ingredients.MethodProps{Key: "name", Type: "string", IsReq: true},
+			ingredients.MethodProps{Key: "user", Type: "string", IsReq: false},
+			ingredients.MethodProps{Key: "group", Type: "string", IsReq: false},
+			ingredients.MethodProps{Key: "recurse", Type: "bool", IsReq: false},
+			ingredients.MethodProps{Key: "dir_mode", Type: "string", IsReq: false},
+			ingredients.MethodProps{Key: "file_mode", Type: "string", IsReq: false},
+			ingredients.MethodProps{Key: "makedirs", Type: "bool", IsReq: false},
+			ingredients.MethodProps{Key: "clean", Type: "bool", IsReq: false},
+			ingredients.MethodProps{Key: "follow_symlinks", Type: "bool", IsReq: false},
+			ingredients.MethodProps{Key: "force", Type: "bool", IsReq: false},
+			ingredients.MethodProps{Key: "backupname", Type: "string", IsReq: false},
+			ingredients.MethodProps{Key: "allow_symlink", Type: "bool", IsReq: false},
+		}.ToMap(), nil
 	case "managed":
-		return map[string]string{
-			"name": "string", "source": "string", "source_hash": "string", "user": "string",
-			"group": "string", "mode": "string", "attrs": "string", "template": "bool",
-			"makedirs": "bool", "dir_mode": "string", "replace": "bool", "backup": "string", "show_changes": "bool",
-			"create":          "bool",
-			"follow_symlinks": "bool", "skip_verify": "bool",
-		}, nil
+		return ingredients.MethodPropsSet{
+			ingredients.MethodProps{Key: "name", Type: "string", IsReq: true},
+			ingredients.MethodProps{Key: "source", Type: "string", IsReq: true},
+			ingredients.MethodProps{Key: "source_hash", Type: "string", IsReq: false},
+			ingredients.MethodProps{Key: "user", Type: "string", IsReq: false},
+			ingredients.MethodProps{Key: "group", Type: "string", IsReq: false},
+			ingredients.MethodProps{Key: "mode", Type: "string", IsReq: false},
+			ingredients.MethodProps{Key: "attrs", Type: "string", IsReq: false},
+			ingredients.MethodProps{Key: "template", Type: "bool", IsReq: false},
+			ingredients.MethodProps{Key: "makedirs", Type: "bool", IsReq: false},
+			ingredients.MethodProps{Key: "dir_mode", Type: "string", IsReq: false},
+			ingredients.MethodProps{Key: "replace", Type: "bool", IsReq: false},
+			ingredients.MethodProps{Key: "backup", Type: "string", IsReq: false},
+			ingredients.MethodProps{Key: "show_changes", Type: "bool", IsReq: false},
+			ingredients.MethodProps{Key: "create", Type: "bool", IsReq: false},
+			ingredients.MethodProps{Key: "follow_symlinks", Type: "bool", IsReq: false},
+			ingredients.MethodProps{Key: "skip_verify", Type: "bool", IsReq: false},
+		}.ToMap(), nil
 	case "missing":
-		return map[string]string{"name": "string"}, nil
+		return ingredients.MethodPropsSet{
+			ingredients.MethodProps{Key: "name", Type: "string", IsReq: true},
+		}.ToMap(), nil
 	case "prepend":
-		return map[string]string{
-			"name": "string", "text": "[]string", "makedirs": "bool",
-			"source": "string", "source_hash": "string",
-			"template": "bool", "sources": "[]string",
-			"source_hashes": "[]string",
-		}, nil
+		return ingredients.MethodPropsSet{
+			ingredients.MethodProps{Key: "name", Type: "string", IsReq: true},
+			ingredients.MethodProps{Key: "text", Type: "[]string", IsReq: false},
+			ingredients.MethodProps{Key: "makedirs", Type: "bool", IsReq: false},
+			ingredients.MethodProps{Key: "source", Type: "string", IsReq: false},
+			ingredients.MethodProps{Key: "source_hash", Type: "string", IsReq: false},
+			ingredients.MethodProps{Key: "template", Type: "bool", IsReq: false},
+			ingredients.MethodProps{Key: "sources", Type: "[]string", IsReq: false},
+			ingredients.MethodProps{Key: "source_hashes", Type: "[]string", IsReq: false},
+		}.ToMap(), nil
 	case "exists":
-		return map[string]string{
-			"name": "string",
-		}, nil
+		return ingredients.MethodPropsSet{
+			ingredients.MethodProps{Key: "name", Type: "string", IsReq: true},
+		}.ToMap(), nil
 	case "symlink":
-		return map[string]string{
-			"name": "string", "target": "string", "force": "bool", "backupname": "string",
-			"makedirs": "bool", "user": "string", "group": "string", "mode": "string",
-		}, nil
+		return ingredients.MethodPropsSet{
+			ingredients.MethodProps{Key: "name", Type: "string", IsReq: true},
+			ingredients.MethodProps{Key: "target", Type: "string", IsReq: true},
+			ingredients.MethodProps{Key: "force", Type: "bool", IsReq: false},
+			ingredients.MethodProps{Key: "backupname", Type: "string", IsReq: false},
+			ingredients.MethodProps{Key: "makedirs", Type: "bool", IsReq: false},
+			ingredients.MethodProps{Key: "user", Type: "string", IsReq: false},
+			ingredients.MethodProps{Key: "group", Type: "string", IsReq: false},
+			ingredients.MethodProps{Key: "mode", Type: "string", IsReq: false},
+		}.ToMap(), nil
 	case "touch":
-		return map[string]string{
-			"name": "string", "atime": "string",
-			"mtime": "string", "makedirs": "bool",
-		}, nil
+		return ingredients.MethodPropsSet{
+			ingredients.MethodProps{Key: "name", Type: "string", IsReq: true},
+			ingredients.MethodProps{Key: "atime", Type: "string", IsReq: false},
+			ingredients.MethodProps{Key: "mtime", Type: "string", IsReq: false},
+			ingredients.MethodProps{Key: "makedirs", Type: "bool", IsReq: false},
+		}.ToMap(), nil
 	default:
-		// TODO define error type
-		return nil, errors.Join(ErrDuplicateProtocol, fmt.Errorf("method %s undefined", f.method))
-
+		return nil, errors.Join(ErrFileMethodUndefined, fmt.Errorf("method %s undefined", f.method))
 	}
 }
 
