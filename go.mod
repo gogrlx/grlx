@@ -1,6 +1,6 @@
 module github.com/gogrlx/grlx
 
-go 1.21.3
+go 1.21.4
 
 replace github.com/mattn/go-localereader v0.0.1 => github.com/taigrr/go-localereader v0.0.2
 
