@@ -57,6 +57,9 @@ grlx -T \* cmd run whoami
 grlx -T \* cmd run --out json -- uname -a
 ```
 
+## Documentation
+Please see the [official docs site](https://docs.grlx.dev) for complete documentation.
+
 ## Why grlx?
 
 Our team started out using competing solutions, and we ran into scalability issues.
