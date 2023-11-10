@@ -12,7 +12,7 @@ require (
 	github.com/fatih/color v1.16.0
 	github.com/google/uuid v1.4.0
 	github.com/gorilla/mux v1.8.1
-	github.com/nats-io/nats-server/v2 v2.10.4
+	github.com/nats-io/nats-server/v2 v2.10.5
 	github.com/nats-io/nats.go v1.31.0
 	github.com/nats-io/nkeys v0.4.6
 	github.com/spf13/cobra v1.8.0
