@@ -430,11 +430,11 @@ func (f File) PropertiesForMethod(method string) (map[string]string, error) {
 		return ingredients.MethodPropsSet{
 			ingredients.MethodProps{Key: "name", Type: "string", IsReq: true, Description: "the name/path of the file to append to"},
 			ingredients.MethodProps{Key: "makedirs", Type: "bool", IsReq: false, Description: "create parent directories if they do not exist"},
-			ingredients.MethodProps{Key: "source", Type: "string", IsReq: false},
-			ingredients.MethodProps{Key: "source_hash", Type: "string", IsReq: false},
-			ingredients.MethodProps{Key: "source_hashes", Type: "[]string", IsReq: false},
-			ingredients.MethodProps{Key: "sources", Type: "[]string", IsReq: false},
-			ingredients.MethodProps{Key: "template", Type: "bool", IsReq: false},
+			ingredients.MethodProps{Key: "source", Type: "string", IsReq: false, Description: "append lines from a file sourced from this path/URL"},
+			ingredients.MethodProps{Key: "source_hash", Type: "string", IsReq: false, Description: "hash to verify the file specified by source"},
+			ingredients.MethodProps{Key: "source_hashes", Type: "[]string", IsReq: false, Description: "corresponding hashes for sources"},
+			ingredients.MethodProps{Key: "sources", Type: "[]string", IsReq: false, Description: "source, but in list format"},
+			ingredients.MethodProps{Key: "template", Type: "bool", IsReq: false, Description: "whether to render the file as a template before appending (experimental)"},
 			ingredients.MethodProps{Key: "text", Type: "[]string", IsReq: false, Description: "the text to append to the file"},
 		}.ToMap(), nil
 	case "cached":
