@@ -1,0 +1,86 @@
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+# vim: set ts=2 sw=2 tw=0 fo=cnqoj
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - main: ./cmd/sprout/
+    id: "sprout"
+    binary: sprout
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - 386
+      - arm64
+      - arm
+  - main: ./cmd/farmer/
+    id: "farmer"
+    binary: farmer
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - 386
+      - arm64
+      - arm
+  - main: ./cmd/grlx/
+    id: "grlx-cli"
+    binary: grlx-cli
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - 386
+      - arm64
+      - arm
+    ldflags:
+      - -X main.GitCommit={{.ShortCommit}} -X main.Tag=v{{.Version}}
+
+# generates macOS universal binaries
+universal_binaries:
+  - id: grlx-universal
+    ids:
+      - "grlx-cli"
+    name_template: "{{.ProjectName}}-cli"
+    replace: true
+
+archives:
+  - format: tar.gz
+    allow_different_binary_count: true
+    builds:
+      - grlx-cli
+      - grlx-universal
+    # this name template makes the OS and Arch compatible with the results of `uname`.
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end }}
+    # use zip for windows archives
+    format_overrides:
+      - goos: windows
+        format: zip
+
+release:
+  github:
+    owner: gogrlx
+    name: grlx
+  ids:
+    - grlx-universal
+    - grlx-cli
+    - farmer
+    - sprout
+  draft: true
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"

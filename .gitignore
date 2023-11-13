@@ -6,3 +6,5 @@ etc
 *.zip
 coverage.out
 local/
+
+dist/
