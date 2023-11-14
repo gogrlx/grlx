@@ -66,7 +66,7 @@ func (f File) symlink(ctx context.Context, test bool) (types.Result, error) {
 			}, nil
 		}
 		// check if it's not already a symlink
-		if nameStat.Mode()&os.ModeSymlink == 0 {
+		if nameStat == nil || nameStat.Mode()&os.ModeSymlink == 0 {
 			// create the symlink
 			err = os.Symlink(target, name)
 			if err != nil {
