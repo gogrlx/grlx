@@ -85,7 +85,7 @@ func (f File) touch(ctx context.Context, test bool) (types.Result, error) {
 			return types.Result{
 				Succeeded: false, Failed: true,
 				Changed: false, Notes: []fmt.Stringer{
-					types.SimpleNote(fmt.Sprintf("filepath `%s` is missing and `makedirs` is false", fileDir)),
+					types.Snprintf("filepath `%s` is missing and `makedirs` is false", fileDir),
 				},
 			}, types.ErrPathNotFound
 		}
@@ -94,7 +94,7 @@ func (f File) touch(ctx context.Context, test bool) (types.Result, error) {
 				return types.Result{
 					Succeeded: true, Failed: false,
 					Changed: true, Notes: []fmt.Stringer{
-						types.SimpleNote(fmt.Sprintf("file `%s` to be created with provided timestamps", name)),
+						types.Snprintf("file `%s` to be created with provided timestamps", name),
 					},
 				}, nil
 			}
@@ -103,7 +103,7 @@ func (f File) touch(ctx context.Context, test bool) (types.Result, error) {
 				return types.Result{
 					Succeeded: false, Failed: true,
 					Changed: false, Notes: []fmt.Stringer{
-						types.SimpleNote(fmt.Sprintf("failed to create parent directory %s", fileDir)),
+						types.Snprintf("failed to create parent directory `%s`", fileDir),
 					},
 				}, dirErr
 			}
@@ -113,7 +113,7 @@ func (f File) touch(ctx context.Context, test bool) (types.Result, error) {
 			return types.Result{
 				Succeeded: false, Failed: true,
 				Changed: false, Notes: []fmt.Stringer{
-					types.SimpleNote(fmt.Sprintf("failed to create file %s", name)),
+					types.Snprintf("failed to create file `%s`", name),
 				},
 			}, errCreate
 		}
@@ -132,17 +132,17 @@ func (f File) touch(ctx context.Context, test bool) (types.Result, error) {
 			return types.Result{
 				Succeeded: true, Failed: false,
 				Changed: false, Notes: []fmt.Stringer{
-					types.SimpleNote(fmt.Sprintf("file `%s` already has provided timestamps", name)),
+					types.Snprintf("file `%s` already has provided timestamps", name),
 				},
 			}, nil
 		} else if !omt.Equal(mTime) {
-			notes = append(notes, types.SimpleNote(fmt.Sprintf("mtime of `%s` will be changed", name)))
+			notes = append(notes, types.Snprintf("mtime of `%s` will be changed", name))
 			return types.Result{
 				Succeeded: true, Failed: false,
 				Changed: true, Notes: notes,
 			}, nil
 		} else if !oat.Equal(aTime) {
-			notes = append(notes, types.SimpleNote(fmt.Sprintf("atime of `%s` will be changed", name)))
+			notes = append(notes, types.Snprintf("atime of `%s` will be changed", name))
 			return types.Result{
 				Succeeded: true, Failed: false,
 				Changed: true, Notes: notes,
@@ -155,11 +155,11 @@ func (f File) touch(ctx context.Context, test bool) (types.Result, error) {
 		return types.Result{
 			Succeeded: false, Failed: true,
 			Changed: false, Notes: []fmt.Stringer{
-				types.SimpleNote(fmt.Sprintf("failed to change timestamps of `%s`", name)),
+				types.Snprintf("failed to change timestamps of `%s`", name),
 			},
 		}, err
 	}
-	notes = append(notes, types.SimpleNote(fmt.Sprintf("timestamps of `%s` changed", name)))
+	notes = append(notes, types.Snprintf("timestamps of `%s` changed", name))
 	return types.Result{
 		Succeeded: true, Failed: false,
 		Changed: true, Notes: notes,
