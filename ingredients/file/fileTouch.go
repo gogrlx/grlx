@@ -22,8 +22,9 @@ func (f File) touch(ctx context.Context, test bool) (types.Result, error) {
 		}, types.ErrMissingName
 	}
 	notes := []fmt.Stringer{}
-	aTime := time.Now()
-	mTime := time.Now()
+	now := time.Now()
+	aTime := now
+	mTime := now
 	{
 		// parse atime
 		atimeStr, ok := f.params["atime"].(string)
@@ -42,7 +43,7 @@ func (f File) touch(ctx context.Context, test bool) (types.Result, error) {
 		// parse mtime
 		mtimeStr, ok := f.params["mtime"].(string)
 		if ok && mtimeStr != "" {
-			at, err := time.Parse(time.RFC3339, mtimeStr)
+			mt, err := time.Parse(time.RFC3339, mtimeStr)
 			if err != nil {
 				return types.Result{
 					Succeeded: false, Failed: true,
@@ -51,7 +52,7 @@ func (f File) touch(ctx context.Context, test bool) (types.Result, error) {
 					},
 				}, err
 			}
-			aTime = at
+			mTime = mt
 		}
 	}
 	mkdirs := false
@@ -125,6 +126,9 @@ func (f File) touch(ctx context.Context, test bool) (types.Result, error) {
 	if err != nil {
 		oat = time.Now()
 	}
+	// stores if the file has a non-"now" mtime or atime
+	mTimeSet := !mTime.Equal(now)
+	aTimeSet := !aTime.Equal(now)
 	_ = omt
 	_ = oat
 	if test {
@@ -135,14 +139,20 @@ func (f File) touch(ctx context.Context, test bool) (types.Result, error) {
 					types.Snprintf("file `%s` already has provided timestamps", name),
 				},
 			}, nil
-		} else if !omt.Equal(mTime) {
+		} else if !omt.Equal(mTime) && mTimeSet && !aTimeSet {
 			notes = append(notes, types.Snprintf("mtime of `%s` will be changed", name))
 			return types.Result{
 				Succeeded: true, Failed: false,
 				Changed: true, Notes: notes,
 			}, nil
-		} else if !oat.Equal(aTime) {
+		} else if !oat.Equal(aTime) && aTimeSet && !mTimeSet {
 			notes = append(notes, types.Snprintf("atime of `%s` will be changed", name))
+			return types.Result{
+				Succeeded: true, Failed: false,
+				Changed: true, Notes: notes,
+			}, nil
+		} else if !omt.Equal(mTime) && !oat.Equal(aTime) {
+			notes = append(notes, types.Snprintf("timestamps of `%s` will be changed", name))
 			return types.Result{
 				Succeeded: true, Failed: false,
 				Changed: true, Notes: notes,
