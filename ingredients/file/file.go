@@ -457,7 +457,7 @@ func (f File) PropertiesForMethod(method string) (map[string]string, error) {
 	case "content":
 		return ingredients.MethodPropsSet{
 			ingredients.MethodProps{Key: "name", Type: "string", IsReq: true},
-			ingredients.MethodProps{Key: "text", Type: "[]string", IsReq: true},
+			ingredients.MethodProps{Key: "text", Type: "[]string", IsReq: false},
 			ingredients.MethodProps{Key: "makedirs", Type: "bool", IsReq: false},
 			ingredients.MethodProps{Key: "source", Type: "string", IsReq: false},
 			ingredients.MethodProps{Key: "source_hash", Type: "string", IsReq: false},
