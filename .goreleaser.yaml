@@ -8,7 +8,8 @@ before:
 builds:
   - main: ./cmd/sprout/
     id: "sprout"
-    binary: sprout
+    # example - grlx-sprout-linux-amd64
+    binary: "{{.ProjectName}}-sprout-{{.Os}}-{{.Arch}}"
     goos:
       - linux
     goarch:
@@ -18,7 +19,8 @@ builds:
       - arm
   - main: ./cmd/farmer/
     id: "farmer"
-    binary: farmer
+    # example - grlx-farmer-linux-amd64
+    binary: "{{.ProjectName}}-farmer-{{.Os}}-{{.Arch}}"
     goos:
       - linux
     goarch:
@@ -28,7 +30,8 @@ builds:
       - arm
   - main: ./cmd/grlx/
     id: "grlx-cli"
-    binary: grlx-cli
+    # example - grlx-cli-linux-amd64
+    binary: "{{.ProjectName}}-cli-{{.Os}}-{{.Arch}}"
     goos:
       - linux
       - darwin
@@ -41,27 +44,22 @@ builds:
       - -X main.GitCommit={{.ShortCommit}} -X main.Tag=v{{.Version}}
 
 # generates macOS universal binaries
+# name would be: grlx-cli-darwin-universal
 universal_binaries:
   - id: grlx-universal
     ids:
       - "grlx-cli"
-    name_template: "{{.ProjectName}}-cli"
+    name_template: "{{.ProjectName}}-cli-darwin-universal"
     replace: true
 
+# generates archives for the CLI
 archives:
   - format: tar.gz
     allow_different_binary_count: true
     builds:
       - grlx-cli
       - grlx-universal
-    # this name template makes the OS and Arch compatible with the results of `uname`.
-    name_template: >-
-      {{ .ProjectName }}_
-      {{- title .Os }}_
-      {{- if eq .Arch "amd64" }}x86_64
-      {{- else if eq .Arch "386" }}i386
-      {{- else }}{{ .Arch }}{{ end }}
-      {{- if .Arm }}v{{ .Arm }}{{ end }}
+    name_template: "{{.ProjectName}}-cli-{{.Os}}-{{.Arch}}"
     # use zip for windows archives
     format_overrides:
       - goos: windows
