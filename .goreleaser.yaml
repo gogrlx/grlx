@@ -1,0 +1,89 @@
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+# vim: set ts=2 sw=2 tw=0 fo=cnqoj
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - main: ./cmd/sprout/
+    id: "sprout"
+    # example - grlx-sprout-v1.0.0-linux-amd64
+    binary: "{{.ProjectName}}-sprout-{{.Tag}}-{{.Os}}-{{.Arch}}"
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - 386
+      - arm64
+      - arm
+  - main: ./cmd/farmer/
+    id: "farmer"
+    # example - grlx-farmer-v1.0.0-linux-amd64
+    binary: "{{.ProjectName}}-farmer-{{.Tag}}-{{.Os}}-{{.Arch}}"
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - 386
+      - arm64
+      - arm
+  - main: ./cmd/grlx/
+    id: "grlx-cli"
+    # example - grlx-cli-v1.0.0-linux-amd64
+    binary: "{{.ProjectName}}-cli-{{.Tag}}-{{.Os}}-{{.Arch}}"
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - 386
+      - arm64
+      - arm
+    ldflags:
+      - -X main.GitCommit={{.ShortCommit}} -X main.Tag=v{{.Version}}
+
+# generates macOS universal binaries
+# name would be: grlx-cli-v1.0.0-darwin-universal
+universal_binaries:
+  - id: grlx-universal
+    ids:
+      - "grlx-cli"
+    name_template: "{{.ProjectName}}-cli-{{.Tag}}-darwin-universal"
+    replace: true
+
+# generates archives for the CLI
+archives:
+  - format: tar.gz
+    # This allows for us to handle the universal binaries
+    allow_different_binary_count: true
+    # This puts all the binaries for a given system into one archive
+    builds:
+      - grlx-cli
+      - grlx-universal
+      - farmer
+      - sprout
+    name_template: "{{.ProjectName}}-{{.Tag}}-{{.Os}}-{{.Arch}}"
+    # use zip for windows archives
+    format_overrides:
+      - goos: windows
+        format: zip
+
+# Creates a draft github release for maintainer review
+release:
+  github:
+    owner: gogrlx
+    name: grlx
+  ids:
+    - grlx-universal
+    - grlx-cli
+    - farmer
+    - sprout
+  draft: true
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
