@@ -29,6 +29,13 @@ func (f File) content(ctx context.Context, test bool) (types.Result, error) {
 	foundSource := false
 	_, _, _, _ = template, sources, sourceHashes, foundSource
 	var ok bool
+	err := f.validate()
+	if err != nil {
+		return types.Result{
+			Succeeded: false, Failed: true,
+			Changed: false, Notes: notes,
+		}, err
+	}
 	{
 		name, ok = f.params["name"].(string)
 		if !ok {
