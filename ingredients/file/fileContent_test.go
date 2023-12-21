@@ -113,8 +113,8 @@ func TestFileContent(t *testing.T) {
 		{
 			name: "sources missing hashes",
 			params: map[string]interface{}{
-				"name":          doesExist,
-				"sources":       []string{"nope", "nope2"},
+				"name":          "test",
+				"sources":       []string{sourceExist, doesExist},
 				"source_hashes": []string{"thing1"},
 			},
 			expected: types.Result{
@@ -122,7 +122,7 @@ func TestFileContent(t *testing.T) {
 				Failed:    true,
 				Changed:   false,
 				Notes: []fmt.Stringer{
-					types.Snprintf("failed to open cached source %s", newDir),
+					types.Snprintf("sources and source_hashes must be the same length"),
 				},
 			},
 			error: types.ErrMissingHash,
@@ -141,6 +141,7 @@ func TestFileContent(t *testing.T) {
 				Changed:   false,
 				Notes:     []fmt.Stringer{},
 			},
+			// TODO: This should be a lot cleaner, relying on a stdblib error that we have little control over is difficult to test.
 			error: errors.Join(fmt.Errorf("open %s: no such file or directory", filepath.Join(config.CacheDir, "test1")), types.ErrCacheFailure),
 			test:  false,
 		},

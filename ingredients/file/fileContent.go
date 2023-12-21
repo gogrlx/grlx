@@ -138,6 +138,7 @@ func (f File) content(ctx context.Context, test bool) (types.Result, error) {
 		var srces []interface{}
 		var srcHashes []interface{}
 		var ok bool
+		fmt.Printf("sources: %v\n", f.params["sources"])
 		if srces, ok = f.params["sources"].([]interface{}); ok && len(srces) > 0 {
 			if srcHashes, ok = f.params["source_hashes"].([]interface{}); ok {
 				foundSource = true
