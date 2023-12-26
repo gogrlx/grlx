@@ -112,6 +112,42 @@ func TestManaged(t *testing.T) {
 			error: nil,
 			test:  false,
 		},
+		{
+			// TODO: Verify that this is the expected behavior
+			name: "Simple case no create",
+			params: map[string]interface{}{
+				"name":        existingFile,
+				"source":      "grlx://test/managed-file",
+				"source_hash": hashString,
+				"create":      false,
+			},
+			expected: types.Result{
+				Succeeded: true,
+				Failed:    false,
+				Changed:   true,
+				// TODO: Notes not implemented yet for file.managed
+				Notes: []fmt.Stringer{},
+			},
+			error: nil,
+			test:  false,
+		},
+		{
+			name: "External case",
+			params: map[string]interface{}{
+				"name":        existingFile,
+				"source":      "https://releases.grlx.dev/linux/amd64/v1.0.0/grlx",
+				"source_hash": "md5:0f9847d3b437488309329463b1454f40",
+			},
+			expected: types.Result{
+				Succeeded: true,
+				Failed:    false,
+				Changed:   true,
+				// TODO: Notes not implemented yet for file.managed
+				Notes: []fmt.Stringer{},
+			},
+			error: nil,
+			test:  false,
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
