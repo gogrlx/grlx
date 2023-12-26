@@ -128,6 +128,23 @@ func TestFileContent(t *testing.T) {
 			error: types.ErrMissingHash,
 			test:  false,
 		},
+		// Expect this to match the single source case
+		{
+			name: "sources missing hashes w/ skip_verify",
+			params: map[string]interface{}{
+				"name":        "test",
+				"sources":     []string{sourceExist, doesExist},
+				"skip_verify": true,
+			},
+			expected: types.Result{
+				Succeeded: false,
+				Failed:    true,
+				Changed:   false,
+				Notes:     []fmt.Stringer{},
+			},
+			error: nil,
+			test:  false,
+		},
 		{
 			name: "source with hash",
 			params: map[string]interface{}{
