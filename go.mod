@@ -14,7 +14,7 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/nats-io/nats-server/v2 v2.10.7
 	github.com/nats-io/nats.go v1.31.0
-	github.com/nats-io/nkeys v0.4.6
+	github.com/nats-io/nkeys v0.4.7
 	github.com/spf13/cobra v1.8.0
 	github.com/taigrr/jety v0.0.12
 	github.com/taigrr/log-socket v1.0.2
