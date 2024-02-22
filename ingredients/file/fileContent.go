@@ -29,6 +29,13 @@ func (f File) content(ctx context.Context, test bool) (types.Result, error) {
 	foundSource := false
 	_, _, _, _ = template, sources, sourceHashes, foundSource
 	var ok bool
+	err := f.validate()
+	if err != nil {
+		return types.Result{
+			Succeeded: false, Failed: true,
+			Changed: false, Notes: notes,
+		}, err
+	}
 	{
 		name, ok = f.params["name"].(string)
 		if !ok {
@@ -131,6 +138,7 @@ func (f File) content(ctx context.Context, test bool) (types.Result, error) {
 		var srces []interface{}
 		var srcHashes []interface{}
 		var ok bool
+		fmt.Printf("sources: %v\n", f.params["sources"])
 		if srces, ok = f.params["sources"].([]interface{}); ok && len(srces) > 0 {
 			if srcHashes, ok = f.params["source_hashes"].([]interface{}); ok {
 				foundSource = true
