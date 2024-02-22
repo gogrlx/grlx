@@ -12,8 +12,8 @@ require (
 	github.com/fatih/color v1.16.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
-	github.com/nats-io/nats-server/v2 v2.10.10
-	github.com/nats-io/nats.go v1.32.0
+	github.com/nats-io/nats-server/v2 v2.10.11
+	github.com/nats-io/nats.go v1.33.1
 	github.com/nats-io/nkeys v0.4.7
 	github.com/spf13/cobra v1.8.0
 	github.com/taigrr/jety v0.0.12
@@ -29,7 +29,7 @@ require (
 	github.com/containerd/console v1.0.4 // indirect
 	github.com/gorilla/websocket v1.5.1 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
-	github.com/klauspost/compress v1.17.6 // indirect
+	github.com/klauspost/compress v1.17.7 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
@@ -41,9 +41,9 @@ require (
 	github.com/muesli/cancelreader v0.2.2 // indirect
 	github.com/muesli/reflow v0.3.0 // indirect
 	github.com/muesli/termenv v0.15.2 // indirect
-	github.com/nats-io/jwt/v2 v2.5.3 // indirect
+	github.com/nats-io/jwt/v2 v2.5.5 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
-	github.com/rivo/uniseg v0.4.6 // indirect
+	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	golang.org/x/crypto v0.19.0 // indirect
 	golang.org/x/net v0.21.0 // indirect
