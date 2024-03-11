@@ -44,8 +44,14 @@ func natsInit(nc *nats.EncodedConn) error {
 		var cmdRun types.CmdRun
 		json.NewDecoder(bytes.NewBuffer(m.Data)).Decode(&cmdRun)
 		log.Trace(cmdRun)
-		results, _ := cmd.SRun(cmdRun)
-		resultsB, _ := json.Marshal(results)
+		results, err := cmd.SRun(cmdRun)
+		if err != nil {
+			log.Error(err)
+		}
+		resultsB, err := json.Marshal(results)
+		if err != nil {
+			log.Error(err)
+		}
 		m.Respond(resultsB)
 	})
 	if err != nil {

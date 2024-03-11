@@ -32,7 +32,7 @@ var envMutex sync.Mutex
 func FRun(target types.KeyManager, cmdRun types.CmdRun) (types.CmdRun, error) {
 	topic := "grlx.sprouts." + target.SproutID + ".cmd.run"
 	var results types.CmdRun
-	err := ec.Request(topic, cmdRun, &results, time.Second*15+cmdRun.Duration)
+	err := ec.Request(topic, cmdRun, &results, time.Second*15+cmdRun.Timeout)
 	return results, err
 }
 
@@ -100,5 +100,5 @@ func SRun(cmd types.CmdRun) (types.CmdRun, error) {
 	cmd.Stdout = stdoutBuf.String()
 	cmd.Stderr = stderrBuf.String()
 	cmd.ErrCode = command.ProcessState.ExitCode()
-	return cmd, nil
+	return cmd, err
 }

@@ -19,7 +19,6 @@ func FRun(target string, command types.CmdRun) (types.TargetedResults, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), command.Timeout)
 	defer cancel()
 	var tr types.TargetedResults
-	FarmerURL := config.FarmerURL
 	targets, err := pki.ResolveTargets(target)
 	if err != nil {
 		return tr, err
@@ -30,7 +29,7 @@ func FRun(target string, command types.CmdRun) (types.TargetedResults, error) {
 	for _, sprout := range targets {
 		ta.Target = append(ta.Target, types.KeyManager{SproutID: sprout})
 	}
-	url := FarmerURL + "/cmd/run"
+	url := config.FarmerURL + "/cmd/run"
 	jw, _ := json.Marshal(ta)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBuffer(jw))
 	if err != nil {
@@ -43,7 +42,7 @@ func FRun(target string, command types.CmdRun) (types.TargetedResults, error) {
 		return tr, err
 	}
 	req.Header.Set("Authorization", newToken)
-	timeoutClient := http.Client{}
+	timeoutClient := &http.Client{}
 	timeoutClient.Timeout = command.Timeout
 	timeoutClient.Transport = pki.APIClient.Transport
 	resp, err := timeoutClient.Do(req)
