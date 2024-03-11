@@ -121,9 +121,31 @@ all-arches-grlx: grlx
 			cp bin/arches/"$$(printf $$GOOS)"/"$$(printf $$GOARCH)"/"$$(printf $$GitTag)"/grlx bin/arches/"$$(printf $$GOOS)"/"$$(printf $$GOARCH)"/latest/grlx ;\
 	done
 
+github: all-arches-farmer all-arches-sprout all-arches-grlx
+	@printf "Creating GitHub release...\n"
+	mkdir -p bin/github
+	for arch in amd64 386 arm arm64 ; do \
+		export GitTag=$$(TAG=`git tag --contains $$(git rev-parse HEAD) | sort -R | tr '\n' ' '`; if [ "$$(printf "$$TAG")" ]; then printf "$$TAG"; else printf "undefined"; fi);\
+		cp bin/arches/linux/$$arch/$$(printf $$GitTag)/farmer bin/github/farmer-$$(printf $$GitTag)-linux-$$(printf $$arch);\
+	done
+	for arch in amd64 386 arm arm64 ; do \
+		export GitTag=$$(TAG=`git tag --contains $$(git rev-parse HEAD) | sort -R | tr '\n' ' '`; if [ "$$(printf "$$TAG")" ]; then printf "$$TAG"; else printf "undefined"; fi);\
+		cp bin/arches/linux/$$arch/$$(printf $$GitTag)/sprout bin/github/sprout-$$(printf $$GitTag)-linux-$$(printf $$arch);\
+	done
+	for arch in amd64 arm64 ; do \
+		export GitTag=$$(TAG=`git tag --contains $$(git rev-parse HEAD) | sort -R | tr '\n' ' '`; if [ "$$(printf "$$TAG")" ]; then printf "$$TAG"; else printf "undefined"; fi);\
+		cp bin/arches/darwin/$$arch/$$(printf $$GitTag)/grlx bin/github/grlx-$$(printf $$GitTag)-darwin-$$(printf $$arch);\
+	done
+	for arch in amd64 386 arm arm64 ; do \
+		export GitTag=$$(TAG=`git tag --contains $$(git rev-parse HEAD) | sort -R | tr '\n' ' '`; if [ "$$(printf "$$TAG")" ]; then printf "$$TAG"; else printf "undefined"; fi);\
+		cp bin/arches/linux/$$arch/$$(printf $$GitTag)/grlx bin/github/grlx-$$(printf $$GitTag)-linux-$$(printf $$arch);\
+	done
 
 
-release: all-arches-farmer all-arches-sprout all-arches-grlx
+	
+
+	
+release: all-arches-farmer all-arches-sprout all-arches-grlx github
 	@printf "\e[32mSuccess!\e[39m\n"
 
 
@@ -136,7 +158,7 @@ clean:
 	docker rmi grlx/farmer:latest || true
 	rm -f ~/.config/grlx/tls-rootca.pem
 	rm -f main bin/grlx bin/farmer bin/sprout
-	rm -r bin/arches || true
+	rm -r bin/arches bin/github || true
 
 install: clean all
 	mv bin/grlx bin/farmer bin/sprout "$$GOPATH/bin/"
