@@ -10,25 +10,25 @@ import (
 	pki "github.com/gogrlx/grlx/api/client"
 	"github.com/gogrlx/grlx/auth"
 	"github.com/gogrlx/grlx/config"
-	. "github.com/gogrlx/grlx/types"
+	"github.com/gogrlx/grlx/types"
 )
 
-func FRun(target string, command CmdRun) (TargetedResults, error) {
+func FRun(target string, command types.CmdRun) (types.TargetedResults, error) {
 	// util target split
 	// check targets valid
 	ctx, cancel := context.WithTimeout(context.Background(), command.Timeout)
 	defer cancel()
-	var tr TargetedResults
+	var tr types.TargetedResults
 	FarmerURL := config.FarmerURL
 	targets, err := pki.ResolveTargets(target)
 	if err != nil {
 		return tr, err
 	}
-	var ta TargetedAction
+	var ta types.TargetedAction
 	ta.Action = command
-	ta.Target = []KeyManager{}
+	ta.Target = []types.KeyManager{}
 	for _, sprout := range targets {
-		ta.Target = append(ta.Target, KeyManager{SproutID: sprout})
+		ta.Target = append(ta.Target, types.KeyManager{SproutID: sprout})
 	}
 	url := FarmerURL + "/cmd/run"
 	jw, _ := json.Marshal(ta)
@@ -43,7 +43,10 @@ func FRun(target string, command CmdRun) (TargetedResults, error) {
 		return tr, err
 	}
 	req.Header.Set("Authorization", newToken)
-	resp, err := pki.APIClient.Do(req)
+	timeoutClient := http.Client{}
+	timeoutClient.Timeout = command.Timeout
+	timeoutClient.Transport = pki.APIClient.Transport
+	resp, err := timeoutClient.Do(req)
 	if err != nil {
 		return tr, err
 	}
