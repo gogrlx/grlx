@@ -1,56 +1,107 @@
 package props
 
-func GetPropFunc(sproutID string) func(string) string {
+import (
+	"fmt"
+	"os"
+	"sync"
+	"time"
+)
+
+type expProp struct {
+	Value  interface{}
+	Expiry time.Time
+}
+
+var (
+	propCache     = make(map[string]map[string]expProp)
+	propCacheLock = sync.RWMutex{}
+)
+
+func init() {
+	propCache = make(map[string]map[string]expProp)
+}
+
+func GetStringPropFunc(sproutID string) func(string) string {
 	return func(name string) string {
-		return GetProp(sproutID, name)
+		return getStringProp(sproutID, name)
 	}
 }
 
 // TODO: implement GetProp
-func GetProp(sproutID, name string) string {
-	return "props"
+func getStringProp(sproutID, name string) string {
+	// return "props"
+	if propCache[sproutID] == nil {
+		// get from sprout
+		return ""
+	}
+	if propCache[sproutID][name] == (expProp{}) {
+		// get from sprout
+		return ""
+	}
+	if propCache[sproutID][name].Expiry.Before(time.Now()) {
+		// get from sprout
+		delete(propCache[sproutID], name)
+		return ""
+	}
+	return fmt.Sprintf("%v", propCache[sproutID][name])
 }
 
 func SetPropFunc(sproutID string) func(string, string) error {
 	return func(name, value string) error {
-		return SetProp(sproutID, name, value)
+		return setProp(sproutID, name, value)
 	}
 }
 
 // TODO: implement SetProp
-func SetProp(sproutID, name, value string) error {
+func setProp(sproutID, name, value string) error {
 	return nil
 }
 
 func GetDeletePropFunc(sproutID string) func(string) error {
 	return func(name string) error {
-		return DeleteProp(sproutID, name)
+		return deleteProp(sproutID, name)
 	}
 }
 
 // TODO: implement DeleteProp
-func DeleteProp(sproutID, name string) error {
+func deleteProp(sproutID, name string) error {
 	return nil
 }
 
-func GetPropsFunc(sproutID string) func() map[string]string {
-	return func() map[string]string {
-		return GetProps(sproutID)
+func GetPropsFunc(sproutID string) func() map[string]interface{} {
+	return func() map[string]interface{} {
+		return getProps(sproutID)
 	}
 }
 
-// TODO: implement GetProps
-func GetProps(sproutID string) map[string]string {
-	return nil
+// TODO: implement getProps
+func getProps(sproutID string) map[string]interface{} {
+	if propCache[sproutID] == nil {
+		// get from sprout
+		return nil
+	}
+	props := make(map[string]interface{})
+	for k, v := range propCache[sproutID] {
+		if v.Expiry.Before(time.Now()) {
+			// get from sprout
+			delete(propCache[sproutID], k)
+			continue
+		}
+		props[k] = v.Value
+	}
+	return props
 }
 
 func GetHostnameFunc(sproutID string) func() string {
 	return func() string {
-		return Hostname(sproutID)
+		return hostname(sproutID)
 	}
 }
 
-// TODO: implement GetHostname
-func Hostname(sproutID string) string {
-	return "hostname"
+func hostname(sproutID string) string {
+	hostname, err := os.Hostname()
+	if err != nil {
+		return "localhost"
+	}
+	return hostname
 }

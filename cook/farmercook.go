@@ -20,7 +20,7 @@ import (
 
 func populateFuncMap(sproutID string) template.FuncMap {
 	v := template.FuncMap{}
-	v["props"] = props.GetPropFunc(sproutID)
+	v["props"] = props.GetStringPropFunc(sproutID)
 	// TODO: implement secrets and other template functions
 	//	v["secrets"] = secrets.GetSecretFunc(sproutID)
 	return v
