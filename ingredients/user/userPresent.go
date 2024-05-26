@@ -47,10 +47,10 @@ func (u User) present(ctx context.Context, test bool) (types.Result, error) {
 		userCmd = "useradd"
 	}
 	args := []string{userName}
-	if uid != "" && uid != user.Uid {
+	if uid != "" && user == nil || uid != user.Uid {
 		args = append(args, "-u"+uid)
 	}
-	if gid != "" && gid != user.Gid {
+	if gid != "" && user == nil || gid != user.Gid {
 		args = append(args, "-g"+gid)
 	}
 	if shell != "" {
@@ -72,7 +72,6 @@ func (u User) present(ctx context.Context, test bool) (types.Result, error) {
 		return result, nil
 	}
 	err = cmd.Run()
-
 	if err != nil {
 		result.Failed = true
 		result.Succeeded = false

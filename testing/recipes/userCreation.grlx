@@ -1,0 +1,11 @@
+steps:
+  create void user:
+    user.present:
+      - name: void
+      - uid: "1000"
+      - gid: "100"
+      - home: /home/void
+      - shell: /usr/bin/zsh
+      - groups:
+          - wheel
+          - docker
