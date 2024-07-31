@@ -38,7 +38,7 @@ func (c Cmd) run(ctx context.Context, test bool) (types.Result, error) {
 	env := []string{}
 	timeout := ""
 	if runasInter, ok := c.params["runas"]; ok {
-		runas, ok = runasInter.(string)
+		runas, _ = runasInter.(string)
 	}
 	if pathInter, ok := c.params["path"]; ok {
 		path, ok = pathInter.(string)

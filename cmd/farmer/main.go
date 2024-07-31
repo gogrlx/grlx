@@ -39,7 +39,7 @@ var (
 
 func main() {
 	config.LoadConfig("farmer")
-	fmt.Println(fmt.Sprintf("Starting Farmer with URL %s", config.FarmerBusURL))
+	fmt.Printf("Starting Farmer with URL %s\n", config.FarmerBusURL)
 	defer log.Flush()
 	log := log.CreateClient()
 	log.LogLevel = (config.LogLevel)
