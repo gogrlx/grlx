@@ -15,7 +15,10 @@ import (
 	"github.com/gogrlx/grlx/types"
 )
 
-var async bool
+var (
+	async   bool
+	cookTimeout int
+)
 
 // cmdCmd represents the cmd command
 var cookCmd = &cobra.Command{
@@ -114,7 +117,7 @@ var cmdCook = &cobra.Command{
 		}
 		// TODO convert this to a request and get back the list of targeted sprouts
 		ec.Publish(fmt.Sprintf("grlx.farmer.cook.trigger.%s", jid), types.TriggerMsg{JID: jid})
-		timeout := time.After(30 * time.Second)
+		localTimeout := time.After(time.Duration(cookTimeout) * time.Second)
 		dripTimeout := time.After(120 * time.Second)
 		concurrent := 0
 		defer sub.Unsubscribe()
@@ -135,14 +138,14 @@ var cmdCook = &cobra.Command{
 				}
 
 				completionSteps[completion.SproutID] = append(completionSteps[completion.SproutID], completion.CompletedStep)
-				timeout = time.After(30 * time.Second)
+				localTimeout = time.After(time.Duration(cookTimeout) * time.Second)
 			case <-finished:
 				break waitLoop
 			case <-dripTimeout:
 				finished <- struct{}{}
 				break waitLoop
-			case <-timeout:
-				color.Red("Cooking timed out after 30 seconds.")
+			case <-localTimeout:
+				color.Red(fmt.Sprintf("Cooking timed out after %d seconds.", cookTimeout))
 				finished <- struct{}{}
 				break waitLoop
 			}
@@ -190,6 +193,7 @@ func init() {
 	cmdCook.Flags().StringVarP(&environment, "environment", "E", "", "")
 	cmdCook.Flags().BoolVar(&async, "async", false, "Don't print any output, just return the JID to look up results later")
 	cmdCook.PersistentFlags().StringVarP(&sproutTarget, "target", "T", "", "list of sprouts to target")
+	cmdCook.Flags().IntVar(&cookTimeout, "cook-timeout", 30, "Cancel cook execution and return after X seconds")
 	cmdCook.MarkPersistentFlagRequired("target")
 	rootCmd.AddCommand(cmdCook)
 }
