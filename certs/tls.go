@@ -16,9 +16,8 @@ import (
 	"os"
 	"time"
 
-	log "github.com/taigrr/log-socket/log"
-
 	"github.com/gogrlx/grlx/config"
+	log "github.com/taigrr/log-socket/log"
 )
 
 func publicKey(priv interface{}) interface{} {
@@ -49,6 +48,9 @@ func genCACert() {
 	}
 	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
 	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
+	if err != nil {
+		log.Panicf("Failed to generate serial number: %v", err)
+	}
 	caCert := x509.Certificate{
 		SerialNumber: serialNumber,
 		Subject: pkix.Name{
@@ -83,10 +85,10 @@ func genCACert() {
 	if err != nil {
 		log.Fatalf("%v", err)
 	}
-	if err := pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: caBytes}); err != nil {
+	if err = pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: caBytes}); err != nil {
 		log.Fatalf("%v", err)
 	}
-	if err := certOut.Close(); err != nil {
+	if err = certOut.Close(); err != nil {
 		log.Fatalf("%v", err)
 	}
 	log.Debugf("wrote %s", RootCA)
@@ -130,29 +132,35 @@ func GenCert() {
 	if statsErr != nil {
 		log.Panic(err)
 	}
-	var size int64 = stats.Size()
+	size := stats.Size()
 	bytes := make([]byte, size)
 	bufr := bufio.NewReader(file)
 	_, err = bufr.Read(bytes)
+	if err != nil {
+		log.Panic("could not read rootCA file into buffer", err)
+	}
 	block, _ := pem.Decode(bytes)
 	caCert, err := x509.ParseCertificate(block.Bytes)
 	if err != nil {
 		log.Panic(err.Error())
 	}
-	file2, err := os.Open(config.RootCAPriv)
+	rootCAPrivFile, err := os.Open(config.RootCAPriv)
 	if err != nil {
 		log.Panic(err)
 	}
-	defer file2.Close()
-	stats, statsErr = file2.Stat()
+	defer rootCAPrivFile.Close()
+	stats, statsErr = rootCAPrivFile.Stat()
 	if statsErr != nil {
 		log.Panic(err)
 	}
 	size = stats.Size()
-	bytes2 := make([]byte, size)
-	bufr2 := bufio.NewReader(file2)
-	_, err = bufr2.Read(bytes2)
-	block2, _ := pem.Decode(bytes2)
+	rootCAPrivBytes := make([]byte, size)
+	bufr2 := bufio.NewReader(rootCAPrivFile)
+	_, err = bufr2.Read(rootCAPrivBytes)
+	if err != nil {
+		log.Panic("could not read rootCA private key file into buffer", err)
+	}
+	block2, _ := pem.Decode(rootCAPrivBytes)
 	caPriv, err := x509.ParsePKCS8PrivateKey(block2.Bytes)
 	if err != nil {
 		log.Panic(err.Error())
@@ -161,7 +169,7 @@ func GenCert() {
 	var priv interface{}
 	priv, err = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
-		log.Fatalf("Failed to generate private key: %v", err)
+		log.Panicf("Failed to generate private key: %v", err)
 	}
 	// ECDSA, ED25519 and RSA subject keys should have the DigitalSignature
 	// KeyUsage bits set in the x509.Certificate template
@@ -200,10 +208,10 @@ func GenCert() {
 	if err != nil {
 		log.Fatalf("Failed to open cert.pem for writing: %v", err)
 	}
-	if err := pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes}); err != nil {
+	if err = pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes}); err != nil {
 		log.Fatalf("Failed to write data to cert.pem: %v", err)
 	}
-	if err := certOut.Close(); err != nil {
+	if err = certOut.Close(); err != nil {
 		log.Fatalf("Error closing cert.pem: %v", err)
 	}
 	log.Debug("wrote cert.pem")

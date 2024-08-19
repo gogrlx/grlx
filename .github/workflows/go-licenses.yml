@@ -5,6 +5,9 @@ on:
       - 'go.mod'
     branches:
       - master
+      - v1
+      - v2
+
   workflow_dispatch: 
 
 jobs:

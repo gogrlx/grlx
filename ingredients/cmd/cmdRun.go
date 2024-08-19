@@ -39,18 +39,33 @@ func (c Cmd) run(ctx context.Context, test bool) (types.Result, error) {
 	timeout := ""
 	if runasInter, ok := c.params["runas"]; ok {
 		runas, ok = runasInter.(string)
+		if !ok {
+			return result, fmt.Errorf("invalid runas %v; must be a string", runasInter)
+		}
 	}
 	if pathInter, ok := c.params["path"]; ok {
 		path, ok = pathInter.(string)
+		if !ok {
+			return result, fmt.Errorf("invalid path %v; must be a string", pathInter)
+		}
 	}
 	if cwdInter, ok := c.params["cwd"]; ok {
 		cwd, ok = cwdInter.(string)
+		if !ok {
+			return result, fmt.Errorf("invalid cwd %v; must be a string", cwdInter)
+		}
 	}
 	if envInter, ok := c.params["env"]; ok {
 		env, ok = envInter.([]string)
+		if !ok {
+			return result, fmt.Errorf("invalid env %v; must be a string slice like `k=v`", envInter)
+		}
 	}
 	if timeoutInter, ok := c.params["timeout"]; ok {
 		timeout, ok = timeoutInter.(string)
+		if !ok {
+			return result, fmt.Errorf("invalid timeout %v; must be a string", timeoutInter)
+		}
 	}
 	// sanity check env vars
 	envVars := map[string]string{}
@@ -63,13 +78,13 @@ func (c Cmd) run(ctx context.Context, test bool) (types.Result, error) {
 	}
 	var command *exec.Cmd
 	if timeout != "" {
-		ttimeout, err := time.ParseDuration(timeout)
-		if err != nil {
+		ttimeout, parseErr := time.ParseDuration(timeout)
+		if parseErr != nil {
 			result.Succeeded = false
 			result.Failed = true
 			result.Changed = false
 			result.Notes = append(result.Notes, types.SimpleNote(fmt.Sprintf("invalid timeout %s; must be a valid duration", timeout)))
-			return result, errors.Join(err, fmt.Errorf("invalid timeout %s; must be a valid duration", timeout))
+			return result, errors.Join(parseErr, fmt.Errorf("invalid timeout %s; must be a valid duration", timeout))
 		}
 		timeoutCTX, cancel := context.WithTimeout(ctx, ttimeout)
 		defer cancel()
@@ -78,13 +93,13 @@ func (c Cmd) run(ctx context.Context, test bool) (types.Result, error) {
 		command = exec.CommandContext(ctx, splitCmd[0], args...)
 	}
 	if runas != "" && runtime.GOOS != "windows" {
-		u, err := user.Lookup(runas)
-		if err != nil {
-			return result, errors.Join(err, fmt.Errorf("invalid user %s; user must exist", runas))
+		u, lookupErr := user.Lookup(runas)
+		if lookupErr != nil {
+			return result, errors.Join(lookupErr, fmt.Errorf("invalid user %s; user must exist", runas))
 		}
-		uid64, err := strconv.Atoi(u.Uid)
-		if err != nil {
-			return result, errors.Join(err, fmt.Errorf("invalid user %s; user must exist", runas))
+		uid64, strNameErr := strconv.Atoi(u.Uid)
+		if strNameErr != nil {
+			return result, errors.Join(strNameErr, fmt.Errorf("invalid user %s; user must exist", runas))
 		}
 		if uid64 > math.MaxInt32 {
 			return result, fmt.Errorf("UID %d is invalid", uid64)
@@ -101,9 +116,7 @@ func (c Cmd) run(ctx context.Context, test bool) (types.Result, error) {
 	}
 	if len(envVars) > 0 {
 		command.Env = []string{}
-		for _, v := range env {
-			command.Env = append(command.Env, v)
-		}
+		command.Env = append(command.Env, env...)
 	}
 	if test {
 		result.Notes = append(result.Notes,
