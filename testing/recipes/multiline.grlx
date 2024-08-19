@@ -1,0 +1,10 @@
+steps:
+  test pipes:
+    cmd.run:
+      - name: |
+          echo "testing pipes" | md5sum
+
+  test empty quotes:
+    cmd.run:
+      - name: |
+          ls ""

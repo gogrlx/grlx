@@ -39,6 +39,14 @@ func (f File) append(ctx context.Context, test bool) (types.Result, error) {
 		}, err
 	}
 	if os.IsNotExist(err) {
+		if mk, ok := f.params["makedirs"].(bool); ok && mk {
+			err := os.MkdirAll(filepath.Dir(name), 0o755)
+			if err != nil {
+				return types.Result{
+					Succeeded: false, Failed: true, Notes: notes,
+				}, err
+			}
+		}
 		f, err := os.Create(name)
 		if err != nil {
 			return types.Result{
