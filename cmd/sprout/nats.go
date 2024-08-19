@@ -84,5 +84,13 @@ func natsInit(nc *nats.EncodedConn) error {
 	if err != nil {
 		return err
 	}
+	_, err = nc.Subscribe("grlx.sprouts."+sproutID+".props.get", func(m *nats.Msg) {
+		// var prop types.PropReq
+		// json.NewDecoder(bytes.NewBuffer(m.Data)).Decode(&prop)
+		// log.Trace(prop)
+		// propFunc := props.GetPropsFunc(sprouID)
+		// propB, _ := json.Marshal(propFunc(prop))
+		// m.Respond(propB)
+	})
 	return nil
 }

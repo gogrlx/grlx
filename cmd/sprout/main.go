@@ -14,6 +14,7 @@ import (
 	"github.com/gogrlx/grlx/ingredients/cmd"
 	"github.com/gogrlx/grlx/ingredients/test"
 	"github.com/gogrlx/grlx/pki"
+	"github.com/gogrlx/grlx/props"
 
 	nats "github.com/nats-io/nats.go"
 )
@@ -126,6 +127,7 @@ func ConnectSprout() {
 	test.RegisterEC(ec)
 	cmd.RegisterEC(ec)
 	cook.RegisterEC(ec)
+	props.RegisterEC(ec)
 	err = natsInit(ec)
 	if err != nil {
 		log.Panicf("Error with natsInit: %v", err)

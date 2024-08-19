@@ -4,6 +4,6 @@ import nats "github.com/nats-io/nats.go"
 
 var ec *nats.EncodedConn
 
-func RegisterEC(n *nats.EncodedConn) {
-	ec = n
+func RegisterEC(encodedConn *nats.EncodedConn) {
+	ec = encodedConn
 }

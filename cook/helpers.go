@@ -19,8 +19,8 @@ import (
 
 var ec *nats.EncodedConn
 
-func RegisterEC(n *nats.EncodedConn) {
-	ec = n
+func RegisterEC(encodedConn *nats.EncodedConn) {
+	ec = encodedConn
 }
 
 func makeRecipeSteps(recipes map[string]interface{}) ([]*types.Step, error) {
