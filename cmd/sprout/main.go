@@ -122,14 +122,13 @@ func ConnectSprout() {
 	//		//TODO: handle error
 	//		panic(err)
 	//	}
-	ec, _ := nats.NewEncodedConn(nc, nats.JSON_ENCODER)
-	test.RegisterEC(ec)
-	cmd.RegisterEC(ec)
-	cook.RegisterEC(ec)
-	err = natsInit(ec)
+	test.RegisterNatsConn(nc)
+	cmd.RegisterNatsConn(nc)
+	cook.RegisterNatsConn(nc)
+	err = natsInit(nc)
 	if err != nil {
 		log.Panicf("Error with natsInit: %v", err)
 	}
-	defer ec.Close()
+	defer nc.Close()
 	select {}
 }
