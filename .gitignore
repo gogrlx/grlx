@@ -8,3 +8,6 @@ coverage.out
 local/
 
 dist/
+cmd/farmer/farmer
+cmd/grlx/grlx
+cmd/sprout/sprout
