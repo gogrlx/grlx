@@ -133,6 +133,9 @@ If you or your company use grlx and you'd like to be added to this list, [Create
     <a href="https://github.com/ADAtomic">
         <img src="docs/logos/adatomic.png" width="125" alt="ADAtomic, Inc.">
     </a>
+    <a href="https://gladhost.cloud">
+        <img src="docs/logos/gladhost.png" width="125" alt="GLADHOST">
+    </a>
 </p>
 
 ## License
