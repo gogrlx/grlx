@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # Note: this dockerfile must be used from a subfolder
-FROM golang:1.23 AS builder
+FROM golang:1.24 AS builder
 VOLUME /go/src
 WORKDIR /app
 COPY go.mod .
