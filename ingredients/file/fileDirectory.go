@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
+	"math"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -130,7 +131,15 @@ func (f File) directory(ctx context.Context, test bool) (types.Result, error) {
 					Succeeded: false, Failed: true, Notes: notes,
 				}, lookupErr
 			}
-			gid, parseErr := strconv.ParseUint(group.Gid, 10, 32)
+			uGID, parseErr := strconv.ParseUint(group.Gid, 10, 32)
+			if uGID > math.MaxInt32 {
+				notes = append(notes, types.Snprintf("gid %d is too large", uGID))
+				return types.Result{
+					Succeeded: false, Failed: true, Notes: notes,
+				}, parseErr
+			}
+			gid := int(uGID)
+
 			if parseErr != nil {
 				return types.Result{
 					Succeeded: false, Failed: true, Notes: notes,
@@ -212,12 +221,19 @@ func (f File) directory(ctx context.Context, test bool) (types.Result, error) {
 					Succeeded: false, Failed: true, Notes: notes,
 				}, lookupErr
 			}
-			gid, parseErr := strconv.ParseUint(group.Gid, 10, 32)
+			uGID, parseErr := strconv.ParseUint(group.Gid, 10, 32)
 			if parseErr != nil {
 				return types.Result{
 					Succeeded: false, Failed: true,
 				}, parseErr
 			}
+			if uGID > math.MaxInt32 {
+				notes = append(notes, types.Snprintf("gid %d is too large", uGID))
+				return types.Result{
+					Succeeded: false, Failed: true, Notes: notes,
+				}, parseErr
+			}
+			gid := int(uGID)
 			if test {
 				notes = append(notes, types.Snprintf("would chown %s to %s", name, d.group))
 			} else {
