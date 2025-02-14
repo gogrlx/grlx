@@ -18,7 +18,7 @@ require (
 	github.com/spf13/cobra v1.8.1
 	github.com/taigrr/jety v0.0.12
 	github.com/taigrr/log-socket v1.0.2
-	github.com/taigrr/systemctl v1.0.7
+	github.com/taigrr/systemctl v1.0.9
 	gopkg.in/yaml.v3 v3.0.1
 )
 
