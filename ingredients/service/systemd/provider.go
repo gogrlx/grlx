@@ -4,7 +4,6 @@ package systemd
 
 import (
 	"context"
-	"os"
 
 	"github.com/taigrr/systemctl"
 
@@ -86,10 +85,8 @@ func (s SystemdService) InitName() string {
 }
 
 func (s SystemdService) IsInit() bool {
-	if _, ok := os.Stat("/run/systemd/system"); ok == nil {
-		return true
-	}
-	return false
+	isSystemd, err := systemctl.IsSystemd()
+	return isSystemd && err == nil
 }
 
 func (s SystemdService) IsEnabled(ctx context.Context) (bool, error) {

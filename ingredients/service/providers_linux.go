@@ -3,7 +3,6 @@ package service
 import (
 	"errors"
 	"fmt"
-	"os"
 	"sync"
 
 	"github.com/gogrlx/grlx/config"
@@ -45,24 +44,14 @@ func guessInit() string {
 		Init = c
 		return c
 	}
-	// Check if the init system is systemd
-	// https://manpages.ubuntu.com/manpages/xenial/en/man3/sd_booted.3.html
-	if _, ok := os.Stat("/run/systemd/system"); ok == nil {
-		return "systemd"
-	}
-
+	// allow the registered providers to guess the init system
 	for _, initSys := range provMap {
 		if initSys.IsInit() {
 			Init = initSys.InitName()
 			return Init
 		}
 	}
-	// otherwise, return the name of the process in PID 1
-	f, err := os.ReadFile("/proc/1/comm")
-	if err != nil {
-		return "unknown"
-	}
-	return string(f)
+	return ""
 }
 
 func NewServiceProvider(id string, method string, params map[string]interface{}) (types.ServiceProvider, error) {
