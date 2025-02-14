@@ -7,12 +7,12 @@ import (
 )
 
 var (
-	ec       *nats.EncodedConn
+	nc       *nats.Conn
 	envMutex sync.Mutex
 )
 
-func RegisterEC(encodedConn *nats.EncodedConn) {
-	ec = encodedConn
+func RegisterNatsConn(nc *nats.Conn) {
+	nc = encodedConn
 }
 
 // TODO: finalize and export this function
