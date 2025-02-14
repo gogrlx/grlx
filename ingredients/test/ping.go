@@ -1,6 +1,7 @@
 package test
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/gogrlx/grlx/types"
@@ -12,7 +13,11 @@ func FPing(target types.KeyManager, ping types.PingPong) (types.PingPong, error)
 	ping.Ping = true
 	ping.Pong = false
 	var pong types.PingPong
-	err := ec.Request(topic, ping, &pong, time.Second*15)
+	b, _ := json.Marshal(ping)
+	msg, err := nc.Request(topic, b, time.Second*15)
+	if err != nil {
+		err = json.Unmarshal(msg.Data, &pong)
+	}
 	return pong, err
 }
 

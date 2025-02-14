@@ -21,11 +21,7 @@ var tailCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal(err)
 		}
-		ec, err := nats.NewEncodedConn(nc, nats.JSON_ENCODER)
-		if err != nil {
-			log.Fatal(err)
-		}
-		sub, err := ec.Subscribe("grlx.>", func(msg *nats.Msg) {
+		sub, err := nc.Subscribe("grlx.>", func(msg *nats.Msg) {
 			printTex.Lock()
 			fmt.Println(msg.Subject)
 			fmt.Println(string(msg.Data))
@@ -34,7 +30,7 @@ var tailCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal(err)
 		}
-		sub2, err := ec.Subscribe("_INBOX.>", func(msg *nats.Msg) {
+		sub2, err := nc.Subscribe("_INBOX.>", func(msg *nats.Msg) {
 			printTex.Lock()
 			fmt.Println(msg.Subject)
 			fmt.Println(string(msg.Data))

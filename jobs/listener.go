@@ -30,15 +30,15 @@ import (
 
 // Job represents a job
 
-var ec *nats.EncodedConn
+var nc *nats.Conn
 
-func RegisterEC(conn *nats.EncodedConn) {
-	ec = conn
-	_, err := ec.Subscribe("grlx.cook.*.*", logJobs)
+func RegisterNatsConn(conn *nats.Conn) {
+	nc = conn
+	_, err := nc.Subscribe("grlx.cook.*.*", logJobs)
 	if err != nil {
 		log.Error(err)
 	}
-	_, err = ec.Subscribe("grlx.sprouts.*.cook", logJobCreation)
+	_, err = nc.Subscribe("grlx.sprouts.*.cook", logJobCreation)
 	if err != nil {
 		log.Error(err)
 	}

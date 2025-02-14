@@ -1,6 +1,7 @@
 package cook
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -90,9 +91,14 @@ func SendCookEvent(sproutID string, recipeID types.RecipeName, JID string) error
 		JobID: JID,
 		Steps: validSteps,
 	}
+	b, _ := json.Marshal(rEnvelope)
 	log.Noticef("cooking sprout %s: %s", sproutID, JID)
 	var ack types.Ack
-	err = ec.Request("grlx.sprouts."+sproutID+".cook", rEnvelope, &ack, 30*time.Second)
+	msg, err := conn.Request("grlx.sprouts."+sproutID+".cook", b, 30*time.Second)
+	if err != nil {
+		return err
+	}
+	err = json.Unmarshal(msg.Data, &ack)
 	if err != nil {
 		return err
 	}

@@ -3,6 +3,7 @@ package cmd
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"math"
@@ -21,10 +22,10 @@ import (
 	"github.com/gogrlx/grlx/types"
 )
 
-var ec *nats.EncodedConn
+var nc *nats.Conn
 
-func RegisterEC(encodedConn *nats.EncodedConn) {
-	ec = encodedConn
+func RegisterNatsConn(conn *nats.Conn) {
+	nc = conn
 }
 
 var envMutex sync.Mutex
@@ -32,7 +33,12 @@ var envMutex sync.Mutex
 func FRun(target types.KeyManager, cmdRun types.CmdRun) (types.CmdRun, error) {
 	topic := "grlx.sprouts." + target.SproutID + ".cmd.run"
 	var results types.CmdRun
-	err := ec.Request(topic, cmdRun, &results, time.Second*15+cmdRun.Timeout)
+	b, _ := json.Marshal(cmdRun)
+	msg, err := nc.Request(topic, b, time.Second*15+cmdRun.Timeout)
+	if err != nil {
+		return results, err
+	}
+	err = json.Unmarshal(msg.Data, &results)
 	return results, err
 }
 

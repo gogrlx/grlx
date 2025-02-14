@@ -2,6 +2,7 @@ package cook
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sync"
@@ -57,7 +58,9 @@ func CookRecipeEnvelope(envelope types.RecipeEnvelope) error {
 		select {
 		// each time a step completes, check if any other steps can be started
 		case completion := <-completionChan:
-			ec.Publish("grlx.cook."+pki.GetSproutID()+"."+envelope.JobID, completion)
+			b, _ := json.Marshal(completion)
+
+			conn.Publish("grlx.cook."+pki.GetSproutID()+"."+envelope.JobID, b)
 			log.Infof("Step %s completed with status %v", completion.ID, completion)
 			wg.Done()
 			// TODO also collect the results of the step and store them into a log folder by JID
@@ -143,14 +146,15 @@ func CookRecipeEnvelope(envelope types.RecipeEnvelope) error {
 			}
 		// All steps are done, so context will be cancelled and we'll exit
 		case <-ctx.Done():
-			ec.Publish("grlx.cook."+pki.GetSproutID()+"."+envelope.JobID,
-				types.StepCompletion{
-					ID:               types.StepID(fmt.Sprintf("completed-%s", envelope.JobID)),
-					CompletionStatus: types.StepCompleted,
-					ChangesMade:      false,
-					Changes:          nil,
-				},
-			)
+			completion := types.StepCompletion{
+				ID:               types.StepID(fmt.Sprintf("completed-%s", envelope.JobID)),
+				CompletionStatus: types.StepCompleted,
+				ChangesMade:      false,
+				Changes:          nil,
+			}
+			b, _ := json.Marshal(completion)
+
+			conn.Publish("grlx.cook."+pki.GetSproutID()+"."+envelope.JobID, b)
 			log.Info("All steps completed")
 			return nil
 			// TODO add a timeout case

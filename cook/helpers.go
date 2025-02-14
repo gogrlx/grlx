@@ -17,10 +17,10 @@ import (
 	"github.com/gogrlx/grlx/types"
 )
 
-var ec *nats.EncodedConn
+var conn *nats.Conn
 
-func RegisterEC(encodedConn *nats.EncodedConn) {
-	ec = encodedConn
+func RegisterNatsConn(n *nats.Conn) {
+	conn = n
 }
 
 func makeRecipeSteps(recipes map[string]interface{}) ([]*types.Step, error) {

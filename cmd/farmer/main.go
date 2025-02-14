@@ -206,15 +206,11 @@ func ConnectFarmer() {
 		log.Errorf("Got an error on Subscribe: %+v\n", err)
 	}
 
-	ec, err := nats.NewEncodedConn(nc, nats.JSON_ENCODER)
-	if err != nil {
-		log.Errorf("Got an error on NewEncodedConn: %+v\n", err)
-	}
-	test.RegisterEC(ec)
-	cmd.RegisterEC(ec)
-	cook.RegisterEC(ec)
-	jobs.RegisterEC(ec)
-	handlers.RegisterEC(ec)
-	defer ec.Close()
+	test.RegisterNatsConn(nc)
+	cmd.RegisterNatsConn(nc)
+	cook.RegisterNatsConn(nc)
+	jobs.RegisterNatsConn(nc)
+	handlers.RegisterNatsConn(nc)
+	defer nc.Close()
 	select {}
 }

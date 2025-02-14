@@ -1,4 +1,4 @@
-## <p align="center"><img src="docs/logos/grlx.jpg" width="300"></p>
+## <p align="center"><img src="docs/logos/grlx.jpg" width="300" alt="grlx logo"></p>
 
 # grlx - Effective Fleet Configuration Management
 
@@ -10,44 +10,51 @@
 [![Twitter](https://img.shields.io/twitter/follow/gogrlx)](https://x.com/gogrlx)
 [![Discord](https://img.shields.io/badge/chat-on%20discord-blue)](https://discord.com/invite/VruAThf)
 
-
 grlx (pronounced like "garlic") is a pure-[Go](http://golang.org) DevOps automation engine designed to use few system resources and keep your application front and center.
 
 ## Quick Start
+
 Want to get up and running as quickly as possible to see what all the fuss is about?
 Use our bootstrap scripts!
 
 1. Download and initialize the command line utility from our releases to your dev machine.
+
 ```bash
 # replace 'linux' with darwin if you're on macOS
 curl -L https://releases.grlx.dev/linux/amd64/latest/grlx > grlx && chmod +x grlx
 ./grlx init
 ```
+
 You'll be asked some questions, such as which interface the `farmer` is listening on, and which ports to use for communication.
 Set the interface to the domain name or IP address of the `farmer`.
 Once configured, the CLI prints out your administrator public key, which you'll need for the next step!
 It's recommended you now add `grlx` somewhere in your `$PATH`.
 
 2. On your control server, you'll need to install the `farmer`.
+
 ```bash
 # or, just run as root instead of sudo
 curl -L https://bootstrap.grlx.dev/latest/farmer | sudo bash
 ```
+
 You'll be asked several questions about the interface to listen on, which ports to use, etc.
 For the quick start, it's recommended to use the default ports (make sure there's no firewall in the way!).
 You'll be prompted for an admin public key, which you should have gotten from the prior step, and a certificate host name(s).
 Make sure the certificate host name matches the external-facing interface (a domain or IP address) as it will be used for TLS validation!
 
 3. On all of your fleet nodes, you'll need to install the `sprout`.
+
 ```bash
 # or, just run as root instead of sudo
 # FARMER_BUS_PORT and FARMER_API_PORT variables are available in case you chose
 # to use different ports.
 curl -L https://bootstrap.grlx.dev/latest/sprout | FARMERINTERFACE=localhost sudo -E bash
 ```
+
 Once the sprout is up and running, return to the CLI.
 
 4. If all is well, you're ready to `cook`! Accept the TLS cert and the `sprout` keys when prompted.
+
 ```bash
 grlx version
 grlx keys accept -A
@@ -58,6 +65,7 @@ grlx -T \* cmd run --out json -- uname -a
 ```
 
 ## Documentation
+
 Please see the [official docs site](https://docs.grlx.dev) for complete documentation.
 
 ## Why grlx?
@@ -65,8 +73,6 @@ Please see the [official docs site](https://docs.grlx.dev) for complete document
 Our team started out using competing solutions, and we ran into scalability issues.
 Python is a memory hog and is interpreted to boot.
 Many systems struggle with installing Python dependencies properly, and with so many moving parts, the probability of something going wrong increases.
-
-
 
 ## Architecture
 
@@ -76,8 +82,7 @@ The `farmer` binary runs as a daemon on a management server (referred to as the 
 The `sprout` binary should be installed as a daemon on systems that are to be managed.
 Managed systems are referred to as 'sprouts.'
 
-
-<p align="center"><img src="docs/diagrams/grlx-arch-light.png" width="100%"></p>
+<p align="center"><img src="docs/diagrams/grlx-arch-light.png" width="100%" alt="architecture diagram"></p>
 
 ## Batteries Included
 
@@ -89,7 +94,6 @@ Jobs can be created with the `grlx` command-line interface and typically come in
 Recipes are yaml documents which describe the desired state of a sprout after the recipe is applied (`cook`ed).
 Because the `farmer` exposes an API, `grlx` is by no means the only way to create or manage jobs, but it is the only supported method at the beginning.
 
-
 ## Sponsors
 
 A big thank you to all of grlx's sponsors.
@@ -99,12 +103,13 @@ For prioritized and commercial support, we have partnered with ADAtomic, Inc., t
 For more information, please [contact the team](mailto:grlx@adatomic.com) via email.
 
 ### Founders Club
+
 <p align="left">
     <a href="https://newleafsolutions.dev">
-        <img src="docs/logos/newleaf.png" width="125">
+        <img src="docs/logos/newleaf.png" width="125" alt="New Leaf Solutions">
     </a>
     <a href="https://github.com/ADAtomic">
-        <img src="docs/logos/adatomic.png" width="125">
+        <img src="docs/logos/adatomic.png" width="125" alt="ADAtomic, inc.">
     </a>
 </p>
 
@@ -114,19 +119,22 @@ If you or your company use grlx and you'd like to be added to this list, [Create
 
 <p align="left">
     <a href="https://www.cellpointsystems.com/software-development">
-        <img src="docs/logos/cellpointsystems.png" width="125">
+        <img src="docs/logos/cellpointsystems.png" width="125" alt="Cellpoint Systems, Inc.">
     </a>
     <a href="https://dendra.science">
-        <img src="docs/logos/dendrascience.png" width="125">
+        <img src="docs/logos/dendrascience.png" width="125" alt="Dendra Science">
     </a>
     <a href="https://newleafsolutions.dev">
-        <img src="docs/logos/newleaf.png" width="125">
+        <img src="docs/logos/newleaf.png" width="125" alt="New Leaf Solutions, Inc.">
     </a> 
     <a href="https://google.com">
-        <img src="docs/logos/google.png" width="125">
+        <img src="docs/logos/google.png" width="125" alt="Google, Inc.">
     </a>
     <a href="https://github.com/ADAtomic">
-        <img src="docs/logos/adatomic.png" width="125">
+        <img src="docs/logos/adatomic.png" width="125" alt="ADAtomic, Inc.">
+    </a>
+    <a href="https://gladhost.cloud">
+        <img src="docs/logos/gladhost.png" width="125" alt="GLADHOST">
     </a>
 </p>
 

@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	async   bool
+	async       bool
 	cookTimeout int
 )
 
@@ -58,15 +58,11 @@ var cmdCook = &cobra.Command{
 		if err != nil {
 			log.Fatal(err)
 		}
-		ec, err := nats.NewEncodedConn(nc, nats.JSON_ENCODER)
-		if err != nil {
-			log.Fatal(err)
-		}
 		finished := make(chan struct{}, 1)
 		completions := make(chan types.SproutStepCompletion)
 		topic := fmt.Sprintf("grlx.cook.*.%s", jid)
 		completionSteps := make(map[string][]types.StepCompletion)
-		sub, err := ec.Subscribe(topic, func(msg *nats.Msg) {
+		sub, err := nc.Subscribe(topic, func(msg *nats.Msg) {
 			var step types.StepCompletion
 			err := json.Unmarshal(msg.Data, &step)
 			if err != nil {
@@ -116,7 +112,9 @@ var cmdCook = &cobra.Command{
 			log.Fatal(err)
 		}
 		// TODO convert this to a request and get back the list of targeted sprouts
-		ec.Publish(fmt.Sprintf("grlx.farmer.cook.trigger.%s", jid), types.TriggerMsg{JID: jid})
+		triggerMsg := types.TriggerMsg{JID: jid}
+		b, _ := json.Marshal(triggerMsg)
+		nc.Publish(fmt.Sprintf("grlx.farmer.cook.trigger.%s", jid), b)
 		localTimeout := time.After(time.Duration(cookTimeout) * time.Second)
 		dripTimeout := time.After(120 * time.Second)
 		concurrent := 0

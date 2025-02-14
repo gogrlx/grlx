@@ -55,7 +55,7 @@ func Cook(w http.ResponseWriter, r *http.Request) {
 	}
 
 	jid := cook.GenerateJobID()
-	sub, err := ec.Conn.SubscribeSync(fmt.Sprintf("grlx.farmer.cook.trigger.%s", jid))
+	sub, err := conn.SubscribeSync(fmt.Sprintf("grlx.farmer.cook.trigger.%s", jid))
 	if err != nil {
 		log.Errorf("error subscribing to NATS: %v", err)
 		return

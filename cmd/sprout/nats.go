@@ -21,7 +21,7 @@ func init() {
 	pki.SetupPKISprout()
 }
 
-func natsInit(nc *nats.EncodedConn) error {
+func natsInit(nc *nats.Conn) error {
 	log.Debugf("Announcing on Farmer...")
 	startup := types.Startup{}
 	startup.Version.Arch = runtime.GOARCH
@@ -30,7 +30,8 @@ func natsInit(nc *nats.EncodedConn) error {
 	startup.Version.Tag = Tag
 	startup.SproutID = sproutID
 	startupEvent := "grlx.sprouts.announce." + sproutID
-	err := nc.Publish(startupEvent, startup)
+	b, _ := json.Marshal(startup)
+	err := nc.Publish(startupEvent, b)
 	if err != nil {
 		return err
 	}
