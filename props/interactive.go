@@ -11,8 +11,8 @@ var (
 	envMutex sync.Mutex
 )
 
-func RegisterNatsConn(nc *nats.Conn) {
-	nc = encodedConn
+func RegisterNatsConn(conn *nats.Conn) {
+	nc = conn
 }
 
 // TODO: finalize and export this function
