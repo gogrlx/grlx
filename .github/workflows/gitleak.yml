@@ -3,7 +3,7 @@ on:
   pull_request:
     types: [opened, reopened, review_requested]
   push:
-    branches: [ master ]
+    branches: [ master, dev ]
   workflow_dispatch:
 
 jobs:

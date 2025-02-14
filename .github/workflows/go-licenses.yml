@@ -5,6 +5,7 @@ on:
       - 'go.mod'
     branches:
       - master
+      - dev
       - v1
       - v2
 
