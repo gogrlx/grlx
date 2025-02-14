@@ -35,7 +35,6 @@ func (s Service) Apply(ctx context.Context) (types.Result, error) {
 				return types.Result{Succeeded: false, Failed: true, Changed: false, Notes: nil}, err
 			}
 			return types.Result{Succeeded: true, Failed: false, Changed: true, Notes: []fmt.Stringer{types.SimpleNote(fmt.Sprintf("%s has been masked", s.name))}}, err
-
 		}
 		return types.Result{Succeeded: true, Failed: false, Changed: false, Notes: []fmt.Stringer{types.SimpleNote(fmt.Sprintf("%s is already masked.", s.name))}}, err
 	case "unmasked":
