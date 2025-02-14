@@ -19,6 +19,6 @@ Contact security@grlx.org with any relevant info including:
 Turnaround time should be within a matter of hours, at most 72 for confirmation.
 
 If your vulnerability is accepted, we will release a new hotfix and notify users.
-We will explain the vulnerability to the community after a reasonable amount of 
+We will explain the vulnerability to the community after a reasonable amount of
 time has elapsed, allowing users the chance to update, and you will be credited at
 this time, if you desire.

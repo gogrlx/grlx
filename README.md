@@ -126,7 +126,7 @@ If you or your company use grlx and you'd like to be added to this list, [Create
     </a>
     <a href="https://newleafsolutions.dev">
         <img src="docs/logos/newleaf.png" width="125" alt="New Leaf Solutions, Inc.">
-    </a> 
+    </a>
     <a href="https://google.com">
         <img src="docs/logos/google.png" width="125" alt="Google, Inc.">
     </a>
