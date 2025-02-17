@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"net/http"
 	"time"
 
@@ -10,10 +11,20 @@ import (
 	"github.com/taigrr/log-socket/log"
 )
 
-var version types.Version
+var (
+	version types.Version
+	server  *http.Server
+)
 
 func SetVersion(v types.Version) {
 	version = v
+}
+
+func StopAPIServer(ctx context.Context) error {
+	if server != nil {
+		return server.Shutdown(ctx)
+	}
+	return nil
 }
 
 func StartAPIServer() *http.Server {
@@ -41,5 +52,6 @@ func StartAPIServer() *http.Server {
 	}()
 
 	log.Tracef("API Server started on %s\n", FarmerInterface+":"+FarmerAPIPort)
+	server = &srv
 	return &srv
 }

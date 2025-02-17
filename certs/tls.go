@@ -121,11 +121,11 @@ func GenCert() {
 }
 
 func genCert(overwrite bool) {
-	// check if certificates already exist first
 	CertFile := config.CertFile
 	KeyFile := config.KeyFile
 	RootCA := config.RootCA
 	if !overwrite {
+		// if overwrite is false, we refuse to overwrite existing certs
 		_, err := os.Stat(CertFile)
 		if !os.IsNotExist(err) {
 			_, err = os.Stat(KeyFile)
@@ -255,7 +255,6 @@ func genCert(overwrite bool) {
 }
 
 func rotateTLSCerts() {
-	log.Debug("Rotating TLS certificates...")
 	CertFile := config.CertFile
 	// open the cert file and determine the notbefore date and the notafter date
 	// if the notafter date is within 33% of the config.CertificateValidTime, then
@@ -285,12 +284,7 @@ func rotateTLSCerts() {
 		}
 		return time.Now().After(cert.NotAfter.Add(-config.CertificateValidTime / 3)), nil
 	}
-	reloadHttpServer := func() {
-		shutdownTimeout, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-		defer cancel()
-		httpServer.Shutdown(shutdownTimeout)
-		SetHttpServer(server.StartAPIServer())
-	}
+
 	for {
 		shouldRotate, err := needsRotation()
 		if err != nil {
@@ -300,12 +294,26 @@ func rotateTLSCerts() {
 		}
 		if shouldRotate {
 			genCert(true)
-			pki.ReloadNatsServer()
-			reloadHttpServer()
-			// TODO: add signal handler for SIGHUP to reload the HTTP and NATS servers
+			ReloadTLSConfig()
 		}
 		time.Sleep(24 * time.Hour)
 	}
+}
+
+// TODO: add signal handler for SIGHUP to reload the HTTP and NATS servers
+func ReloadTLSConfig() {
+	log.Debug("Rotating TLS certificates...")
+	pki.ReloadNatsServer()
+	reloadHttpServer()
+	log.Debug("Rotated TLS certificates")
+}
+
+func reloadHttpServer() {
+	shutdownTimeout, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	httpServer.Shutdown(shutdownTimeout)
+	time.Sleep(1 * time.Second)
+	SetHttpServer(server.StartAPIServer())
 }
 
 func SetHttpServer(s *http.Server) {

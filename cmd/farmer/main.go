@@ -1,11 +1,14 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
 	"os"
+	"os/signal"
 	"runtime"
+	"syscall"
 	"time"
 
 	log "github.com/taigrr/log-socket/log"
@@ -40,8 +43,8 @@ func main() {
 	config.LoadConfig("farmer")
 	fmt.Printf("Starting Farmer with URL %s\n", config.FarmerBusURL)
 	defer log.Flush()
-	log := log.CreateClient()
-	log.LogLevel = (config.LogLevel)
+	logger := log.CreateClient()
+	logger.LogLevel = (config.LogLevel)
 	createConfigRoot()
 	pki.SetupPKIFarmer()
 	certs.GenCert()
@@ -55,7 +58,25 @@ func main() {
 	})
 	certs.SetHttpServer(server.StartAPIServer())
 	go ConnectFarmer()
-	select {}
+	osSignal := make(chan os.Signal, 1)
+	signal.Notify(osSignal, os.Interrupt, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGHUP)
+	for sig := range osSignal {
+		switch sig {
+		case syscall.SIGTERM, syscall.SIGINT:
+			log.Infof("Received signal %s, shutting down gracefully.", sig)
+			server.StopAPIServer(context.Background())
+			log.Flush()
+			os.Exit(0)
+		case syscall.SIGQUIT:
+			log.Infof("Received signal %s, shutting down immediately.", sig)
+			os.Exit(1)
+		case syscall.SIGHUP:
+			logger.SetLogLevel(config.LogLevel)
+			log.Infof("Received signal %s, reloading configuration.", sig)
+			config.LoadConfig("farmer")
+			certs.ReloadTLSConfig()
+		}
+	}
 
 	// Generate nkey and save or read existing
 	// Post user struct to mux
