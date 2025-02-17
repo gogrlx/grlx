@@ -4,14 +4,12 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"net/http"
 	"os"
 	"runtime"
 	"time"
 
 	log "github.com/taigrr/log-socket/log"
 
-	"github.com/gogrlx/grlx/api"
 	"github.com/gogrlx/grlx/api/handlers"
 	"github.com/gogrlx/grlx/certs"
 	"github.com/gogrlx/grlx/config"
@@ -20,6 +18,7 @@ import (
 	"github.com/gogrlx/grlx/ingredients/test"
 	"github.com/gogrlx/grlx/jobs"
 	"github.com/gogrlx/grlx/pki"
+	"github.com/gogrlx/grlx/server"
 	"github.com/gogrlx/grlx/types"
 
 	nats_server "github.com/nats-io/nats-server/v2/server"
@@ -48,7 +47,13 @@ func main() {
 	certs.GenCert()
 	certs.GenNKey(true)
 	RunNATSServer()
-	StartAPIServer()
+	server.SetVersion(types.Version{
+		Arch:      runtime.GOOS,
+		Compiler:  runtime.Version(),
+		GitCommit: GitCommit,
+		Tag:       Tag,
+	})
+	certs.SetHttpServer(server.StartAPIServer())
 	go ConnectFarmer()
 	select {}
 
@@ -77,34 +82,6 @@ func createConfigRoot() {
 	}
 }
 
-func StartAPIServer() {
-	CertFile := config.CertFile
-	FarmerInterface := config.FarmerInterface
-	FarmerAPIPort := config.FarmerAPIPort
-	KeyFile := config.KeyFile
-	r := api.NewRouter(types.Version{
-		Arch:      runtime.GOOS,
-		Compiler:  runtime.Version(),
-		GitCommit: GitCommit,
-		Tag:       Tag,
-	}, CertFile)
-	srv := http.Server{
-		// TODO add all below settings to configuration
-		Addr:         FarmerInterface + ":" + FarmerAPIPort,
-		WriteTimeout: time.Second * 120,
-		ReadTimeout:  time.Second * 120,
-		IdleTimeout:  time.Second * 120,
-		Handler:      r,
-	}
-	go func() {
-		if err := srv.ListenAndServeTLS(CertFile, KeyFile); err != nil {
-			log.Fatalf(err.Error())
-		}
-	}()
-
-	log.Tracef("API Server started on %s\n", FarmerInterface+":"+FarmerAPIPort)
-}
-
 type logger struct{}
 
 func (l logger) Debugf(format string, args ...interface{}) {
@@ -119,7 +96,7 @@ func RunNATSServer() {
 	//		log.Panicf("Error configuring server: %v", err)
 	//	}
 	var err error
-	pki.ReloadNKeys()
+	pki.ReloadNatsServer()
 	opts := pki.ConfigureNats()
 	s, err = nats_server.NewServer(&opts)
 	if err != nil || s == nil {
@@ -139,7 +116,7 @@ func RunNATSServer() {
 	}
 	// s.ReloadOptions(opts)
 	pki.SetNATSServer(s)
-	pki.ReloadNKeys()
+	pki.ReloadNatsServer()
 }
 
 func ConnectFarmer() {

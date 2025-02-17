@@ -15,8 +15,8 @@ import (
 )
 
 var (
-	NatsServer *nats_server.Server
-	NatsOpts   *nats_server.Options
+	natsServer *nats_server.Server
+	natsOpts   *nats_server.Options
 	cert       tls.Certificate
 	certPool   *x509.CertPool
 )
@@ -69,10 +69,10 @@ func ConfigureNats() nats_server.Options {
 }
 
 func SetNATSServer(s *nats_server.Server) {
-	NatsServer = s
+	natsServer = s
 }
 
-func ReloadNKeys() error {
+func ReloadNatsServer() error {
 	// AuthorizedKeys
 	authorizedKeys := GetNKeysByType("accepted")
 	farmerKey, err := GetPubNKey(FarmerPubNKey)
@@ -138,8 +138,8 @@ func ReloadNKeys() error {
 
 	// DefaultTestOptions.Accounts = append(DefaultTestOptions.Accounts, &farmerAccount)
 	// DefaultTestOptions.Accounts
-	if NatsServer != nil {
-		err = NatsServer.ReloadOptions(&optsCopy)
+	if natsServer != nil {
+		err = natsServer.ReloadOptions(&optsCopy)
 		if err != nil {
 			log.Error(err)
 		}

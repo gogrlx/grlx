@@ -127,7 +127,7 @@ func IsValidSproutID(id string) bool {
 }
 
 func AcceptNKey(id string) error {
-	defer ReloadNKeys()
+	defer ReloadNatsServer()
 	fname, err := findNKey(id)
 	if err != nil {
 		return err
@@ -144,7 +144,7 @@ func AcceptNKey(id string) error {
 }
 
 func DeleteNKey(id string) error {
-	defer ReloadNKeys()
+	defer ReloadNatsServer()
 	fname, err := findNKey(id)
 	if err != nil {
 		return err
@@ -153,7 +153,7 @@ func DeleteNKey(id string) error {
 }
 
 func DenyNKey(id string) error {
-	defer ReloadNKeys()
+	defer ReloadNatsServer()
 	newDest := filepath.Join(config.FarmerPKI + "sprouts/denied/" + id)
 	fname, err := findNKey(id)
 	if err != nil {
@@ -166,7 +166,7 @@ func DenyNKey(id string) error {
 }
 
 func UnacceptNKey(id string, nkey string) error {
-	defer ReloadNKeys()
+	defer ReloadNatsServer()
 	newDest := filepath.Join(config.FarmerPKI + "sprouts/unaccepted/" + id)
 	fname, err := findNKey(id)
 	if nkey != "" && err == types.ErrSproutIDNotFound {
@@ -224,7 +224,7 @@ func ListNKeysByType() types.KeysByType {
 }
 
 func RejectNKey(id string, nkey string) error {
-	defer ReloadNKeys()
+	defer ReloadNatsServer()
 	newDest := filepath.Join(config.FarmerPKI, "sprouts", "rejected", id)
 	cleanDest := filepath.Clean(newDest)
 	if newDest != cleanDest {

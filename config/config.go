@@ -43,6 +43,7 @@ var (
 	NKeyFarmerPubFile    string
 	NKeySproutPrivFile   string
 	NKeySproutPubFile    string
+	NoRotateCerts        bool
 	// TODO the final path arg should be dynamic to allow for dev/prod/etc
 	RecipeDir    = filepath.Join("/", "srv", "grlx", "recipes", "prod")
 	RootCA       string
@@ -233,6 +234,7 @@ func LoadConfig(binary string) {
 	NKeyFarmerPubFile = jety.GetString("nkeyfarmerpubfile")
 	NKeySproutPrivFile = jety.GetString("nkeysproutprivfile")
 	NKeySproutPubFile = jety.GetString("nkeysproutpubfile")
+	NoRotateCerts = jety.GetBool("norotatecerts")
 	FarmerOrganization = jety.GetString("farmerorganization")
 	RootCA = jety.GetString("rootca")
 	RootCAPriv = jety.GetString("rootcapriv")

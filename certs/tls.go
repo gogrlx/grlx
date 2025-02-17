@@ -3,6 +3,7 @@ package certs
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"crypto/ecdsa"
 	"crypto/ed25519"
 	"crypto/elliptic"
@@ -11,14 +12,21 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"errors"
 	"math/big"
 	"net"
+	"net/http"
 	"os"
 	"time"
 
-	"github.com/gogrlx/grlx/config"
 	log "github.com/taigrr/log-socket/log"
+
+	"github.com/gogrlx/grlx/config"
+	"github.com/gogrlx/grlx/pki"
+	"github.com/gogrlx/grlx/server"
 )
+
+var httpServer *http.Server
 
 func publicKey(priv interface{}) interface{} {
 	switch k := priv.(type) {
@@ -109,19 +117,27 @@ func genCACert() {
 }
 
 func GenCert() {
+	genCert(false)
+}
+
+func genCert(overwrite bool) {
 	// check if certificates already exist first
 	CertFile := config.CertFile
 	KeyFile := config.KeyFile
 	RootCA := config.RootCA
-	_, err := os.Stat(CertFile)
-	if !os.IsNotExist(err) {
-		_, err = os.Stat(KeyFile)
+	if !overwrite {
+		_, err := os.Stat(CertFile)
 		if !os.IsNotExist(err) {
-			log.Trace("Found a TLS keypair, not generating a new one...")
-			return
+			_, err = os.Stat(KeyFile)
+			if !os.IsNotExist(err) {
+				log.Trace("Found a TLS keypair, not generating a new one...")
+				if !config.NoRotateCerts {
+					go rotateTLSCerts()
+				}
+				return
+			}
 		}
 	}
-
 	genCACert()
 	file, err := os.Open(RootCA)
 	if err != nil {
@@ -231,8 +247,67 @@ func GenCert() {
 		log.Fatalf("Error closing key.pem: %v", err)
 	}
 	log.Debug("wrote key.pem")
+	if config.NoRotateCerts {
+		log.Debug("Not rotating certs, as per config")
+		return
+	}
+	go rotateTLSCerts()
 }
 
-// TODO: add TLS cert rotation
-func RotateTLSCerts() {
+func rotateTLSCerts() {
+	log.Debug("Rotating TLS certificates...")
+	CertFile := config.CertFile
+	// open the cert file and determine the notbefore date and the notafter date
+	// if the notafter date is within 33% of the config.CertificateValidTime, then
+	// generate a new cert
+	// otherwise sleep for 1 day and check again
+	needsRotation := func() (bool, error) {
+		file, err := os.Open(CertFile)
+		if err != nil {
+			return false, errors.Join(err, errors.New("could not open cert file"))
+		}
+		defer file.Close()
+		stats, statsErr := file.Stat()
+		if statsErr != nil {
+			return false, errors.Join(statsErr, errors.New("could not stat cert file"))
+		}
+		size := stats.Size()
+		bytes := make([]byte, size)
+		bufr := bufio.NewReader(file)
+		_, err = bufr.Read(bytes)
+		if err != nil {
+			return false, errors.Join(err, errors.New("could not read cert file into buffer"))
+		}
+		block, _ := pem.Decode(bytes)
+		cert, err := x509.ParseCertificate(block.Bytes)
+		if err != nil {
+			return false, errors.Join(err, errors.New("could not parse cert"))
+		}
+		return time.Now().After(cert.NotAfter.Add(-config.CertificateValidTime / 3)), nil
+	}
+	reloadHttpServer := func() {
+		shutdownTimeout, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+		httpServer.Shutdown(shutdownTimeout)
+		SetHttpServer(server.StartAPIServer())
+	}
+	for {
+		shouldRotate, err := needsRotation()
+		if err != nil {
+			log.Error(err)
+			time.Sleep(time.Minute)
+			continue
+		}
+		if shouldRotate {
+			genCert(true)
+			pki.ReloadNatsServer()
+			reloadHttpServer()
+			// TODO: add signal handler for SIGHUP to reload the HTTP and NATS servers
+		}
+		time.Sleep(24 * time.Hour)
+	}
+}
+
+func SetHttpServer(s *http.Server) {
+	httpServer = s
 }
