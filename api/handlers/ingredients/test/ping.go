@@ -7,10 +7,10 @@ import (
 	"strings"
 	"sync"
 
-	//. "github.com/gogrlx/grlx/config"
-	"github.com/gogrlx/grlx/ingredients/test"
-	"github.com/gogrlx/grlx/pki"
-	. "github.com/gogrlx/grlx/types"
+	//. "github.com/gogrlx/grlx/v2/config"
+	"github.com/gogrlx/grlx/v2/ingredients/test"
+	"github.com/gogrlx/grlx/v2/pki"
+	. "github.com/gogrlx/grlx/v2/types"
 	log "github.com/taigrr/log-socket/log"
 )
 

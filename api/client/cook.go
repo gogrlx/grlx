@@ -6,10 +6,10 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/gogrlx/grlx/api"
-	"github.com/gogrlx/grlx/auth"
-	"github.com/gogrlx/grlx/config"
-	"github.com/gogrlx/grlx/types"
+	"github.com/gogrlx/grlx/v2/api"
+	"github.com/gogrlx/grlx/v2/auth"
+	"github.com/gogrlx/grlx/v2/config"
+	"github.com/gogrlx/grlx/v2/types"
 )
 
 func Cook(target string, cmdCook types.CmdCook) (types.CmdCook, error) {

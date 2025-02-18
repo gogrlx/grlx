@@ -3,7 +3,7 @@ package file
 import (
 	"testing"
 
-	"github.com/gogrlx/grlx/types"
+	"github.com/gogrlx/grlx/v2/types"
 )
 
 func compareResults(t *testing.T, result types.Result, expected types.Result) {

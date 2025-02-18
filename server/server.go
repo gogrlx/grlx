@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gogrlx/grlx/api"
-	"github.com/gogrlx/grlx/config"
-	"github.com/gogrlx/grlx/types"
+	"github.com/gogrlx/grlx/v2/api"
+	"github.com/gogrlx/grlx/v2/config"
+	"github.com/gogrlx/grlx/v2/types"
 	"github.com/taigrr/log-socket/log"
 )
 

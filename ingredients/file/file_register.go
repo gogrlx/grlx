@@ -1,9 +1,9 @@
 package file
 
 import (
-	"github.com/gogrlx/grlx/ingredients/file/http"
-	"github.com/gogrlx/grlx/ingredients/file/local"
-	"github.com/gogrlx/grlx/types"
+	"github.com/gogrlx/grlx/v2/ingredients/file/http"
+	"github.com/gogrlx/grlx/v2/ingredients/file/local"
+	"github.com/gogrlx/grlx/v2/types"
 )
 
 func init() {

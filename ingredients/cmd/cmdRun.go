@@ -13,7 +13,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/gogrlx/grlx/types"
+	"github.com/gogrlx/grlx/v2/types"
 )
 
 func (c Cmd) run(ctx context.Context, test bool) (types.Result, error) {

@@ -5,7 +5,7 @@ import (
 	"os"
 	"sync"
 
-	"github.com/gogrlx/grlx/pki"
+	"github.com/gogrlx/grlx/v2/pki"
 )
 
 var propFileLock sync.Mutex

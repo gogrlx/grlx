@@ -21,9 +21,9 @@ import (
 
 	log "github.com/taigrr/log-socket/log"
 
-	"github.com/gogrlx/grlx/config"
-	"github.com/gogrlx/grlx/pki"
-	"github.com/gogrlx/grlx/server"
+	"github.com/gogrlx/grlx/v2/config"
+	"github.com/gogrlx/grlx/v2/pki"
+	"github.com/gogrlx/grlx/v2/server"
 )
 
 var httpServer *http.Server

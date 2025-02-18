@@ -12,9 +12,9 @@ import (
 	"github.com/nats-io/nats.go"
 	"gopkg.in/yaml.v3"
 
-	"github.com/gogrlx/grlx/config"
-	"github.com/gogrlx/grlx/cook/rootball"
-	"github.com/gogrlx/grlx/types"
+	"github.com/gogrlx/grlx/v2/config"
+	"github.com/gogrlx/grlx/v2/cook/rootball"
+	"github.com/gogrlx/grlx/v2/types"
 )
 
 var conn *nats.Conn

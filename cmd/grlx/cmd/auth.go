@@ -8,7 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/gogrlx/grlx/auth"
+	"github.com/gogrlx/grlx/v2/auth"
 )
 
 // testCmd represents the test command

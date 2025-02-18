@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/fatih/color"
-	gcmd "github.com/gogrlx/grlx/cmd/grlx/ingredients/cmd"
-	"github.com/gogrlx/grlx/types"
+	gcmd "github.com/gogrlx/grlx/v2/cmd/grlx/ingredients/cmd"
+	"github.com/gogrlx/grlx/v2/types"
 	"github.com/spf13/cobra"
 )
 

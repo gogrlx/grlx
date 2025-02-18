@@ -9,9 +9,9 @@ import (
 
 	"github.com/taigrr/log-socket/log"
 
-	"github.com/gogrlx/grlx/ingredients"
-	"github.com/gogrlx/grlx/pki"
-	"github.com/gogrlx/grlx/types"
+	"github.com/gogrlx/grlx/v2/ingredients"
+	"github.com/gogrlx/grlx/v2/pki"
+	"github.com/gogrlx/grlx/v2/types"
 )
 
 var (

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/gogrlx/grlx/types"
+	"github.com/gogrlx/grlx/v2/types"
 )
 
 type CacheFile struct {
