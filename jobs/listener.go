@@ -32,7 +32,7 @@ import (
 
 var nc *nats.Conn
 
-func RegisterNatsConn(conn *nats.Conn) {
+func RegisterEC(conn *nats.Conn) {
 	nc = conn
 	_, err := nc.Subscribe("grlx.cook.*.*", logJobs)
 	if err != nil {

@@ -33,7 +33,7 @@ func SendCookEvent(sproutID string, recipeID types.RecipeName, JID string) error
 	if err != nil {
 		return err
 	}
-	recipesteps := make(map[string]interface{})
+	recipesteps := make(map[string]any)
 	for _, inc := range includes {
 		// load all imported files into recipefile list
 		fp, fpErr := ResolveRecipeFilePath(basepath, inc)
@@ -49,7 +49,7 @@ func SendCookEvent(sproutID string, recipeID types.RecipeName, JID string) error
 		if renderErr != nil {
 			return renderErr
 		}
-		var recipe map[string]interface{}
+		var recipe map[string]any
 		marshallErr := yaml.Unmarshal(b, &recipe)
 		if marshallErr != nil {
 			return marshallErr
@@ -66,13 +66,13 @@ func SendCookEvent(sproutID string, recipeID types.RecipeName, JID string) error
 	}
 	for id, step := range recipesteps {
 		switch s := step.(type) {
-		case map[string]interface{}:
+		case map[string]any:
 			if len(s) != 1 {
 				return errors.Join(ErrInvalidFormat, fmt.Errorf("recipe %s must have one directive, but has %d", id, len(s)))
 			}
 
 		default:
-			return errors.Join(ErrInvalidFormat, fmt.Errorf("recipe %s must me a map[string]interface{} but found %T", id, step))
+			return errors.Join(ErrInvalidFormat, fmt.Errorf("recipe %s must be a map[string]any but found %T", id, step))
 		}
 	}
 	steps, err := makeRecipeSteps(recipesteps)

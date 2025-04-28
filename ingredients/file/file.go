@@ -18,13 +18,13 @@ var ErrFileMethodUndefined = errors.New("file method undefined")
 type File struct {
 	id     string
 	method string
-	params map[string]interface{}
+	params map[string]any
 }
 
 // TODO error check, set id, properly parse
-func (f File) Parse(id, method string, params map[string]interface{}) (types.RecipeCooker, error) {
+func (f File) Parse(id, method string, params map[string]any) (types.RecipeCooker, error) {
 	if params == nil {
-		params = make(map[string]interface{})
+		params = make(map[string]any)
 	}
 	return File{
 		id: id, method: method,
@@ -149,7 +149,7 @@ func (f File) cacheSources(ctx context.Context, test bool) (types.Result, error)
 		sourceDest := ""
 		if src, ok := f.params["source"].(string); ok && src != "" {
 			if srcHash, ok := f.params["source_hash"].(string); ok && srcHash != "" {
-				srcFile, err := f.Parse(f.id+"-source", "cached", map[string]interface{}{
+				srcFile, err := f.Parse(f.id+"-source", "cached", map[string]any{
 					"source": src, "hash": srcHash,
 					"name": name + "-source",
 				})
@@ -172,7 +172,7 @@ func (f File) cacheSources(ctx context.Context, test bool) (types.Result, error)
 				}
 				sourceDest, err = srcFile.(*File).dest()
 			} else if skipVerify, ok := f.params["skip_verify"].(bool); ok && skipVerify {
-				srcFile, err := f.Parse(f.id+"-source", "cached", map[string]interface{}{
+				srcFile, err := f.Parse(f.id+"-source", "cached", map[string]any{
 					"source":      src,
 					"skip_verify": skipVerify, "name": name + "-source",
 				})
@@ -211,12 +211,12 @@ func (f File) cacheSources(ctx context.Context, test bool) (types.Result, error)
 		}
 	}
 	{
-		var srces []interface{}
-		var srcHashes []interface{}
+		var srces []any
+		var srcHashes []any
 		var ok bool
 		skip := false
-		if srces, ok = f.params["sources"].([]interface{}); ok && len(srces) > 0 {
-			if srcHashes, ok = f.params["source_hashes"].([]interface{}); ok {
+		if srces, ok = f.params["sources"].([]any); ok && len(srces) > 0 {
+			if srcHashes, ok = f.params["source_hashes"].([]any); ok {
 				if skipVerify, ok := f.params["skip_verify"].(bool); ok && skipVerify {
 					skip = true
 				} else if len(srces) != len(srcHashes) {
@@ -246,7 +246,7 @@ func (f File) cacheSources(ctx context.Context, test bool) (types.Result, error)
 						}, types.ErrMissingHash
 					}
 				}
-				file, err = f.Parse(fmt.Sprintf("%s-source-%d", f.id, i), "cached", map[string]interface{}{
+				file, err = f.Parse(fmt.Sprintf("%s-source-%d", f.id, i), "cached", map[string]any{
 					"source":      srcStr,
 					"skip_verify": skip, "name": cachedName,
 				})
@@ -292,7 +292,7 @@ func (f File) cacheSources(ctx context.Context, test bool) (types.Result, error)
 		sourceDest := ""
 		if src, ok := f.params["source"].(string); ok && src != "" {
 			if srcHash, ok := f.params["source_hash"].(string); ok && srcHash != "" {
-				srcFile, err := f.Parse(f.id+"-source", "cached", map[string]interface{}{
+				srcFile, err := f.Parse(f.id+"-source", "cached", map[string]any{
 					"source": src, "hash": srcHash,
 					"name": name + "-source",
 				})
@@ -315,7 +315,7 @@ func (f File) cacheSources(ctx context.Context, test bool) (types.Result, error)
 				}
 				sourceDest, err = srcFile.(*File).dest()
 			} else if skipVerify, ok := f.params["skip_verify"].(bool); ok && skipVerify {
-				srcFile, err := f.Parse(f.id+"-source", "cached", map[string]interface{}{
+				srcFile, err := f.Parse(f.id+"-source", "cached", map[string]any{
 					"source":      src,
 					"skip_verify": skipVerify, "name": name + "-source",
 				})
@@ -546,8 +546,8 @@ func (f File) Methods() (string, []string) {
 	}
 }
 
-func (f File) Properties() (map[string]interface{}, error) {
-	m := map[string]interface{}{}
+func (f File) Properties() (map[string]any, error) {
+	m := map[string]any{}
 	b, err := json.Marshal(f.params)
 	if err != nil {
 		return m, err

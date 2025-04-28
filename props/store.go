@@ -8,7 +8,7 @@ import (
 )
 
 type expProp struct {
-	Value  interface{}
+	Value  any
 	Expiry time.Time
 }
 
@@ -68,19 +68,19 @@ func deleteProp(sproutID, name string) error {
 	return nil
 }
 
-func GetPropsFunc(sproutID string) func() map[string]interface{} {
-	return func() map[string]interface{} {
+func GetPropsFunc(sproutID string) func() map[string]any {
+	return func() map[string]any {
 		return getProps(sproutID)
 	}
 }
 
 // TODO: implement getProps
-func getProps(sproutID string) map[string]interface{} {
+func getProps(sproutID string) map[string]any {
 	if propCache[sproutID] == nil {
 		// get from sprout
 		return nil
 	}
-	props := make(map[string]interface{})
+	props := make(map[string]any)
 	for k, v := range propCache[sproutID] {
 		if v.Expiry.Before(time.Now()) {
 			// get from sprout

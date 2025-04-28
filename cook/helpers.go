@@ -23,11 +23,11 @@ func RegisterNatsConn(n *nats.Conn) {
 	conn = n
 }
 
-func makeRecipeSteps(recipes map[string]interface{}) ([]*types.Step, error) {
+func makeRecipeSteps(recipes map[string]any) ([]*types.Step, error) {
 	steps := []*types.Step{}
 	for recipeName, recipe := range recipes {
-		if _, ok := recipe.(map[string]interface{}); ok {
-			step, err := recipeToStep(recipeName, recipe.(map[string]interface{}))
+		if _, ok := recipe.(map[string]any); ok {
+			step, err := recipeToStep(recipeName, recipe.(map[string]any))
 			if err != nil {
 				return []*types.Step{}, err
 			}
@@ -39,7 +39,7 @@ func makeRecipeSteps(recipes map[string]interface{}) ([]*types.Step, error) {
 	return steps, nil
 }
 
-func recipeToStep(id string, recipe map[string]interface{}) (types.Step, error) {
+func recipeToStep(id string, recipe map[string]any) (types.Step, error) {
 	var step types.Step
 	if len(recipe) != 1 {
 		return step, errors.New("error: recipe must have exactly one key")
@@ -49,11 +49,11 @@ func recipeToStep(id string, recipe map[string]interface{}) (types.Step, error) 
 		if len(rp) != 2 {
 			return step, errors.New("error: recipe key must be in the form ingredient.method")
 		}
-		mi, ok := v.([]interface{})
+		mi, ok := v.([]any)
 		if !ok {
 			return types.Step{}, fmt.Errorf("error: %s must contain a list of properties ([]interface{}), but is a %T", k, v)
 		}
-		m := make(map[string]interface{})
+		m := make(map[string]any)
 		for _, interf := range mi {
 			if msi, ok := interf.(map[string]interface{}); ok {
 				for k, v := range msi {
@@ -113,12 +113,12 @@ func collectAllIncludes(sproutID, basepath string, recipeID types.RecipeName) ([
 	return includes, nil
 }
 
-func deInterfaceRequisites(req types.ReqType, v interface{}) (types.RequisiteSet, error) {
+func deInterfaceRequisites(req types.ReqType, v any) (types.RequisiteSet, error) {
 	requisites := []types.Requisite{}
 	switch v := v.(type) {
 	case string:
 		requisites = append(requisites, types.Requisite{StepIDs: []types.StepID{types.StepID(v)}, Condition: req})
-	case []interface{}:
+	case []any:
 		ids := []types.StepID{}
 		for i, id := range v {
 			if id, ok := id.(string); ok {
@@ -134,7 +134,7 @@ func deInterfaceRequisites(req types.ReqType, v interface{}) (types.RequisiteSet
 	return requisites, nil
 }
 
-func extractRequisites(step map[string]interface{}) (types.RequisiteSet, error) {
+func extractRequisites(step map[string]any) (types.RequisiteSet, error) {
 	rt, ok := step["requisites"]
 	// if there isn't a requirements key, there aren't any requirements for this step
 	if !ok {
@@ -142,11 +142,11 @@ func extractRequisites(step map[string]interface{}) (types.RequisiteSet, error) 
 	}
 	requisites := []types.Requisite{}
 	// if there is a requirements key, it must be map[string]interface{} , i.e. map[string]string or map[string][]string
-	if rti, ok := rt.([]interface{}); !ok {
+	if rti, ok := rt.([]any); !ok {
 		return []types.Requisite{}, errors.Join(errors.New("error: requirements must be a list of maps"), ErrInvalidFormat)
 	} else {
 		for _, m := range rti {
-			mm, ok := m.(map[string]interface{})
+			mm, ok := m.(map[string]any)
 			if !ok {
 				return []types.Requisite{}, errors.Join(errors.New("error: requirements must be a list of maps"), ErrInvalidFormat)
 			}
@@ -169,7 +169,7 @@ func extractRequisites(step map[string]interface{}) (types.RequisiteSet, error) 
 	return requisites, nil
 }
 
-func joinMaps(a, b map[string]interface{}) (map[string]interface{}, error) {
+func joinMaps(a, b map[string]any) (map[string]interface{}, error) {
 	c := make(map[string]interface{})
 	for k, v := range a {
 		c[k] = v

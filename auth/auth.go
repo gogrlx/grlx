@@ -2,6 +2,7 @@ package auth
 
 import (
 	"errors"
+	"slices"
 
 	"github.com/nats-io/nkeys"
 	"github.com/taigrr/jety"
@@ -102,7 +103,7 @@ func GetPubkeysByRole(role string) ([]string, error) {
 	}
 	keys := []string{}
 	if adminKey, ok := i.(string); !ok {
-		if adminKeyList, ok := i.([]interface{}); ok {
+		if adminKeyList, ok := i.([]any); ok {
 			for _, k := range adminKeyList {
 				if str, ok := k.(string); ok {
 					keys = append(keys, str)
@@ -122,12 +123,7 @@ func GetPubkeysByRole(role string) ([]string, error) {
 // TODO allow for method-based access control
 func pubkeyHasAccess(pubkey string, method string) bool {
 	keys, _ := GetPubkeysByRole("admin")
-	for _, k := range keys {
-		if k == pubkey {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(keys, pubkey)
 }
 
 func createPrivateSeed() (string, error) {

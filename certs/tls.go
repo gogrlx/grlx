@@ -28,7 +28,7 @@ import (
 
 var httpServer *http.Server
 
-func publicKey(priv interface{}) interface{} {
+func publicKey(priv any) any {
 	switch k := priv.(type) {
 	case *rsa.PrivateKey:
 		return &k.PublicKey
@@ -182,7 +182,7 @@ func genCert(overwrite bool) {
 		log.Panic(err.Error())
 	}
 	hosts := config.CertHosts
-	var priv interface{}
+	var priv any
 	priv, err = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		log.Panicf("Failed to generate private key: %v", err)

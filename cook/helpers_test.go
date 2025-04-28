@@ -70,7 +70,7 @@ func TestDeInterfaceRequisites(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.id, func(t *testing.T) {
-			m := map[string]interface{}{}
+			m := map[string]any{}
 			err := json.Unmarshal([]byte(tc.requisiteString), &m)
 			if err != nil {
 				t.Error(err)
@@ -99,7 +99,7 @@ func TestExtractRequisites(t *testing.T) {
 	}{{id: "empty", stepString: "{}", ExpectedReq: types.RequisiteSet{}}}
 	for _, tc := range testCases {
 		t.Run(tc.id, func(t *testing.T) {
-			m := make(map[string]interface{})
+			m := make(map[string]any)
 			err := json.Unmarshal([]byte(tc.stepString), &m)
 			if err != nil {
 				t.Error(err)
@@ -235,30 +235,30 @@ func TestRelativeRecipeToAbsolute(t *testing.T) {
 func TestJoinMaps(t *testing.T) {
 	testCases := []struct {
 		id       string
-		mapa     map[string]interface{}
-		mapb     map[string]interface{}
-		expected map[string]interface{}
+		mapa     map[string]any
+		mapb     map[string]any
+		expected map[string]any
 		err      error
 	}{
 		{
 			id:       "empty",
-			mapa:     map[string]interface{}{},
-			mapb:     map[string]interface{}{},
-			expected: map[string]interface{}{},
+			mapa:     map[string]any{},
+			mapb:     map[string]any{},
+			expected: map[string]any{},
 			err:      nil,
 		},
 		{
 			id:       "disjoint",
-			mapa:     map[string]interface{}{"a": "b"},
-			mapb:     map[string]interface{}{"c": "d"},
-			expected: map[string]interface{}{"a": "b", "c": "d"},
+			mapa:     map[string]any{"a": "b"},
+			mapb:     map[string]any{"c": "d"},
+			expected: map[string]any{"a": "b", "c": "d"},
 			err:      nil,
 		},
 		{
 			id:       "overlap",
-			mapa:     map[string]interface{}{"a": "b"},
-			mapb:     map[string]interface{}{"c": "d", "a": "e"},
-			expected: map[string]interface{}{},
+			mapa:     map[string]any{"a": "b"},
+			mapb:     map[string]any{"c": "d", "a": "e"},
+			expected: map[string]any{},
 			err:      ErrDuplicateKey,
 		},
 	}

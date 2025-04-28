@@ -32,7 +32,7 @@ type JobRecord struct {
 	Executor   types.Executor
 	Completion types.CompletionStatus
 }
-type RecordKeeper interface{}
+type RecordKeeper any
 
 type MethodPropsSet []MethodProps
 
@@ -100,7 +100,7 @@ var (
 	ErrUnknownMethod     = errors.New("unknown method")
 )
 
-func NewRecipeCooker(id types.StepID, ingredient types.Ingredient, method string, params map[string]interface{}) (types.RecipeCooker, error) {
+func NewRecipeCooker(id types.StepID, ingredient types.Ingredient, method string, params map[string]any) (types.RecipeCooker, error) {
 	fmt.Printf("cooking %s %s %s\n", id, ingredient, method)
 	ingTex.Lock()
 	defer ingTex.Unlock()

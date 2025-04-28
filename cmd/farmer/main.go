@@ -19,11 +19,9 @@ import (
 	"github.com/gogrlx/grlx/v2/cook"
 	"github.com/gogrlx/grlx/v2/ingredients/cmd"
 	"github.com/gogrlx/grlx/v2/ingredients/test"
-	"github.com/gogrlx/grlx/v2/jobs"
 	"github.com/gogrlx/grlx/v2/pki"
 	"github.com/gogrlx/grlx/v2/server"
 	"github.com/gogrlx/grlx/v2/types"
-
 	nats_server "github.com/nats-io/nats-server/v2/server"
 	nats "github.com/nats-io/nats.go"
 )
@@ -207,7 +205,7 @@ func ConnectFarmer() {
 	test.RegisterNatsConn(nc)
 	cmd.RegisterNatsConn(nc)
 	cook.RegisterNatsConn(nc)
-	jobs.RegisterNatsConn(nc)
+	// jobs.RegisterNatsConn(nc)
 	handlers.RegisterNatsConn(nc)
 	defer nc.Close()
 	select {}
