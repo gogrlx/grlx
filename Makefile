@@ -8,10 +8,14 @@ else
 TYPE:=$(BITBUCKET_BUILD_NUMBER)
 endif
 
+# New target for generating templates
+generate-templates:
+	@echo "Generating templates..."
+	@go run github.com/a-h/templ/cmd/templ@latest generate
 
-all:  sprout grlx farmer
+all: generate-templates sprout grlx farmer
 
-sprout: cmd/sprout/*.go
+sprout: generate-templates cmd/sprout/*.go
 ifeq ($(GOOS),)
 	@printf "OS not specified, defaulting to: \e[33m$(UNAME)\e[39m\n"
 else
@@ -27,7 +31,7 @@ endif
 	@printf "\e[32mSuccess!\e[39m\n"
 
 
-grlx: cmd/grlx/*.go
+grlx: generate-templates cmd/grlx/*.go
 ifeq ($(GOOS),)
 	@printf "OS not specified, defaulting to: \e[33m$(UNAME)\e[39m\n"
 else
@@ -44,7 +48,7 @@ endif
 	@printf "\e[32mSuccess!\e[39m\n"
 
 
-farmer: cmd/farmer/*.go
+farmer: generate-templates cmd/farmer/*.go
 ifeq ($(GOOS),)
 	@printf "OS not specified, defaulting to: \e[33m$(UNAME)\e[39m\n"
 else
@@ -188,3 +192,4 @@ test: clean
 .PHONY: test
 .PHONY: update
 .PHONY: release
+.PHONY: generate-templates

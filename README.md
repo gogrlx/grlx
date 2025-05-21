@@ -84,6 +84,46 @@ Managed systems are referred to as 'sprouts.'
 
 <p align="center"><img src="docs/diagrams/grlx-arch-light.png" width="100%" alt="architecture diagram"></p>
 
+## HTML Templating with `templ`
+
+This project uses [`templ`](https://templ.guide/) for generating HTML. `templ` is a language that allows you to write HTML templates that are compiled into Go code. This provides the benefits of type safety and the ability to easily compose and reuse HTML components.
+
+Files with the `.templ` extension (e.g., located in `web/templates/`) contain the template definitions. When you create or modify these files, you need to regenerate the corresponding Go code.
+
+To do this, run the following command:
+```bash
+make generate-templates
+```
+This command is also included as a dependency in other `make` targets like `make all`, `make grlx`, etc., so the templates will be automatically regenerated when you build the project.
+
+**Example:**
+
+A simple component can be defined in a `.templ` file like `web/templates/greeting.templ`:
+```templ
+package templates
+
+templ Greeting(name string) {
+    <h1>Hello, { name }!</h1>
+}
+```
+
+This component can then be used in a Go HTTP handler:
+```go
+package handlers
+
+import (
+	"net/http"
+	"github.com/gogrlx/grlx/web/templates" // Import the generated package
+)
+
+func MyHandler(w http.ResponseWriter, r *http.Request) {
+	component := templates.Greeting("Sample User")
+	component.Render(r.Context(), w)
+}
+```
+
+For more detailed information, please refer to the [official `templ` documentation](https://templ.guide/).
+
 ## Batteries Included
 
 `farmer` contains an embedded messaging Pub-Sub server ([NATS](https://github.com/nats-io/nats-server)), and an api server.
