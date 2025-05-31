@@ -8,11 +8,13 @@ import (
 	"github.com/gogrlx/grlx/v2/pki"
 )
 
+const propFile = "/var/grlx/props"
+
 var propFileLock sync.Mutex
 
 // TODO: finalize and export this function
 
-func saveToDiskFunc() error {
+func SaveToDisk() error {
 	propFileLock.Lock()
 	defer propFileLock.Unlock()
 	return saveToDisk()
@@ -20,7 +22,7 @@ func saveToDiskFunc() error {
 
 func saveToDisk() error {
 	// save to disk
-	f, err := os.Create("/etc/grlx/props")
+	f, err := os.Create(propFile)
 	if err != nil {
 		return err
 	}
@@ -43,9 +45,9 @@ func loadFromDiskFunc() error {
 
 func loadFromDisk() error {
 	// load from disk
-	_, err := os.Stat("/etc/grlx/props")
+	_, err := os.Stat(propFile)
 	if os.IsNotExist(err) {
-		_, err := os.Create("/etc/grlx/props")
+		_, err := os.Create(propFile)
 		if err != nil {
 			return err
 		}
@@ -56,7 +58,7 @@ func loadFromDisk() error {
 	if err != nil {
 		return err
 	}
-	f, err := os.Open("/etc/grlx/props")
+	f, err := os.Open(propFile)
 	if err != nil {
 		return err
 	}

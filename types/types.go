@@ -223,6 +223,13 @@ type (
 
 		Error error `json:"error"`
 	}
+	PropsGet struct {
+		Key string `json:"key"`
+	}
+	PropsSet struct {
+		Key   string `json:"key"`
+		Value any    `json:"value"`
+	}
 
 	EnvVar map[string]string
 
