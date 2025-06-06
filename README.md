@@ -9,6 +9,7 @@
 [![GitHub commit activity (branch)](https://img.shields.io/github/commit-activity/m/gogrlx/grlx)](https://github.com/gogrlx/grlx)
 [![Twitter](https://img.shields.io/twitter/follow/gogrlx)](https://x.com/gogrlx)
 [![Discord](https://img.shields.io/badge/chat-on%20discord-blue)](https://discord.com/invite/VruAThf)
+[![Hosted By: Cloudsmith](https://img.shields.io/badge/OSS%20hosting%20by-cloudsmith-blue?logo=cloudsmith&style=for-the-badge)](https://cloudsmith.com)
 
 grlx (pronounced like "garlic") is a pure-[Go](http://golang.org) DevOps automation engine designed to use few system resources and keep your application front and center.
 
@@ -137,6 +138,14 @@ If you or your company use grlx and you'd like to be added to this list, [Create
         <img src="docs/logos/gladhost.png" width="125" alt="GLADHOST">
     </a>
 </p>
+
+
+## Package Hosting
+
+Package repository hosting is graciously provided by [Cloudsmith](https://cloudsmith.com).
+Cloudsmith is the only fully hosted, cloud-native, universal package management solution, that
+enables your organization to create, store and share packages in any format, to any place, with total
+confidence.
 
 ## License
 
