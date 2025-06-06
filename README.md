@@ -9,7 +9,7 @@
 [![GitHub commit activity (branch)](https://img.shields.io/github/commit-activity/m/gogrlx/grlx)](https://github.com/gogrlx/grlx)
 [![Twitter](https://img.shields.io/twitter/follow/gogrlx)](https://x.com/gogrlx)
 [![Discord](https://img.shields.io/badge/chat-on%20discord-blue)](https://discord.com/invite/VruAThf)
-[![Hosted By: Cloudsmith](https://img.shields.io/badge/OSS%20hosting%20by-cloudsmith-blue?logo=cloudsmith&style=for-the-badge)](https://cloudsmith.com)
+[![Hosted By: Cloudsmith](https://img.shields.io/badge/OSS%20hosting%20by-cloudsmith-blue?logo=cloudsmith)](https://cloudsmith.com)
 
 grlx (pronounced like "garlic") is a pure-[Go](http://golang.org) DevOps automation engine designed to use few system resources and keep your application front and center.
 
