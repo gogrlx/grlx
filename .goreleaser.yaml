@@ -14,7 +14,7 @@ builds:
       - linux
     goarch:
       - amd64
-      - 386
+      - "386"
       - arm64
       - arm
   - main: ./cmd/farmer/
@@ -25,31 +25,31 @@ builds:
       - linux
     goarch:
       - amd64
-      - 386
+      - "386"
       - arm64
       - arm
   - main: ./cmd/grlx/
-    id: "grlx-cli"
-    # example - grlx-cli-v1.0.0-linux-amd64
-    binary: "{{.ProjectName}}-cli-{{.Tag}}-{{.Os}}-{{.Arch}}"
+    id: "grlx"
+    # example - grlx-v1.0.0-linux-amd64
+    binary: "{{.ProjectName}}-{{.Tag}}-{{.Os}}-{{.Arch}}"
     goos:
       - linux
       - darwin
     goarch:
       - amd64
-      - 386
+      - "386"
       - arm64
       - arm
     ldflags:
       - -X main.GitCommit={{.ShortCommit}} -X main.Tag=v{{.Version}}
 
 # generates macOS universal binaries
-# name would be: grlx-cli-v1.0.0-darwin-universal
+# name would be: grlx-v1.0.0-darwin-universal
 universal_binaries:
   - id: grlx-universal
     ids:
-      - "grlx-cli"
-    name_template: "{{.ProjectName}}-cli-{{.Tag}}-darwin-universal"
+      - "grlx"
+    name_template: "{{.ProjectName}}-{{.Tag}}-darwin-universal"
     replace: true
 
 # generates archives for the CLI
@@ -59,7 +59,7 @@ archives:
     allow_different_binary_count: true
     # This puts all the binaries for a given system into one archive
     builds:
-      - grlx-cli
+      - grlx
       - grlx-universal
       - farmer
       - sprout
@@ -76,7 +76,7 @@ release:
     name: grlx
   ids:
     - grlx-universal
-    - grlx-cli
+    - grlx
     - farmer
     - sprout
   draft: true
