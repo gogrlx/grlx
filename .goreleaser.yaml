@@ -1,15 +1,21 @@
 # yaml-language-server: $schema=https://goreleaser.com/static/schema.json
 # vim: set ts=2 sw=2 tw=0 fo=cnqoj
 
+version: 2
+
 before:
   hooks:
     - go mod tidy
 
+# Support for nightlies and proper versioning
+snapshot:
+  name_template: "{{ incpatch .Version }}-next"
+
 builds:
+  # Package manager builds (no self-update)
   - main: ./cmd/sprout/
-    id: "sprout"
-    # example - grlx-sprout-v1.0.0-linux-amd64
-    binary: "{{.ProjectName}}-sprout-{{.Tag}}-{{.Os}}-{{.Arch}}"
+    id: "sprout-pkg"
+    binary: "{{.ProjectName}}-sprout-{{.Version}}-{{.Os}}-{{.Arch}}"
     goos:
       - linux
     goarch:
@@ -17,10 +23,13 @@ builds:
       - "386"
       - arm64
       - arm
+    ldflags:
+      - -X main.GitCommit={{.ShortCommit}} -X main.Tag=v{{.Version}}
+    tags:
+      - no_self_update
   - main: ./cmd/farmer/
-    id: "farmer"
-    # example - grlx-farmer-v1.0.0-linux-amd64
-    binary: "{{.ProjectName}}-farmer-{{.Tag}}-{{.Os}}-{{.Arch}}"
+    id: "farmer-pkg"
+    binary: "{{.ProjectName}}-farmer-{{.Version}}-{{.Os}}-{{.Arch}}"
     goos:
       - linux
     goarch:
@@ -28,10 +37,13 @@ builds:
       - "386"
       - arm64
       - arm
+    ldflags:
+      - -X main.GitCommit={{.ShortCommit}} -X main.Tag=v{{.Version}}
+    tags:
+      - no_self_update
   - main: ./cmd/grlx/
-    id: "grlx"
-    # example - grlx-v1.0.0-linux-amd64
-    binary: "{{.ProjectName}}-{{.Tag}}-{{.Os}}-{{.Arch}}"
+    id: "grlx-pkg"
+    binary: "{{.ProjectName}}-{{.Version}}-{{.Os}}-{{.Arch}}"
     goos:
       - linux
       - darwin
@@ -42,6 +54,54 @@ builds:
       - arm
     ldflags:
       - -X main.GitCommit={{.ShortCommit}} -X main.Tag=v{{.Version}}
+    tags:
+      - no_self_update
+      
+  # Standalone builds (with self-update)
+  - main: ./cmd/sprout/
+    id: "sprout"
+    binary: "{{.ProjectName}}-sprout-{{.Version}}-{{.Os}}-{{.Arch}}"
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - "386"
+      - arm64
+      - arm
+    ldflags:
+      - -X main.GitCommit={{.ShortCommit}} -X main.Tag=v{{.Version}}
+    tags:
+      - self_update
+  - main: ./cmd/farmer/
+    id: "farmer"
+    binary: "{{.ProjectName}}-farmer-{{.Version}}-{{.Os}}-{{.Arch}}"
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - "386"
+      - arm64
+      - arm
+    ldflags:
+      - -X main.GitCommit={{.ShortCommit}} -X main.Tag=v{{.Version}}
+    tags:
+      - self_update
+  - main: ./cmd/grlx/
+    id: "grlx"
+    binary: "{{.ProjectName}}-{{.Version}}-{{.Os}}-{{.Arch}}"
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - "386"
+      - arm64
+      - arm
+    ldflags:
+      - -X main.GitCommit={{.ShortCommit}} -X main.Tag=v{{.Version}}
+    tags:
+      - self_update
+
 
 # generates macOS universal binaries
 # name would be: grlx-v1.0.0-darwin-universal
@@ -49,25 +109,252 @@ universal_binaries:
   - id: grlx-universal
     ids:
       - "grlx"
-    name_template: "{{.ProjectName}}-{{.Tag}}-darwin-universal"
+    name_template: "{{.ProjectName}}-{{.Version}}-darwin-universal"
     replace: true
 
-# generates archives for the CLI
+# generates archives for the CLI (standalone binaries with self-update)
 archives:
-  - format: tar.gz
+  - formats: tar.gz
     # This allows for us to handle the universal binaries
     allow_different_binary_count: true
-    # This puts all the binaries for a given system into one archive
-    builds:
+    # This puts all the standalone binaries for a given system into one archive
+    ids:
       - grlx
       - grlx-universal
       - farmer
       - sprout
-    name_template: "{{.ProjectName}}-{{.Tag}}-{{.Os}}-{{.Arch}}"
+    name_template: "{{.ProjectName}}-{{.Version}}-{{.Os}}-{{.Arch}}"
     # use zip for windows archives
     format_overrides:
       - goos: windows
-        format: zip
+        formats: zip
+
+nfpms:
+  - id: grlx
+    package_name: grlx
+    builds: [grlx-pkg]  # Use package manager build without self-update
+    formats: [apk, deb, rpm]
+    bindir: /usr/bin
+    description: "Effective fleet configuration management"
+    maintainer: Tai Groot <tai@taigrr.com>
+    license: 0BSD
+    homepage: https://grlx.dev
+    vendor: Adatomic, Inc.
+    version_metadata: git
+
+  - id: grlx-farmer
+    package_name: grlx-farmer
+    builds: [farmer-pkg]  # Use package manager build without self-update
+    formats: [apk, deb, rpm]
+    bindir: /usr/bin
+    description: "GRLX control plane"
+    maintainer: Tai Groot <tai@taigrr.com>
+    license: 0BSD
+    homepage: https://grlx.dev
+    vendor: Adatomic, Inc.
+    version_metadata: git
+    contents:
+      - src: ./packaging/etc/grlx-farmer.conf
+        dst: /etc/grlx/farmer
+        type: config
+        file_info:
+          mode: 0644
+      - dst: /etc/grlx/pki/farmer/
+        type: dir
+        file_info:
+          mode: 0755
+          owner: farmer
+          group: farmer
+      - dst: /var/cache/grlx/farmer
+        type: dir
+        file_info:
+          mode: 0755
+          owner: farmer
+          group: farmer
+    scripts:
+      preinstall: ./packaging/alpine/grlx-farmer.pre-install
+      postinstall: ./packaging/alpine/grlx-farmer.post-install
+    overrides:
+      apk:
+        contents:
+          - src: ./packaging/alpine/grlx-farmer.initd
+            dst: /etc/init.d/grlx-farmer
+            type: config
+            file_info:
+              mode: 0755
+      deb:
+        dependencies:
+          - systemd
+        contents:
+          - src: ./packaging/systemd/grlx-farmer.service
+            dst: /lib/systemd/system/grlx-farmer.service
+            type: config
+            file_info:
+              mode: 0644
+        scripts:
+          preinstall: ./packaging/alpine/grlx-farmer.pre-install
+          postinstall: ./packaging/scripts/grlx-farmer-deb-postinstall.sh
+      rpm:
+        dependencies:
+          - systemd
+        contents:
+          - src: ./packaging/systemd/grlx-farmer.service
+            dst: /usr/lib/systemd/system/grlx-farmer.service
+            type: config
+            file_info:
+              mode: 0644
+        scripts:
+          preinstall: ./packaging/alpine/grlx-farmer.pre-install
+          postinstall: ./packaging/scripts/grlx-farmer-rpm-postinstall.sh
+
+  - id: grlx-sprout
+    package_name: grlx-sprout
+    builds: [sprout-pkg]  # Use package manager build without self-update
+    formats: [apk, deb, rpm]
+    bindir: /usr/bin
+    description: "GRLX remote control agent"
+    maintainer: Will Sinatra <wpsinatra@gmail.com>
+    license: 0BSD
+    homepage: https://grlx.dev
+    vendor: Adatomic, Inc.
+    version_metadata: git
+    contents:
+      - src: ./packaging/etc/grlx-sprout.conf
+        dst: /etc/grlx/sprout
+        type: config
+        file_info:
+          mode: 0644
+      - dst: /var/cache/grlx/sprout
+        type: dir
+        file_info:
+          mode: 0755
+    scripts:
+      postinstall: ./packaging/alpine/grlx-sprout.post-instal
+    overrides:
+      apk:
+        contents:
+          - src: ./packaging/alpine/grlx-sprout.initd
+            dst: /etc/init.d/grlx-sprout
+            type: config
+            file_info:
+              mode: 0755
+      deb:
+        dependencies:
+          - systemd
+        contents:
+          - src: ./packaging/systemd/grlx-sprout.service
+            dst: /lib/systemd/system/grlx-sprout.service
+            type: config
+            file_info:
+              mode: 0644
+        scripts:
+          postinstall: ./packaging/scripts/grlx-sprout-deb-postinstall.sh
+      rpm:
+        dependencies:
+          - systemd
+        contents:
+          - src: ./packaging/systemd/grlx-sprout.service
+            dst: /usr/lib/systemd/system/grlx-sprout.service
+            type: config
+            file_info:
+              mode: 0644
+        scripts:
+          postinstall: ./packaging/scripts/grlx-sprout-rpm-postinstall.sh
+
+# Cloudsmith publishing
+publishers:
+  - name: cloudsmith
+    # Only publish for tagged releases (not snapshots/nightlies)
+    disable: '{{ .IsSnapshot }}'
+    cmd: cloudsmith push {{ if .IsSnapshot }}raw{{ else }}{{ .ArtifactExt }}{{ end }} {{ .Env.CLOUDSMITH_REPOSITORY }} {{ .ArtifactPath }}
+    env:
+      - CLOUDSMITH_API_KEY={{ .Env.CLOUDSMITH_API_KEY }}
+
+# Docker images
+dockers:
+  # Docker Hub
+  - image_templates:
+      - "grlx/farmer:{{ .Version }}"
+      - "grlx/farmer:latest"
+    dockerfile: docker/goreleaser.farmer.dockerfile
+    build_flag_templates:
+      - "--platform=linux/amd64"
+    ids:
+      - farmer
+    # Only push for tagged releases
+    skip_push: '{{ .IsSnapshot }}'
+    
+  - image_templates:
+      - "grlx/sprout:{{ .Version }}"
+      - "grlx/sprout:latest"
+    dockerfile: docker/goreleaser.sprout.dockerfile
+    build_flag_templates:
+      - "--platform=linux/amd64"
+    ids:
+      - sprout
+    # Only push for tagged releases
+    skip_push: '{{ .IsSnapshot }}'
+    
+  # GitHub Container Registry
+  - image_templates:
+      - "ghcr.io/gogrlx/grlx-farmer:{{ .Version }}"
+      - "ghcr.io/gogrlx/grlx-farmer:latest"
+    dockerfile: docker/goreleaser.farmer.dockerfile
+    build_flag_templates:
+      - "--platform=linux/amd64"
+    ids:
+      - farmer
+    # Only push for tagged releases
+    skip_push: '{{ .IsSnapshot }}'
+    
+  - image_templates:
+      - "ghcr.io/gogrlx/grlx-sprout:{{ .Version }}"
+      - "ghcr.io/gogrlx/grlx-sprout:latest"
+    dockerfile: docker/goreleaser.sprout.dockerfile
+    build_flag_templates:
+      - "--platform=linux/amd64"
+    ids:
+      - sprout
+    # Only push for tagged releases
+    skip_push: '{{ .IsSnapshot }}'
+
+# S3 artifact publishing for standalone binaries
+blobs:
+  - provider: s3
+    region: us-east-1
+    bucket: artifacts.grlx.dev
+    # Only upload for tagged releases (not snapshots/nightlies)
+    disable: '{{ .IsSnapshot }}'
+    ids:
+      - grlx      # standalone builds only
+      - farmer
+      - sprout
+    # Upload with version in path: s3://artifacts.grlx.dev/linux/amd64/v1.0.0/grlx
+    extra_files:
+      - glob: "./dist/grlx-{{ .Version }}-{{ .Os }}-{{ .Arch }}"
+        name_template: "{{ .Os }}/{{ .Arch }}/{{ .Tag }}/grlx"
+      - glob: "./dist/grlx-farmer-{{ .Version }}-{{ .Os }}-{{ .Arch }}"
+        name_template: "{{ .Os }}/{{ .Arch }}/{{ .Tag }}/farmer"  
+      - glob: "./dist/grlx-sprout-{{ .Version }}-{{ .Os }}-{{ .Arch }}"
+        name_template: "{{ .Os }}/{{ .Arch }}/{{ .Tag }}/sprout"
+
+  - provider: s3
+    region: us-east-1
+    bucket: artifacts.grlx.dev
+    # Only upload for tagged releases (not snapshots/nightlies)
+    disable: '{{ .IsSnapshot }}'
+    ids:
+      - grlx      # standalone builds only
+      - farmer
+      - sprout
+    # Also upload to "latest" path: s3://artifacts.grlx.dev/linux/amd64/latest/grlx
+    extra_files:
+      - glob: "./dist/grlx-{{ .Version }}-{{ .Os }}-{{ .Arch }}"
+        name_template: "{{ .Os }}/{{ .Arch }}/latest/grlx"
+      - glob: "./dist/grlx-farmer-{{ .Version }}-{{ .Os }}-{{ .Arch }}"
+        name_template: "{{ .Os }}/{{ .Arch }}/latest/farmer"
+      - glob: "./dist/grlx-sprout-{{ .Version }}-{{ .Os }}-{{ .Arch }}"
+        name_template: "{{ .Os }}/{{ .Arch }}/latest/sprout"
 
 # Creates a draft github release for maintainer review
 release:
@@ -80,6 +367,8 @@ release:
     - farmer
     - sprout
   draft: true
+  # Support for nightlies
+  prerelease: auto
 
 changelog:
   sort: asc
@@ -87,3 +376,20 @@ changelog:
     exclude:
       - "^docs:"
       - "^test:"
+      - "^ci:"
+      - "^chore:"
+  groups:
+    - title: Features
+      regexp: "^.*feat[(\\w)]*:+.*$"
+      order: 0
+    - title: 'Bug fixes'
+      regexp: "^.*fix[(\\w)]*:+.*$"
+      order: 1
+    - title: Others
+      order: 999
+
+# Announce releases
+announce:
+  discord:
+    enabled: '{{ not .IsSnapshot }}'
+    message_template: 'grlx {{ .Tag }} is out! Check it out at {{ .ReleaseURL }}'

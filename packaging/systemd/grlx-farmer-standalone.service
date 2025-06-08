@@ -1,0 +1,31 @@
+[Unit]
+Description=grlx Farmer - Control Plane Service (Standalone)
+Documentation=https://grlx.dev
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=farmer
+Group=farmer
+ExecStart=/usr/local/bin/grlx-farmer
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=always
+RestartSec=5
+KillMode=mixed
+TimeoutStopSec=30
+
+# Less restrictive security for self-updates
+NoNewPrivileges=false
+PrivateTmp=true
+ProtectHome=true
+ReadWritePaths=/var/cache/grlx/farmer /etc/grlx/pki/farmer /usr/local/bin
+ProtectKernelTunables=true
+ProtectKernelModules=true
+
+# Working directory and environment
+WorkingDirectory=/var/cache/grlx/farmer
+Environment=GRLX_CONFIG=/etc/grlx/farmer
+
+[Install]
+WantedBy=multi-user.target 

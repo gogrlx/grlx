@@ -1,7 +1,7 @@
 bin/*
 config.jso*
 configs/
-etc
+/etc
 .env
 *.zip
 coverage.out
