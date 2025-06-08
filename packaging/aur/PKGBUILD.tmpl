@@ -1,0 +1,38 @@
+# Maintainer: Tai Groot <tai@taigrr.com>
+pkgname='{{ .ProjectName }}'
+pkgver='{{ .Version }}'
+pkgrel=1
+pkgdesc='{{ .Description }}'
+arch=('x86_64' 'i686' 'armv7h' 'aarch64')
+url='{{ .Homepage }}'
+license=('0BSD')
+provides=('grlx' 'grlx-farmer' 'grlx-sprout')
+conflicts=('grlx-bin' 'grlx-git')
+source_x86_64=("${pkgname}-${pkgver}-x86_64.tar.gz::{{ .ArtifactURL }}")
+source_i686=("${pkgname}-${pkgver}-i686.tar.gz::{{ .ArtifactURLs.linux_386 }}")
+source_armv7h=("${pkgname}-${pkgver}-armv7h.tar.gz::{{ .ArtifactURLs.linux_arm }}")
+source_aarch64=("${pkgname}-${pkgver}-aarch64.tar.gz::{{ .ArtifactURLs.linux_arm64 }}")
+sha256sums_x86_64=('{{ .ArtifactChecksum }}')
+sha256sums_i686=('{{ .ArtifactChecksums.linux_386 }}')
+sha256sums_armv7h=('{{ .ArtifactChecksums.linux_arm }}')
+sha256sums_aarch64=('{{ .ArtifactChecksums.linux_arm64 }}')
+
+package() {
+    # Install binaries
+    install -Dm755 grlx-${pkgver}-linux-${CARCH} "${pkgdir}/usr/bin/grlx"
+    install -Dm755 grlx-farmer-${pkgver}-linux-${CARCH} "${pkgdir}/usr/bin/grlx-farmer"
+    install -Dm755 grlx-sprout-${pkgver}-linux-${CARCH} "${pkgdir}/usr/bin/grlx-sprout"
+    
+    # Install systemd service files
+    install -Dm644 grlx-farmer.service "${pkgdir}/usr/lib/systemd/system/grlx-farmer.service"
+    install -Dm644 grlx-sprout.service "${pkgdir}/usr/lib/systemd/system/grlx-sprout.service"
+    
+    # Install config files
+    install -Dm644 grlx-farmer.conf "${pkgdir}/etc/grlx/farmer"
+    install -Dm644 grlx-sprout.conf "${pkgdir}/etc/grlx/sprout"
+    
+    # Create directories
+    install -dm755 "${pkgdir}/etc/grlx/pki/farmer"
+    install -dm755 "${pkgdir}/var/cache/grlx/farmer"
+    install -dm755 "${pkgdir}/var/cache/grlx/sprout"
+} 

@@ -337,6 +337,11 @@ blobs:
         name_template: "{{ .Os }}/{{ .Arch }}/{{ .Tag }}/farmer"  
       - glob: "./dist/grlx-sprout-{{ .Version }}-{{ .Os }}-{{ .Arch }}"
         name_template: "{{ .Os }}/{{ .Arch }}/{{ .Tag }}/sprout"
+      # Upload checksums and signatures for this version
+      - glob: "./dist/checksums.txt"
+        name_template: "{{ .Os }}/{{ .Arch }}/{{ .Tag }}/checksums.txt"
+      - glob: "./dist/checksums.txt.sig"
+        name_template: "{{ .Os }}/{{ .Arch }}/{{ .Tag }}/checksums.txt.sig"
 
   - provider: s3
     region: us-east-1
@@ -355,6 +360,32 @@ blobs:
         name_template: "{{ .Os }}/{{ .Arch }}/latest/farmer"
       - glob: "./dist/grlx-sprout-{{ .Version }}-{{ .Os }}-{{ .Arch }}"
         name_template: "{{ .Os }}/{{ .Arch }}/latest/sprout"
+      # Upload checksums and signatures for latest
+      - glob: "./dist/checksums.txt"
+        name_template: "{{ .Os }}/{{ .Arch }}/latest/checksums.txt"
+      - glob: "./dist/checksums.txt.sig"
+        name_template: "{{ .Os }}/{{ .Arch }}/latest/checksums.txt.sig"
+
+  # Upload global manifests (version-specific and latest)
+  - provider: s3
+    region: us-east-1
+    bucket: artifacts.grlx.dev
+    disable: '{{ .IsSnapshot }}'
+    extra_files:
+      # Version-specific manifests
+      - glob: "./dist/checksums.txt"
+        name_template: "{{ .Tag }}/checksums.txt"
+      - glob: "./dist/checksums.txt.sig"
+        name_template: "{{ .Tag }}/checksums.txt.sig"
+      - glob: "./dist/artifacts.json"
+        name_template: "{{ .Tag }}/artifacts.json"
+      # Latest manifests
+      - glob: "./dist/checksums.txt"
+        name_template: "latest/checksums.txt"
+      - glob: "./dist/checksums.txt.sig"
+        name_template: "latest/checksums.txt.sig"
+      - glob: "./dist/artifacts.json"
+        name_template: "latest/artifacts.json"
 
 # Creates a draft github release for maintainer review
 release:
@@ -369,6 +400,20 @@ release:
   draft: true
   # Support for nightlies
   prerelease: auto
+
+# Sign checksums and artifacts
+signs:
+  - cmd: gpg
+    args:
+      - "--batch"
+      - "--local-user"
+      - "{{ .Env.GPG_FINGERPRINT }}"
+      - "--output"
+      - "${signature}"
+      - "--detach-sign"
+      - "${artifact}"
+    artifacts: checksum
+    output: true
 
 changelog:
   sort: asc
@@ -387,6 +432,120 @@ changelog:
       order: 1
     - title: Others
       order: 999
+
+# AUR publishing
+aurs:
+  # GRLX CLI tool
+  - name: grlx
+    ids: [grlx-pkg]
+    disable: '{{ or .IsSnapshot .IsPrerelease }}'
+    homepage: https://grlx.dev
+    description: "grlx: effective fleet configuration management CLI"
+    maintainers:
+      - 'Tai Groot <tai@taigrr.com>'
+    license: 0BSD
+    private_key: '{{ .Env.AUR_KEY }}'
+    git_url: 'ssh://aur@aur.archlinux.org/grlx-bin.git'
+    provides:
+      - grlx
+    conflicts:
+      - grlx
+      - grlx-git
+    commit_author:
+      name: grlx-bot
+      email: bot@grlx.dev
+    commit_msg_template: "Update to {{ .Tag }}"
+    package: |-
+      # CLI binary
+      install -Dm755 "./grlx" "${pkgdir}/usr/bin/grlx"
+      
+      # license
+      install -Dm644 "./LICENSE" "${pkgdir}/usr/share/licenses/grlx-bin/LICENSE"
+
+  # grlx Farmer (Control Plane)
+  - name: grlx-farmer-bin
+    ids: [farmer-pkg]
+    disable: '{{ or .IsSnapshot .IsPrerelease }}'
+    homepage: https://grlx.dev
+    description: "grlx control plane service"
+    maintainers:
+      - 'Tai Groot <tai@taigrr.com>'
+    license: 0BSD
+    private_key: '{{ .Env.AUR_KEY }}'
+    git_url: 'ssh://aur@aur.archlinux.org/grlx-farmer-bin.git'
+    provides:
+      - grlx-farmer
+    conflicts:
+      - grlx-farmer
+      - grlx-farmer-git
+      - grlx-farmer-bin
+    depends:
+      - systemd
+    backup:
+      - etc/grlx/farmer
+    commit_author:
+      name: grlx-bot
+      email: bot@grlx.dev
+    commit_msg_template: "Update to {{ .Tag }}"
+    install: ./packaging/aur/grlx-farmer.install
+    package: |-
+      # farmer binary
+      install -Dm755 "./grlx-farmer" "${pkgdir}/usr/bin/grlx-farmer"
+      
+      # systemd service file
+      install -Dm644 "./packaging/systemd/grlx-farmer.service" "${pkgdir}/usr/lib/systemd/system/grlx-farmer.service"
+      
+      # config file
+      install -Dm644 "./packaging/etc/grlx-farmer.conf" "${pkgdir}/etc/grlx/farmer"
+      
+      # license
+      install -Dm644 "./LICENSE" "${pkgdir}/usr/share/licenses/grlx-farmer-bin/LICENSE"
+      
+      # directories
+      install -dm755 "${pkgdir}/etc/grlx/pki/farmer"
+      install -dm755 "${pkgdir}/var/cache/grlx/farmer"
+
+  # grlx Sprout (Agent)
+  - name: grlx-sprout-bin
+    ids: [sprout-pkg]  
+    disable: '{{ or .IsSnapshot .IsPrerelease }}'
+    homepage: https://grlx.dev
+    description: "grlx remote control agent"
+    maintainers:
+      - 'Tai Groot <tai@taigrr.com>'
+    license: 0BSD
+    private_key: '{{ .Env.AUR_KEY }}'
+    git_url: 'ssh://aur@aur.archlinux.org/grlx-sprout-bin.git'
+    provides:
+      - grlx-sprout
+    conflicts:
+      - grlx-sprout
+      - grlx-sprout-git
+      - grlx-sprout-bin
+    depends:
+      - systemd
+    backup:
+      - etc/grlx/sprout
+    commit_author:
+      name: grlx-bot
+      email: bot@grlx.dev
+    commit_msg_template: "Update to {{ .Tag }}"
+    install: ./packaging/aur/grlx-sprout.install
+    package: |-
+      # sprout binary
+      install -Dm755 "./grlx-sprout" "${pkgdir}/usr/bin/grlx-sprout"
+      
+      # systemd service file
+      install -Dm644 "./packaging/systemd/grlx-sprout.service" "${pkgdir}/usr/lib/systemd/system/grlx-sprout.service"
+      
+      # config file
+      install -Dm644 "./packaging/etc/grlx-sprout.conf" "${pkgdir}/etc/grlx/sprout"
+      
+      # license
+      install -Dm644 "./LICENSE" "${pkgdir}/usr/share/licenses/grlx-sprout-bin/LICENSE"
+      
+      # directory
+      install -dm755 "${pkgdir}/var/cache/grlx/sprout"
 
 # Announce releases
 announce:
