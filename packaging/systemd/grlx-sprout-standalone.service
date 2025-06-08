@@ -1,0 +1,30 @@
+[Unit]
+Description=grlx Sprout - Remote Control Agent (Standalone)
+Documentation=https://grlx.dev
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+ExecStart=/usr/local/bin/grlx-sprout
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=always
+RestartSec=5
+KillMode=mixed
+TimeoutStopSec=30
+
+# Less restrictive security for self-updates
+NoNewPrivileges=false
+PrivateTmp=true
+ReadWritePaths=/usr/local/bin
+ProtectKernelTunables=true
+ProtectKernelModules=true
+
+# Working directory and environment
+WorkingDirectory=/var/cache/grlx/sprout
+Environment=GRLX_CONFIG=/etc/grlx/sprout
+
+[Install]
+WantedBy=multi-user.target 
