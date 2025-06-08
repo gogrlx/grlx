@@ -14,9 +14,9 @@ import (
 	"github.com/taigrr/log-socket/log"
 	"gopkg.in/yaml.v3"
 
-	"github.com/gogrlx/grlx/config"
-	"github.com/gogrlx/grlx/props"
-	"github.com/gogrlx/grlx/types"
+	"github.com/gogrlx/grlx/v2/config"
+	"github.com/gogrlx/grlx/v2/props"
+	"github.com/gogrlx/grlx/v2/types"
 )
 
 func populateFuncMap(sproutID string) template.FuncMap {

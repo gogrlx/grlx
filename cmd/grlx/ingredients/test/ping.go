@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"net/http"
 
-	pki "github.com/gogrlx/grlx/api/client"
-	"github.com/gogrlx/grlx/auth"
-	"github.com/gogrlx/grlx/config"
-	. "github.com/gogrlx/grlx/types"
+	pki "github.com/gogrlx/grlx/v2/api/client"
+	"github.com/gogrlx/grlx/v2/auth"
+	"github.com/gogrlx/grlx/v2/config"
+	. "github.com/gogrlx/grlx/v2/types"
 )
 
 func FPing(target string) (TargetedResults, error) {

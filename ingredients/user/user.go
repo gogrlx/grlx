@@ -6,8 +6,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/gogrlx/grlx/ingredients"
-	"github.com/gogrlx/grlx/types"
+	"github.com/gogrlx/grlx/v2/ingredients"
+	"github.com/gogrlx/grlx/v2/types"
 )
 
 var ErrUserMethodUndefined = fmt.Errorf("user method undefined")

@@ -8,8 +8,8 @@ import (
 	"github.com/nats-io/nats.go"
 	"github.com/taigrr/log-socket/log"
 
-	"github.com/gogrlx/grlx/auth"
-	"github.com/gogrlx/grlx/config"
+	"github.com/gogrlx/grlx/v2/auth"
+	"github.com/gogrlx/grlx/v2/config"
 )
 
 func NewNatsClient() (*nats.Conn, error) {

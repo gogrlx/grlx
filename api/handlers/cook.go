@@ -10,9 +10,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gogrlx/grlx/cook"
-	"github.com/gogrlx/grlx/pki"
-	"github.com/gogrlx/grlx/types"
+	"github.com/gogrlx/grlx/v2/cook"
+	"github.com/gogrlx/grlx/v2/pki"
+	"github.com/gogrlx/grlx/v2/types"
 	nats "github.com/nats-io/nats.go"
 	log "github.com/taigrr/log-socket/log"
 )

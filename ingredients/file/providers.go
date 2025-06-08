@@ -8,7 +8,7 @@ import (
 
 	"github.com/taigrr/log-socket/log"
 
-	"github.com/gogrlx/grlx/types"
+	"github.com/gogrlx/grlx/v2/types"
 )
 
 var (

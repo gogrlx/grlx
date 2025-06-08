@@ -16,7 +16,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/gogrlx/grlx/config"
+	"github.com/gogrlx/grlx/v2/config"
 	log "github.com/taigrr/log-socket/log"
 )
 

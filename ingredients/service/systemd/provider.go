@@ -8,8 +8,8 @@ import (
 
 	"github.com/taigrr/systemctl"
 
-	"github.com/gogrlx/grlx/ingredients/service"
-	"github.com/gogrlx/grlx/types"
+	"github.com/gogrlx/grlx/v2/ingredients/service"
+	"github.com/gogrlx/grlx/v2/types"
 )
 
 type SystemdService struct {

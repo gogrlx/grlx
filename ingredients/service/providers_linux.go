@@ -6,8 +6,8 @@ import (
 	"os"
 	"sync"
 
-	"github.com/gogrlx/grlx/config"
-	"github.com/gogrlx/grlx/types"
+	"github.com/gogrlx/grlx/v2/config"
+	"github.com/gogrlx/grlx/v2/types"
 )
 
 var (

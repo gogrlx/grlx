@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/gogrlx/grlx/types"
+	"github.com/gogrlx/grlx/v2/types"
 )
 
 func (f File) directory(ctx context.Context, test bool) (types.Result, error) {

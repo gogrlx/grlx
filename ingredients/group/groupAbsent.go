@@ -5,7 +5,7 @@ import (
 	"errors"
 	"os/exec"
 
-	"github.com/gogrlx/grlx/types"
+	"github.com/gogrlx/grlx/v2/types"
 )
 
 func (g Group) absent(ctx context.Context, test bool) (types.Result, error) {

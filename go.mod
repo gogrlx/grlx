@@ -1,4 +1,4 @@
-module github.com/gogrlx/grlx
+module github.com/gogrlx/grlx/v2
 
 go 1.24.4
 

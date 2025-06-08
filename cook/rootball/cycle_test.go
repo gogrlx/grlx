@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	. "github.com/gogrlx/grlx/types"
+	. "github.com/gogrlx/grlx/v2/types"
 )
 
 var (

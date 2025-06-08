@@ -8,7 +8,7 @@ import (
 	"os/user"
 	"strings"
 
-	"github.com/gogrlx/grlx/types"
+	"github.com/gogrlx/grlx/v2/types"
 )
 
 func (u User) present(ctx context.Context, test bool) (types.Result, error) {

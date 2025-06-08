@@ -5,8 +5,8 @@ import (
 
 	log "github.com/taigrr/log-socket/log"
 
-	"github.com/gogrlx/grlx/cmd/grlx/cmd"
-	"github.com/gogrlx/grlx/types"
+	"github.com/gogrlx/grlx/v2/cmd/grlx/cmd"
+	"github.com/gogrlx/grlx/v2/types"
 )
 
 func init() {

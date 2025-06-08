@@ -7,8 +7,8 @@ import (
 	"log"
 
 	"github.com/fatih/color"
-	test "github.com/gogrlx/grlx/cmd/grlx/ingredients/test"
-	"github.com/gogrlx/grlx/types"
+	test "github.com/gogrlx/grlx/v2/cmd/grlx/ingredients/test"
+	"github.com/gogrlx/grlx/v2/types"
 	"github.com/spf13/cobra"
 )
 

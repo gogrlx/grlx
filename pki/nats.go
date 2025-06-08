@@ -8,8 +8,8 @@ import (
 
 	log "github.com/taigrr/log-socket/log"
 
-	"github.com/gogrlx/grlx/auth"
-	"github.com/gogrlx/grlx/config"
+	"github.com/gogrlx/grlx/v2/auth"
+	"github.com/gogrlx/grlx/v2/config"
 
 	nats_server "github.com/nats-io/nats-server/v2/server"
 )

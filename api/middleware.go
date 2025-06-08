@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gogrlx/grlx/auth"
+	"github.com/gogrlx/grlx/v2/auth"
 	log "github.com/taigrr/log-socket/log"
 )
 

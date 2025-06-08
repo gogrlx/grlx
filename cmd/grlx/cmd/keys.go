@@ -9,9 +9,9 @@ import (
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 
-	gpki "github.com/gogrlx/grlx/api/client"
-	"github.com/gogrlx/grlx/cmd/grlx/util"
-	"github.com/gogrlx/grlx/types"
+	gpki "github.com/gogrlx/grlx/v2/api/client"
+	"github.com/gogrlx/grlx/v2/cmd/grlx/util"
+	"github.com/gogrlx/grlx/v2/types"
 )
 
 var (
