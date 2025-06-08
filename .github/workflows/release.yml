@@ -10,6 +10,7 @@ permissions:
 
 jobs:
   goreleaser:
+    environment: goreleaser
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -23,6 +24,7 @@ jobs:
           go-version: stable
 
       - name: Import GPG key
+        id: import_gpg
         uses: crazy-max/ghaction-import-gpg@v6
         with:
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
@@ -57,4 +59,4 @@ jobs:
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
           DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
           AUR_KEY: ${{ secrets.AUR_KEY }}
-          GPG_FINGERPRINT: ${{ secrets.GPG_FINGERPRINT }}
+          GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}

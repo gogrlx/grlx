@@ -402,10 +402,10 @@ release:
 
 # Sign checksums and artifacts
 signs:
-  - cmd: gpg
+  - cmd: gpg2
     args:
       - "--batch"
-      - "--local-user"
+      - "-u"
       - "{{ .Env.GPG_FINGERPRINT }}"
       - "--output"
       - "${signature}"
