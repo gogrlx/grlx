@@ -11,8 +11,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/taigrr/log-socket/log"
 
-	"github.com/gogrlx/grlx/api/client"
-	"github.com/gogrlx/grlx/types"
+	"github.com/gogrlx/grlx/v2/api/client"
+	"github.com/gogrlx/grlx/v2/types"
 )
 
 var (

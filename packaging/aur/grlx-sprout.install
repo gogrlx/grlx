@@ -1,0 +1,25 @@
+post_install() {
+    echo "Reloading systemd daemon..."
+    systemctl daemon-reload
+    
+    echo "grlx-sprout installed. To start the service:"
+    echo "  sudo systemctl enable grlx-sprout.service"
+    echo "  sudo systemctl start grlx-sprout.service"
+    echo ""
+    echo "Don't forget to configure /etc/grlx/sprout before starting!"
+}
+
+post_upgrade() {
+    post_install
+}
+
+pre_remove() {
+    if systemctl is-active grlx-sprout.service >/dev/null 2>&1; then
+        echo "Stopping grlx-sprout service..."
+        systemctl stop grlx-sprout.service
+    fi
+    if systemctl is-enabled grlx-sprout.service >/dev/null 2>&1; then
+        echo "Disabling grlx-sprout service..."
+        systemctl disable grlx-sprout.service
+    fi
+} 

@@ -3,15 +3,15 @@ package api
 import (
 	"net/http"
 
-	"github.com/gogrlx/grlx/api/handlers"
+	"github.com/gogrlx/grlx/v2/api/handlers"
 
 	"github.com/gorilla/mux"
 	"github.com/taigrr/log-socket/browser"
 	"github.com/taigrr/log-socket/ws"
 
-	cmd "github.com/gogrlx/grlx/api/handlers/ingredients/cmd"
-	test "github.com/gogrlx/grlx/api/handlers/ingredients/test"
-	"github.com/gogrlx/grlx/types"
+	cmd "github.com/gogrlx/grlx/v2/api/handlers/ingredients/cmd"
+	test "github.com/gogrlx/grlx/v2/api/handlers/ingredients/test"
+	"github.com/gogrlx/grlx/v2/types"
 )
 
 type Route struct {

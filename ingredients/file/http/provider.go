@@ -7,9 +7,9 @@ import (
 	httpc "net/http"
 	"os"
 
-	// "github.com/gogrlx/grlx/ingredients/file"
-	"github.com/gogrlx/grlx/ingredients/file/hashers"
-	"github.com/gogrlx/grlx/types"
+	// "github.com/gogrlx/grlx/v2/ingredients/file"
+	"github.com/gogrlx/grlx/v2/ingredients/file/hashers"
+	"github.com/gogrlx/grlx/v2/types"
 )
 
 type HTTPFile struct {

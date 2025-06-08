@@ -5,7 +5,7 @@ import (
 	"errors"
 	"os/user"
 
-	"github.com/gogrlx/grlx/types"
+	"github.com/gogrlx/grlx/v2/types"
 )
 
 func (g Group) exists(ctx context.Context, test bool) (types.Result, error) {

@@ -1,0 +1,36 @@
+post_install() {
+    echo "Creating farmer user and group..."
+    if ! getent group farmer >/dev/null 2>&1; then
+        groupadd -r farmer
+    fi
+    if ! getent passwd farmer >/dev/null 2>&1; then
+        useradd -r -g farmer -d /var/cache/grlx/farmer -s /bin/false farmer
+    fi
+    
+    # Set ownership
+    chown -R farmer:farmer /etc/grlx/pki/farmer /var/cache/grlx/farmer 2>/dev/null || true
+    
+    echo "Reloading systemd daemon..."
+    systemctl daemon-reload
+    
+    echo "grlx-farmer installed. To start the service:"
+    echo "  sudo systemctl enable grlx-farmer.service"
+    echo "  sudo systemctl start grlx-farmer.service"
+    echo ""
+    echo "Don't forget to configure /etc/grlx/farmer before starting!"
+}
+
+post_upgrade() {
+    post_install
+}
+
+pre_remove() {
+    if systemctl is-active grlx-farmer.service >/dev/null 2>&1; then
+        echo "Stopping grlx-farmer service..."
+        systemctl stop grlx-farmer.service
+    fi
+    if systemctl is-enabled grlx-farmer.service >/dev/null 2>&1; then
+        echo "Disabling grlx-farmer service..."
+        systemctl disable grlx-farmer.service
+    fi
+} 

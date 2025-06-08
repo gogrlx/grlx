@@ -7,11 +7,11 @@ import (
 
 	log "github.com/taigrr/log-socket/log"
 
-	"github.com/gogrlx/grlx/cook"
-	"github.com/gogrlx/grlx/ingredients/cmd"
-	"github.com/gogrlx/grlx/ingredients/test"
-	"github.com/gogrlx/grlx/pki"
-	"github.com/gogrlx/grlx/types"
+	"github.com/gogrlx/grlx/v2/cook"
+	"github.com/gogrlx/grlx/v2/ingredients/cmd"
+	"github.com/gogrlx/grlx/v2/ingredients/test"
+	"github.com/gogrlx/grlx/v2/pki"
+	"github.com/gogrlx/grlx/v2/types"
 
 	nats "github.com/nats-io/nats.go"
 )

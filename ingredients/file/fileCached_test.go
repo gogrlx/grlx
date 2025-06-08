@@ -9,10 +9,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/gogrlx/grlx/config"
-	_ "github.com/gogrlx/grlx/ingredients/file/hashers"
+	"github.com/gogrlx/grlx/v2/config"
+	_ "github.com/gogrlx/grlx/v2/ingredients/file/hashers"
 
-	"github.com/gogrlx/grlx/types"
+	"github.com/gogrlx/grlx/v2/types"
 )
 
 func TestCached(t *testing.T) {

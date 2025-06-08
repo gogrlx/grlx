@@ -7,11 +7,11 @@ import (
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 
-	"github.com/gogrlx/grlx/api/client"
-	"github.com/gogrlx/grlx/cmd/grlx/util"
-	"github.com/gogrlx/grlx/config"
-	"github.com/gogrlx/grlx/pki"
-	"github.com/gogrlx/grlx/types"
+	"github.com/gogrlx/grlx/v2/api/client"
+	"github.com/gogrlx/grlx/v2/cmd/grlx/util"
+	"github.com/gogrlx/grlx/v2/config"
+	"github.com/gogrlx/grlx/v2/pki"
+	"github.com/gogrlx/grlx/v2/types"
 )
 
 var (

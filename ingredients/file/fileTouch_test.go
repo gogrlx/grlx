@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/djherbis/atime"
-	"github.com/gogrlx/grlx/types"
+	"github.com/gogrlx/grlx/v2/types"
 )
 
 func TestTouch(t *testing.T) {

@@ -8,7 +8,7 @@ import (
 	"github.com/nats-io/nats.go"
 	"github.com/spf13/cobra"
 
-	"github.com/gogrlx/grlx/api/client"
+	"github.com/gogrlx/grlx/v2/api/client"
 )
 
 var printTex sync.Mutex
