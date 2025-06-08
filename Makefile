@@ -23,7 +23,7 @@ endif
 	export CGO_ENABLED=0;\
 	export GitCommit=`git rev-parse HEAD | cut -c -7`;\
 	export GitTag=$$(TAG=`git tag --contains $$(git rev-parse HEAD) | sort -R | tr '\n' ' '`; if [ "$$(printf "$$TAG")" ]; then printf "$$TAG"; else printf "undefined"; fi);\
-	go build -ldflags "-X main.GitCommit=$$GitCommit -X main.Tag=$$GitTag" -o "bin/sprout" ./cmd/sprout/*.go
+	go build -ldflags "-X main.GitCommit=$$GitCommit -X main.Tag=$$GitTag" -o "bin/grlx-sprout" ./cmd/sprout/*.go
 	@printf "\e[32mSuccess!\e[39m\n"
 
 
@@ -57,7 +57,7 @@ endif
 	export GitCommit=`git rev-parse HEAD | cut -c -7`;\
 	export BuildTime=`date -u +%Y%m%d.%H%M%S`;\
 	export GitTag=$$(TAG=`git tag --contains $$(git rev-parse HEAD) | sort -R | tr '\n' ' '`; if [ "$$(printf "$$TAG")" ]; then printf "$$TAG"; else printf "undefined"; fi);\
-	go build -ldflags "-X main.GitCommit=$$GitCommit -X main.Tag=$$GitTag" -o "bin/farmer" ./cmd/farmer/main.go
+	go build -ldflags "-X main.GitCommit=$$GitCommit -X main.Tag=$$GitTag" -o "bin/grlx-farmer" ./cmd/farmer/main.go
 	@printf "\e[32mSuccess!\e[39m\n"
 
 all-arches-farmer: farmer
@@ -70,10 +70,10 @@ all-arches-farmer: farmer
 		export GitCommit=`git rev-parse HEAD | cut -c -7`;\
 		export BuildTime=`date -u +%Y%m%d.%H%M%S`;\
 		export GitTag=$$(TAG=`git tag --contains $$(git rev-parse HEAD) | sort -R | tr '\n' ' '`; if [ "$$(printf "$$TAG")" ]; then printf "$$TAG"; else printf "undefined"; fi);\
-		go build -ldflags "-X main.GitCommit=$$GitCommit -X main.Tag=$$GitTag" -o "bin/arches/"$$(printf $$GOOS)"/"$$(printf $$GOARCH)"/"$$(printf $$GitTag)"/farmer" ./cmd/farmer/main.go &&\
+		go build -ldflags "-X main.GitCommit=$$GitCommit -X main.Tag=$$GitTag" -o "bin/arches/"$$(printf $$GOOS)"/"$$(printf $$GOARCH)"/"$$(printf $$GitTag)"/grlx-farmer" ./cmd/farmer/main.go &&\
 		printf "\e[32mSuccess!\e[39m\n" ;\
 		mkdir -p bin/arches/"$$(printf $$GOOS)"/"$$(printf $$GOARCH)"/latest ;\
-		cp bin/arches/"$$(printf $$GOOS)"/"$$(printf $$GOARCH)"/"$$(printf $$GitTag)"/farmer bin/arches/"$$(printf $$GOOS)"/"$$(printf $$GOARCH)"/latest/farmer ;\
+		cp bin/arches/"$$(printf $$GOOS)"/"$$(printf $$GOARCH)"/"$$(printf $$GitTag)"/farmer bin/arches/"$$(printf $$GOOS)"/"$$(printf $$GOARCH)"/latest/grlx-farmer ;\
 	done
 
 all-arches-sprout: sprout
@@ -86,10 +86,10 @@ all-arches-sprout: sprout
 		export GitCommit=`git rev-parse HEAD | cut -c -7`;\
 		export BuildTime=`date -u +%Y%m%d.%H%M%S`;\
 		export GitTag=$$(TAG=`git tag --contains $$(git rev-parse HEAD) | sort -R | tr '\n' ' '`; if [ "$$(printf "$$TAG")" ]; then printf "$$TAG"; else printf "undefined"; fi);\
-		go build -ldflags "-X main.GitCommit=$$GitCommit -X main.Tag=$$GitTag" -o "bin/arches/"$$(printf $$GOOS)"/"$$(printf $$GOARCH)"/"$$(printf $$GitTag)"/sprout" ./cmd/sprout/*.go &&\
+		go build -ldflags "-X main.GitCommit=$$GitCommit -X main.Tag=$$GitTag" -o "bin/arches/"$$(printf $$GOOS)"/"$$(printf $$GOARCH)"/"$$(printf $$GitTag)"/grlx-sprout" ./cmd/sprout/*.go &&\
 		printf "\e[32mSuccess!\e[39m\n" ;\
 		mkdir -p bin/arches/"$$(printf $$GOOS)"/"$$(printf $$GOARCH)"/latest ;\
-		cp bin/arches/"$$(printf $$GOOS)"/"$$(printf $$GOARCH)"/"$$(printf $$GitTag)"/sprout bin/arches/"$$(printf $$GOOS)"/"$$(printf $$GOARCH)"/latest/sprout ;\
+		cp bin/arches/"$$(printf $$GOOS)"/"$$(printf $$GOARCH)"/"$$(printf $$GitTag)"/sprout bin/arches/"$$(printf $$GOOS)"/"$$(printf $$GOARCH)"/latest/grlx-sprout ;\
 	done
 
 all-arches-grlx: grlx
@@ -126,28 +126,28 @@ github: all-arches-farmer all-arches-sprout all-arches-grlx
 	mkdir -p bin/github
 	for arch in amd64 386 arm arm64 ; do \
 		export GitTag=$$(TAG=`git tag --contains $$(git rev-parse HEAD) | sort -R | tr '\n' ' '`; if [ "$$(printf "$$TAG")" ]; then printf "$$TAG"; else printf "undefined"; fi);\
-		cp bin/arches/linux/$$arch/$$(printf $$GitTag)/farmer bin/github/farmer-$$(printf $$GitTag)-linux-$$(printf $$arch);\
-		tar -czf bin/github/farmer-$$(printf $$GitTag)-linux-$$(printf $$arch).tar.gz -C bin/github farmer-$$(printf $$GitTag)-linux-$$(printf $$arch);\
+		cp bin/arches/linux/$$arch/$$(printf $$GitTag)/farmer bin/github/grlx-farmer-$$(printf $$GitTag)-linux-$$(printf $$arch);\
+		tar -czf bin/github/grlx-farmer-$$(printf $$GitTag)-linux-$$(printf $$arch).tar.gz \
+	      -C bin/arches/linux/$$arch/$$(printf $$GitTag) grlx-farmer;\
 	done
 	for arch in amd64 386 arm arm64 ; do \
 		export GitTag=$$(TAG=`git tag --contains $$(git rev-parse HEAD) | sort -R | tr '\n' ' '`; if [ "$$(printf "$$TAG")" ]; then printf "$$TAG"; else printf "undefined"; fi);\
-		cp bin/arches/linux/$$arch/$$(printf $$GitTag)/sprout bin/github/sprout-$$(printf $$GitTag)-linux-$$(printf $$arch);\
-		tar -czf bin/github/sprout-$$(printf $$GitTag)-linux-$$(printf $$arch).tar.gz -C bin/github sprout-$$(printf $$GitTag)-linux-$$(printf $$arch);\
+		cp bin/arches/linux/$$arch/$$(printf $$GitTag)/sprout bin/github/grlx-sprout-$$(printf $$GitTag)-linux-$$(printf $$arch);\
+		tar -czf bin/github/grlx-sprout-$$(printf $$GitTag)-linux-$$(printf $$arch).tar.gz \
+			-C bin/arches/linux/$$arch/$$(printf $$GitTag) grlx-sprout;\
 	done
 	for arch in amd64 arm64 ; do \
 		export GitTag=$$(TAG=`git tag --contains $$(git rev-parse HEAD) | sort -R | tr '\n' ' '`; if [ "$$(printf "$$TAG")" ]; then printf "$$TAG"; else printf "undefined"; fi);\
 		cp bin/arches/darwin/$$arch/$$(printf $$GitTag)/grlx bin/github/grlx-$$(printf $$GitTag)-darwin-$$(printf $$arch);\
-		tar -czf bin/github/grlx-$$(printf $$GitTag)-darwin-$$(printf $$arch).tar.gz -C bin/github grlx-$$(printf $$GitTag)-darwin-$$(printf $$arch);\
+		tar -czf bin/github/grlx-$$(printf $$GitTag)-darwin-$$(printf $$arch).tar.gz \
+			-C bin/arches/darwin/$$arch/$$(printf $$GitTag) grlx;\
 	done
 	for arch in amd64 386 arm arm64 ; do \
 		export GitTag=$$(TAG=`git tag --contains $$(git rev-parse HEAD) | sort -R | tr '\n' ' '`; if [ "$$(printf "$$TAG")" ]; then printf "$$TAG"; else printf "undefined"; fi);\
 		cp bin/arches/linux/$$arch/$$(printf $$GitTag)/grlx bin/github/grlx-$$(printf $$GitTag)-linux-$$(printf $$arch);\
-		tar -czf bin/github/grlx-$$(printf $$GitTag)-linux-$$(printf $$arch).tar.gz -C bin/github grlx-$$(printf $$GitTag)-linux-$$(printf $$arch);\
+		tar -czf bin/github/grlx-$$(printf $$GitTag)-linux-$$(printf $$arch).tar.gz \
+			-C bin/arches/linux/$$arch/$$(printf $$GitTag) grlx;\
 	done
-
-
-	
-
 	
 release: all-arches-farmer all-arches-sprout all-arches-grlx github
 	@printf "\e[32mSuccess!\e[39m\n"
