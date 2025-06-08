@@ -127,18 +127,22 @@ github: all-arches-farmer all-arches-sprout all-arches-grlx
 	for arch in amd64 386 arm arm64 ; do \
 		export GitTag=$$(TAG=`git tag --contains $$(git rev-parse HEAD) | sort -R | tr '\n' ' '`; if [ "$$(printf "$$TAG")" ]; then printf "$$TAG"; else printf "undefined"; fi);\
 		cp bin/arches/linux/$$arch/$$(printf $$GitTag)/farmer bin/github/farmer-$$(printf $$GitTag)-linux-$$(printf $$arch);\
+		tar -czf bin/github/farmer-$$(printf $$GitTag)-linux-$$(printf $$arch).tar.gz -C bin/github farmer-$$(printf $$GitTag)-linux-$$(printf $$arch);\
 	done
 	for arch in amd64 386 arm arm64 ; do \
 		export GitTag=$$(TAG=`git tag --contains $$(git rev-parse HEAD) | sort -R | tr '\n' ' '`; if [ "$$(printf "$$TAG")" ]; then printf "$$TAG"; else printf "undefined"; fi);\
 		cp bin/arches/linux/$$arch/$$(printf $$GitTag)/sprout bin/github/sprout-$$(printf $$GitTag)-linux-$$(printf $$arch);\
+		tar -czf bin/github/sprout-$$(printf $$GitTag)-linux-$$(printf $$arch).tar.gz -C bin/github sprout-$$(printf $$GitTag)-linux-$$(printf $$arch);\
 	done
 	for arch in amd64 arm64 ; do \
 		export GitTag=$$(TAG=`git tag --contains $$(git rev-parse HEAD) | sort -R | tr '\n' ' '`; if [ "$$(printf "$$TAG")" ]; then printf "$$TAG"; else printf "undefined"; fi);\
 		cp bin/arches/darwin/$$arch/$$(printf $$GitTag)/grlx bin/github/grlx-$$(printf $$GitTag)-darwin-$$(printf $$arch);\
+		tar -czf bin/github/grlx-$$(printf $$GitTag)-darwin-$$(printf $$arch).tar.gz -C bin/github grlx-$$(printf $$GitTag)-darwin-$$(printf $$arch);\
 	done
 	for arch in amd64 386 arm arm64 ; do \
 		export GitTag=$$(TAG=`git tag --contains $$(git rev-parse HEAD) | sort -R | tr '\n' ' '`; if [ "$$(printf "$$TAG")" ]; then printf "$$TAG"; else printf "undefined"; fi);\
 		cp bin/arches/linux/$$arch/$$(printf $$GitTag)/grlx bin/github/grlx-$$(printf $$GitTag)-linux-$$(printf $$arch);\
+		tar -czf bin/github/grlx-$$(printf $$GitTag)-linux-$$(printf $$arch).tar.gz -C bin/github grlx-$$(printf $$GitTag)-linux-$$(printf $$arch);\
 	done
 
 
