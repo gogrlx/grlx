@@ -228,7 +228,7 @@ nfpms:
         file_info:
           mode: 0755
     scripts:
-      postinstall: ./packaging/alpine/grlx-sprout.post-instal
+      postinstall: ./packaging/alpine/grlx-sprout.post-install
     overrides:
       apk:
         contents:
