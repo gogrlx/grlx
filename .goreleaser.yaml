@@ -182,8 +182,6 @@ nfpms:
             file_info:
               mode: 0755
       deb:
-        dependencies:
-          - systemd
         contents:
           - src: ./packaging/systemd/grlx-farmer.service
             dst: /lib/systemd/system/grlx-farmer.service
@@ -194,8 +192,6 @@ nfpms:
           preinstall: ./packaging/alpine/grlx-farmer.pre-install
           postinstall: ./packaging/scripts/grlx-farmer-deb-postinstall.sh
       rpm:
-        dependencies:
-          - systemd
         contents:
           - src: ./packaging/systemd/grlx-farmer.service
             dst: /usr/lib/systemd/system/grlx-farmer.service
@@ -238,8 +234,6 @@ nfpms:
             file_info:
               mode: 0755
       deb:
-        dependencies:
-          - systemd
         contents:
           - src: ./packaging/systemd/grlx-sprout.service
             dst: /lib/systemd/system/grlx-sprout.service
@@ -249,8 +243,6 @@ nfpms:
         scripts:
           postinstall: ./packaging/scripts/grlx-sprout-deb-postinstall.sh
       rpm:
-        dependencies:
-          - systemd
         contents:
           - src: ./packaging/systemd/grlx-sprout.service
             dst: /usr/lib/systemd/system/grlx-sprout.service
@@ -478,8 +470,6 @@ aurs:
       - grlx-farmer
       - grlx-farmer-git
       - grlx-farmer-bin
-    depends:
-      - systemd
     backup:
       - etc/grlx/farmer
     commit_author:
@@ -521,8 +511,6 @@ aurs:
       - grlx-sprout
       - grlx-sprout-git
       - grlx-sprout-bin
-    depends:
-      - systemd
     backup:
       - etc/grlx/sprout
     commit_author:
