@@ -1,9 +1,11 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 
+	"github.com/charmbracelet/fang"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 
@@ -34,7 +36,7 @@ var rootCmd = &cobra.Command{
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute(buildInfo types.Version) {
 	BuildInfo = buildInfo
-	cobra.CheckErr(rootCmd.Execute())
+	fang.Execute(context.Background(), rootCmd)
 }
 
 func init() {
@@ -61,13 +63,18 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.config/grlx/grlx)")
 	noFailForCert := false
 	if len(os.Args) > 1 {
-		noFailForCert = os.Args[1] == "version" || os.Args[1] == "help" || os.Args[1] == "auth" || os.Args[1] == "init"
+		switch os.Args[1] {
+		case "version", "help", "auth", "init":
+			fallthrough
+		case "--version", "--help", "--auth", "--init":
+			noFailForCert = true
+		}
 	}
-	isInit := false
+	skipTLS := false
 	if len(os.Args) > 1 {
-		isInit = os.Args[1] == "init"
+		skipTLS = os.Args[1] == "init"
 	}
-	if !pki.RootCACached("grlx") && !isInit {
+	if !pki.RootCACached("grlx") && !skipTLS {
 		fmt.Print("The TLS certificate for this farmer is unknown. Would you like to download and trust it? ")
 		shouldDownload, err := util.UserConfirmWithDefault(true)
 		for err != nil {

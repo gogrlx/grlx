@@ -117,6 +117,7 @@ func LoadConfig(binary string) {
 			if err != nil {
 				log.Fatal(err)
 			}
+			// TODO: use XDG_CONFIG_HOME if set
 			certPath := filepath.Join(dirname, ".config/grlx/tls-rootca.pem")
 			jety.Set("grlxrootca", certPath)
 		case "farmer":
