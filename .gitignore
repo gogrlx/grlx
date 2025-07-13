@@ -6,6 +6,7 @@ configs/
 *.zip
 coverage.out
 local/
+.crush/
 
 dist/
 cmd/farmer/farmer
