@@ -27,6 +27,5 @@ func TestIsValidSproutID(t *testing.T) {
 				t.Errorf("`%s`: expected %v but got %v", tc.id, tc.shouldSucceed, !tc.shouldSucceed)
 			}
 		})
-
 	}
 }

@@ -63,7 +63,6 @@ var testCmdPing = &cobra.Command{
 				}
 				var value types.PingPong
 				err = json.NewDecoder(bytes.NewBuffer(jw)).Decode(&value)
-
 				if err != nil {
 					color.Red("%s returned an invalid message!\n", keyID)
 				}

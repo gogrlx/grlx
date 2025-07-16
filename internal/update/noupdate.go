@@ -48,4 +48,4 @@ func (u *Updater) StartUpdateChecker(ctx context.Context, callback func(version 
 	if callback != nil {
 		callback(u.config.CurrentVersion, false, ErrSelfUpdateDisabled)
 	}
-} 
+}

@@ -42,7 +42,7 @@ func NewUpdater(config UpdateConfig) *Updater {
 func (u *Updater) CheckForUpdates(ctx context.Context) (string, bool, error) {
 	// Implementation would check against your release API
 	// This is a skeleton - you'll need to implement based on your versioning strategy
-	
+
 	req, err := http.NewRequestWithContext(ctx, "GET", u.config.UpdateURL+"/latest", nil)
 	if err != nil {
 		return "", false, fmt.Errorf("failed to create request: %w", err)
@@ -61,7 +61,7 @@ func (u *Updater) CheckForUpdates(ctx context.Context) (string, bool, error) {
 	// Parse response to get latest version
 	// This is a placeholder - implement based on your API response format
 	latestVersion := "placeholder"
-	
+
 	if latestVersion != u.config.CurrentVersion {
 		return latestVersion, true, nil
 	}
@@ -71,7 +71,7 @@ func (u *Updater) CheckForUpdates(ctx context.Context) (string, bool, error) {
 
 // PerformUpdate downloads and installs a new version
 func (u *Updater) PerformUpdate(ctx context.Context, version string) error {
-	downloadURL := fmt.Sprintf("%s/%s/%s-%s-%s-%s", 
+	downloadURL := fmt.Sprintf("%s/%s/%s-%s-%s-%s",
 		u.config.UpdateURL, version, u.config.BinaryName, version, runtime.GOOS, runtime.GOARCH)
 
 	// Download the new binary
@@ -117,7 +117,7 @@ func (u *Updater) downloadBinary(ctx context.Context, url string) (string, error
 	}
 
 	// Make it executable
-	err = os.Chmod(tempFile.Name(), 0755)
+	err = os.Chmod(tempFile.Name(), 0o755)
 	if err != nil {
 		os.Remove(tempFile.Name())
 		return "", err
@@ -157,7 +157,7 @@ func (u *Updater) replaceBinary(newBinaryPath string) error {
 
 	// Remove backup on success
 	os.Remove(backupPath)
-	
+
 	return nil
 }
 
@@ -177,4 +177,4 @@ func (u *Updater) StartUpdateChecker(ctx context.Context, callback func(version 
 			}
 		}
 	}
-} 
+}
