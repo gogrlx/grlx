@@ -62,11 +62,11 @@ func createConfigRoot() {
 	if os.IsNotExist(err) {
 		err = os.MkdirAll(ConfigRoot, os.ModePerm)
 		if err != nil {
-			log.Panicf(err.Error())
+			log.Panicf("%s", err.Error())
 		}
 	} else {
 		// TODO: work out what the other errors could be here
-		log.Panicf(err.Error())
+		log.Panicf("%s", err.Error())
 	}
 }
 

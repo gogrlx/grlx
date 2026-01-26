@@ -54,7 +54,10 @@ var initCmd = &cobra.Command{
 			if fBusPort != "" {
 				jety.Set("farmerbusport", fBusPort)
 			}
-			jety.WriteConfig()
+			if err := jety.WriteConfig(); err != nil {
+				fmt.Printf("Error writing config: %s\n", err.Error())
+				os.Exit(1)
+			}
 			fmt.Printf("Public key: %s\n", pubKey)
 		} else {
 			fmt.Printf("Error: opening the configuration interface. Please manually edit %s\n", jety.ConfigFileUsed())

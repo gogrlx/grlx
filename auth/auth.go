@@ -140,6 +140,8 @@ func createPrivateSeed() (string, error) {
 		return "", err
 	}
 	jety.Set("privkey", string(seed))
-	jety.WriteConfig()
+	if err := jety.WriteConfig(); err != nil {
+		return "", err
+	}
 	return string(seed), nil
 }

@@ -195,7 +195,9 @@ func LoadConfig(binary string) {
 
 			JobLogDir = jety.GetString("joblogdir")
 		}
-		jety.WriteConfig()
+		if err := jety.WriteConfig(); err != nil {
+			log.Printf("Error writing config: %v", err)
+		}
 	})
 	logLevel := jety.GetString("loglevel")
 	switch logLevel {
@@ -250,7 +252,7 @@ func Init() string {
 	return jety.GetString("init")
 }
 
-func SetSproutID(id string) {
+func SetSproutID(id string) error {
 	jety.Set("sproutid", id)
-	jety.WriteConfig()
+	return jety.WriteConfig()
 }

@@ -43,7 +43,7 @@ func SetupPKIFarmer() {
 		err = os.MkdirAll(FarmerPKI, os.ModePerm)
 		if err != nil {
 			// TODO check if no permissions to create, log, and then exit
-			log.Panicf(err.Error())
+			log.Panicf("%s", err.Error())
 		}
 	}
 	for _, acceptanceState := range []string{
@@ -60,7 +60,7 @@ func SetupPKIFarmer() {
 		if os.IsNotExist(err) {
 			err = os.MkdirAll(stateFolder, os.ModePerm)
 			if err != nil {
-				log.Panicf(err.Error())
+				log.Panicf("%s", err.Error())
 			}
 		} else {
 			log.Fatal(err)
@@ -77,11 +77,11 @@ func SetupPKISprout() {
 	if os.IsNotExist(err) {
 		err = os.MkdirAll(SproutPKI, os.ModePerm)
 		if err != nil {
-			log.Panicf(err.Error())
+			log.Panicf("%s", err.Error())
 		}
 	} else {
 		// TODO: work out what the other errors could be here
-		log.Panicf(err.Error())
+		log.Panicf("%s", err.Error())
 	}
 }
 
@@ -463,7 +463,9 @@ func GetSproutID() string {
 	SproutID := config.SproutID
 	if SproutID == "" {
 		SproutID = createSproutID()
-		config.SetSproutID(SproutID)
+		if err := config.SetSproutID(SproutID); err != nil {
+			log.Printf("Error saving sprout ID: %v", err)
+		}
 	}
 	return SproutID
 }

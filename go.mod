@@ -1,6 +1,6 @@
 module github.com/gogrlx/grlx/v2
 
-go 1.24.4
+go 1.25.5
 
 replace github.com/mattn/go-localereader v0.0.1 => github.com/taigrr/go-localereader v0.0.2
 
@@ -16,7 +16,7 @@ require (
 	github.com/nats-io/nats.go v1.43.0
 	github.com/nats-io/nkeys v0.4.11
 	github.com/spf13/cobra v1.9.1
-	github.com/taigrr/jety v0.0.12
+	github.com/taigrr/jety v0.1.0
 	github.com/taigrr/log-socket v1.0.3
 	github.com/taigrr/systemctl v1.0.10
 	gopkg.in/yaml.v3 v3.0.1
