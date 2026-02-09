@@ -117,8 +117,11 @@ func LoadConfig(binary string) {
 			if err != nil {
 				log.Fatal(err)
 			}
-			// TODO: use XDG_CONFIG_HOME if set
-			certPath := filepath.Join(dirname, ".config/grlx/tls-rootca.pem")
+			configDir := os.Getenv("XDG_CONFIG_HOME")
+			if configDir == "" {
+				configDir = filepath.Join(dirname, ".config")
+			}
+			certPath := filepath.Join(configDir, "grlx/tls-rootca.pem")
 			jety.Set("grlxrootca", certPath)
 		case "farmer":
 			jety.SetDefault("certificatevalidtime", 365*24*time.Hour)
