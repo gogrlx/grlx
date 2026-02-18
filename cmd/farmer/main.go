@@ -94,11 +94,10 @@ func StartAPIServer() {
 		Tag:       Tag,
 	}, CertFile)
 	srv := &http.Server{
-		// TODO add all below settings to configuration
 		Addr:         FarmerInterface + ":" + FarmerAPIPort,
-		WriteTimeout: time.Second * 120,
-		ReadTimeout:  time.Second * 120,
-		IdleTimeout:  time.Second * 120,
+		WriteTimeout: config.APIWriteTimeout,
+		ReadTimeout:  config.APIReadTimeout,
+		IdleTimeout:  config.APIIdleTimeout,
 		Handler:      r,
 	}
 	apiServer = srv
