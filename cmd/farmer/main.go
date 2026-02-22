@@ -1,12 +1,15 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
 	"net/http"
 	"os"
+	"os/signal"
 	"runtime"
+	"syscall"
 	"time"
 
 	log "github.com/taigrr/log-socket/log"
@@ -33,6 +36,7 @@ func init() {
 
 var (
 	s         *nats_server.Server
+	apiServer *http.Server
 	GitCommit string
 	Tag       string
 )
@@ -50,6 +54,7 @@ func main() {
 	RunNATSServer()
 	StartAPIServer()
 	go ConnectFarmer()
+	go handleSIGHUP()
 	select {}
 
 	// Generate nkey and save or read existing
@@ -88,7 +93,7 @@ func StartAPIServer() {
 		GitCommit: GitCommit,
 		Tag:       Tag,
 	}, CertFile)
-	srv := http.Server{
+	srv := &http.Server{
 		// TODO add all below settings to configuration
 		Addr:         FarmerInterface + ":" + FarmerAPIPort,
 		WriteTimeout: time.Second * 120,
@@ -96,13 +101,57 @@ func StartAPIServer() {
 		IdleTimeout:  time.Second * 120,
 		Handler:      r,
 	}
+	apiServer = srv
 	go func() {
-		if err := srv.ListenAndServeTLS(CertFile, KeyFile); err != nil {
+		if err := srv.ListenAndServeTLS(CertFile, KeyFile); err != nil && err != http.ErrServerClosed {
 			log.Fatalf(err.Error())
 		}
 	}()
 
 	log.Tracef("API Server started on %s\n", FarmerInterface+":"+FarmerAPIPort)
+}
+
+// handleSIGHUP listens for SIGHUP signals and reloads the HTTP API server
+// and NATS server configuration. This allows certificate rotation and
+// configuration changes to take effect without a full restart.
+func handleSIGHUP() {
+	sighup := make(chan os.Signal, 1)
+	signal.Notify(sighup, syscall.SIGHUP)
+	for range sighup {
+		log.Info("Received SIGHUP, reloading servers...")
+
+		// Reload NATS server NKeys (picks up new sprout keys, config changes)
+		if err := pki.ReloadNKeys(); err != nil {
+			log.Errorf("Failed to reload NKeys: %v", err)
+		} else {
+			log.Info("NATS NKeys reloaded successfully")
+		}
+
+		// Reload the NATS server configuration
+		if s != nil {
+			if err := s.Reload(); err != nil {
+				log.Errorf("Failed to reload NATS server: %v", err)
+			} else {
+				log.Info("NATS server reloaded successfully")
+			}
+		}
+
+		// Gracefully shut down the HTTP API server and restart it
+		// so it picks up any new TLS certificates
+		if apiServer != nil {
+			shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+			if err := apiServer.Shutdown(shutdownCtx); err != nil {
+				log.Errorf("Failed to gracefully shut down API server: %v", err)
+			}
+			cancel()
+			log.Info("API server shut down, restarting...")
+		}
+
+		// Reload config before restarting the API server
+		config.LoadConfig("farmer")
+		StartAPIServer()
+		log.Info("Servers reloaded successfully")
+	}
 }
 
 type logger struct{}
