@@ -23,6 +23,9 @@ var configLoaded sync.Once
 
 var (
 	AdminPubkeys         []string
+	APIIdleTimeout       time.Duration
+	APIReadTimeout       time.Duration
+	APIWriteTimeout      time.Duration
 	CacheDir             string
 	CertFile             string
 	CertHosts            []string
@@ -124,6 +127,9 @@ func LoadConfig(binary string) {
 			certPath := filepath.Join(configDir, "grlx/tls-rootca.pem")
 			jety.Set("grlxrootca", certPath)
 		case "farmer":
+			jety.SetDefault("apiwritetimeout", 120*time.Second)
+			jety.SetDefault("apireadtimeout", 120*time.Second)
+			jety.SetDefault("apiidletimeout", 120*time.Second)
 			jety.SetDefault("certificatevalidtime", 365*24*time.Hour)
 			jety.SetDefault("certfile", "/etc/grlx/pki/farmer/tls-cert.pem")
 			jety.SetDefault("farmerpki", "/etc/grlx/pki/farmer/")
@@ -220,6 +226,9 @@ func LoadConfig(binary string) {
 	default:
 		LogLevel = log.LNotice
 	}
+	APIIdleTimeout = jety.GetDuration("apiidletimeout")
+	APIReadTimeout = jety.GetDuration("apireadtimeout")
+	APIWriteTimeout = jety.GetDuration("apiwritetimeout")
 	CacheDir = jety.GetString("cachedir")
 	CertFile = jety.GetString("certfile")
 	CertHosts = jety.GetStringSlice("certhosts")
