@@ -20,6 +20,7 @@ const (
 	StepInProgress
 	StepCompleted
 	StepFailed
+	StepSkipped
 )
 
 type (
