@@ -35,6 +35,9 @@ func TestAppend(t *testing.T) {
 		t.Fatalf("failed to create file with content %s: %v", fileWithContent, err)
 	}
 	_, err = f.WriteString("test")
+	if err != nil {
+		t.Fatalf("failed to write to file: %v", err)
+	}
 	f.Close()
 
 	fileWithoutContent := filepath.Join(tempDir, "there-is-a-file-without-content-here")

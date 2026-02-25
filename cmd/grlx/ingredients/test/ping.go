@@ -45,6 +45,7 @@ func FPing(target string) (apitypes.TargetedResults, error) {
 	if err != nil {
 		return tr, err
 	}
+	defer resp.Body.Close()
 	err = json.NewDecoder(resp.Body).Decode(&tr)
 	return tr, err
 }

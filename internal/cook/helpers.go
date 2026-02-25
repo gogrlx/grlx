@@ -181,49 +181,6 @@ func joinMaps(a, b map[string]interface{}) (map[string]interface{}, error) {
 	return c, nil
 }
 
-func resolveRelativeFilePath(relatedRecipePath string, recipeID RecipeName) (string, error) {
-	if filepath.Ext(string(recipeID)) == config.GrlxExt {
-		recipeID = RecipeName(strings.TrimSuffix(string(recipeID), "."+config.GrlxExt))
-	}
-	// TODO check if basepath is completely empty first
-	relationBasePath := filepath.Dir(relatedRecipePath)
-	stat, err := os.Stat(relatedRecipePath)
-	// TODO check all possible errors here
-	if os.IsNotExist(err) {
-		return "", err
-	}
-	if !stat.IsDir() {
-		// TODO standardize this error type
-		return "", errors.New("path provided is not to a directory")
-	}
-	recipeExtFile := string(recipeID) + "." + config.GrlxExt
-	recipeExtFile = filepath.Join(relationBasePath, recipeExtFile)
-	initFile := filepath.Join(relationBasePath, string(recipeID), "init."+config.GrlxExt)
-	stat, err = os.Stat(initFile)
-	if os.IsNotExist(err) {
-		stat, err = os.Stat(recipeExtFile)
-		// TODO check all possible errors here
-		if os.IsNotExist(err) {
-			return "", err
-		}
-		// TODO allow for init.grlx types etc. in the future
-		if stat.IsDir() {
-			// TODO standardize this error type, this happened when the state points to a folder ending in .grlx
-			return "", errors.New("path provided is a directory")
-		}
-		return recipeExtFile, nil
-	}
-	// TODO allow for init.grlx types etc. in the future
-	if stat.IsDir() {
-		// TODO standardize this error type
-		return "", errors.New("init.grlx cannot be a directory")
-	}
-	return initFile, nil
-}
-
-// TODO implement reverse lookup
-// note: because slash paths are valid,
-// all that needs to be done is to check if the path contains
 // the basepath and strip the extension
 func pathToRecipeName(path string) (RecipeName, error) {
 	path = strings.TrimSuffix(path, "."+config.GrlxExt)

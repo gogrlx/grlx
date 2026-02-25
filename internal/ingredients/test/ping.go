@@ -2,6 +2,7 @@ package test
 
 import (
 	"encoding/json"
+	"fmt"
 	"time"
 
 	apitypes "github.com/gogrlx/grlx/v2/internal/api/types"
@@ -17,7 +18,10 @@ func FPing(target pki.KeyManager, ping apitypes.PingPong) (apitypes.PingPong, er
 	b, _ := json.Marshal(ping)
 	msg, err := nc.Request(topic, b, time.Second*15)
 	if err != nil {
-		err = json.Unmarshal(msg.Data, &pong)
+		return pong, fmt.Errorf("ping request failed: %w", err)
+	}
+	if err = json.Unmarshal(msg.Data, &pong); err != nil {
+		return pong, fmt.Errorf("failed to unmarshal ping response: %w", err)
 	}
 	return pong, err
 }

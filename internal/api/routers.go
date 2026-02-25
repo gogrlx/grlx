@@ -20,15 +20,13 @@ type Route struct {
 	HandlerFunc http.HandlerFunc
 }
 
-var (
-	BuildInfoStruct config.Version
-	certFile        string
-)
+// BuildInfoStruct holds the current build version information.
+var BuildInfoStruct config.Version
 
 func NewRouter(v config.Version, certificate string) *mux.Router {
 	handlers.SetBuildVersion(v)
 	BuildInfoStruct = v
-	certFile = certificate
+	_ = certificate // reserved for future TLS configuration
 	router := mux.NewRouter().StrictSlash(true)
 	for name, route := range Routes {
 		var handler http.Handler

@@ -27,19 +27,19 @@ func (u User) present(ctx context.Context, test bool) (cook.Result, error) {
 	groups := []string{}
 	home := ""
 	if uidInter, ok := u.params["uid"]; ok {
-		uid, ok = uidInter.(string)
+		uid, _ = uidInter.(string)
 	}
 	if gidInter, ok := u.params["gid"]; ok {
-		gid, ok = gidInter.(string)
+		gid, _ = gidInter.(string)
 	}
 	if shellInter, ok := u.params["shell"]; ok {
-		shell, ok = shellInter.(string)
+		shell, _ = shellInter.(string)
 	}
 	if groupsInter, ok := u.params["groups"]; ok {
-		groups, ok = groupsInter.([]string)
+		groups, _ = groupsInter.([]string)
 	}
 	if homeInter, ok := u.params["home"]; ok {
-		home, ok = homeInter.(string)
+		home, _ = homeInter.(string)
 	}
 	userCmd := "usermod"
 	user, err := user.Lookup(userName)
@@ -47,16 +47,16 @@ func (u User) present(ctx context.Context, test bool) (cook.Result, error) {
 		userCmd = "useradd"
 	}
 	args := []string{userName}
-	if uid != "" && user == nil || uid != user.Uid {
+	if uid != "" && (user == nil || uid != user.Uid) {
 		args = append(args, "-u"+uid)
 	}
-	if gid != "" && user == nil || gid != user.Gid {
+	if gid != "" && (user == nil || gid != user.Gid) {
 		args = append(args, "-g"+gid)
 	}
 	if shell != "" {
 		args = append(args, "-s"+shell)
 	}
-	if home != "" && shell != user.HomeDir {
+	if home != "" && (user == nil || home != user.HomeDir) {
 		args = append(args, "-d"+home)
 	}
 	if len(groups) > 0 {

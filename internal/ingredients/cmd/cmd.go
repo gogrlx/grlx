@@ -10,7 +10,7 @@ import (
 	"github.com/gogrlx/grlx/v2/internal/ingredients"
 )
 
-var ErrCmdMethodUndefined = fmt.Errorf("cmd method undefined")
+var ErrCmdMethodUndefined = errors.New("cmd method undefined")
 
 type Cmd struct {
 	id     string
@@ -18,15 +18,18 @@ type Cmd struct {
 	params map[string]interface{}
 }
 
-// TODO parse out the map here
 func (c Cmd) Parse(id, method string, params map[string]interface{}) (cook.RecipeCooker, error) {
 	if params == nil {
 		params = map[string]interface{}{}
 	}
-	return Cmd{
+	parsed := Cmd{
 		id: id, method: method,
 		params: params,
-	}, nil
+	}
+	if err := parsed.validate(); err != nil {
+		return nil, err
+	}
+	return parsed, nil
 }
 
 func (c Cmd) validate() error {

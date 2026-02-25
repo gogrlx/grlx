@@ -10,7 +10,7 @@ import (
 	"github.com/gogrlx/grlx/v2/internal/ingredients"
 )
 
-var ErrGroupMethodUndefined = fmt.Errorf("group method undefined")
+var ErrGroupMethodUndefined = errors.New("group method undefined")
 
 type Group struct {
 	id     string
@@ -22,10 +22,14 @@ func (g Group) Parse(id, method string, params map[string]interface{}) (cook.Rec
 	if params == nil {
 		params = map[string]interface{}{}
 	}
-	return Group{
+	parsed := Group{
 		id: id, method: method,
 		params: params,
-	}, nil
+	}
+	if err := parsed.validate(); err != nil {
+		return nil, err
+	}
+	return parsed, nil
 }
 
 func (g Group) validate() error {

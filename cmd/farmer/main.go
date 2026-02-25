@@ -73,11 +73,11 @@ func createConfigRoot() {
 	if os.IsNotExist(err) {
 		err = os.MkdirAll(ConfigRoot, os.ModePerm)
 		if err != nil {
-			log.Panicf(err.Error())
+			log.Panicf("failed to create config directory: %v", err)
 		}
 	} else {
 		// TODO work out what the other errors could be here
-		log.Panicf(err.Error())
+		log.Panicf("unexpected error checking config directory: %v", err)
 	}
 }
 
@@ -102,7 +102,7 @@ func StartAPIServer() {
 	apiServer = srv
 	go func() {
 		if err := srv.ListenAndServeTLS(CertFile, KeyFile); err != nil && err != http.ErrServerClosed {
-			log.Fatalf(err.Error())
+			log.Fatalf("API server failed: %v", err)
 		}
 	}()
 
@@ -150,12 +150,6 @@ func handleSIGHUP() {
 		StartAPIServer()
 		log.Info("Servers reloaded successfully")
 	}
-}
-
-type logger struct{}
-
-func (l logger) Debugf(format string, args ...interface{}) {
-	log.Debugf(format, args...)
 }
 
 // RunNATSServer starts a new Go routine based server

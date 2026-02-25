@@ -10,7 +10,7 @@ import (
 	"github.com/gogrlx/grlx/v2/internal/ingredients"
 )
 
-var ErrUserMethodUndefined = fmt.Errorf("user method undefined")
+var ErrUserMethodUndefined = errors.New("user method undefined")
 
 type User struct {
 	id     string
@@ -22,10 +22,14 @@ func (u User) Parse(id, method string, params map[string]interface{}) (cook.Reci
 	if params == nil {
 		params = map[string]interface{}{}
 	}
-	return User{
+	parsed := User{
 		id: id, method: method,
 		params: params,
-	}, nil
+	}
+	if err := parsed.validate(); err != nil {
+		return nil, err
+	}
+	return parsed, nil
 }
 
 func (u User) validate() error {

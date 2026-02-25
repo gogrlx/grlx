@@ -46,6 +46,7 @@ func Cook(target string, cmdCook apitypes.CmdCook) (apitypes.CmdCook, error) {
 	if err != nil {
 		return cmdCook, err
 	}
+	defer resp.Body.Close()
 	err = json.NewDecoder(resp.Body).Decode(&cmdCook)
 	// TODO connect NATS and start tailing the bus here
 	return cmdCook, err

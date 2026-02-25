@@ -23,15 +23,6 @@ var (
 	cookTimeout int
 )
 
-// cmdCmd represents the cmd command
-var cookCmd = &cobra.Command{
-	Use:   "cook",
-	Short: "Cook a recipe on a Sprout or a list of Sprouts",
-	Run: func(cmd *cobra.Command, _ []string) {
-		cmd.Help()
-	},
-}
-
 var cmdCook = &cobra.Command{
 	Use:   "cook <recipe> -T <target> [and optional args]...",
 	Short: "Cook a recipe against a target and see the output locally.",

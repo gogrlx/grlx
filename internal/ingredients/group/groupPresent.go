@@ -22,7 +22,7 @@ func (g Group) present(ctx context.Context, test bool) (cook.Result, error) {
 
 	gid := ""
 	if gidInter, ok := g.params["gid"]; ok {
-		gid, ok = gidInter.(string)
+		gid, _ = gidInter.(string)
 	}
 	if gid != "" {
 		args = append(args, "-g"+gid)
@@ -47,7 +47,7 @@ func (g Group) present(ctx context.Context, test bool) (cook.Result, error) {
 		result.Changed = true
 		return result, nil
 	}
-	if groupByName == nil || groupByName.Gid != gid {
+	if groupByName == nil || (gid != "" && groupByName.Gid != gid) {
 		cmd := exec.CommandContext(ctx, "groupmod", args...)
 		if test {
 			result.Succeeded = true

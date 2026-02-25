@@ -238,6 +238,10 @@ func (f File) content(ctx context.Context, test bool) (cook.Result, error) {
 					}, errors.Join(err, ErrCacheFailure)
 				}
 				sourceDest, err = srcFile.(*File).dest()
+				if err != nil {
+					notes = append(notes, cook.Snprintf("failed to get cached source destination: %v", err))
+					return cook.Result{Succeeded: false, Failed: true, Changed: false, Notes: notes}, err
+				}
 			} else if skipVerify, ok := f.params["skip_verify"].(bool); ok && skipVerify {
 				srcFile, err := f.Parse(f.id+"-source", "cached", map[string]interface{}{
 					"source":      src,
@@ -261,6 +265,10 @@ func (f File) content(ctx context.Context, test bool) (cook.Result, error) {
 					}, errors.Join(err, ErrCacheFailure)
 				}
 				sourceDest, err = srcFile.(*File).dest()
+				if err != nil {
+					notes = append(notes, cook.Snprintf("failed to get cached source destination: %v", err))
+					return cook.Result{Succeeded: false, Failed: true, Changed: false, Notes: notes}, err
+				}
 			} else {
 				return cook.Result{
 					Succeeded: false, Failed: true, Notes: notes,
@@ -279,5 +287,7 @@ func (f File) content(ctx context.Context, test bool) (cook.Result, error) {
 		//	io.Copy(&content, f)
 	}
 
+	// TODO: text and sources processing is incomplete
+	_ = text
 	return f.undef()
 }

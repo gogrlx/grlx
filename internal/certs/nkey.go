@@ -46,6 +46,9 @@ func GenNKey(isFarmer bool) {
 		}
 		defer pubKey.Close()
 		key, err := kp.PublicKey()
+		if err != nil {
+			log.Panic(err.Error())
+		}
 		_, err = pubKey.Write([]byte(key))
 		if err != nil {
 			log.Panic(err.Error())
@@ -60,6 +63,9 @@ func GenNKey(isFarmer bool) {
 		}
 		defer privKey.Close()
 		pkey, err := kp.Seed()
+		if err != nil {
+			log.Panic(err.Error())
+		}
 		_, err = privKey.Write(pkey)
 		if err != nil {
 			log.Panic(err.Error())

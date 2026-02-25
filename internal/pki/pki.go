@@ -42,7 +42,7 @@ func SetupPKIFarmer() {
 		err = os.MkdirAll(FarmerPKI, os.ModePerm)
 		if err != nil {
 			// TODO check if no permissions to create, log, and then exit
-			log.Panicf(err.Error())
+			log.Panicf("failed to create PKI directory: %v", err)
 		}
 	}
 	for _, acceptanceState := range []string{
@@ -59,7 +59,7 @@ func SetupPKIFarmer() {
 		if os.IsNotExist(err) {
 			err = os.MkdirAll(stateFolder, os.ModePerm)
 			if err != nil {
-				log.Panicf(err.Error())
+				log.Panicf("failed to create sprout state directory: %v", err)
 			}
 		} else {
 			log.Fatal(err)
@@ -76,11 +76,11 @@ func SetupPKISprout() {
 	if os.IsNotExist(err) {
 		err = os.MkdirAll(SproutPKI, os.ModePerm)
 		if err != nil {
-			log.Panicf(err.Error())
+			log.Panicf("failed to create sprout PKI directory: %v", err)
 		}
 	} else {
 		// TODO: work out what the other errors could be here
-		log.Panicf(err.Error())
+		log.Panicf("unexpected error checking sprout PKI directory: %v", err)
 	}
 }
 
@@ -97,8 +97,9 @@ func SetupPKISprout() {
 func createSproutID() string {
 	id, err := os.Hostname()
 	if err != nil {
-		// TODO use another method of derivation instead of panicking
-		panic(err)
+		// Fall back to "unknown" if hostname cannot be determined
+		log.Errorf("failed to get hostname for sprout ID: %v", err)
+		id = "unknown"
 	}
 	id = strings.ReplaceAll(id, "_", "-")
 	id = strings.TrimPrefix(id, "-")
@@ -326,8 +327,8 @@ func NKeyExists(id string, nkey string) (Registered bool, Matches bool) {
 	}
 	file, err := os.ReadFile(filename)
 	if err != nil {
-		// TODO determine how we could get an error here
-		log.Fatalf("Error reading in %s: %v", filename, err)
+		log.Errorf("error reading NKey file %s: %v", filename, err)
+		return true, false
 	}
 	content := string(file)
 	return true, content == nkey
@@ -343,7 +344,6 @@ func FetchRootCA(filename string) error {
 		return err
 	}
 	file, err := os.Create(RootCA)
-	// TODO sort out this panic
 	if err != nil {
 		return err
 	}
@@ -357,6 +357,7 @@ func FetchRootCA(filename string) error {
 		os.Remove(RootCA)
 		return err
 	}
+	defer r.Body.Close()
 	_, err = io.Copy(file, r.Body)
 	if err != nil {
 		os.Remove(RootCA)
@@ -426,18 +427,22 @@ func PutNKey(id string) error {
 	}
 	keySub := KeySubmission{NKey: nkey, SproutID: id}
 
-	jw, _ := json.Marshal(keySub)
+	jw, err := json.Marshal(keySub)
+	if err != nil {
+		return fmt.Errorf("failed to marshal key submission: %w", err)
+	}
 	url := config.FarmerURL + "/pki/putnkey"
 	req, err := http.NewRequest(http.MethodPut, url, bytes.NewBuffer(jw))
 	if err != nil {
 		// handle error
 		log.Fatal(err)
 	}
-	_, err = nkeyClient.Do(req)
+	resp, err := nkeyClient.Do(req)
 	if err != nil {
 		// TODO handle error
 		return err
 	}
+	resp.Body.Close()
 	return nil
 }
 
