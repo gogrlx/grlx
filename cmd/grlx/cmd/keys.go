@@ -9,9 +9,10 @@ import (
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 
-	gpki "github.com/gogrlx/grlx/v2/api/client"
 	"github.com/gogrlx/grlx/v2/cmd/grlx/util"
-	"github.com/gogrlx/grlx/v2/types"
+	gpki "github.com/gogrlx/grlx/v2/internal/api/client"
+	apitypes "github.com/gogrlx/grlx/v2/internal/api/types"
+	"github.com/gogrlx/grlx/v2/internal/pki"
 )
 
 var (
@@ -71,7 +72,7 @@ var keysAccept = &cobra.Command{
 					return
 				}
 			}
-			accepted := types.KeySet{Sprouts: []types.KeyManager{}}
+			accepted := pki.KeySet{Sprouts: []pki.KeyManager{}}
 			for _, id := range keyList.Unaccepted.Sprouts {
 				ok, err := gpki.AcceptKey(id.SproutID)
 				if ok {
@@ -117,9 +118,9 @@ var keysAccept = &cobra.Command{
 		// TODO: output error message in correct outputMode
 		if err != nil {
 			switch err {
-			case types.ErrSproutIDNotFound:
+			case pki.ErrSproutIDNotFound:
 				log.Fatalf("Sprout %s does not exist.", keyID)
-			case types.ErrAlreadyAccepted:
+			case pki.ErrAlreadyAccepted:
 				log.Fatalf("Sprout %s has already been accepted.", keyID)
 			default:
 				panic(err)
@@ -202,7 +203,7 @@ var keysDelete = &cobra.Command{
 		// TODO: output error message in correct outputMode
 		if err != nil {
 			switch err {
-			case types.ErrSproutIDNotFound:
+			case pki.ErrSproutIDNotFound:
 				log.Fatalf("Sprout %s does not exist.", keyID)
 			default:
 				panic(err)
@@ -245,9 +246,9 @@ var keysUnaccept = &cobra.Command{
 		// TODO: output error message in correct outputMode
 		if err != nil {
 			switch err {
-			case types.ErrSproutIDNotFound:
+			case pki.ErrSproutIDNotFound:
 				log.Fatalf("Sprout %s does not exist.", keyID)
-			case types.ErrAlreadyUnaccepted:
+			case pki.ErrAlreadyUnaccepted:
 				log.Fatalf("Sprout %s has already been unaccepted.", keyID)
 
 			default:
@@ -291,9 +292,9 @@ var keysReject = &cobra.Command{
 		// TODO: output error message in correct outputMode
 		if err != nil {
 			switch err {
-			case types.ErrSproutIDNotFound:
+			case pki.ErrSproutIDNotFound:
 				log.Fatalf("Sprout %s does not exist.", keyID)
-			case types.ErrAlreadyRejected:
+			case pki.ErrAlreadyRejected:
 				log.Fatalf("Sprout %s has already been rejected.", keyID)
 
 			default:
@@ -342,9 +343,9 @@ var keysDeny = &cobra.Command{
 		case "text":
 			if err != nil {
 				switch err {
-				case types.ErrSproutIDNotFound:
+				case pki.ErrSproutIDNotFound:
 					log.Fatalf("Sprout %s does not exist.", keyID)
-				case types.ErrAlreadyDenied:
+				case pki.ErrAlreadyDenied:
 					log.Fatalf("Sprout %s has already been denied.", keyID)
 				default:
 					log.Fatal(err)
@@ -356,7 +357,7 @@ var keysDeny = &cobra.Command{
 			}
 			color.Red("%s could not be Denied!\n", keyID)
 		default:
-			util.WriteOutput(types.Inline{Success: ok, Error: err}, outputMode)
+			util.WriteOutput(apitypes.Inline{Success: ok, Error: err}, outputMode)
 		}
 		os.Exit(1)
 	},

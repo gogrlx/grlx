@@ -14,7 +14,7 @@ import (
 
 	"github.com/taigrr/jety"
 
-	"github.com/gogrlx/grlx/v2/auth"
+	"github.com/gogrlx/grlx/v2/internal/auth"
 )
 
 var (

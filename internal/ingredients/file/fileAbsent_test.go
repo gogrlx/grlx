@@ -1,0 +1,119 @@
+package file
+
+import (
+	"context"
+	"fmt"
+	"os"
+	"path/filepath"
+	"testing"
+
+	"github.com/gogrlx/grlx/v2/internal/cook"
+	"github.com/gogrlx/grlx/v2/internal/ingredients"
+)
+
+func TestAbsent(t *testing.T) {
+	tempDir := t.TempDir()
+	existingFile := filepath.Join(tempDir, "there-is-a-file-here")
+	os.Create(existingFile)
+	sampleDir := filepath.Join(tempDir, "there-is-a-dir-here")
+	os.Mkdir(sampleDir, 0o755)
+	file := filepath.Join(sampleDir, "there-is-a-file-here")
+	os.Create(file)
+	tests := []struct {
+		name     string
+		params   map[string]interface{}
+		expected cook.Result
+		error    error
+		test     bool
+	}{
+		{
+			name: "IncorrectFilename",
+			params: map[string]interface{}{
+				"name": 1,
+			},
+			expected: cook.Result{
+				Succeeded: false,
+				Failed:    true,
+				Notes:     []fmt.Stringer{},
+			},
+			error: ingredients.ErrMissingName,
+		},
+		{
+			name: "AbsentRoot",
+			params: map[string]interface{}{
+				"name": "/",
+			},
+			expected: cook.Result{
+				Succeeded: false,
+				Failed:    true,
+				Notes:     []fmt.Stringer{},
+			},
+			error: ErrDeleteRoot,
+		},
+		{
+			name: "AbsentNonExistent",
+			params: map[string]interface{}{
+				"name": filepath.Join(tempDir, "there-isnt-a-file-here"),
+			},
+			expected: cook.Result{
+				Succeeded: true,
+				Failed:    false,
+				Changed:   false,
+				Notes:     []fmt.Stringer{cook.Snprintf("%s is already absent", filepath.Join(tempDir, "there-isnt-a-file-here"))},
+			},
+			error: nil,
+		},
+		{
+			name: "AbsentTestRun",
+			params: map[string]interface{}{
+				"name": existingFile,
+			},
+			expected: cook.Result{
+				Succeeded: true,
+				Failed:    false,
+				Changed:   true,
+				Notes:     []fmt.Stringer{cook.Snprintf("%s would be deleted", existingFile)},
+			},
+			test: true,
+		},
+		{
+			name: "AbsentTestActual",
+			params: map[string]interface{}{
+				"name": existingFile,
+			},
+			expected: cook.Result{
+				Succeeded: true,
+				Failed:    false,
+				Changed:   true,
+				Notes:     []fmt.Stringer{cook.Snprintf("%s has been deleted", existingFile)},
+			},
+		},
+		{
+			name: "AbesentDeletePopulatedDirs",
+			params: map[string]interface{}{
+				"name": sampleDir,
+			},
+			expected: cook.Result{
+				Succeeded: false,
+				Failed:    true,
+				Changed:   false,
+				Notes:     []fmt.Stringer{},
+			},
+			error: &os.PathError{Op: "remove", Path: sampleDir, Err: fmt.Errorf("directory not empty")},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			f := File{
+				id:     "",
+				method: "absent",
+				params: test.params,
+			}
+			result, err := f.absent(context.TODO(), test.test)
+			if test.error != nil && err.Error() != test.error.Error() {
+				t.Errorf("expected error %v, got %v", test.error, err)
+			}
+			compareResults(t, result, test.expected)
+		})
+	}
+}

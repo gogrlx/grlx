@@ -7,8 +7,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/gogrlx/grlx/v2/api/client"
-	"github.com/gogrlx/grlx/v2/types"
+	"github.com/gogrlx/grlx/v2/internal/api/client"
+	"github.com/gogrlx/grlx/v2/internal/config"
 )
 
 // testCmd represents the test command
@@ -18,7 +18,7 @@ var versionCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, _ []string) {
 		grlxVersion := BuildInfo
 		serverVersion, err := client.GetVersion()
-		cv := types.CombinedVersion{
+		cv := config.CombinedVersion{
 			CLI:    grlxVersion,
 			Farmer: serverVersion,
 		}

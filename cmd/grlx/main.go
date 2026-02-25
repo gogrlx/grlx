@@ -6,7 +6,7 @@ import (
 	log "github.com/taigrr/log-socket/log"
 
 	"github.com/gogrlx/grlx/v2/cmd/grlx/cmd"
-	"github.com/gogrlx/grlx/v2/types"
+	"github.com/gogrlx/grlx/v2/internal/config"
 )
 
 func init() {
@@ -22,7 +22,7 @@ var (
 
 func main() {
 	defer log.Flush()
-	cmd.Execute(types.Version{
+	cmd.Execute(config.Version{
 		Arch:      runtime.GOOS,
 		Compiler:  runtime.Version(),
 		GitCommit: GitCommit,
