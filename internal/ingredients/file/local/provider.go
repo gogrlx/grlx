@@ -7,7 +7,7 @@ import (
 	"os"
 
 	"github.com/gogrlx/grlx/v2/internal/ingredients/file/hashers"
-	"github.com/gogrlx/grlx/v2/types"
+	"github.com/gogrlx/grlx/v2/internal/types"
 )
 
 type LocalFile struct {

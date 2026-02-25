@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/gogrlx/grlx/v2/types"
+	"github.com/gogrlx/grlx/v2/internal/types"
 )
 
 func (f File) prepend(ctx context.Context, test bool) (types.Result, error) {

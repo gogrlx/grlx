@@ -10,7 +10,7 @@ import (
 
 	"github.com/fatih/color"
 	gcmd "github.com/gogrlx/grlx/v2/cmd/grlx/ingredients/cmd"
-	"github.com/gogrlx/grlx/v2/types"
+	"github.com/gogrlx/grlx/v2/internal/types"
 	"github.com/spf13/cobra"
 )
 

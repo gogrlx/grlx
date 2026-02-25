@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/gogrlx/grlx/v2/types"
+	"github.com/gogrlx/grlx/v2/internal/types"
 )
 
 func UserChoice(first string, second string, options ...string) (string, error) {

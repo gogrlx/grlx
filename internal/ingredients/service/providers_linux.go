@@ -7,7 +7,7 @@ import (
 	"sync"
 
 	"github.com/gogrlx/grlx/v2/internal/config"
-	"github.com/gogrlx/grlx/v2/types"
+	"github.com/gogrlx/grlx/v2/internal/types"
 )
 
 var (

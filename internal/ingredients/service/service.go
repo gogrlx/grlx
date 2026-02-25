@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/gogrlx/grlx/v2/internal/ingredients"
-	"github.com/gogrlx/grlx/v2/types"
+	"github.com/gogrlx/grlx/v2/internal/types"
 )
 
 type Service struct {

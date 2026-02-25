@@ -6,7 +6,7 @@ import (
 	"os/exec"
 	"os/user"
 
-	"github.com/gogrlx/grlx/v2/types"
+	"github.com/gogrlx/grlx/v2/internal/types"
 )
 
 func (g Group) present(ctx context.Context, test bool) (types.Result, error) {

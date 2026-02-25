@@ -11,7 +11,7 @@ import (
 
 	cmd "github.com/gogrlx/grlx/v2/internal/api/handlers/ingredients/cmd"
 	test "github.com/gogrlx/grlx/v2/internal/api/handlers/ingredients/test"
-	"github.com/gogrlx/grlx/v2/types"
+	"github.com/gogrlx/grlx/v2/internal/types"
 )
 
 type Route struct {

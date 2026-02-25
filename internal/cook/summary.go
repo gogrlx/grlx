@@ -1,6 +1,6 @@
 package cook
 
-import "github.com/gogrlx/grlx/v2/types"
+import "github.com/gogrlx/grlx/v2/internal/types"
 
 func SummarizeSteps(steps []types.SproutStepCompletion) map[string]types.Summary {
 	summary := make(map[string]types.Summary)

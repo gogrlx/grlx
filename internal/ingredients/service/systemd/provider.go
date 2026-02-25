@@ -9,7 +9,7 @@ import (
 	"github.com/taigrr/systemctl"
 
 	"github.com/gogrlx/grlx/v2/internal/ingredients/service"
-	"github.com/gogrlx/grlx/v2/types"
+	"github.com/gogrlx/grlx/v2/internal/types"
 )
 
 type SystemdService struct {

@@ -19,7 +19,7 @@ import (
 	nats "github.com/nats-io/nats.go"
 	"github.com/taigrr/log-socket/log"
 
-	"github.com/gogrlx/grlx/v2/types"
+	"github.com/gogrlx/grlx/v2/internal/types"
 )
 
 var nc *nats.Conn

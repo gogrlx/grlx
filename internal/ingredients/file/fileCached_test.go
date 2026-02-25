@@ -12,7 +12,7 @@ import (
 	"github.com/gogrlx/grlx/v2/internal/config"
 	_ "github.com/gogrlx/grlx/v2/internal/ingredients/file/hashers"
 
-	"github.com/gogrlx/grlx/v2/types"
+	"github.com/gogrlx/grlx/v2/internal/types"
 )
 
 func TestCached(t *testing.T) {

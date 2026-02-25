@@ -3,7 +3,7 @@ package file
 import (
 	"github.com/gogrlx/grlx/v2/internal/ingredients/file/http"
 	"github.com/gogrlx/grlx/v2/internal/ingredients/file/local"
-	"github.com/gogrlx/grlx/v2/types"
+	"github.com/gogrlx/grlx/v2/internal/types"
 )
 
 func init() {

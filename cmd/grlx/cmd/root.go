@@ -9,11 +9,11 @@ import (
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 
-	"github.com/gogrlx/grlx/v2/internal/api/client"
 	"github.com/gogrlx/grlx/v2/cmd/grlx/util"
+	"github.com/gogrlx/grlx/v2/internal/api/client"
 	"github.com/gogrlx/grlx/v2/internal/config"
 	"github.com/gogrlx/grlx/v2/internal/pki"
-	"github.com/gogrlx/grlx/v2/types"
+	"github.com/gogrlx/grlx/v2/internal/types"
 )
 
 var (

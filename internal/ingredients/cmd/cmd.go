@@ -7,7 +7,7 @@ import (
 	"fmt"
 
 	"github.com/gogrlx/grlx/v2/internal/ingredients"
-	"github.com/gogrlx/grlx/v2/types"
+	"github.com/gogrlx/grlx/v2/internal/types"
 )
 
 var ErrCmdMethodUndefined = fmt.Errorf("cmd method undefined")

@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/gogrlx/grlx/v2/internal/config"
-	"github.com/gogrlx/grlx/v2/types"
+	"github.com/gogrlx/grlx/v2/internal/types"
 )
 
 func TestFileContent(t *testing.T) {

@@ -11,7 +11,7 @@ import (
 	"github.com/gogrlx/grlx/v2/internal/ingredients/cmd"
 	"github.com/gogrlx/grlx/v2/internal/ingredients/test"
 	"github.com/gogrlx/grlx/v2/internal/pki"
-	"github.com/gogrlx/grlx/v2/types"
+	"github.com/gogrlx/grlx/v2/internal/types"
 
 	nats "github.com/nats-io/nats.go"
 )

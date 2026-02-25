@@ -6,7 +6,7 @@ import (
 	log "github.com/taigrr/log-socket/log"
 
 	"github.com/gogrlx/grlx/v2/cmd/grlx/cmd"
-	"github.com/gogrlx/grlx/v2/types"
+	"github.com/gogrlx/grlx/v2/internal/types"
 )
 
 func init() {

@@ -10,7 +10,7 @@ import (
 
 	"github.com/djherbis/atime"
 
-	"github.com/gogrlx/grlx/v2/types"
+	"github.com/gogrlx/grlx/v2/internal/types"
 )
 
 func (f File) touch(ctx context.Context, test bool) (types.Result, error) {

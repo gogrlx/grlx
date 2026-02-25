@@ -1,6 +1,6 @@
 package rootball
 
-import "github.com/gogrlx/grlx/v2/types"
+import "github.com/gogrlx/grlx/v2/internal/types"
 
 type RecipeFile struct {
 	Steps      []*types.Step

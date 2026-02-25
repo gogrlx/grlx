@@ -10,7 +10,7 @@ import (
 	//. "github.com/gogrlx/grlx/v2/internal/config"
 	"github.com/gogrlx/grlx/v2/internal/ingredients/test"
 	"github.com/gogrlx/grlx/v2/internal/pki"
-	. "github.com/gogrlx/grlx/v2/types"
+	. "github.com/gogrlx/grlx/v2/internal/types"
 	log "github.com/taigrr/log-socket/log"
 )
 
