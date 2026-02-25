@@ -1,54 +1,51 @@
-package cmd
+package client
 
 import (
-	//. "github.com/gogrlx/grlx/v2/internal/config"
 	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
 
-	pki "github.com/gogrlx/grlx/v2/internal/api/client"
+	"github.com/gogrlx/grlx/v2/internal/api"
 	"github.com/gogrlx/grlx/v2/internal/auth"
 	"github.com/gogrlx/grlx/v2/internal/config"
 	"github.com/gogrlx/grlx/v2/types"
 )
 
-func FRun(target string, command types.CmdRun) (types.TargetedResults, error) {
+func Cook(target string, cmdCook types.CmdCook) (types.CmdCook, error) {
 	// util target split
 	// check targets valid
-	ctx, cancel := context.WithTimeout(context.Background(), command.Timeout)
-	defer cancel()
-	var tr types.TargetedResults
-	targets, err := pki.ResolveTargets(target)
+	client := APIClient
+	ctx := context.Background()
+	FarmerURL := config.FarmerURL
+	targets, err := ResolveTargets(target)
 	if err != nil {
-		return tr, err
+		return cmdCook, err
 	}
 	var ta types.TargetedAction
-	ta.Action = command
+	ta.Action = cmdCook
 	ta.Target = []types.KeyManager{}
 	for _, sprout := range targets {
 		ta.Target = append(ta.Target, types.KeyManager{SproutID: sprout})
 	}
-	url := config.FarmerURL + "/cmd/run"
+	url := FarmerURL + api.Routes["Cook"].Pattern
 	jw, _ := json.Marshal(ta)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBuffer(jw))
 	if err != nil {
-		return tr, err
+		return cmdCook, err
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 	newToken, err := auth.NewToken()
 	if err != nil {
-		return tr, err
+		return cmdCook, err
 	}
 	req.Header.Set("Authorization", newToken)
-	timeoutClient := &http.Client{}
-	timeoutClient.Timeout = command.Timeout
-	timeoutClient.Transport = pki.APIClient.Transport
-	resp, err := timeoutClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
-		return tr, err
+		return cmdCook, err
 	}
-	err = json.NewDecoder(resp.Body).Decode(&tr)
-	return tr, err
+	err = json.NewDecoder(resp.Body).Decode(&cmdCook)
+	// TODO connect NATS and start tailing the bus here
+	return cmdCook, err
 }

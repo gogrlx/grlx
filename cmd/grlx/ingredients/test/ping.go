@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"net/http"
 
-	pki "github.com/gogrlx/grlx/v2/api/client"
-	"github.com/gogrlx/grlx/v2/auth"
-	"github.com/gogrlx/grlx/v2/config"
+	pki "github.com/gogrlx/grlx/v2/internal/api/client"
+	"github.com/gogrlx/grlx/v2/internal/auth"
+	"github.com/gogrlx/grlx/v2/internal/config"
 	. "github.com/gogrlx/grlx/v2/types"
 )
 

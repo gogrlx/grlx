@@ -8,12 +8,12 @@ import (
 
 	log "github.com/taigrr/log-socket/log"
 
-	certs "github.com/gogrlx/grlx/v2/certs"
-	"github.com/gogrlx/grlx/v2/config"
-	"github.com/gogrlx/grlx/v2/cook"
-	"github.com/gogrlx/grlx/v2/ingredients/cmd"
-	"github.com/gogrlx/grlx/v2/ingredients/test"
-	"github.com/gogrlx/grlx/v2/pki"
+	certs "github.com/gogrlx/grlx/v2/internal/certs"
+	"github.com/gogrlx/grlx/v2/internal/config"
+	"github.com/gogrlx/grlx/v2/internal/cook"
+	"github.com/gogrlx/grlx/v2/internal/ingredients/cmd"
+	"github.com/gogrlx/grlx/v2/internal/ingredients/test"
+	"github.com/gogrlx/grlx/v2/internal/pki"
 
 	nats "github.com/nats-io/nats.go"
 )
