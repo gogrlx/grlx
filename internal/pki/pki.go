@@ -128,6 +128,9 @@ func IsValidSproutID(id string) bool {
 
 func AcceptNKey(id string) error {
 	defer ReloadNKeys()
+	if !IsValidSproutID(strings.SplitN(id, "_", 2)[0]) {
+		return ErrSproutIDInvalid
+	}
 	fname, err := findNKey(id)
 	if err != nil {
 		return err
@@ -145,6 +148,9 @@ func AcceptNKey(id string) error {
 
 func DeleteNKey(id string) error {
 	defer ReloadNKeys()
+	if !IsValidSproutID(id) {
+		return ErrSproutIDInvalid
+	}
 	fname, err := findNKey(id)
 	if err != nil {
 		return err
@@ -154,6 +160,9 @@ func DeleteNKey(id string) error {
 
 func DenyNKey(id string) error {
 	defer ReloadNKeys()
+	if !IsValidSproutID(id) {
+		return ErrSproutIDInvalid
+	}
 	newDest := filepath.Join(config.FarmerPKI + "sprouts/denied/" + id)
 	fname, err := findNKey(id)
 	if err != nil {
@@ -167,6 +176,9 @@ func DenyNKey(id string) error {
 
 func UnacceptNKey(id string, nkey string) error {
 	defer ReloadNKeys()
+	if !IsValidSproutID(id) {
+		return ErrSproutIDInvalid
+	}
 	newDest := filepath.Join(config.FarmerPKI + "sprouts/unaccepted/" + id)
 	fname, err := findNKey(id)
 	if nkey != "" && err == ErrSproutIDNotFound {
@@ -225,6 +237,9 @@ func ListNKeysByType() KeysByType {
 
 func RejectNKey(id string, nkey string) error {
 	defer ReloadNKeys()
+	if !IsValidSproutID(id) {
+		return ErrSproutIDInvalid
+	}
 	newDest := filepath.Join(config.FarmerPKI, "sprouts", "rejected", id)
 	cleanDest := filepath.Clean(newDest)
 	if newDest != cleanDest {
@@ -348,8 +363,11 @@ func FetchRootCA(filename string) error {
 		return err
 	}
 	defer file.Close()
+	// InsecureSkipVerify is intentional: this is the TLS bootstrap path where
+	// the sprout fetches the farmer's root CA for the first time. There is no
+	// trusted certificate to verify against yet.
 	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec // TLS bootstrap
 	}
 	client := &http.Client{Transport: tr, Timeout: time.Second * 10}
 	r, err := client.Get(fmt.Sprintf("https://%s:%s/auth/cert/", config.FarmerInterface, config.FarmerAPIPort))
