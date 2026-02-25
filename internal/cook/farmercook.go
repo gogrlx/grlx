@@ -131,7 +131,7 @@ func ResolveRecipeFilePath(basepath string, recipeID RecipeName) (string, error)
 			return "", err
 		}
 		if stat.IsDir() {
-			return "", errors.New("path provided is a directory, directory must not end in .grlx")
+			return "", fmt.Errorf("directory must not end in .grlx: %w", ErrPathIsDirectory)
 		}
 		return path, nil
 	}
@@ -143,7 +143,7 @@ func ResolveRecipeFilePath(basepath string, recipeID RecipeName) (string, error)
 	stat, err := os.Stat(initFile)
 	if err == nil {
 		if stat.IsDir() {
-			return "", errors.New("path provided is a directory, directory must not end in .grlx")
+			return "", fmt.Errorf("directory must not end in .grlx: %w", ErrPathIsDirectory)
 		}
 		return initFile, nil
 	}
@@ -154,7 +154,7 @@ func ResolveRecipeFilePath(basepath string, recipeID RecipeName) (string, error)
 	if err == nil {
 		if stat.IsDir() {
 			// TODO standardize this error type
-			return "", errors.New("init.grlx cannot be a directory")
+			return "", fmt.Errorf("init.grlx cannot be a directory: %w", ErrPathIsDirectory)
 		}
 		return extPath, nil
 	} else {
