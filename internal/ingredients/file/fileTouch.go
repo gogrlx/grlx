@@ -130,8 +130,13 @@ func (f File) touch(ctx context.Context, test bool) (cook.Result, error) {
 	// stores if the file has a non-"now" mtime or atime
 	mTimeSet := !mTime.Equal(now)
 	aTimeSet := !aTime.Equal(now)
-	_ = omt
-	_ = oat
+	// Preserve original timestamps when only one is explicitly provided
+	if mTimeSet && !aTimeSet {
+		aTime = oat
+	}
+	if aTimeSet && !mTimeSet {
+		mTime = omt
+	}
 	if test {
 		if omt.Equal(mTime) && oat.Equal(aTime) {
 			return cook.Result{
