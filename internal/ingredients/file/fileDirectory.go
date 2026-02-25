@@ -46,24 +46,26 @@ func (f File) directory(ctx context.Context, test bool) (cook.Result, error) {
 		// create the dir if "makeDirs" is true or not defined
 		if val, ok := f.params["makedirs"].(bool); ok && val || !ok {
 			d.makeDirs = true
-			st, _ := os.Stat(name)
+			st, statErr := os.Stat(name)
+			dirExists := statErr == nil && st.IsDir()
 			if test {
-				if st.IsDir() {
+				if dirExists {
 					notes = append(notes, cook.Snprintf("directory %s already exists", name))
 				} else {
 					notes = append(notes, cook.Snprintf("would create directory %s", name))
 				}
 			} else {
-				if st.IsDir() {
+				if dirExists {
 					notes = append(notes, cook.Snprintf("directory %s already exists", name))
 				} else {
 					errCreate := os.MkdirAll(name, 0o755)
-					notes = append(notes, cook.Snprintf("creating directory %s", name))
 					if errCreate != nil {
+						notes = append(notes, cook.Snprintf("failed to create directory %s", name))
 						return cook.Result{
 							Succeeded: false, Failed: true, Notes: notes,
 						}, errCreate
 					}
+					notes = append(notes, cook.Snprintf("created directory %s", name))
 				}
 			}
 
@@ -162,9 +164,12 @@ func (f File) directory(ctx context.Context, test bool) (cook.Result, error) {
 	{
 		if val, ok := f.params["dir_mode"].(string); ok {
 			d.dirMode = val
-			modeVal, _ := strconv.ParseUint(d.dirMode, 8, 32)
-			// "dir_mode": "string", "file_mode": "string"
-			//"clean": "bool", "follow_symlinks": "bool", "force": "bool", "backupname": "string", "allow_symlink": "bool",
+			modeVal, parseErr := strconv.ParseUint(d.dirMode, 8, 32)
+			if parseErr != nil {
+				return cook.Result{
+					Succeeded: false, Failed: true, Notes: notes,
+				}, fmt.Errorf("invalid dir_mode %q: %w", d.dirMode, parseErr)
+			}
 			if test {
 				notes = append(notes, cook.Snprintf("would chmod %s to %s", name, val))
 			} else {
@@ -178,13 +183,16 @@ func (f File) directory(ctx context.Context, test bool) (cook.Result, error) {
 			}
 		}
 	}
-	// chmod the directory to the named dirmode if it is defined
+	// chmod files to the named file_mode if it is defined
 	{
 		if val, ok := f.params["file_mode"].(string); ok {
 			d.fileMode = val
-			modeVal, _ := strconv.ParseUint(d.fileMode, 8, 32)
-			// "makedirs": "bool",
-			//"clean": "bool", "follow_symlinks": "bool", "force": "bool", "backupname": "string", "allow_symlink": "bool",
+			modeVal, parseErr := strconv.ParseUint(d.fileMode, 8, 32)
+			if parseErr != nil {
+				return cook.Result{
+					Succeeded: false, Failed: true, Notes: notes,
+				}, fmt.Errorf("invalid file_mode %q: %w", d.fileMode, parseErr)
+			}
 			if test {
 				notes = append(notes, cook.Snprintf("would chmod %s to %s", name, val))
 			} else {
@@ -193,49 +201,6 @@ func (f File) directory(ctx context.Context, test bool) (cook.Result, error) {
 					return cook.Result{
 						Succeeded: false, Failed: true, Notes: notes,
 					}, err
-				}
-			}
-		}
-	} // recurse the file_mode if it is defined
-	{
-		if val, ok := f.params["group"].(string); ok {
-			d.group = val
-			group, lookupErr := user.LookupGroup(d.group)
-			if lookupErr != nil {
-				return cook.Result{
-					Succeeded: false, Failed: true, Notes: notes,
-				}, lookupErr
-			}
-			gid, parseErr := strconv.ParseUint(group.Gid, 10, 32)
-			if parseErr != nil {
-				return cook.Result{
-					Succeeded: false, Failed: true,
-				}, parseErr
-			}
-			if test {
-				notes = append(notes, cook.Snprintf("would chown %s to %s", name, d.group))
-			} else {
-				chownErr := os.Chown(name, -1, int(gid))
-				if chownErr != nil {
-					return cook.Result{
-						Succeeded: false, Failed: true,
-					}, chownErr
-				}
-				notes = append(notes, cook.Snprintf("chown %s to %s", name, d.group))
-			}
-			if val, ok := f.params["recurse"].(bool); ok && val {
-				walkErr := filepath.WalkDir(name, func(path string, d fs.DirEntry, err error) error {
-					if test {
-						notes = append(notes, cook.Snprintf("would chown %s to %s", name, val))
-						return nil
-					}
-					notes = append(notes, cook.Snprintf("chown %s to %s", name, val))
-					return os.Chown(path, -1, int(gid))
-				})
-				if walkErr != nil {
-					return cook.Result{
-						Succeeded: false, Failed: true,
-					}, walkErr
 				}
 			}
 		}
