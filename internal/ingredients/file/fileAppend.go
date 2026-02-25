@@ -61,11 +61,10 @@ func (f File) append(ctx context.Context, test bool) (cook.Result, error) {
 	}
 	if errors.Is(err, ErrMissingContent) {
 		f, err := os.OpenFile(name, os.O_APPEND|os.O_WRONLY, 0o644)
-		// TODO: Bug consider muxing errors to make this more descriptive of the issue that occurred
 		if err != nil {
 			return cook.Result{
 				Succeeded: false, Failed: true, Notes: notes,
-			}, err
+			}, fmt.Errorf("failed to open %s for appending: %w", name, err)
 		}
 		defer f.Close()
 		scanner := bufio.NewScanner(&missing)
