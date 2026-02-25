@@ -20,12 +20,6 @@ type HTTPFile struct {
 }
 
 func (hf HTTPFile) Download(ctx context.Context) error {
-	dest, err := os.Create(hf.Destination)
-	if err != nil {
-		return err
-	}
-	defer dest.Close()
-
 	method := httpc.MethodGet
 	if hf.Props["method"] != nil {
 		if m, okM := hf.Props["method"].(string); okM {
@@ -52,9 +46,19 @@ func (hf HTTPFile) Download(ctx context.Context) error {
 		// TODO standardize this error message
 		return fmt.Errorf("unexpected HTTP status code %d", res.StatusCode)
 	}
-	_, err = io.Copy(dest, res.Body)
+	dest, err := os.Create(hf.Destination)
 	if err != nil {
 		return err
+	}
+	_, copyErr := io.Copy(dest, res.Body)
+	closeErr := dest.Close()
+	if copyErr != nil {
+		os.Remove(hf.Destination)
+		return copyErr
+	}
+	if closeErr != nil {
+		os.Remove(hf.Destination)
+		return closeErr
 	}
 	return nil
 }

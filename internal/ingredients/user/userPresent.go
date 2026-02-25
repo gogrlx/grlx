@@ -47,16 +47,16 @@ func (u User) present(ctx context.Context, test bool) (cook.Result, error) {
 		userCmd = "useradd"
 	}
 	args := []string{userName}
-	if uid != "" && user == nil || uid != user.Uid {
+	if uid != "" && (user == nil || uid != user.Uid) {
 		args = append(args, "-u"+uid)
 	}
-	if gid != "" && user == nil || gid != user.Gid {
+	if gid != "" && (user == nil || gid != user.Gid) {
 		args = append(args, "-g"+gid)
 	}
 	if shell != "" {
 		args = append(args, "-s"+shell)
 	}
-	if home != "" && shell != user.HomeDir {
+	if home != "" && (user == nil || home != user.HomeDir) {
 		args = append(args, "-d"+home)
 	}
 	if len(groups) > 0 {

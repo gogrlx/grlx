@@ -28,6 +28,7 @@ func GetVersion() (config.Version, error) {
 	if err != nil {
 		return farmerVersion, err
 	}
+	defer resp.Body.Close()
 	err = json.NewDecoder(resp.Body).Decode(&farmerVersion)
 	return farmerVersion, err
 }

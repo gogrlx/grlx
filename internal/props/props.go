@@ -29,21 +29,29 @@ func GetStringPropFunc(sproutID string) func(string) string {
 
 // TODO: implement GetProp
 func getStringProp(sproutID, name string) string {
-	// return "props"
-	if propCache[sproutID] == nil {
+	propCacheLock.RLock()
+	sproutProps, ok := propCache[sproutID]
+	if !ok || sproutProps == nil {
+		propCacheLock.RUnlock()
 		// get from sprout
 		return ""
 	}
-	if propCache[sproutID][name] == (expProp{}) {
+	prop, ok := sproutProps[name]
+	if !ok || prop == (expProp{}) {
+		propCacheLock.RUnlock()
 		// get from sprout
 		return ""
 	}
-	if propCache[sproutID][name].Expiry.Before(time.Now()) {
-		// get from sprout
+	if prop.Expiry.Before(time.Now()) {
+		propCacheLock.RUnlock()
+		// get from sprout — need write lock to delete
+		propCacheLock.Lock()
 		delete(propCache[sproutID], name)
+		propCacheLock.Unlock()
 		return ""
 	}
-	return fmt.Sprintf("%v", propCache[sproutID][name])
+	propCacheLock.RUnlock()
+	return fmt.Sprintf("%v", prop.Value)
 }
 
 func SetPropFunc(sproutID string) func(string, string) error {
@@ -76,18 +84,33 @@ func GetPropsFunc(sproutID string) func() map[string]interface{} {
 
 // TODO: implement getProps
 func getProps(sproutID string) map[string]interface{} {
-	if propCache[sproutID] == nil {
+	propCacheLock.RLock()
+	sproutProps, ok := propCache[sproutID]
+	if !ok || sproutProps == nil {
+		propCacheLock.RUnlock()
 		// get from sprout
 		return nil
 	}
+	propCacheLock.RUnlock()
+
 	props := make(map[string]interface{})
+	var expired []string
+	propCacheLock.RLock()
 	for k, v := range propCache[sproutID] {
 		if v.Expiry.Before(time.Now()) {
-			// get from sprout
-			delete(propCache[sproutID], k)
+			expired = append(expired, k)
 			continue
 		}
 		props[k] = v.Value
+	}
+	propCacheLock.RUnlock()
+
+	if len(expired) > 0 {
+		propCacheLock.Lock()
+		for _, k := range expired {
+			delete(propCache[sproutID], k)
+		}
+		propCacheLock.Unlock()
 	}
 	return props
 }

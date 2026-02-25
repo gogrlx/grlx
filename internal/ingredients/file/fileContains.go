@@ -174,19 +174,24 @@ func (f File) contains(ctx context.Context, test bool) (cook.Result, bytes.Buffe
 			}
 			sourceDest, err := file.(*File).dest()
 			if err != nil {
-				f, err := os.Open(sourceDest)
-				if err != nil {
-					notes = append(notes, cook.Snprintf("failed to open cached source %s", sourceDest))
-					return cook.Result{
-						Succeeded: false, Failed: true,
-						Changed: false, Notes: notes,
-					}, content, err
-				}
-				defer f.Close()
-				io.Copy(&content, f)
-				if test {
-					notes = append(notes, cook.Snprintf("copy %s", f.Name()))
-				}
+				notes = append(notes, cook.Snprintf("failed to get destination for cached source: %s", err))
+				return cook.Result{
+					Succeeded: false, Failed: true,
+					Changed: false, Notes: notes,
+				}, content, err
+			}
+			srcFile, err := os.Open(sourceDest)
+			if err != nil {
+				notes = append(notes, cook.Snprintf("failed to open cached source %s", sourceDest))
+				return cook.Result{
+					Succeeded: false, Failed: true,
+					Changed: false, Notes: notes,
+				}, content, err
+			}
+			defer srcFile.Close()
+			io.Copy(&content, srcFile)
+			if test {
+				notes = append(notes, cook.Snprintf("copy %s", srcFile.Name()))
 			}
 
 		}

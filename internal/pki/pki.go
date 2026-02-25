@@ -357,6 +357,7 @@ func FetchRootCA(filename string) error {
 		os.Remove(RootCA)
 		return err
 	}
+	defer r.Body.Close()
 	_, err = io.Copy(file, r.Body)
 	if err != nil {
 		os.Remove(RootCA)
@@ -433,11 +434,12 @@ func PutNKey(id string) error {
 		// handle error
 		log.Fatal(err)
 	}
-	_, err = nkeyClient.Do(req)
+	resp, err := nkeyClient.Do(req)
 	if err != nil {
 		// TODO handle error
 		return err
 	}
+	resp.Body.Close()
 	return nil
 }
 

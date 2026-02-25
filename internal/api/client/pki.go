@@ -31,6 +31,7 @@ func ListKeys() (pki.KeysByType, error) {
 	if err != nil {
 		return keys, err
 	}
+	defer resp.Body.Close()
 	err = json.NewDecoder(resp.Body).Decode(&keys)
 	return keys, err
 }
@@ -85,6 +86,7 @@ func UnacceptKey(id string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	defer resp.Body.Close()
 	err = json.NewDecoder(resp.Body).Decode(&success)
 	if err != nil {
 		return false, err
@@ -142,6 +144,7 @@ func DenyKey(id string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	defer resp.Body.Close()
 	err = json.NewDecoder(resp.Body).Decode(&success)
 	if err != nil {
 		return false, err
@@ -199,6 +202,7 @@ func RejectKey(id string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	defer resp.Body.Close()
 	err = json.NewDecoder(resp.Body).Decode(&success)
 	if err != nil {
 		return false, err
@@ -252,6 +256,7 @@ func DeleteKey(id string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	defer resp.Body.Close()
 	err = json.NewDecoder(resp.Body).Decode(&success)
 	if err != nil {
 		return false, err
@@ -309,6 +314,7 @@ func AcceptKey(id string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	defer resp.Body.Close()
 	err = json.NewDecoder(resp.Body).Decode(&success)
 	if err != nil {
 		return false, err
