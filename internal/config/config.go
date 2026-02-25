@@ -44,16 +44,23 @@ var (
 	NKeyFarmerPubFile    string
 	NKeySproutPrivFile   string
 	NKeySproutPubFile    string
-	// TODO the final path arg should be dynamic to allow for dev/prod/etc
-	RecipeDir    = filepath.Join("/", "srv", "grlx", "recipes", "prod")
-	RootCA       string
-	RootCAPriv   string
-	SproutID     string
-	SproutPKI    string
-	SproutRootCA string
+	RecipeDir            string
+	RootCA               string
+	RootCAPriv           string
+	SproutID             string
+	SproutPKI            string
+	SproutRootCA         string
 )
 
-// TODO use enum for binary as elsewhere
+// Binary represents the type of grlx binary being configured.
+type Binary string
+
+const (
+	BinaryGrlx   Binary = "grlx"
+	BinaryFarmer Binary = "farmer"
+	BinarySprout Binary = "sprout"
+)
+
 func LoadConfig(binary string) {
 	configLoaded.Do(func() {
 		jety.SetConfigType("yaml")
@@ -109,6 +116,7 @@ func LoadConfig(binary string) {
 		jety.SetDefault("loglevel", "info")
 		jety.SetDefault("cachedir", "/var/cache/grlx/sprout/files/provided")
 		jety.SetDefault("configroot", "/etc/grlx/")
+		jety.SetDefault("recipedir", filepath.Join("/", "srv", "grlx", "recipes", "prod"))
 		jety.SetDefault("farmerinterface", "localhost")
 		jety.SetDefault("farmerapiport", "5405")
 		jety.SetDefault("farmerbusport", "5406")
@@ -250,11 +258,19 @@ func LoadConfig(binary string) {
 	SproutID = jety.GetString("sproutid")
 	SproutPKI = jety.GetString("sproutpki")
 	SproutRootCA = jety.GetString("sproutrootca")
+	RecipeDir = jety.GetString("recipedir")
+	if RecipeDir == "" {
+		RecipeDir = filepath.Join("/", "srv", "grlx", "recipes", "prod")
+	}
 }
 
-// TODO actually validate the base path exists
+// BasePathValid checks that the configured recipe directory exists.
 func BasePathValid() bool {
-	return true
+	info, err := os.Stat(RecipeDir)
+	if err != nil {
+		return false
+	}
+	return info.IsDir()
 }
 
 func Init() string {
