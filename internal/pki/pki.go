@@ -97,8 +97,9 @@ func SetupPKISprout() {
 func createSproutID() string {
 	id, err := os.Hostname()
 	if err != nil {
-		// TODO use another method of derivation instead of panicking
-		panic(err)
+		// Fall back to "unknown" if hostname cannot be determined
+		log.Errorf("failed to get hostname for sprout ID: %v", err)
+		id = "unknown"
 	}
 	id = strings.ReplaceAll(id, "_", "-")
 	id = strings.TrimPrefix(id, "-")
@@ -326,8 +327,8 @@ func NKeyExists(id string, nkey string) (Registered bool, Matches bool) {
 	}
 	file, err := os.ReadFile(filename)
 	if err != nil {
-		// TODO determine how we could get an error here
-		log.Fatalf("Error reading in %s: %v", filename, err)
+		log.Errorf("error reading NKey file %s: %v", filename, err)
+		return true, false
 	}
 	content := string(file)
 	return true, content == nkey
@@ -343,7 +344,6 @@ func FetchRootCA(filename string) error {
 		return err
 	}
 	file, err := os.Create(RootCA)
-	// TODO sort out this panic
 	if err != nil {
 		return err
 	}

@@ -3,6 +3,7 @@ package hashers
 import (
 	"crypto/md5"
 	"crypto/sha1"
+	"crypto/sha256"
 	"crypto/sha512"
 	"errors"
 	"fmt"
@@ -56,9 +57,9 @@ func GuessHashType(hash string) string {
 	return "unknown"
 }
 
-// Given a filename, return a reader for the file
-// or an error if the file cannot be opened
-func FileToReader(file string) (io.Reader, error) {
+// FileToReader opens a file and returns an io.ReadCloser.
+// The caller is responsible for closing the returned ReadCloser.
+func FileToReader(file string) (io.ReadCloser, error) {
 	f, err := os.Open(file)
 	if err != nil {
 		return nil, err
@@ -67,6 +68,7 @@ func FileToReader(file string) (io.Reader, error) {
 }
 
 func MD5(file io.ReadCloser, expected string) (string, bool, error) {
+	defer file.Close()
 	var actual string
 	md5 := md5.New()
 	if _, err := io.Copy(md5, file); err != nil {
@@ -77,6 +79,7 @@ func MD5(file io.ReadCloser, expected string) (string, bool, error) {
 }
 
 func SHA1(file io.ReadCloser, expected string) (string, bool, error) {
+	defer file.Close()
 	var actual string
 	sha1 := sha1.New()
 	if _, err := io.Copy(sha1, file); err != nil {
@@ -87,28 +90,29 @@ func SHA1(file io.ReadCloser, expected string) (string, bool, error) {
 }
 
 func SHA256(file io.ReadCloser, expected string) (string, bool, error) {
+	defer file.Close()
 	var actual string
-	sha1 := sha1.New()
-	if _, err := io.Copy(sha1, file); err != nil {
+	sha256 := sha256.New()
+	if _, err := io.Copy(sha256, file); err != nil {
 		return actual, false, err
 	}
-	actual = fmt.Sprintf("%x", sha1.Sum(nil))
-
+	actual = fmt.Sprintf("%x", sha256.Sum(nil))
 	return actual, actual == expected, nil
 }
 
 func SHA512(file io.ReadCloser, expected string) (string, bool, error) {
+	defer file.Close()
 	var actual string
 	sha512 := sha512.New()
 	if _, err := io.Copy(sha512, file); err != nil {
 		return actual, false, err
 	}
 	actual = fmt.Sprintf("%x", sha512.Sum(nil))
-
 	return actual, actual == expected, nil
 }
 
 func CRC32(file io.ReadCloser, expected string) (string, bool, error) {
+	defer file.Close()
 	var actual string
 	table := crc32.IEEETable
 	crc := crc32.New(table)
@@ -116,6 +120,5 @@ func CRC32(file io.ReadCloser, expected string) (string, bool, error) {
 		return actual, false, err
 	}
 	actual = fmt.Sprintf("%x", crc.Sum(nil))
-
 	return actual, actual == expected, nil
 }

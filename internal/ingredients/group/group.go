@@ -22,10 +22,14 @@ func (g Group) Parse(id, method string, params map[string]interface{}) (cook.Rec
 	if params == nil {
 		params = map[string]interface{}{}
 	}
-	return Group{
+	parsed := Group{
 		id: id, method: method,
 		params: params,
-	}, nil
+	}
+	if err := parsed.validate(); err != nil {
+		return nil, err
+	}
+	return parsed, nil
 }
 
 func (g Group) validate() error {

@@ -112,8 +112,8 @@ func ReloadNKeys() error {
 		// sproutAccount.Name = account.SproutID
 		key, errGet := GetNKey(account.SproutID)
 		if errGet != nil {
-			// TODO handle error
-			panic(errGet)
+			log.Errorf("failed to get NKey for sprout %s: %v", account.SproutID, errGet)
+			continue
 		}
 		accountSubscribe := nats_server.SubjectPermission{Allow: []string{"grlx.sprouts." + account.SproutID + ".>"}}
 		accountPublish := nats_server.SubjectPermission{Allow: []string{"grlx.sprouts.announce." + account.SproutID, "_INBOX.>", "grlx.cook." + account.SproutID + ".>"}}

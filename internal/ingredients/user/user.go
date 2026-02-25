@@ -22,10 +22,14 @@ func (u User) Parse(id, method string, params map[string]interface{}) (cook.Reci
 	if params == nil {
 		params = map[string]interface{}{}
 	}
-	return User{
+	parsed := User{
 		id: id, method: method,
 		params: params,
-	}, nil
+	}
+	if err := parsed.validate(); err != nil {
+		return nil, err
+	}
+	return parsed, nil
 }
 
 func (u User) validate() error {

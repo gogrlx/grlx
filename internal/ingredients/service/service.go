@@ -108,18 +108,71 @@ func (s Service) Apply(ctx context.Context) (cook.Result, error) {
 	}
 }
 
-func (s Service) Test(context.Context) (cook.Result, error) {
-	// TODO implement test applies
+func (s Service) Test(ctx context.Context) (cook.Result, error) {
+	sp, err := NewServiceProvider(s.id, s.method, s.properties)
+	if err != nil {
+		return cook.Result{}, err
+	}
 	switch s.method {
 	case "masked":
+		isMasked, err := sp.IsMasked(ctx)
+		if err != nil {
+			return cook.Result{Succeeded: false, Failed: true}, err
+		}
+		if !isMasked {
+			return cook.Result{Succeeded: true, Changed: true, Notes: []fmt.Stringer{cook.SimpleNote(fmt.Sprintf("%s would be masked", s.name))}}, nil
+		}
+		return cook.Result{Succeeded: true, Notes: []fmt.Stringer{cook.SimpleNote(fmt.Sprintf("%s is already masked", s.name))}}, nil
 	case "unmasked":
+		isMasked, err := sp.IsMasked(ctx)
+		if err != nil {
+			return cook.Result{Succeeded: false, Failed: true}, err
+		}
+		if isMasked {
+			return cook.Result{Succeeded: true, Changed: true, Notes: []fmt.Stringer{cook.SimpleNote(fmt.Sprintf("%s would be unmasked", s.name))}}, nil
+		}
+		return cook.Result{Succeeded: true, Notes: []fmt.Stringer{cook.SimpleNote(fmt.Sprintf("%s is already unmasked", s.name))}}, nil
 	case "running":
+		isRunning, err := sp.IsRunning(ctx)
+		if err != nil {
+			return cook.Result{Succeeded: false, Failed: true}, err
+		}
+		if !isRunning {
+			return cook.Result{Succeeded: true, Changed: true, Notes: []fmt.Stringer{cook.SimpleNote(fmt.Sprintf("%s would be started", s.name))}}, nil
+		}
+		return cook.Result{Succeeded: true, Notes: []fmt.Stringer{cook.SimpleNote(fmt.Sprintf("%s is already running", s.name))}}, nil
 	case "stopped":
+		isRunning, err := sp.IsRunning(ctx)
+		if err != nil {
+			return cook.Result{Succeeded: false, Failed: true}, err
+		}
+		if isRunning {
+			return cook.Result{Succeeded: true, Changed: true, Notes: []fmt.Stringer{cook.SimpleNote(fmt.Sprintf("%s would be stopped", s.name))}}, nil
+		}
+		return cook.Result{Succeeded: true, Notes: []fmt.Stringer{cook.SimpleNote(fmt.Sprintf("%s is already stopped", s.name))}}, nil
 	case "enabled":
+		isEnabled, err := sp.IsEnabled(ctx)
+		if err != nil {
+			return cook.Result{Succeeded: false, Failed: true}, err
+		}
+		if !isEnabled {
+			return cook.Result{Succeeded: true, Changed: true, Notes: []fmt.Stringer{cook.SimpleNote(fmt.Sprintf("%s would be enabled", s.name))}}, nil
+		}
+		return cook.Result{Succeeded: true, Notes: []fmt.Stringer{cook.SimpleNote(fmt.Sprintf("%s is already enabled", s.name))}}, nil
 	case "disabled":
+		isEnabled, err := sp.IsEnabled(ctx)
+		if err != nil {
+			return cook.Result{Succeeded: false, Failed: true}, err
+		}
+		if isEnabled {
+			return cook.Result{Succeeded: true, Changed: true, Notes: []fmt.Stringer{cook.SimpleNote(fmt.Sprintf("%s would be disabled", s.name))}}, nil
+		}
+		return cook.Result{Succeeded: true, Notes: []fmt.Stringer{cook.SimpleNote(fmt.Sprintf("%s is already disabled", s.name))}}, nil
 	case "restarted":
+		return cook.Result{Succeeded: true, Changed: true, Notes: []fmt.Stringer{cook.SimpleNote(fmt.Sprintf("%s would be restarted", s.name))}}, nil
+	default:
+		return cook.Result{}, ingredients.ErrInvalidMethod
 	}
-	return cook.Result{}, nil
 }
 
 func (s Service) Properties() (map[string]interface{}, error) {
