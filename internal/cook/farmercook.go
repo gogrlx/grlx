@@ -16,7 +16,6 @@ import (
 
 	"github.com/gogrlx/grlx/v2/internal/config"
 	"github.com/gogrlx/grlx/v2/internal/props"
-	"github.com/gogrlx/grlx/v2/internal/types"
 )
 
 func populateFuncMap(sproutID string) template.FuncMap {
@@ -27,7 +26,7 @@ func populateFuncMap(sproutID string) template.FuncMap {
 	return v
 }
 
-func SendCookEvent(sproutID string, recipeID types.RecipeName, JID string) error {
+func SendCookEvent(sproutID string, recipeID RecipeName, JID string) error {
 	basepath := getBasePath()
 	includes, err := collectAllIncludes(sproutID, basepath, recipeID)
 	if err != nil {
@@ -83,17 +82,17 @@ func SendCookEvent(sproutID string, recipeID types.RecipeName, JID string) error
 	if err != nil {
 		return err
 	}
-	validSteps := []types.Step{}
+	validSteps := []Step{}
 	for _, step := range tree {
 		validSteps = append(validSteps, *step)
 	}
-	rEnvelope := types.RecipeEnvelope{
+	rEnvelope := RecipeEnvelope{
 		JobID: JID,
 		Steps: validSteps,
 	}
 	b, _ := json.Marshal(rEnvelope)
 	log.Noticef("cooking sprout %s: %s", sproutID, JID)
-	var ack types.Ack
+	var ack Ack
 	msg, err := conn.Request("grlx.sprouts."+sproutID+".cook", b, 30*time.Second)
 	if err != nil {
 		return err
@@ -115,7 +114,7 @@ func GenerateJobID() string {
 	return uuid.New().String()
 }
 
-func ResolveRecipeFilePath(basepath string, recipeID types.RecipeName) (string, error) {
+func ResolveRecipeFilePath(basepath string, recipeID RecipeName) (string, error) {
 	path := string(recipeID)
 	basepath = filepath.Clean(basepath)
 	path = filepath.Clean(path)

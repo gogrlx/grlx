@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 
 	"github.com/gogrlx/grlx/v2/internal/config"
+	"github.com/gogrlx/grlx/v2/internal/cook"
 	"github.com/gogrlx/grlx/v2/internal/ingredients"
-	"github.com/gogrlx/grlx/v2/internal/types"
 )
 
 var ErrFileMethodUndefined = errors.New("file method undefined")
@@ -22,7 +22,7 @@ type File struct {
 }
 
 // TODO error check, set id, properly parse
-func (f File) Parse(id, method string, params map[string]interface{}) (types.RecipeCooker, error) {
+func (f File) Parse(id, method string, params map[string]interface{}) (cook.RecipeCooker, error) {
 	if params == nil {
 		params = make(map[string]interface{})
 	}
@@ -46,10 +46,10 @@ func (f File) validate() error {
 			if v.Key == "name" {
 				name, ok := f.params[v.Key].(string)
 				if !ok {
-					return types.ErrMissingName
+					return ingredients.ErrMissingName
 				}
 				if name == "" {
-					return types.ErrMissingName
+					return ingredients.ErrMissingName
 				}
 
 			} else {
@@ -66,14 +66,14 @@ func (f File) validate() error {
 // this is a helper func to replace fallthroughs so I can keep the
 // cases sorted alphabetically. It's not exported and won't stick around.
 // TODO remove undef func
-func (f File) undef() (types.Result, error) {
-	return types.Result{
+func (f File) undef() (cook.Result, error) {
+	return cook.Result{
 		Succeeded: false, Failed: true,
 		Changed: false, Notes: nil,
 	}, errors.Join(ErrFileMethodUndefined, fmt.Errorf("method %s undefined", f.method))
 }
 
-func (f File) Test(ctx context.Context) (types.Result, error) {
+func (f File) Test(ctx context.Context) (cook.Result, error) {
 	// Technically, we should be able to do the name check here, but
 	// I'm not sure if that's a good idea or not.
 	// For now, the name check is done in the method functions.
@@ -114,7 +114,7 @@ func (f File) Test(ctx context.Context) (types.Result, error) {
 func (f File) dest() (string, error) {
 	name, ok := f.params["name"].(string)
 	if !ok || name == "" {
-		return "", types.ErrMissingName
+		return "", ingredients.ErrMissingName
 	}
 	basename := filepath.Base(name)
 	if sv, okSkip := f.params["skip_verify"].(bool); okSkip && sv {
@@ -122,28 +122,28 @@ func (f File) dest() (string, error) {
 	}
 	hash, ok := f.params["hash"].(string)
 	if !ok || hash == "" {
-		return "", types.ErrMissingHash
+		return "", ErrMissingHash
 	}
 	return filepath.Join(config.CacheDir, hash), nil
 }
 
-func (f File) cacheSources(ctx context.Context, test bool) (types.Result, error) {
+func (f File) cacheSources(ctx context.Context, test bool) (cook.Result, error) {
 	name, ok := f.params["name"].(string)
 	if !ok {
-		return types.Result{
+		return cook.Result{
 			Succeeded: false, Failed: true,
-		}, types.ErrMissingName
+		}, ingredients.ErrMissingName
 	}
 	name = filepath.Clean(name)
 	if name == "" {
-		return types.Result{
+		return cook.Result{
 			Succeeded: false, Failed: true,
-		}, types.ErrMissingName
+		}, ingredients.ErrMissingName
 	}
 	if name == "/" {
-		return types.Result{
+		return cook.Result{
 			Succeeded: false, Failed: true,
-		}, types.ErrModifyRoot
+		}, ErrModifyRoot
 	}
 	{
 		sourceDest := ""
@@ -154,21 +154,21 @@ func (f File) cacheSources(ctx context.Context, test bool) (types.Result, error)
 					"name": name + "-source",
 				})
 				if err != nil {
-					return types.Result{
+					return cook.Result{
 						Succeeded: false, Failed: true,
 						Changed: false, Notes: []fmt.Stringer{
-							types.SimpleNote(fmt.Sprintf("failed to cache source %s", srcFile)),
+							cook.SimpleNote(fmt.Sprintf("failed to cache source %s", srcFile)),
 						},
 					}, err
 				}
 				cacheRes, err := srcFile.Apply(ctx)
 				if err != nil || !cacheRes.Succeeded {
-					return types.Result{
+					return cook.Result{
 						Succeeded: false, Failed: true,
 						Changed: false, Notes: []fmt.Stringer{
-							types.SimpleNote(fmt.Sprintf("failed to cache source %s", srcFile)),
+							cook.SimpleNote(fmt.Sprintf("failed to cache source %s", srcFile)),
 						},
-					}, errors.Join(err, types.ErrCacheFailure)
+					}, errors.Join(err, ErrCacheFailure)
 				}
 				sourceDest, err = srcFile.(*File).dest()
 			} else if skipVerify, ok := f.params["skip_verify"].(bool); ok && skipVerify {
@@ -177,35 +177,35 @@ func (f File) cacheSources(ctx context.Context, test bool) (types.Result, error)
 					"skip_verify": skipVerify, "name": name + "-source",
 				})
 				if err != nil {
-					return types.Result{
+					return cook.Result{
 						Succeeded: false, Failed: true,
 						Changed: false, Notes: []fmt.Stringer{
-							types.SimpleNote(fmt.Sprintf("failed to cache source %s", srcFile)),
+							cook.SimpleNote(fmt.Sprintf("failed to cache source %s", srcFile)),
 						},
 					}, err
 				}
 				cacheRes, err := srcFile.Apply(ctx)
 				if err != nil || !cacheRes.Succeeded {
-					return types.Result{
+					return cook.Result{
 						Succeeded: false, Failed: true,
 						Changed: false, Notes: []fmt.Stringer{
-							types.SimpleNote(fmt.Sprintf("failed to cache source %s", srcFile)),
+							cook.SimpleNote(fmt.Sprintf("failed to cache source %s", srcFile)),
 						},
-					}, errors.Join(err, types.ErrCacheFailure)
+					}, errors.Join(err, ErrCacheFailure)
 				}
 				sourceDest, err = srcFile.(*File).dest()
 			} else {
-				return types.Result{
+				return cook.Result{
 					Succeeded: false, Failed: true,
-				}, types.ErrMissingHash
+				}, ErrMissingHash
 			}
 		}
 		_, err := os.Stat(sourceDest)
 		if err != nil {
-			return types.Result{
+			return cook.Result{
 				Succeeded: false, Failed: true,
 				Changed: false, Notes: []fmt.Stringer{
-					types.SimpleNote(fmt.Sprintf("failed to open cached source %s", sourceDest)),
+					cook.SimpleNote(fmt.Sprintf("failed to open cached source %s", sourceDest)),
 				},
 			}, err
 		}
@@ -220,17 +220,17 @@ func (f File) cacheSources(ctx context.Context, test bool) (types.Result, error)
 				if skipVerify, ok := f.params["skip_verify"].(bool); ok && skipVerify {
 					skip = true
 				} else if len(srces) != len(srcHashes) {
-					return types.Result{
+					return cook.Result{
 						Succeeded: false, Failed: true,
 						Changed: false, Notes: []fmt.Stringer{
-							types.SimpleNote("sources and source_hashes must be the same length"),
+							cook.SimpleNote("sources and source_hashes must be the same length"),
 						},
-					}, types.ErrMissingHash
+					}, ErrMissingHash
 				}
 			}
 		}
 		for i, src := range srces {
-			var file types.RecipeCooker
+			var file cook.RecipeCooker
 			var err error
 			if srcStr, ok := src.(string); ok && srcStr != "" {
 				cachedName := fmt.Sprintf("%s-source-%d", f.id, i)
@@ -238,12 +238,12 @@ func (f File) cacheSources(ctx context.Context, test bool) (types.Result, error)
 					if srcHash, ok := srcHashes[i].(string); ok && srcHash != "" {
 						cachedName = srcHash
 					} else {
-						return types.Result{
+						return cook.Result{
 							Succeeded: false, Failed: true,
 							Changed: false, Notes: []fmt.Stringer{
-								types.SimpleNote(fmt.Sprintf("missing source_hash for source %s", srcStr)),
+								cook.SimpleNote(fmt.Sprintf("missing source_hash for source %s", srcStr)),
 							},
-						}, types.ErrMissingHash
+						}, ErrMissingHash
 					}
 				}
 				file, err = f.Parse(fmt.Sprintf("%s-source-%d", f.id, i), "cached", map[string]interface{}{
@@ -251,38 +251,38 @@ func (f File) cacheSources(ctx context.Context, test bool) (types.Result, error)
 					"skip_verify": skip, "name": cachedName,
 				})
 				if err != nil {
-					return types.Result{
+					return cook.Result{
 						Succeeded: false, Failed: true,
 						Changed: false, Notes: []fmt.Stringer{
-							types.SimpleNote(fmt.Sprintf("failed to cache source %s", srcStr)),
+							cook.SimpleNote(fmt.Sprintf("failed to cache source %s", srcStr)),
 						},
 					}, err
 				}
 			} else {
-				return types.Result{
+				return cook.Result{
 					Succeeded: false, Failed: true,
 					Changed: false, Notes: []fmt.Stringer{
-						types.SimpleNote(fmt.Sprintf("invalid source %v", src)),
+						cook.SimpleNote(fmt.Sprintf("invalid source %v", src)),
 					},
-				}, types.ErrMissingSource
+				}, ErrMissingSource
 			}
 			cacheRes, err := file.Apply(ctx)
 			if err != nil || !cacheRes.Succeeded {
-				return types.Result{
+				return cook.Result{
 					Succeeded: false, Failed: true,
 					Changed: false, Notes: []fmt.Stringer{
-						types.SimpleNote(fmt.Sprintf("failed to cache source %s", src)),
+						cook.SimpleNote(fmt.Sprintf("failed to cache source %s", src)),
 					},
-				}, errors.Join(err, types.ErrCacheFailure)
+				}, errors.Join(err, ErrCacheFailure)
 			}
 			sourceDest, err := file.(*File).dest()
 			if err != nil {
 				_, err := os.Stat(sourceDest)
 				if err != nil {
-					return types.Result{
+					return cook.Result{
 						Succeeded: false, Failed: true,
 						Changed: false, Notes: []fmt.Stringer{
-							types.SimpleNote(fmt.Sprintf("failed to open cached source %s", sourceDest)),
+							cook.SimpleNote(fmt.Sprintf("failed to open cached source %s", sourceDest)),
 						},
 					}, err
 				}
@@ -297,21 +297,21 @@ func (f File) cacheSources(ctx context.Context, test bool) (types.Result, error)
 					"name": name + "-source",
 				})
 				if err != nil {
-					return types.Result{
+					return cook.Result{
 						Succeeded: false, Failed: true,
 						Changed: false, Notes: []fmt.Stringer{
-							types.SimpleNote(fmt.Sprintf("failed to cache source %s", srcFile)),
+							cook.SimpleNote(fmt.Sprintf("failed to cache source %s", srcFile)),
 						},
 					}, err
 				}
 				cacheRes, err := srcFile.Apply(ctx)
 				if err != nil || !cacheRes.Succeeded {
-					return types.Result{
+					return cook.Result{
 						Succeeded: false, Failed: true,
 						Changed: false, Notes: []fmt.Stringer{
-							types.SimpleNote(fmt.Sprintf("failed to cache source %s", srcFile)),
+							cook.SimpleNote(fmt.Sprintf("failed to cache source %s", srcFile)),
 						},
-					}, errors.Join(err, types.ErrCacheFailure)
+					}, errors.Join(err, ErrCacheFailure)
 				}
 				sourceDest, err = srcFile.(*File).dest()
 			} else if skipVerify, ok := f.params["skip_verify"].(bool); ok && skipVerify {
@@ -320,40 +320,40 @@ func (f File) cacheSources(ctx context.Context, test bool) (types.Result, error)
 					"skip_verify": skipVerify, "name": name + "-source",
 				})
 				if err != nil {
-					return types.Result{
+					return cook.Result{
 						Succeeded: false, Failed: true,
 						Changed: false, Notes: []fmt.Stringer{
-							types.SimpleNote(fmt.Sprintf("failed to cache source %s", srcFile)),
+							cook.SimpleNote(fmt.Sprintf("failed to cache source %s", srcFile)),
 						},
 					}, err
 				}
 				cacheRes, err := srcFile.Apply(ctx)
 				if err != nil || !cacheRes.Succeeded {
-					return types.Result{
+					return cook.Result{
 						Succeeded: false, Failed: true,
 						Changed: false, Notes: []fmt.Stringer{
-							types.SimpleNote(fmt.Sprintf("failed to cache source %s", srcFile)),
+							cook.SimpleNote(fmt.Sprintf("failed to cache source %s", srcFile)),
 						},
-					}, errors.Join(err, types.ErrCacheFailure)
+					}, errors.Join(err, ErrCacheFailure)
 				}
 				sourceDest, err = srcFile.(*File).dest()
 			} else {
-				return types.Result{
+				return cook.Result{
 					Succeeded: false, Failed: true,
-				}, types.ErrMissingHash
+				}, ErrMissingHash
 			}
 		}
 		_, err := os.Stat(sourceDest)
 		if err != nil {
-			return types.Result{
+			return cook.Result{
 				Succeeded: false, Failed: true,
 				Changed: false, Notes: []fmt.Stringer{
-					types.SimpleNote(fmt.Sprintf("failed to open cached source %s", sourceDest)),
+					cook.SimpleNote(fmt.Sprintf("failed to open cached source %s", sourceDest)),
 				},
 			}, err
 		}
 	}
-	return types.Result{
+	return cook.Result{
 		Succeeded: true, Failed: false,
 	}, nil
 }
@@ -382,7 +382,7 @@ func stringSliceIsSubset(a, b []string) (bool, []string) {
 	return len(missing) == 0, missing
 }
 
-func (f File) Apply(ctx context.Context) (types.Result, error) {
+func (f File) Apply(ctx context.Context) (cook.Result, error) {
 	switch f.method {
 	case "absent":
 		return f.absent(ctx, false)
@@ -411,7 +411,7 @@ func (f File) Apply(ctx context.Context) (types.Result, error) {
 		return f.symlink(ctx, false)
 	default:
 		// TODO define error type
-		return types.Result{
+		return cook.Result{
 			Succeeded: false, Failed: true,
 			Changed: false, Notes: nil,
 		}, fmt.Errorf("method %s undefined", f.method)

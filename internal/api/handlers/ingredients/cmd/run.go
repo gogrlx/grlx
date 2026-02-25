@@ -8,15 +8,15 @@ import (
 	"sync"
 
 	//. "github.com/gogrlx/grlx/v2/internal/config"
+	apitypes "github.com/gogrlx/grlx/v2/internal/api/types"
 	"github.com/gogrlx/grlx/v2/internal/ingredients/cmd"
 	"github.com/gogrlx/grlx/v2/internal/pki"
-	"github.com/gogrlx/grlx/v2/internal/types"
 	log "github.com/taigrr/log-socket/log"
 )
 
 // TODO: add callback event for when new key is PUT to the server
 func HCmdRun(w http.ResponseWriter, r *http.Request) {
-	var targetAction types.TargetedAction
+	var targetAction apitypes.TargetedAction
 	// grab the body of the req
 	err := json.NewDecoder(r.Body).Decode(&targetAction)
 	if err != nil {
@@ -25,7 +25,7 @@ func HCmdRun(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	jw, _ := json.Marshal(targetAction.Action)
-	var command types.CmdRun
+	var command apitypes.CmdRun
 	err = json.NewDecoder(bytes.NewBuffer(jw)).Decode(&command)
 	if err != nil {
 		log.Trace("An invalid request was made.")
@@ -41,7 +41,7 @@ func HCmdRun(w http.ResponseWriter, r *http.Request) {
 		}
 		registered, _ := pki.NKeyExists(target.SproutID, "")
 		if !registered {
-			var results types.TargetedResults
+			var results apitypes.TargetedResults
 			results.Results = nil
 			log.Trace("An unknown Sprout was pinged. Ignoring.")
 			jw, _ := json.Marshal(results)
@@ -51,14 +51,14 @@ func HCmdRun(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	var results types.TargetedResults
+	var results apitypes.TargetedResults
 	var wg sync.WaitGroup
 	var m sync.Mutex
 	results.Results = make(map[string]interface{})
 	for _, target := range targetAction.Target {
 		wg.Add(1)
 
-		go func(target types.KeyManager) {
+		go func(target pki.KeyManager) {
 			defer wg.Done()
 			result, err := cmd.FRun(target, command)
 			if err != nil {

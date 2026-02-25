@@ -11,13 +11,11 @@ import (
 
 	"github.com/taigrr/jety"
 	"github.com/taigrr/log-socket/log"
-
-	"github.com/gogrlx/grlx/v2/internal/types"
 )
 
 const GrlxExt = "grlx"
 
-var BuildInfo types.Version
+var BuildInfo Version
 
 var configLoaded sync.Once
 

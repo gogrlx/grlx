@@ -7,12 +7,11 @@ import (
 	"sync"
 
 	"github.com/gogrlx/grlx/v2/internal/config"
-	"github.com/gogrlx/grlx/v2/internal/types"
 )
 
 var (
 	provTex sync.Mutex
-	provMap map[string]types.ServiceProvider
+	provMap map[string]ServiceProvider
 
 	ErrUnknownInit   = errors.New("unknown init system")
 	ErrDuplicateInit = errors.New("provider for init system already initilaized")
@@ -20,10 +19,10 @@ var (
 )
 
 func init() {
-	provMap = make(map[string]types.ServiceProvider)
+	provMap = make(map[string]ServiceProvider)
 }
 
-func RegisterProvider(provider types.ServiceProvider) error {
+func RegisterProvider(provider ServiceProvider) error {
 	provTex.Lock()
 	defer provTex.Unlock()
 	var err error
@@ -65,7 +64,7 @@ func guessInit() string {
 	return string(f)
 }
 
-func NewServiceProvider(id string, method string, params map[string]interface{}) (types.ServiceProvider, error) {
+func NewServiceProvider(id string, method string, params map[string]interface{}) (ServiceProvider, error) {
 	provTex.Lock()
 	defer provTex.Unlock()
 	provider, ok := provMap[guessInit()]

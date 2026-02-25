@@ -6,8 +6,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/gogrlx/grlx/v2/internal/cook"
 	"github.com/gogrlx/grlx/v2/internal/ingredients"
-	"github.com/gogrlx/grlx/v2/internal/types"
 )
 
 var ErrCmdMethodUndefined = fmt.Errorf("cmd method undefined")
@@ -19,7 +19,7 @@ type Cmd struct {
 }
 
 // TODO parse out the map here
-func (c Cmd) Parse(id, method string, params map[string]interface{}) (types.RecipeCooker, error) {
+func (c Cmd) Parse(id, method string, params map[string]interface{}) (cook.RecipeCooker, error) {
 	if params == nil {
 		params = map[string]interface{}{}
 	}
@@ -43,10 +43,10 @@ func (c Cmd) validate() error {
 			if v.Key == "name" {
 				name, ok := c.params[v.Key].(string)
 				if !ok {
-					return types.ErrMissingName
+					return ingredients.ErrMissingName
 				}
 				if name == "" {
-					return types.ErrMissingName
+					return ingredients.ErrMissingName
 				}
 
 			} else {
@@ -59,23 +59,23 @@ func (c Cmd) validate() error {
 	return nil
 }
 
-func (c Cmd) Test(ctx context.Context) (types.Result, error) {
+func (c Cmd) Test(ctx context.Context) (cook.Result, error) {
 	switch c.method {
 	case "run":
 		return c.run(ctx, true)
 	default:
-		return types.Result{Succeeded: false, Failed: true, Changed: false, Notes: nil},
+		return cook.Result{Succeeded: false, Failed: true, Changed: false, Notes: nil},
 			errors.Join(ErrCmdMethodUndefined, fmt.Errorf("method %s undefined", c.method))
 
 	}
 }
 
-func (c Cmd) Apply(ctx context.Context) (types.Result, error) {
+func (c Cmd) Apply(ctx context.Context) (cook.Result, error) {
 	switch c.method {
 	case "run":
 		return c.run(ctx, false)
 	default:
-		return types.Result{Succeeded: false, Failed: true, Changed: false, Notes: nil},
+		return cook.Result{Succeeded: false, Failed: true, Changed: false, Notes: nil},
 			errors.Join(ErrCmdMethodUndefined, fmt.Errorf("method %s undefined", c.method))
 
 	}

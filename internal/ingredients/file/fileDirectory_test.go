@@ -7,7 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/gogrlx/grlx/v2/internal/types"
+	"github.com/gogrlx/grlx/v2/internal/cook"
+	"github.com/gogrlx/grlx/v2/internal/ingredients"
 )
 
 func TestDirectory(t *testing.T) {
@@ -20,7 +21,7 @@ func TestDirectory(t *testing.T) {
 	tests := []struct {
 		name     string
 		params   map[string]interface{}
-		expected types.Result
+		expected cook.Result
 		error    error
 		test     bool
 	}{
@@ -29,34 +30,34 @@ func TestDirectory(t *testing.T) {
 			params: map[string]interface{}{
 				"name": 1,
 			},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: false,
 				Failed:    true,
 				Notes:     []fmt.Stringer{},
 			},
-			error: types.ErrMissingName,
+			error: ingredients.ErrMissingName,
 		},
 		{
 			name: "DirectoryRoot",
 			params: map[string]interface{}{
 				"name": "/",
 			},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: false,
 				Failed:    true,
 				Notes:     []fmt.Stringer{},
 			},
-			error: types.ErrDeleteRoot,
+			error: ErrDeleteRoot,
 		},
 		{
 			name: "DirectoryExistingNoAction",
 			params: map[string]interface{}{
 				"name": sampleDir,
 			},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: true,
 				Failed:    false,
-				Notes:     []fmt.Stringer{types.Snprintf("directory %s already exists", sampleDir)},
+				Notes:     []fmt.Stringer{cook.Snprintf("directory %s already exists", sampleDir)},
 			},
 			error: nil,
 		},
@@ -66,10 +67,10 @@ func TestDirectory(t *testing.T) {
 				"name":     sampleDir,
 				"dir_mode": "755",
 			},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: true,
 				Failed:    false,
-				Notes:     []fmt.Stringer{types.Snprintf("directory %s already exists", sampleDir), types.Snprintf("chmod %s to 755", sampleDir)},
+				Notes:     []fmt.Stringer{cook.Snprintf("directory %s already exists", sampleDir), cook.Snprintf("chmod %s to 755", sampleDir)},
 			},
 			error: nil,
 		},
@@ -80,10 +81,10 @@ func TestDirectory(t *testing.T) {
 				"dir_mode": "755",
 				"makedirs": true,
 			},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: true,
 				Failed:    false,
-				Notes:     []fmt.Stringer{types.Snprintf("directory %s already exists", sampleDir), types.Snprintf("would chmod %s to 755", sampleDir)},
+				Notes:     []fmt.Stringer{cook.Snprintf("directory %s already exists", sampleDir), cook.Snprintf("would chmod %s to 755", sampleDir)},
 			},
 			test:  true,
 			error: nil,
@@ -95,7 +96,7 @@ func TestDirectory(t *testing.T) {
 				"dir_mode": "755",
 				"makedirs": false,
 			},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: false,
 				Failed:    true,
 				Notes:     []fmt.Stringer{},
@@ -109,10 +110,10 @@ func TestDirectory(t *testing.T) {
 				"file_mode": "755",
 				"makedirs":  true,
 			},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: true,
 				Failed:    false,
-				Notes:     []fmt.Stringer{types.Snprintf("directory %s already exists", sampleDir), types.Snprintf("would chmod %s to 755", sampleDir)},
+				Notes:     []fmt.Stringer{cook.Snprintf("directory %s already exists", sampleDir), cook.Snprintf("would chmod %s to 755", sampleDir)},
 			},
 			test:  true,
 			error: nil,
@@ -125,7 +126,7 @@ func TestDirectory(t *testing.T) {
 				"file_mode": "755",
 				"makedirs":  false,
 			},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: false,
 				Failed:    true,
 				Notes:     []fmt.Stringer{},

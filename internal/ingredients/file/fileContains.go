@@ -11,10 +11,11 @@ import (
 	"path/filepath"
 	"sort"
 
-	"github.com/gogrlx/grlx/v2/internal/types"
+	"github.com/gogrlx/grlx/v2/internal/cook"
+	"github.com/gogrlx/grlx/v2/internal/ingredients"
 )
 
-func (f File) contains(ctx context.Context, test bool) (types.Result, bytes.Buffer, error) {
+func (f File) contains(ctx context.Context, test bool) (cook.Result, bytes.Buffer, error) {
 	// TODO
 	// "template": "bool",
 
@@ -22,20 +23,20 @@ func (f File) contains(ctx context.Context, test bool) (types.Result, bytes.Buff
 	notes := []fmt.Stringer{}
 	name, ok := f.params["name"].(string)
 	if !ok {
-		return types.Result{
+		return cook.Result{
 			Succeeded: false, Failed: true, Notes: notes,
-		}, content, types.ErrMissingName
+		}, content, ingredients.ErrMissingName
 	}
 	name = filepath.Clean(name)
 	if name == "" {
-		return types.Result{
+		return cook.Result{
 			Succeeded: false, Failed: true, Notes: notes,
-		}, content, types.ErrMissingName
+		}, content, ingredients.ErrMissingName
 	}
 	if name == "/" {
-		return types.Result{
+		return cook.Result{
 			Succeeded: false, Failed: true, Notes: notes,
-		}, content, types.ErrModifyRoot
+		}, content, ErrModifyRoot
 	}
 	{
 		if text, ok := f.params["text"].(string); ok && text != "" {
@@ -56,8 +57,8 @@ func (f File) contains(ctx context.Context, test bool) (types.Result, bytes.Buff
 					"name": name + "-source",
 				})
 				if err != nil {
-					notes = append(notes, types.Snprintf("failed to cache source %s", srcFile))
-					return types.Result{
+					notes = append(notes, cook.Snprintf("failed to cache source %s", srcFile))
+					return cook.Result{
 						Succeeded: false, Failed: true,
 						Changed: false, Notes: notes,
 					}, content, err
@@ -65,11 +66,11 @@ func (f File) contains(ctx context.Context, test bool) (types.Result, bytes.Buff
 				cacheRes, err := srcFile.Apply(ctx)
 				notes = append(notes, cacheRes.Notes...)
 				if err != nil || !cacheRes.Succeeded {
-					notes = append(notes, types.Snprintf("failed to cache source %s", srcFile))
-					return types.Result{
+					notes = append(notes, cook.Snprintf("failed to cache source %s", srcFile))
+					return cook.Result{
 						Succeeded: false, Failed: true,
 						Changed: false, Notes: notes,
-					}, content, errors.Join(err, types.ErrCacheFailure)
+					}, content, errors.Join(err, ErrCacheFailure)
 				}
 				sourceDest, err = srcFile.(*File).dest()
 			} else if skipVerify, ok := f.params["skip_verify"].(bool); ok && skipVerify {
@@ -78,30 +79,30 @@ func (f File) contains(ctx context.Context, test bool) (types.Result, bytes.Buff
 					"skip_verify": skipVerify, "name": name + "-source",
 				})
 				if err != nil {
-					notes = append(notes, types.Snprintf("failed to cache source %s", srcFile))
-					return types.Result{
+					notes = append(notes, cook.Snprintf("failed to cache source %s", srcFile))
+					return cook.Result{
 						Succeeded: false, Failed: true,
 						Changed: false, Notes: notes,
 					}, content, err
 				}
 				cacheRes, err := srcFile.Apply(ctx)
 				if err != nil || !cacheRes.Succeeded {
-					notes = append(notes, types.Snprintf("failed to cache source %s", srcFile))
-					return types.Result{
+					notes = append(notes, cook.Snprintf("failed to cache source %s", srcFile))
+					return cook.Result{
 						Succeeded: false, Failed: true,
 						Changed: false, Notes: notes,
-					}, content, errors.Join(err, types.ErrCacheFailure)
+					}, content, errors.Join(err, ErrCacheFailure)
 				}
 				sourceDest, err = srcFile.(*File).dest()
 			} else {
-				return types.Result{
+				return cook.Result{
 					Succeeded: false, Failed: true, Notes: notes,
-				}, content, types.ErrMissingHash
+				}, content, ErrMissingHash
 			}
 			f, err := os.Open(sourceDest)
 			if err != nil {
-				notes = append(notes, types.Snprintf("failed to open cached source %s", sourceDest))
-				return types.Result{
+				notes = append(notes, cook.Snprintf("failed to open cached source %s", sourceDest))
+				return cook.Result{
 					Succeeded: false, Failed: true,
 					Changed: false, Notes: notes,
 				}, content, err
@@ -120,16 +121,16 @@ func (f File) contains(ctx context.Context, test bool) (types.Result, bytes.Buff
 				if skipVerify, ok := f.params["skip_verify"].(bool); ok && skipVerify {
 					skip = true
 				} else if len(srces) != len(srcHashes) {
-					notes = append(notes, types.SimpleNote("sources and source_hashes must be the same length"))
-					return types.Result{
+					notes = append(notes, cook.SimpleNote("sources and source_hashes must be the same length"))
+					return cook.Result{
 						Succeeded: false, Failed: true,
 						Changed: false, Notes: notes,
-					}, content, types.ErrMissingHash
+					}, content, ErrMissingHash
 				}
 			}
 		}
 		for i, src := range srces {
-			var file types.RecipeCooker
+			var file cook.RecipeCooker
 			var err error
 			if srcStr, ok := src.(string); ok && srcStr != "" {
 				cachedName := fmt.Sprintf("%s-source-%d", f.id, i)
@@ -137,11 +138,11 @@ func (f File) contains(ctx context.Context, test bool) (types.Result, bytes.Buff
 					if srcHash, ok := srcHashes[i].(string); ok && srcHash != "" {
 						cachedName = srcHash
 					} else {
-						notes = append(notes, types.Snprintf("missing source_hash for source %s", srcStr))
-						return types.Result{
+						notes = append(notes, cook.Snprintf("missing source_hash for source %s", srcStr))
+						return cook.Result{
 							Succeeded: false, Failed: true,
 							Changed: false, Notes: notes,
-						}, content, types.ErrMissingHash
+						}, content, ErrMissingHash
 					}
 				}
 				file, err = f.Parse(fmt.Sprintf("%s-source-%d", f.id, i), "cached", map[string]interface{}{
@@ -149,34 +150,34 @@ func (f File) contains(ctx context.Context, test bool) (types.Result, bytes.Buff
 					"skip_verify": skip, "name": cachedName,
 				})
 				if err != nil {
-					notes = append(notes, types.Snprintf("failed to cache source %s", srcStr))
-					return types.Result{
+					notes = append(notes, cook.Snprintf("failed to cache source %s", srcStr))
+					return cook.Result{
 						Succeeded: false, Failed: true,
 						Changed: false, Notes: notes,
 					}, content, err
 				}
 			} else {
-				notes = append(notes, types.Snprintf("invalid source %v", src))
-				return types.Result{
+				notes = append(notes, cook.Snprintf("invalid source %v", src))
+				return cook.Result{
 					Succeeded: false, Failed: true,
 					Changed: false, Notes: notes,
-				}, content, types.ErrMissingSource
+				}, content, ErrMissingSource
 			}
 			cacheRes, err := file.Apply(ctx)
 			notes = append(notes, cacheRes.Notes...)
 			if err != nil || !cacheRes.Succeeded {
-				notes = append(notes, types.Snprintf("failed to cache source %s", src))
-				return types.Result{
+				notes = append(notes, cook.Snprintf("failed to cache source %s", src))
+				return cook.Result{
 					Succeeded: false, Failed: true,
 					Changed: false, Notes: notes,
-				}, content, errors.Join(err, types.ErrCacheFailure)
+				}, content, errors.Join(err, ErrCacheFailure)
 			}
 			sourceDest, err := file.(*File).dest()
 			if err != nil {
 				f, err := os.Open(sourceDest)
 				if err != nil {
-					notes = append(notes, types.Snprintf("failed to open cached source %s", sourceDest))
-					return types.Result{
+					notes = append(notes, cook.Snprintf("failed to open cached source %s", sourceDest))
+					return cook.Result{
 						Succeeded: false, Failed: true,
 						Changed: false, Notes: notes,
 					}, content, err
@@ -184,7 +185,7 @@ func (f File) contains(ctx context.Context, test bool) (types.Result, bytes.Buff
 				defer f.Close()
 				io.Copy(&content, f)
 				if test {
-					notes = append(notes, types.Snprintf("copy %s", f.Name()))
+					notes = append(notes, cook.Snprintf("copy %s", f.Name()))
 				}
 			}
 
@@ -197,8 +198,8 @@ func (f File) contains(ctx context.Context, test bool) (types.Result, bytes.Buff
 					"name": name + "-source",
 				})
 				if err != nil {
-					notes = append(notes, types.Snprintf("failed to cache source %s", srcFile))
-					return types.Result{
+					notes = append(notes, cook.Snprintf("failed to cache source %s", srcFile))
+					return cook.Result{
 						Succeeded: false, Failed: true,
 						Changed: false, Notes: notes,
 					}, content, err
@@ -206,11 +207,11 @@ func (f File) contains(ctx context.Context, test bool) (types.Result, bytes.Buff
 				cacheRes, err := srcFile.Apply(ctx)
 				notes = append(notes, cacheRes.Notes...)
 				if err != nil || !cacheRes.Succeeded {
-					notes = append(notes, types.Snprintf("failed to cache source %s", srcFile))
-					return types.Result{
+					notes = append(notes, cook.Snprintf("failed to cache source %s", srcFile))
+					return cook.Result{
 						Succeeded: false, Failed: true,
 						Changed: false, Notes: notes,
-					}, content, errors.Join(err, types.ErrCacheFailure)
+					}, content, errors.Join(err, ErrCacheFailure)
 				}
 				sourceDest, err = srcFile.(*File).dest()
 			} else if skipVerify, ok := f.params["skip_verify"].(bool); ok && skipVerify {
@@ -219,8 +220,8 @@ func (f File) contains(ctx context.Context, test bool) (types.Result, bytes.Buff
 					"skip_verify": skipVerify, "name": name + "-source",
 				})
 				if err != nil {
-					notes = append(notes, types.Snprintf("failed to cache source %s", srcFile))
-					return types.Result{
+					notes = append(notes, cook.Snprintf("failed to cache source %s", srcFile))
+					return cook.Result{
 						Succeeded: false, Failed: true,
 						Changed: false, Notes: notes,
 					}, content, err
@@ -228,22 +229,22 @@ func (f File) contains(ctx context.Context, test bool) (types.Result, bytes.Buff
 				cacheRes, err := srcFile.Apply(ctx)
 				notes = append(notes, cacheRes.Notes...)
 				if err != nil || !cacheRes.Succeeded {
-					notes = append(notes, types.Snprintf("failed to cache source %s", srcFile))
-					return types.Result{
+					notes = append(notes, cook.Snprintf("failed to cache source %s", srcFile))
+					return cook.Result{
 						Succeeded: false, Failed: true,
 						Changed: false, Notes: notes,
-					}, content, errors.Join(err, types.ErrCacheFailure)
+					}, content, errors.Join(err, ErrCacheFailure)
 				}
 				sourceDest, err = srcFile.(*File).dest()
 			} else {
-				return types.Result{
+				return cook.Result{
 					Succeeded: false, Failed: true,
-				}, content, types.ErrMissingHash
+				}, content, ErrMissingHash
 			}
 			f, err := os.Open(sourceDest)
 			if err != nil {
-				notes = append(notes, types.Snprintf("failed to open cached source %s", sourceDest))
-				return types.Result{
+				notes = append(notes, cook.Snprintf("failed to open cached source %s", sourceDest))
+				return cook.Result{
 					Succeeded: false, Failed: true,
 					Changed: false, Notes: notes,
 				}, content, err
@@ -254,8 +255,8 @@ func (f File) contains(ctx context.Context, test bool) (types.Result, bytes.Buff
 	}
 	file, err := os.Open(name)
 	if err != nil {
-		notes = append(notes, types.Snprintf("failed to open %s", name))
-		return types.Result{
+		notes = append(notes, cook.Snprintf("failed to open %s", name))
+		return cook.Result{
 			Succeeded: false, Failed: true,
 			Changed: false, Notes: notes,
 		}, content, err
@@ -277,13 +278,13 @@ func (f File) contains(ctx context.Context, test bool) (types.Result, bytes.Buff
 
 	isSubset, _ := stringSliceIsSubset(shouldContents, currentContents)
 	if isSubset {
-		return types.Result{
+		return cook.Result{
 			Succeeded: true, Failed: false, Notes: notes,
 		}, bytes.Buffer{}, nil
 	}
-	notes = append(notes, types.Snprintf("file %s does not contain all specified content", name))
-	return types.Result{
+	notes = append(notes, cook.Snprintf("file %s does not contain all specified content", name))
+	return cook.Result{
 		Succeeded: false, Failed: true,
 		Changed: false, Notes: notes,
-	}, content, types.ErrMissingContent
+	}, content, ErrMissingContent
 }

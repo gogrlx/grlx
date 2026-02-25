@@ -6,7 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/gogrlx/grlx/v2/internal/types"
+	"github.com/gogrlx/grlx/v2/internal/cook"
+	"github.com/gogrlx/grlx/v2/internal/ingredients"
 )
 
 func TestExists(t *testing.T) {
@@ -15,7 +16,7 @@ func TestExists(t *testing.T) {
 	tests := []struct {
 		name     string
 		params   map[string]interface{}
-		expected types.Result
+		expected cook.Result
 		error    error
 		test     bool
 	}{
@@ -24,32 +25,32 @@ func TestExists(t *testing.T) {
 			params: map[string]interface{}{
 				"name": 1,
 			},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: false,
 				Failed:    true,
 				Notes:     []fmt.Stringer{},
 			},
-			error: types.ErrMissingName,
+			error: ingredients.ErrMissingName,
 		},
 		{
 			name:   "FileMissing",
 			params: map[string]interface{}{"name": fileDNE},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: false,
 				Failed:    true,
 				Changed:   false,
-				Notes:     []fmt.Stringer{types.Snprintf("file `%s` does not exist", fileDNE)},
+				Notes:     []fmt.Stringer{cook.Snprintf("file `%s` does not exist", fileDNE)},
 			},
 			error: nil,
 		},
 		{
 			name:   "FileExists",
 			params: map[string]interface{}{"name": tempDir},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: true,
 				Failed:    false,
 				Changed:   false,
-				Notes:     []fmt.Stringer{types.Snprintf("file `%s` exists", tempDir)},
+				Notes:     []fmt.Stringer{cook.Snprintf("file `%s` exists", tempDir)},
 			},
 		},
 	}

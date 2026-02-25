@@ -13,14 +13,13 @@ import (
 	"github.com/gogrlx/grlx/v2/internal/api/client"
 	"github.com/gogrlx/grlx/v2/internal/config"
 	"github.com/gogrlx/grlx/v2/internal/pki"
-	"github.com/gogrlx/grlx/v2/internal/types"
 )
 
 var (
 	cfgFile      string
 	sproutTarget string
 	outputMode   string
-	BuildInfo    types.Version
+	BuildInfo    config.Version
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -34,7 +33,7 @@ var rootCmd = &cobra.Command{
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
-func Execute(buildInfo types.Version) {
+func Execute(buildInfo config.Version) {
 	BuildInfo = buildInfo
 	fang.Execute(context.Background(), rootCmd)
 }

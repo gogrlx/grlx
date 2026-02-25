@@ -5,11 +5,11 @@ import (
 	"errors"
 	"os/user"
 
-	"github.com/gogrlx/grlx/v2/internal/types"
+	"github.com/gogrlx/grlx/v2/internal/cook"
 )
 
-func (g Group) exists(ctx context.Context, test bool) (types.Result, error) {
-	var result types.Result
+func (g Group) exists(ctx context.Context, test bool) (cook.Result, error) {
+	var result cook.Result
 	result.Succeeded = true
 	result.Failed = false
 
@@ -22,10 +22,10 @@ func (g Group) exists(ctx context.Context, test bool) (types.Result, error) {
 	if !groupExists(groupName) {
 		result.Failed = true
 		result.Succeeded = false
-		result.Notes = append(result.Notes, types.SimpleNote("group "+groupName+" does not exist"))
+		result.Notes = append(result.Notes, cook.SimpleNote("group "+groupName+" does not exist"))
 		return result, nil
 	}
-	result.Notes = append(result.Notes, types.SimpleNote("group "+groupName+" exists"))
+	result.Notes = append(result.Notes, cook.SimpleNote("group "+groupName+" exists"))
 	return result, nil
 }
 

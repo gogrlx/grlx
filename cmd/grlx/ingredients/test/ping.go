@@ -5,26 +5,27 @@ import (
 	"encoding/json"
 	"net/http"
 
-	pki "github.com/gogrlx/grlx/v2/internal/api/client"
+	pkiclient "github.com/gogrlx/grlx/v2/internal/api/client"
+	apitypes "github.com/gogrlx/grlx/v2/internal/api/types"
 	"github.com/gogrlx/grlx/v2/internal/auth"
 	"github.com/gogrlx/grlx/v2/internal/config"
-	. "github.com/gogrlx/grlx/v2/internal/types"
+	"github.com/gogrlx/grlx/v2/internal/pki"
 )
 
-func FPing(target string) (TargetedResults, error) {
+func FPing(target string) (apitypes.TargetedResults, error) {
 	FarmerURL := config.FarmerURL
 	// util target split
 	// check targets valid
-	var tr TargetedResults
-	targets, err := pki.ResolveTargets(target)
+	var tr apitypes.TargetedResults
+	targets, err := pkiclient.ResolveTargets(target)
 	if err != nil {
 		return tr, err
 	}
-	var ta TargetedAction
-	ta.Action = PingPong{}
-	ta.Target = []KeyManager{}
+	var ta apitypes.TargetedAction
+	ta.Action = apitypes.PingPong{}
+	ta.Target = []pki.KeyManager{}
 	for _, sprout := range targets {
-		ta.Target = append(ta.Target, KeyManager{SproutID: sprout})
+		ta.Target = append(ta.Target, pki.KeyManager{SproutID: sprout})
 	}
 	url := FarmerURL + "/test/ping"
 	jw, _ := json.Marshal(ta)
@@ -40,7 +41,7 @@ func FPing(target string) (TargetedResults, error) {
 		return tr, err
 	}
 	req.Header.Set("Authorization", newToken)
-	resp, err := pki.APIClient.Do(req)
+	resp, err := pkiclient.APIClient.Do(req)
 	if err != nil {
 		return tr, err
 	}

@@ -12,7 +12,8 @@ import (
 	"github.com/gogrlx/grlx/v2/internal/config"
 	_ "github.com/gogrlx/grlx/v2/internal/ingredients/file/hashers"
 
-	"github.com/gogrlx/grlx/v2/internal/types"
+	"github.com/gogrlx/grlx/v2/internal/cook"
+	"github.com/gogrlx/grlx/v2/internal/ingredients"
 )
 
 func TestCached(t *testing.T) {
@@ -26,31 +27,31 @@ func TestCached(t *testing.T) {
 	tests := []struct {
 		name     string
 		params   map[string]interface{}
-		expected types.Result
+		expected cook.Result
 		error    error
 		test     bool
 	}{
 		{
 			name:   "TestCachedMissingSource",
 			params: map[string]interface{}{},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: false,
 				Failed:    true,
 				Notes:     []fmt.Stringer{},
 			},
-			error: types.ErrMissingSource,
+			error: ErrMissingSource,
 		},
 		{
 			name: "TestCachedMissingHash",
 			params: map[string]interface{}{
 				"source": "test",
 			},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: false,
 				Failed:    true,
 				Notes:     []fmt.Stringer{},
 			},
-			error: types.ErrMissingHash,
+			error: ErrMissingHash,
 		},
 		{
 			name: "TestSuccesfulCached",
@@ -59,10 +60,10 @@ func TestCached(t *testing.T) {
 				"source":      "/test",
 				"skip_verify": true,
 			},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: true,
 				Failed:    false,
-				Notes:     []fmt.Stringer{types.SimpleNote("skip_testName has been cached")},
+				Notes:     []fmt.Stringer{cook.SimpleNote("skip_testName has been cached")},
 			},
 			error: nil,
 		},
@@ -73,10 +74,10 @@ func TestCached(t *testing.T) {
 				"source":      "/test",
 				"skip_verify": true,
 			},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: true,
 				Failed:    false,
-				Notes:     []fmt.Stringer{types.SimpleNote("skip_testName would be cached")},
+				Notes:     []fmt.Stringer{cook.SimpleNote("skip_testName would be cached")},
 			},
 			error: nil,
 			test:  true,
@@ -88,12 +89,12 @@ func TestCached(t *testing.T) {
 				"source":      "/test",
 				"skip_verify": true,
 			},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: false,
 				Failed:    true,
 				Notes:     []fmt.Stringer{},
 			},
-			error: types.ErrMissingName,
+			error: ingredients.ErrMissingName,
 		},
 	}
 	for _, test := range tests {
@@ -143,10 +144,10 @@ func TestCachedSkipVerify(t *testing.T) {
 	defer func() {
 		config.CacheDir = ""
 	}()
-	expected := types.Result{
+	expected := cook.Result{
 		Succeeded: true,
 		Failed:    false,
-		Notes:     []fmt.Stringer{types.Snprintf("%s already exists and skipVerify is true", skipped)},
+		Notes:     []fmt.Stringer{cook.Snprintf("%s already exists and skipVerify is true", skipped)},
 	}
 	f := File{
 		id:     "test",

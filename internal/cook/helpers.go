@@ -13,8 +13,6 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/gogrlx/grlx/v2/internal/config"
-	"github.com/gogrlx/grlx/v2/internal/cook/rootball"
-	"github.com/gogrlx/grlx/v2/internal/types"
 )
 
 var conn *nats.Conn
@@ -23,24 +21,24 @@ func RegisterNatsConn(n *nats.Conn) {
 	conn = n
 }
 
-func makeRecipeSteps(recipes map[string]interface{}) ([]*types.Step, error) {
-	steps := []*types.Step{}
+func makeRecipeSteps(recipes map[string]interface{}) ([]*Step, error) {
+	steps := []*Step{}
 	for recipeName, recipe := range recipes {
 		if _, ok := recipe.(map[string]interface{}); ok {
 			step, err := recipeToStep(recipeName, recipe.(map[string]interface{}))
 			if err != nil {
-				return []*types.Step{}, err
+				return []*Step{}, err
 			}
 			steps = append(steps, &step)
 		} else {
-			return []*types.Step{}, fmt.Errorf("error: recipe %s must be a map", recipeName)
+			return []*Step{}, fmt.Errorf("error: recipe %s must be a map", recipeName)
 		}
 	}
 	return steps, nil
 }
 
-func recipeToStep(id string, recipe map[string]interface{}) (types.Step, error) {
-	var step types.Step
+func recipeToStep(id string, recipe map[string]interface{}) (Step, error) {
+	var step Step
 	if len(recipe) != 1 {
 		return step, errors.New("error: recipe must have exactly one key")
 	}
@@ -51,7 +49,7 @@ func recipeToStep(id string, recipe map[string]interface{}) (types.Step, error) 
 		}
 		mi, ok := v.([]interface{})
 		if !ok {
-			return types.Step{}, fmt.Errorf("error: %s must contain a list of properties ([]interface{}), but is a %T", k, v)
+			return Step{}, fmt.Errorf("error: %s must contain a list of properties ([]interface{}), but is a %T", k, v)
 		}
 		m := make(map[string]interface{})
 		for _, interf := range mi {
@@ -60,16 +58,16 @@ func recipeToStep(id string, recipe map[string]interface{}) (types.Step, error) 
 					m[k] = v
 				}
 			} else {
-				return types.Step{}, fmt.Errorf("error: %s must contain a list of properties ([]interface{}), but is a %T", k, v)
+				return Step{}, fmt.Errorf("error: %s must contain a list of properties ([]interface{}), but is a %T", k, v)
 			}
 		}
 		reqs, err := extractRequisites(m)
 		if err != nil {
-			return types.Step{}, err
+			return Step{}, err
 		}
-		step = types.Step{
-			ID:          types.StepID(id),
-			Ingredient:  types.Ingredient(rp[0]),
+		step = Step{
+			ID:          StepID(id),
+			Ingredient:  Ingredient(rp[0]),
 			Method:      rp[1],
 			Requisites:  reqs,
 			Properties:  m,
@@ -78,90 +76,90 @@ func recipeToStep(id string, recipe map[string]interface{}) (types.Step, error) 
 		return step, nil
 	}
 	// should be unreachable but need something to satisfy compiler
-	return types.Step{}, errors.New("error: recipe must have exactly one key")
+	return Step{}, errors.New("error: recipe must have exactly one key")
 }
 
-func collectAllIncludes(sproutID, basepath string, recipeID types.RecipeName) ([]types.RecipeName, error) {
+func collectAllIncludes(sproutID, basepath string, recipeID RecipeName) ([]RecipeName, error) {
 	// TODO get git branch / tag from environment
 	// pass in an ID to a Recipe
 	recipeFilePath, err := ResolveRecipeFilePath(basepath, recipeID)
 	if err != nil {
-		return []types.RecipeName{}, err
+		return []RecipeName{}, err
 	}
 	f, err := os.ReadFile(recipeFilePath)
 	if err != nil {
-		return []types.RecipeName{}, err
+		return []RecipeName{}, err
 	}
 	// parse file imports
 	starterIncludes, err := extractIncludes(sproutID, basepath, recipeFilePath, f)
 	if err != nil {
-		return []types.RecipeName{}, err
+		return []RecipeName{}, err
 	}
 	starterIncludes = append(starterIncludes, recipeID)
-	includeSet := make(map[types.RecipeName]bool)
+	includeSet := make(map[RecipeName]bool)
 	for _, si := range starterIncludes {
 		includeSet[si] = false
 	}
 	includeSet, err = collectIncludesRecurse(sproutID, basepath, includeSet)
 	if err != nil {
-		return []types.RecipeName{}, err
+		return []RecipeName{}, err
 	}
-	includes := []types.RecipeName{}
+	includes := []RecipeName{}
 	for inc := range includeSet {
 		includes = append(includes, inc)
 	}
 	return includes, nil
 }
 
-func deInterfaceRequisites(req types.ReqType, v interface{}) (types.RequisiteSet, error) {
-	requisites := []types.Requisite{}
+func deInterfaceRequisites(req ReqType, v interface{}) (RequisiteSet, error) {
+	requisites := []Requisite{}
 	switch v := v.(type) {
 	case string:
-		requisites = append(requisites, types.Requisite{StepIDs: []types.StepID{types.StepID(v)}, Condition: req})
+		requisites = append(requisites, Requisite{StepIDs: []StepID{StepID(v)}, Condition: req})
 	case []interface{}:
-		ids := []types.StepID{}
+		ids := []StepID{}
 		for i, id := range v {
 			if id, ok := id.(string); ok {
-				ids = append(ids, types.StepID(id))
+				ids = append(ids, StepID(id))
 			} else {
-				return []types.Requisite{}, errors.Join(errors.New(string(req)+" must be a string or a list of strings, got "+fmt.Sprintf("%T", v[i])), ErrInvalidFormat)
+				return []Requisite{}, errors.Join(errors.New(string(req)+" must be a string or a list of strings, got "+fmt.Sprintf("%T", v[i])), ErrInvalidFormat)
 			}
 		}
-		requisites = append(requisites, types.Requisite{StepIDs: ids, Condition: req})
+		requisites = append(requisites, Requisite{StepIDs: ids, Condition: req})
 	default:
-		return []types.Requisite{}, errors.Join(errors.New(string(req)+" must be a string or a list of strings, got "+fmt.Sprintf("%T", v)), ErrInvalidFormat)
+		return []Requisite{}, errors.Join(errors.New(string(req)+" must be a string or a list of strings, got "+fmt.Sprintf("%T", v)), ErrInvalidFormat)
 	}
 	return requisites, nil
 }
 
-func extractRequisites(step map[string]interface{}) (types.RequisiteSet, error) {
+func extractRequisites(step map[string]interface{}) (RequisiteSet, error) {
 	rt, ok := step["requisites"]
 	// if there isn't a requirements key, there aren't any requirements for this step
 	if !ok {
-		return []types.Requisite{}, nil
+		return []Requisite{}, nil
 	}
-	requisites := []types.Requisite{}
+	requisites := []Requisite{}
 	// if there is a requirements key, it must be map[string]interface{} , i.e. map[string]string or map[string][]string
 	if rti, ok := rt.([]interface{}); !ok {
-		return []types.Requisite{}, errors.Join(errors.New("error: requirements must be a list of maps"), ErrInvalidFormat)
+		return []Requisite{}, errors.Join(errors.New("error: requirements must be a list of maps"), ErrInvalidFormat)
 	} else {
 		for _, m := range rti {
 			mm, ok := m.(map[string]interface{})
 			if !ok {
-				return []types.Requisite{}, errors.Join(errors.New("error: requirements must be a list of maps"), ErrInvalidFormat)
+				return []Requisite{}, errors.Join(errors.New("error: requirements must be a list of maps"), ErrInvalidFormat)
 			}
 			for k, v := range mm {
-				switch types.ReqType(k) {
-				case types.OnChanges, types.OnFail, types.Require:
+				switch ReqType(k) {
+				case OnChanges, OnFail, Require:
 					fallthrough
-				case types.OnChangesAny, types.OnFailAny, types.RequireAny:
-					reqs, err := deInterfaceRequisites(types.ReqType(k), v)
+				case OnChangesAny, OnFailAny, RequireAny:
+					reqs, err := deInterfaceRequisites(ReqType(k), v)
 					if err != nil {
-						return []types.Requisite{}, err
+						return []Requisite{}, err
 					}
 					requisites = append(requisites, reqs...)
 				default:
-					return []types.Requisite{}, errors.New("error: unknown requisite type " + k)
+					return []Requisite{}, errors.New("error: unknown requisite type " + k)
 				}
 			}
 		}
@@ -183,9 +181,9 @@ func joinMaps(a, b map[string]interface{}) (map[string]interface{}, error) {
 	return c, nil
 }
 
-func resolveRelativeFilePath(relatedRecipePath string, recipeID types.RecipeName) (string, error) {
+func resolveRelativeFilePath(relatedRecipePath string, recipeID RecipeName) (string, error) {
 	if filepath.Ext(string(recipeID)) == config.GrlxExt {
-		recipeID = types.RecipeName(strings.TrimSuffix(string(recipeID), "."+config.GrlxExt))
+		recipeID = RecipeName(strings.TrimSuffix(string(recipeID), "."+config.GrlxExt))
 	}
 	// TODO check if basepath is completely empty first
 	relationBasePath := filepath.Dir(relatedRecipePath)
@@ -227,16 +225,16 @@ func resolveRelativeFilePath(relatedRecipePath string, recipeID types.RecipeName
 // note: because slash paths are valid,
 // all that needs to be done is to check if the path contains
 // the basepath and strip the extension
-func pathToRecipeName(path string) (types.RecipeName, error) {
+func pathToRecipeName(path string) (RecipeName, error) {
 	path = strings.TrimSuffix(path, "."+config.GrlxExt)
 	path = strings.TrimPrefix(path, getBasePath()+"/")
-	return types.RecipeName(path), nil
+	return RecipeName(path), nil
 }
 
 // attaches a related path to the prefix of a recipe name
 // makes no guarantees that the resultant path is valid
 
-func relativeRecipeToAbsolute(basepath, relatedRecipePath string, recipeID types.RecipeName) (types.RecipeName, error) {
+func relativeRecipeToAbsolute(basepath, relatedRecipePath string, recipeID RecipeName) (RecipeName, error) {
 	path := string(recipeID)
 	if !strings.HasPrefix(path, ".") {
 		var err error
@@ -258,18 +256,18 @@ func getBasePath() string {
 	return config.RecipeDir
 }
 
-func extractIncludes(sproutID, basepath, recipePath string, file []byte) ([]types.RecipeName, error) {
+func extractIncludes(sproutID, basepath, recipePath string, file []byte) ([]RecipeName, error) {
 	recipeBytes, err := renderRecipeTemplate(sproutID, recipePath, file)
 	if err != nil {
-		return []types.RecipeName{}, err
+		return []RecipeName{}, err
 	}
 	recipeMap, err := unmarshalRecipe(recipeBytes)
 	if err != nil {
-		return []types.RecipeName{}, err
+		return []RecipeName{}, err
 	}
 	includeList, err := includesFromMap(recipeMap)
 	if err != nil {
-		return []types.RecipeName{}, err
+		return []RecipeName{}, err
 	}
 	for i, inc := range includeList {
 		tinc := string(inc)
@@ -277,7 +275,7 @@ func extractIncludes(sproutID, basepath, recipePath string, file []byte) ([]type
 
 			rel, err := relativeRecipeToAbsolute(basepath, recipePath, inc)
 			if err != nil {
-				return []types.RecipeName{}, err
+				return []RecipeName{}, err
 			}
 			includeList[i] = rel
 		}
@@ -308,7 +306,7 @@ func unmarshalRecipe(recipe []byte) (map[string]interface{}, error) {
 	return rmap, err
 }
 
-func collectIncludesRecurse(sproutID, basepath string, starter map[types.RecipeName]bool) (map[types.RecipeName]bool, error) {
+func collectIncludesRecurse(sproutID, basepath string, starter map[RecipeName]bool) (map[RecipeName]bool, error) {
 	allIncluded := false
 	for !allIncluded {
 		allIncluded = true
@@ -360,30 +358,30 @@ func stepsFromMap(recipe map[string]interface{}) (map[string]interface{}, error)
 	return make(map[string]interface{}), nil
 }
 
-func includesFromMap(recipe map[string]interface{}) ([]types.RecipeName, error) {
+func includesFromMap(recipe map[string]interface{}) ([]RecipeName, error) {
 	if includes, ok := recipe["include"]; ok {
 		switch i := includes.(type) {
 		case []interface{}:
-			inc := []types.RecipeName{}
+			inc := []RecipeName{}
 			for _, v := range i {
 				if s, ok := v.(string); ok {
-					inc = append(inc, types.RecipeName(s))
+					inc = append(inc, RecipeName(s))
 				} else {
-					return []types.RecipeName{}, fmt.Errorf("include must be a slice of strings, but found type %T in the slice", v)
+					return []RecipeName{}, fmt.Errorf("include must be a slice of strings, but found type %T in the slice", v)
 				}
 			}
 			return inc, nil
 		default:
-			return []types.RecipeName{}, fmt.Errorf("include must be a slice of strings, but found type %T", i)
+			return []RecipeName{}, fmt.Errorf("include must be a slice of strings, but found type %T", i)
 		}
 	}
 
-	return []types.RecipeName{}, nil
+	return []RecipeName{}, nil
 }
 
-func validateRecipeTree(recipes []*types.Step) ([]*types.Step, error) {
+func validateRecipeTree(recipes []*Step) ([]*Step, error) {
 	// TODO pick up here...
-	_, err := rootball.ValidateTrees(recipes)
+	_, err := ValidateTrees(recipes)
 	return recipes, err
 }
 

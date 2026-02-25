@@ -11,7 +11,7 @@ import (
 
 	cmd "github.com/gogrlx/grlx/v2/internal/api/handlers/ingredients/cmd"
 	test "github.com/gogrlx/grlx/v2/internal/api/handlers/ingredients/test"
-	"github.com/gogrlx/grlx/v2/internal/types"
+	"github.com/gogrlx/grlx/v2/internal/config"
 )
 
 type Route struct {
@@ -21,11 +21,11 @@ type Route struct {
 }
 
 var (
-	BuildInfoStruct types.Version
+	BuildInfoStruct config.Version
 	certFile        string
 )
 
-func NewRouter(v types.Version, certificate string) *mux.Router {
+func NewRouter(v config.Version, certificate string) *mux.Router {
 	handlers.SetBuildVersion(v)
 	BuildInfoStruct = v
 	certFile = certificate

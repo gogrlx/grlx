@@ -10,16 +10,16 @@ import (
 	"sync"
 	"time"
 
+	apitypes "github.com/gogrlx/grlx/v2/internal/api/types"
 	"github.com/gogrlx/grlx/v2/internal/cook"
 	"github.com/gogrlx/grlx/v2/internal/pki"
-	"github.com/gogrlx/grlx/v2/internal/types"
 	nats "github.com/nats-io/nats.go"
 	log "github.com/taigrr/log-socket/log"
 )
 
 func Cook(w http.ResponseWriter, r *http.Request) {
 	// TODO consider using middleware to validate the targets instead of doing it here
-	var targetAction types.TargetedAction
+	var targetAction apitypes.TargetedAction
 	// grab the body of the req
 	err := json.NewDecoder(r.Body).Decode(&targetAction)
 	if err != nil {
@@ -28,7 +28,7 @@ func Cook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	jw, _ := json.Marshal(targetAction.Action)
-	var command types.CmdCook
+	var command apitypes.CmdCook
 	err = json.NewDecoder(bytes.NewBuffer(jw)).Decode(&command)
 	if err != nil {
 		log.Trace("An invalid request was made.")
@@ -44,7 +44,7 @@ func Cook(w http.ResponseWriter, r *http.Request) {
 		}
 		registered, _ := pki.NKeyExists(target.SproutID, "")
 		if !registered {
-			var results types.TargetedResults
+			var results apitypes.TargetedResults
 			results.Results = nil
 			log.Trace("An unknown Sprout was pinged. Ignoring.")
 			jw, _ := json.Marshal(results)
@@ -77,7 +77,7 @@ func Cook(w http.ResponseWriter, r *http.Request) {
 		wg.Add(len(targetAction.Target))
 
 		for _, target := range targetAction.Target {
-			go func(target types.KeyManager) {
+			go func(target pki.KeyManager) {
 				defer wg.Done()
 				err := cook.SendCookEvent(target.SproutID, command.Recipe, jid)
 				if err != nil {

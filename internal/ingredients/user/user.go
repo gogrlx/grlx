@@ -6,8 +6,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/gogrlx/grlx/v2/internal/cook"
 	"github.com/gogrlx/grlx/v2/internal/ingredients"
-	"github.com/gogrlx/grlx/v2/internal/types"
 )
 
 var ErrUserMethodUndefined = fmt.Errorf("user method undefined")
@@ -18,7 +18,7 @@ type User struct {
 	params map[string]interface{}
 }
 
-func (u User) Parse(id, method string, params map[string]interface{}) (types.RecipeCooker, error) {
+func (u User) Parse(id, method string, params map[string]interface{}) (cook.RecipeCooker, error) {
 	if params == nil {
 		params = map[string]interface{}{}
 	}
@@ -42,10 +42,10 @@ func (u User) validate() error {
 			if v.Key == "name" {
 				name, ok := u.params[v.Key].(string)
 				if !ok {
-					return types.ErrMissingName
+					return ingredients.ErrMissingName
 				}
 				if name == "" {
-					return types.ErrMissingName
+					return ingredients.ErrMissingName
 				}
 
 			} else {
@@ -58,7 +58,7 @@ func (u User) validate() error {
 	return nil
 }
 
-func (u User) Test(ctx context.Context) (types.Result, error) {
+func (u User) Test(ctx context.Context) (cook.Result, error) {
 	switch u.method {
 	case "present":
 		return u.present(ctx, true)
@@ -67,12 +67,12 @@ func (u User) Test(ctx context.Context) (types.Result, error) {
 	case "absent":
 		return u.absent(ctx, true)
 	default:
-		return types.Result{Succeeded: false, Failed: true, Changed: false, Notes: nil},
+		return cook.Result{Succeeded: false, Failed: true, Changed: false, Notes: nil},
 			errors.Join(ErrUserMethodUndefined, fmt.Errorf("method %s undefined", u.method))
 	}
 }
 
-func (u User) Apply(ctx context.Context) (types.Result, error) {
+func (u User) Apply(ctx context.Context) (cook.Result, error) {
 	switch u.method {
 	case "present":
 		return u.present(ctx, false)
@@ -81,7 +81,7 @@ func (u User) Apply(ctx context.Context) (types.Result, error) {
 	case "absent":
 		return u.absent(ctx, false)
 	default:
-		return types.Result{Succeeded: false, Failed: true, Changed: false, Notes: nil},
+		return cook.Result{Succeeded: false, Failed: true, Changed: false, Notes: nil},
 			errors.Join(ErrUserMethodUndefined, fmt.Errorf("method %s undefined", u.method))
 
 	}

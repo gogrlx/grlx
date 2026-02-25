@@ -1,14 +1,12 @@
 package file
 
-import (
-	"github.com/gogrlx/grlx/v2/internal/ingredients/file/http"
-	"github.com/gogrlx/grlx/v2/internal/ingredients/file/local"
-	"github.com/gogrlx/grlx/v2/internal/types"
-)
-
 func init() {
-	provMap = make(map[string]types.FileProvider)
-	RegisterProvider(http.HTTPFile{})
-	// RegisterProvider(s3.S3File{})
-	RegisterProvider(local.LocalFile{})
+	provMap = make(map[string]FileProvider)
+}
+
+// RegisterFileProviders registers the built-in file providers.
+// This must be called after init() to register providers from sub-packages.
+func RegisterFileProviders() {
+	// Providers are registered via their own init() functions
+	// or explicitly by the caller.
 }

@@ -19,7 +19,8 @@ import (
 	nats "github.com/nats-io/nats.go"
 	"github.com/taigrr/log-socket/log"
 
-	"github.com/gogrlx/grlx/v2/internal/types"
+	apitypes "github.com/gogrlx/grlx/v2/internal/api/types"
+	"github.com/gogrlx/grlx/v2/internal/pki"
 )
 
 var nc *nats.Conn
@@ -30,9 +31,9 @@ func RegisterNatsConn(conn *nats.Conn) {
 
 var envMutex sync.Mutex
 
-func FRun(target types.KeyManager, cmdRun types.CmdRun) (types.CmdRun, error) {
+func FRun(target pki.KeyManager, cmdRun apitypes.CmdRun) (apitypes.CmdRun, error) {
 	topic := "grlx.sprouts." + target.SproutID + ".cmd.run"
-	var results types.CmdRun
+	var results apitypes.CmdRun
 	b, _ := json.Marshal(cmdRun)
 	msg, err := nc.Request(topic, b, time.Second*15+cmdRun.Timeout)
 	if err != nil {
@@ -42,7 +43,7 @@ func FRun(target types.KeyManager, cmdRun types.CmdRun) (types.CmdRun, error) {
 	return results, err
 }
 
-func SRun(cmd types.CmdRun) (types.CmdRun, error) {
+func SRun(cmd apitypes.CmdRun) (apitypes.CmdRun, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), cmd.Timeout)
 	defer cancel()
 	envMutex.Lock()

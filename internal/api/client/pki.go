@@ -6,13 +6,14 @@ import (
 	"net/http"
 
 	"github.com/gogrlx/grlx/v2/internal/api"
+	apitypes "github.com/gogrlx/grlx/v2/internal/api/types"
 	"github.com/gogrlx/grlx/v2/internal/auth"
 	"github.com/gogrlx/grlx/v2/internal/config"
-	"github.com/gogrlx/grlx/v2/internal/types"
+	"github.com/gogrlx/grlx/v2/internal/pki"
 )
 
-func ListKeys() (types.KeysByType, error) {
-	var keys types.KeysByType
+func ListKeys() (pki.KeysByType, error) {
+	var keys pki.KeysByType
 	FarmerURL := config.FarmerURL
 	url := FarmerURL + api.Routes["ListID"].Pattern
 	req, err := http.NewRequest(http.MethodPost, url, nil)
@@ -41,7 +42,7 @@ func UnacceptKey(id string) (bool, error) {
 		return false, err
 	}
 	keyFound := false
-	for _, keySet := range []types.KeySet{
+	for _, keySet := range []pki.KeySet{
 		keyList.Accepted,
 		keyList.Denied,
 		keyList.Rejected,
@@ -59,14 +60,14 @@ func UnacceptKey(id string) (bool, error) {
 	if !keyFound {
 		for _, key := range keyList.Unaccepted.Sprouts {
 			if id == key.SproutID {
-				return false, types.ErrAlreadyUnaccepted
+				return false, pki.ErrAlreadyUnaccepted
 			}
 		}
-		return false, types.ErrSproutIDNotFound
+		return false, pki.ErrSproutIDNotFound
 	}
-	var success types.Inline
+	var success apitypes.Inline
 	url := FarmerURL + api.Routes["UnacceptID"].Pattern
-	km := types.KeyManager{SproutID: id}
+	km := pki.KeyManager{SproutID: id}
 	jw, _ := json.Marshal(km)
 
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(jw))
@@ -97,7 +98,7 @@ func DenyKey(id string) (bool, error) {
 		return false, err
 	}
 	keyFound := false
-	for _, keySet := range []types.KeySet{
+	for _, keySet := range []pki.KeySet{
 		keyList.Accepted,
 		keyList.Unaccepted,
 		keyList.Rejected,
@@ -115,16 +116,16 @@ func DenyKey(id string) (bool, error) {
 	if !keyFound {
 		for _, key := range keyList.Denied.Sprouts {
 			if id == key.SproutID {
-				return false, types.ErrAlreadyDenied
+				return false, pki.ErrAlreadyDenied
 			}
 		}
 
-		return false, types.ErrSproutIDNotFound
+		return false, pki.ErrSproutIDNotFound
 	}
-	var success types.Inline
+	var success apitypes.Inline
 	FarmerURL := config.FarmerURL
 	url := FarmerURL + api.Routes["DenyID"].Pattern
-	km := types.KeyManager{SproutID: id}
+	km := pki.KeyManager{SproutID: id}
 	jw, _ := json.Marshal(km)
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(jw))
 	if err != nil {
@@ -154,7 +155,7 @@ func RejectKey(id string) (bool, error) {
 		return false, err
 	}
 	keyFound := false
-	for _, keySet := range []types.KeySet{
+	for _, keySet := range []pki.KeySet{
 		keyList.Accepted,
 		keyList.Unaccepted,
 		keyList.Denied,
@@ -172,15 +173,15 @@ func RejectKey(id string) (bool, error) {
 	if !keyFound {
 		for _, key := range keyList.Rejected.Sprouts {
 			if id == key.SproutID {
-				return false, types.ErrAlreadyRejected
+				return false, pki.ErrAlreadyRejected
 			}
 		}
-		return false, types.ErrSproutIDNotFound
+		return false, pki.ErrSproutIDNotFound
 	}
-	var success types.Inline
+	var success apitypes.Inline
 	FarmerURL := config.FarmerURL
 	url := FarmerURL + "/pki/rejectnkey"
-	km := types.KeyManager{SproutID: id}
+	km := pki.KeyManager{SproutID: id}
 	jw, _ := json.Marshal(km)
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(jw))
 	if err != nil {
@@ -211,7 +212,7 @@ func DeleteKey(id string) (bool, error) {
 		return false, err
 	}
 	keyFound := false
-	for _, keySet := range []types.KeySet{
+	for _, keySet := range []pki.KeySet{
 		keyList.Accepted,
 		keyList.Unaccepted,
 		keyList.Denied,
@@ -228,12 +229,12 @@ func DeleteKey(id string) (bool, error) {
 		}
 	}
 	if !keyFound {
-		return false, types.ErrSproutIDNotFound
+		return false, pki.ErrSproutIDNotFound
 	}
-	var success types.Inline
+	var success apitypes.Inline
 	FarmerURL := config.FarmerURL
 	url := FarmerURL + "/pki/deletenkey"
-	km := types.KeyManager{SproutID: id}
+	km := pki.KeyManager{SproutID: id}
 	jw, _ := json.Marshal(km)
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(jw))
 	if err != nil {
@@ -264,7 +265,7 @@ func AcceptKey(id string) (bool, error) {
 		return false, err
 	}
 	keyFound := false
-	for _, keySet := range []types.KeySet{
+	for _, keySet := range []pki.KeySet{
 		keyList.Unaccepted,
 		keyList.Denied,
 		keyList.Rejected,
@@ -282,15 +283,15 @@ func AcceptKey(id string) (bool, error) {
 	if !keyFound {
 		for _, key := range keyList.Accepted.Sprouts {
 			if id == key.SproutID {
-				return false, types.ErrAlreadyAccepted
+				return false, pki.ErrAlreadyAccepted
 			}
 		}
-		return false, types.ErrSproutIDNotFound
+		return false, pki.ErrSproutIDNotFound
 	}
-	var success types.Inline
+	var success apitypes.Inline
 	FarmerURL := config.FarmerURL
 	url := FarmerURL + api.Routes["AcceptID"].Pattern
-	km := types.KeyManager{SproutID: id}
+	km := pki.KeyManager{SproutID: id}
 	jw, _ := json.Marshal(km)
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(jw))
 	if err != nil {

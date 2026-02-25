@@ -12,7 +12,10 @@ import (
 	"github.com/taigrr/log-socket/log"
 
 	"github.com/gogrlx/grlx/v2/internal/api/client"
-	"github.com/gogrlx/grlx/v2/internal/types"
+	apitypes "github.com/gogrlx/grlx/v2/internal/api/types"
+	"github.com/gogrlx/grlx/v2/internal/config"
+	"github.com/gogrlx/grlx/v2/internal/cook"
+	"github.com/gogrlx/grlx/v2/internal/pki"
 )
 
 var (
@@ -37,8 +40,8 @@ var cmdCook = &cobra.Command{
 			cmd.Help()
 			return
 		}
-		var cmdCook types.CmdCook
-		cmdCook.Recipe = types.RecipeName(args[0])
+		var cmdCook apitypes.CmdCook
+		cmdCook.Recipe = cook.RecipeName(args[0])
 		cmdCook.Async = async
 		cmdCook.Env = environment
 		//	cmdCook.Test = test
@@ -46,7 +49,7 @@ var cmdCook = &cobra.Command{
 		results, err := client.Cook(sproutTarget, cmdCook)
 		if err != nil {
 			switch err {
-			case types.ErrSproutIDNotFound:
+			case pki.ErrSproutIDNotFound:
 				log.Fatalf("A targeted Sprout does not exist or is not accepted.")
 			default:
 				log.Fatal(err)
@@ -59,11 +62,11 @@ var cmdCook = &cobra.Command{
 			log.Fatal(err)
 		}
 		finished := make(chan struct{}, 1)
-		completions := make(chan types.SproutStepCompletion)
+		completions := make(chan cook.SproutStepCompletion)
 		topic := fmt.Sprintf("grlx.cook.*.%s", jid)
-		completionSteps := make(map[string][]types.StepCompletion)
+		completionSteps := make(map[string][]cook.StepCompletion)
 		sub, err := nc.Subscribe(topic, func(msg *nats.Msg) {
-			var step types.StepCompletion
+			var step cook.StepCompletion
 			err := json.Unmarshal(msg.Data, &step)
 			if err != nil {
 				log.Errorf("Error unmarshalling message: %v\n", err)
@@ -72,7 +75,7 @@ var cmdCook = &cobra.Command{
 			subComponents := strings.Split(msg.Subject, ".")
 			sproutID := subComponents[2]
 
-			completions <- types.SproutStepCompletion{SproutID: sproutID, CompletedStep: step}
+			completions <- cook.SproutStepCompletion{SproutID: sproutID, CompletedStep: step}
 			if string(step.ID) == fmt.Sprintf("completed-%s", jid) {
 				return
 			} else if string(step.ID) == fmt.Sprintf("start-%s", jid) {
@@ -88,9 +91,9 @@ var cmdCook = &cobra.Command{
 				b.WriteString(fmt.Sprintf("%s::%s\n", sproutID, jid))
 				b.WriteString(fmt.Sprintf("ID: %s\n", step.ID))
 				switch step.CompletionStatus {
-				case types.StepCompleted:
+				case cook.StepCompleted:
 					b.WriteString(color.GreenString(fmt.Sprintf("\tResult: %s\n", "Success")))
-				case types.StepFailed:
+				case cook.StepFailed:
 					b.WriteString(color.RedString(fmt.Sprintf("\tResult: %s\n", "Failure")))
 				default:
 					// TODO add a status for skipped steps
@@ -112,7 +115,7 @@ var cmdCook = &cobra.Command{
 			log.Fatal(err)
 		}
 		// TODO convert this to a request and get back the list of targeted sprouts
-		triggerMsg := types.TriggerMsg{JID: jid}
+		triggerMsg := config.TriggerMsg{JID: jid}
 		b, _ := json.Marshal(triggerMsg)
 		nc.Publish(fmt.Sprintf("grlx.farmer.cook.trigger.%s", jid), b)
 		localTimeout := time.After(time.Duration(cookTimeout) * time.Second)
@@ -166,9 +169,9 @@ var cmdCook = &cobra.Command{
 				failures := 0
 				errors := []string{}
 				for _, step := range v {
-					if step.CompletionStatus == types.StepCompleted {
+					if step.CompletionStatus == cook.StepCompleted {
 						successes++
-					} else if step.CompletionStatus == types.StepFailed {
+					} else if step.CompletionStatus == cook.StepFailed {
 						failures++
 					}
 					if step.Error != nil {

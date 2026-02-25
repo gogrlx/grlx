@@ -3,10 +3,10 @@ package file
 import (
 	"testing"
 
-	"github.com/gogrlx/grlx/v2/internal/types"
+	"github.com/gogrlx/grlx/v2/internal/cook"
 )
 
-func compareResults(t *testing.T, result types.Result, expected types.Result) {
+func compareResults(t *testing.T, result cook.Result, expected cook.Result) {
 	if result.Succeeded != expected.Succeeded {
 		t.Errorf("expected succeeded to be %v, got %v", expected.Succeeded, result.Succeeded)
 	}

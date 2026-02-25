@@ -7,11 +7,10 @@ import (
 	"github.com/gogrlx/grlx/v2/internal/api"
 	"github.com/gogrlx/grlx/v2/internal/auth"
 	"github.com/gogrlx/grlx/v2/internal/config"
-	"github.com/gogrlx/grlx/v2/internal/types"
 )
 
-func GetVersion() (types.Version, error) {
-	farmerVersion := types.Version{}
+func GetVersion() (config.Version, error) {
+	farmerVersion := config.Version{}
 	FarmerURL := config.FarmerURL
 	url := FarmerURL + api.Routes["GetVersion"].Pattern // "/test/ping"
 	req, err := http.NewRequest(http.MethodGet, url, nil)

@@ -7,20 +7,18 @@ import (
 	"sync"
 
 	"github.com/taigrr/log-socket/log"
-
-	"github.com/gogrlx/grlx/v2/internal/types"
 )
 
 var (
 	provTex sync.Mutex
-	provMap map[string]types.FileProvider
+	provMap map[string]FileProvider
 
 	ErrUnknownProtocol   = errors.New("unknown protocol")
 	ErrUnknownMethod     = errors.New("unknown method")
 	ErrDuplicateProtocol = errors.New("duplicate protocol")
 )
 
-func RegisterProvider(provider types.FileProvider) error {
+func RegisterProvider(provider FileProvider) error {
 	provTex.Lock()
 	defer provTex.Unlock()
 	var err error
@@ -55,7 +53,7 @@ func guessProtocol(source string) string {
 	return ""
 }
 
-func NewFileProvider(id string, source, destination, hash string, params map[string]interface{}) (types.FileProvider, error) {
+func NewFileProvider(id string, source, destination, hash string, params map[string]interface{}) (FileProvider, error) {
 	provTex.Lock()
 	defer provTex.Unlock()
 	protocol := guessProtocol(source)

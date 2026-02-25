@@ -19,7 +19,6 @@ import (
 	log "github.com/taigrr/log-socket/log"
 
 	"github.com/gogrlx/grlx/v2/internal/config"
-	"github.com/gogrlx/grlx/v2/internal/types"
 )
 
 type PubKeyType int
@@ -138,7 +137,7 @@ func AcceptNKey(id string) error {
 	id = strings.SplitN(id, "_", 2)[0]
 	newDest := filepath.Join(config.FarmerPKI + "sprouts/accepted/" + id)
 	if fname == newDest {
-		return types.ErrAlreadyAccepted
+		return ErrAlreadyAccepted
 	}
 	return os.Rename(fname, newDest)
 }
@@ -160,7 +159,7 @@ func DenyNKey(id string) error {
 		return err
 	}
 	if fname == newDest {
-		return types.ErrAlreadyDenied
+		return ErrAlreadyDenied
 	}
 	return os.Rename(fname, newDest)
 }
@@ -169,7 +168,7 @@ func UnacceptNKey(id string, nkey string) error {
 	defer ReloadNKeys()
 	newDest := filepath.Join(config.FarmerPKI + "sprouts/unaccepted/" + id)
 	fname, err := findNKey(id)
-	if nkey != "" && err == types.ErrSproutIDNotFound {
+	if nkey != "" && err == ErrSproutIDNotFound {
 		file, errCreate := os.Create(newDest)
 		if errCreate != nil {
 			return errCreate
@@ -182,14 +181,14 @@ func UnacceptNKey(id string, nkey string) error {
 		return err
 	}
 	if fname == newDest {
-		return types.ErrAlreadyUnaccepted
+		return ErrAlreadyUnaccepted
 	}
 	return os.Rename(fname, newDest)
 }
 
-func GetNKeysByType(set string) types.KeySet {
-	keySet := types.KeySet{}
-	keySet.Sprouts = []types.KeyManager{}
+func GetNKeysByType(set string) KeySet {
+	keySet := KeySet{}
+	keySet.Sprouts = []KeyManager{}
 	switch set {
 	case "unaccepted":
 		fallthrough
@@ -208,14 +207,14 @@ func GetNKeysByType(set string) types.KeySet {
 		if setPath == path {
 			return nil
 		}
-		keySet.Sprouts = append(keySet.Sprouts, types.KeyManager{SproutID: id})
+		keySet.Sprouts = append(keySet.Sprouts, KeyManager{SproutID: id})
 		return nil
 	})
 	return keySet
 }
 
-func ListNKeysByType() types.KeysByType {
-	var allKeys types.KeysByType
+func ListNKeysByType() KeysByType {
+	var allKeys KeysByType
 	allKeys.Accepted = GetNKeysByType("accepted")
 	allKeys.Denied = GetNKeysByType("denied")
 	allKeys.Rejected = GetNKeysByType("rejected")
@@ -228,10 +227,10 @@ func RejectNKey(id string, nkey string) error {
 	newDest := filepath.Join(config.FarmerPKI, "sprouts", "rejected", id)
 	cleanDest := filepath.Clean(newDest)
 	if newDest != cleanDest {
-		return types.ErrSproutIDInvalid
+		return ErrSproutIDInvalid
 	}
 	fname, err := findNKey(id)
-	if nkey != "" && err == types.ErrSproutIDNotFound {
+	if nkey != "" && err == ErrSproutIDNotFound {
 		file, errCreate := os.Create(newDest)
 		if errCreate != nil {
 			return errCreate
@@ -244,7 +243,7 @@ func RejectNKey(id string, nkey string) error {
 		return err
 	}
 	if fname == newDest {
-		return types.ErrAlreadyRejected
+		return ErrAlreadyRejected
 	}
 	return os.Rename(fname, newDest)
 }
@@ -252,7 +251,7 @@ func RejectNKey(id string, nkey string) error {
 func GetNKey(id string) (string, error) {
 	FarmerPKI := config.FarmerPKI
 	if !IsValidSproutID(id) {
-		return "", types.ErrSproutIDInvalid
+		return "", ErrSproutIDInvalid
 	}
 	filename := ""
 	filepath.WalkDir(FarmerPKI+"sprouts", func(path string, _ fs.DirEntry, _ error) error {
@@ -265,13 +264,13 @@ func GetNKey(id string) (string, error) {
 			fallthrough
 		case filepath.Join(FarmerPKI, "sprouts", "rejected", id):
 			filename = path
-			return types.ErrSproutIDFound
+			return ErrSproutIDFound
 		default:
 		}
 		return nil
 	})
 	if filename == "" {
-		return "", types.ErrSproutIDNotFound
+		return "", ErrSproutIDNotFound
 	}
 	file, err := os.ReadFile(filename)
 	return string(file), err
@@ -280,7 +279,7 @@ func GetNKey(id string) (string, error) {
 func findNKey(id string) (string, error) {
 	FarmerPKI := config.FarmerPKI
 	if !IsValidSproutID(id) {
-		return "", types.ErrSproutIDInvalid
+		return "", ErrSproutIDInvalid
 	}
 	filename := ""
 	filepath.WalkDir(FarmerPKI+"sprouts", func(path string, _ fs.DirEntry, _ error) error {
@@ -293,13 +292,13 @@ func findNKey(id string) (string, error) {
 			fallthrough
 		case filepath.Join(FarmerPKI, "sprouts", "rejected", id):
 			filename = path
-			return types.ErrSproutIDFound
+			return ErrSproutIDFound
 		default:
 		}
 		return nil
 	})
 	if filename == "" {
-		return "", types.ErrSproutIDNotFound
+		return "", ErrSproutIDNotFound
 	}
 	return filename, nil
 }
@@ -317,7 +316,7 @@ func NKeyExists(id string, nkey string) (Registered bool, Matches bool) {
 			fallthrough
 		case filepath.Join(FarmerPKI, "sprouts", "rejected", id):
 			filename = path
-			return types.ErrSproutIDFound
+			return ErrSproutIDFound
 		default:
 		}
 		return nil
@@ -397,7 +396,7 @@ func LoadRootCA(binary string) error {
 	ok := certPool.AppendCertsFromPEM(rootPEM)
 	if !ok {
 		log.Errorf("nats: failed to parse root certificate from %q", RootCA)
-		return types.ErrCannotParseRootCA
+		return ErrCannotParseRootCA
 	}
 	var nkeyTransport http.RoundTripper = &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
@@ -425,7 +424,7 @@ func PutNKey(id string) error {
 	if err != nil {
 		return err
 	}
-	keySub := types.KeySubmission{NKey: nkey, SproutID: id}
+	keySub := KeySubmission{NKey: nkey, SproutID: id}
 
 	jw, _ := json.Marshal(keySub)
 	url := config.FarmerURL + "/pki/putnkey"

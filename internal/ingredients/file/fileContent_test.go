@@ -9,7 +9,8 @@ import (
 	"testing"
 
 	"github.com/gogrlx/grlx/v2/internal/config"
-	"github.com/gogrlx/grlx/v2/internal/types"
+	"github.com/gogrlx/grlx/v2/internal/cook"
+	"github.com/gogrlx/grlx/v2/internal/ingredients"
 )
 
 func TestFileContent(t *testing.T) {
@@ -34,7 +35,7 @@ func TestFileContent(t *testing.T) {
 	tests := []struct {
 		name     string
 		params   map[string]interface{}
-		expected types.Result
+		expected cook.Result
 		error    error
 		test     bool
 	}{
@@ -44,24 +45,24 @@ func TestFileContent(t *testing.T) {
 				"name": 1,
 				"text": "string",
 			},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: false,
 				Failed:    true,
 				Notes:     []fmt.Stringer{},
 			},
-			error: types.ErrMissingName,
+			error: ingredients.ErrMissingName,
 		},
 		{
 			name: "root",
 			params: map[string]interface{}{
 				"name": "/",
 			},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: false,
 				Failed:    true,
 				Notes:     []fmt.Stringer{},
 			},
-			error: types.ErrModifyRoot,
+			error: ErrModifyRoot,
 		},
 		{
 			name: "makedirs",
@@ -69,12 +70,12 @@ func TestFileContent(t *testing.T) {
 				"name":     newDir,
 				"makedirs": true,
 			},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: false,
 				Failed:    true,
 				Changed:   true,
 				Notes: []fmt.Stringer{
-					types.Snprintf("created directory %s", dirEntry),
+					cook.Snprintf("created directory %s", dirEntry),
 				},
 			},
 			error: nil,
@@ -86,7 +87,7 @@ func TestFileContent(t *testing.T) {
 				"name":        doesExist,
 				"skip_verify": true,
 			},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: false,
 				Failed:    true,
 				Changed:   false,
@@ -101,13 +102,13 @@ func TestFileContent(t *testing.T) {
 				"name":   doesExist,
 				"source": "nope",
 			},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: false,
 				Failed:    true,
 				Changed:   false,
 				Notes:     []fmt.Stringer{},
 			},
-			error: types.ErrMissingHash,
+			error: ErrMissingHash,
 			test:  false,
 		},
 		{
@@ -117,15 +118,15 @@ func TestFileContent(t *testing.T) {
 				"sources":       []string{sourceExist, doesExist},
 				"source_hashes": []string{"thing1"},
 			},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: false,
 				Failed:    true,
 				Changed:   false,
 				Notes: []fmt.Stringer{
-					types.Snprintf("sources and source_hashes must be the same length"),
+					cook.Snprintf("sources and source_hashes must be the same length"),
 				},
 			},
-			error: types.ErrMissingHash,
+			error: ErrMissingHash,
 			test:  false,
 		},
 		// Expect this to match the single source case
@@ -136,7 +137,7 @@ func TestFileContent(t *testing.T) {
 				"sources":     []string{sourceExist, doesExist},
 				"skip_verify": true,
 			},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: false,
 				Failed:    true,
 				Changed:   false,
@@ -152,14 +153,14 @@ func TestFileContent(t *testing.T) {
 				"source":      sourceExist,
 				"source_hash": "test1",
 			},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: false,
 				Failed:    true,
 				Changed:   false,
 				Notes:     []fmt.Stringer{},
 			},
 			// TODO: This should be a lot cleaner, relying on a stdblib error that we have little control over is difficult to test.
-			error: errors.Join(fmt.Errorf("open %s: no such file or directory", filepath.Join(config.CacheDir, "test1")), types.ErrCacheFailure),
+			error: errors.Join(fmt.Errorf("open %s: no such file or directory", filepath.Join(config.CacheDir, "test1")), ErrCacheFailure),
 			test:  false,
 		},
 	}

@@ -8,10 +8,10 @@ import (
 
 	"github.com/taigrr/log-socket/log"
 
-	"github.com/gogrlx/grlx/v2/internal/types"
+	"github.com/gogrlx/grlx/v2/internal/cook"
 )
 
-type IngredientMap map[types.Ingredient]map[string]types.RecipeCooker
+type IngredientMap map[cook.Ingredient]map[string]cook.RecipeCooker
 
 var (
 	ingTex sync.Mutex
@@ -85,16 +85,16 @@ func (m MethodPropsSet) ToMap() map[string]string {
 	return ret
 }
 
-func RegisterAllMethods(step types.RecipeCooker) {
+func RegisterAllMethods(step cook.RecipeCooker) {
 	ingTex.Lock()
 	defer ingTex.Unlock()
 	name, methods := step.Methods()
-	_, ok := ingMap[types.Ingredient(name)]
+	_, ok := ingMap[cook.Ingredient(name)]
 	if !ok {
-		ingMap[types.Ingredient(name)] = make(map[string]types.RecipeCooker)
+		ingMap[cook.Ingredient(name)] = make(map[string]cook.RecipeCooker)
 	}
 	for _, method := range methods {
-		ingMap[types.Ingredient(name)][method] = step
+		ingMap[cook.Ingredient(name)][method] = step
 	}
 }
 
@@ -103,7 +103,7 @@ var (
 	ErrUnknownMethod     = errors.New("unknown method")
 )
 
-func NewRecipeCooker(id types.StepID, ingredient types.Ingredient, method string, params map[string]interface{}) (types.RecipeCooker, error) {
+func NewRecipeCooker(id cook.StepID, ingredient cook.Ingredient, method string, params map[string]interface{}) (cook.RecipeCooker, error) {
 	log.Infof("cooking %s %s %s", id, ingredient, method)
 	ingTex.Lock()
 	defer ingTex.Unlock()

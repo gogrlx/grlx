@@ -5,11 +5,11 @@ import (
 	"errors"
 	"os/exec"
 
-	"github.com/gogrlx/grlx/v2/internal/types"
+	"github.com/gogrlx/grlx/v2/internal/cook"
 )
 
-func (g Group) absent(ctx context.Context, test bool) (types.Result, error) {
-	var result types.Result
+func (g Group) absent(ctx context.Context, test bool) (cook.Result, error) {
+	var result cook.Result
 	result.Succeeded = true
 	result.Failed = false
 	groupName, ok := g.params["name"].(string)
@@ -20,10 +20,10 @@ func (g Group) absent(ctx context.Context, test bool) (types.Result, error) {
 	}
 	if groupExists(groupName) {
 		if test {
-			return types.Result{
+			return cook.Result{
 				Succeeded: true,
 				Failed:    false,
-				Notes:     append(result.Notes, types.SimpleNote("group "+groupName+" would be deleted")),
+				Notes:     append(result.Notes, cook.SimpleNote("group "+groupName+" would be deleted")),
 			}, nil
 		}
 		cmd := exec.CommandContext(ctx, "groupdel", groupName)
@@ -31,20 +31,20 @@ func (g Group) absent(ctx context.Context, test bool) (types.Result, error) {
 		if err != nil {
 			result.Failed = true
 			result.Succeeded = false
-			result.Notes = append(result.Notes, types.SimpleNote("group "+groupName+" could not be deleted"))
-			result.Notes = append(result.Notes, types.SimpleNote(err.Error()))
+			result.Notes = append(result.Notes, cook.SimpleNote("group "+groupName+" could not be deleted"))
+			result.Notes = append(result.Notes, cook.SimpleNote(err.Error()))
 			return result, err
 		}
 		if !groupExists(groupName) {
-			result.Notes = append(result.Notes, types.SimpleNote("group "+groupName+" deleted"))
+			result.Notes = append(result.Notes, cook.SimpleNote("group "+groupName+" deleted"))
 			return result, nil
 		}
 		result.Failed = true
 		result.Succeeded = false
-		result.Notes = append(result.Notes, types.SimpleNote("group "+groupName+" could not be deleted"))
+		result.Notes = append(result.Notes, cook.SimpleNote("group "+groupName+" could not be deleted"))
 		return result, errors.New("group " + groupName + " could not be deleted")
 
 	}
-	result.Notes = append(result.Notes, types.SimpleNote("group "+groupName+" already absent, nothing to do"))
+	result.Notes = append(result.Notes, cook.SimpleNote("group "+groupName+" already absent, nothing to do"))
 	return result, nil
 }

@@ -13,11 +13,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/gogrlx/grlx/v2/internal/types"
+	"github.com/gogrlx/grlx/v2/internal/cook"
 )
 
-func (c Cmd) run(ctx context.Context, test bool) (types.Result, error) {
-	var result types.Result
+func (c Cmd) run(ctx context.Context, test bool) (cook.Result, error) {
+	var result cook.Result
 	var err error
 
 	cmd, ok := c.params["name"].(string)
@@ -83,7 +83,7 @@ func (c Cmd) run(ctx context.Context, test bool) (types.Result, error) {
 			result.Succeeded = false
 			result.Failed = true
 			result.Changed = false
-			result.Notes = append(result.Notes, types.SimpleNote(fmt.Sprintf("invalid timeout %s; must be a valid duration", timeout)))
+			result.Notes = append(result.Notes, cook.SimpleNote(fmt.Sprintf("invalid timeout %s; must be a valid duration", timeout)))
 			return result, errors.Join(parseErr, fmt.Errorf("invalid timeout %s; must be a valid duration", timeout))
 		}
 		timeoutCTX, cancel := context.WithTimeout(ctx, ttimeout)
@@ -120,18 +120,18 @@ func (c Cmd) run(ctx context.Context, test bool) (types.Result, error) {
 	}
 	if test {
 		result.Notes = append(result.Notes,
-			types.SimpleNote("Command would have been run"))
+			cook.SimpleNote("Command would have been run"))
 		return result, nil
 	}
 
 	out, err := command.CombinedOutput()
 	result.Notes = append(result.Notes,
-		types.SimpleNote(fmt.Sprintf("Command output: %s", string(out))),
+		cook.SimpleNote(fmt.Sprintf("Command output: %s", string(out))),
 	)
 
 	if err != nil {
 		result.Notes = append(result.Notes,
-			types.SimpleNote(fmt.Sprintf("Command failed: %s", err.Error())))
+			cook.SimpleNote(fmt.Sprintf("Command failed: %s", err.Error())))
 	}
 	if command.ProcessState.ExitCode() != 0 {
 		result.Succeeded = false

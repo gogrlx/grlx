@@ -5,11 +5,11 @@ import (
 	"errors"
 	"os/user"
 
-	"github.com/gogrlx/grlx/v2/internal/types"
+	"github.com/gogrlx/grlx/v2/internal/cook"
 )
 
-func (u User) exists(ctx context.Context, test bool) (types.Result, error) {
-	var result types.Result
+func (u User) exists(ctx context.Context, test bool) (cook.Result, error) {
+	var result cook.Result
 
 	userName, ok := u.params["name"].(string)
 	if !ok {
@@ -20,12 +20,12 @@ func (u User) exists(ctx context.Context, test bool) (types.Result, error) {
 	if !userExists(userName) {
 		result.Failed = true
 		result.Succeeded = false
-		result.Notes = append(result.Notes, types.SimpleNote("user "+userName+" does not exist"))
+		result.Notes = append(result.Notes, cook.SimpleNote("user "+userName+" does not exist"))
 		return result, nil
 	}
 	result.Failed = false
 	result.Succeeded = true
-	result.Notes = append(result.Notes, types.SimpleNote("user "+userName+" exists"))
+	result.Notes = append(result.Notes, cook.SimpleNote("user "+userName+" exists"))
 	return result, nil
 }
 

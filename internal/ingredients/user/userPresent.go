@@ -8,11 +8,11 @@ import (
 	"os/user"
 	"strings"
 
-	"github.com/gogrlx/grlx/v2/internal/types"
+	"github.com/gogrlx/grlx/v2/internal/cook"
 )
 
-func (u User) present(ctx context.Context, test bool) (types.Result, error) {
-	var result types.Result
+func (u User) present(ctx context.Context, test bool) (cook.Result, error) {
+	var result cook.Result
 
 	userName, ok := u.params["name"].(string)
 	if !ok {
@@ -65,7 +65,7 @@ func (u User) present(ctx context.Context, test bool) (types.Result, error) {
 	cmd := exec.CommandContext(ctx, userCmd, args...)
 	if test {
 		result.Notes = append(result.Notes,
-			types.SimpleNote(fmt.Sprintf("would have updated user with command: %s", cmd.String())))
+			cook.SimpleNote(fmt.Sprintf("would have updated user with command: %s", cmd.String())))
 		result.Succeeded = true
 		result.Failed = false
 		result.Changed = true
@@ -75,12 +75,12 @@ func (u User) present(ctx context.Context, test bool) (types.Result, error) {
 	if err != nil {
 		result.Failed = true
 		result.Succeeded = false
-		result.Notes = append(result.Notes, types.SimpleNote(fmt.Sprintf("failed to update user: %s", err.Error())))
+		result.Notes = append(result.Notes, cook.SimpleNote(fmt.Sprintf("failed to update user: %s", err.Error())))
 		return result, err
 	}
 	result.Failed = false
 	result.Succeeded = true
 	result.Changed = true
-	result.Notes = append(result.Notes, types.SimpleNote(fmt.Sprintf("updated user with command: %s", cmd.String())))
+	result.Notes = append(result.Notes, cook.SimpleNote(fmt.Sprintf("updated user with command: %s", cmd.String())))
 	return result, nil
 }

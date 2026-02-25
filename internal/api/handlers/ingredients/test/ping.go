@@ -7,16 +7,15 @@ import (
 	"strings"
 	"sync"
 
-	//. "github.com/gogrlx/grlx/v2/internal/config"
+	apitypes "github.com/gogrlx/grlx/v2/internal/api/types"
 	"github.com/gogrlx/grlx/v2/internal/ingredients/test"
 	"github.com/gogrlx/grlx/v2/internal/pki"
-	. "github.com/gogrlx/grlx/v2/internal/types"
 	log "github.com/taigrr/log-socket/log"
 )
 
 // TODO: add callback event for when new key is PUT to the server
 func HTestPing(w http.ResponseWriter, r *http.Request) {
-	var targetAction TargetedAction
+	var targetAction apitypes.TargetedAction
 	// grab the body of the req
 	err := json.NewDecoder(r.Body).Decode(&targetAction)
 	if err != nil {
@@ -25,7 +24,7 @@ func HTestPing(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	jw, _ := json.Marshal(targetAction.Action)
-	var ping PingPong
+	var ping apitypes.PingPong
 	json.NewDecoder(bytes.NewBuffer(jw)).Decode(&ping)
 
 	// verify our sprout id is valid
@@ -37,7 +36,7 @@ func HTestPing(w http.ResponseWriter, r *http.Request) {
 		}
 		registered, _ := pki.NKeyExists(target.SproutID, "")
 		if !registered {
-			var results TargetedResults
+			var results apitypes.TargetedResults
 			results.Results = nil
 			log.Trace("An unknown Sprout was pinged. Ignoring.")
 			jw, _ := json.Marshal(results)
@@ -50,14 +49,14 @@ func HTestPing(w http.ResponseWriter, r *http.Request) {
 	// check if the id exists in any of the folders
 	// if it does, append a counter to the end, and check again
 	// if we hit 100 sprouts with the same id, kick back a StatusBadRequest
-	var results TargetedResults
+	var results apitypes.TargetedResults
 	results.Results = make(map[string]interface{})
 	var wg sync.WaitGroup
 	var m sync.Mutex
 	for _, target := range targetAction.Target {
 		wg.Add(1)
 
-		go func(target KeyManager) {
+		go func(target pki.KeyManager) {
 			defer wg.Done()
 			pong, err := test.FPing(target, ping)
 			if err != nil {

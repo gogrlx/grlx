@@ -5,11 +5,12 @@ import (
 	"os"
 	"testing"
 
-	"github.com/gogrlx/grlx/v2/internal/types"
+	"github.com/gogrlx/grlx/v2/internal/cook"
+	"github.com/gogrlx/grlx/v2/internal/ingredients"
 )
 
 func TestRecipeStepUsage(t *testing.T) {
-	var x types.RecipeCooker
+	var x cook.RecipeCooker
 	x, err := (File{}).Parse("testFile", "append", map[string]any{
 		"name": "testFile",
 	})
@@ -44,7 +45,7 @@ func TestDest(t *testing.T) {
 				"name": "",
 			},
 			out:   "",
-			error: types.ErrMissingName,
+			error: ingredients.ErrMissingName,
 		},
 		{
 			name: "TestSkipVerify",
@@ -61,7 +62,7 @@ func TestDest(t *testing.T) {
 				"name": "testFile",
 			},
 			out:   "",
-			error: types.ErrMissingHash,
+			error: ErrMissingHash,
 		},
 		{
 			name: "TestMissingHash",

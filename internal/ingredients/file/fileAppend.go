@@ -8,10 +8,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/gogrlx/grlx/v2/internal/types"
+	"github.com/gogrlx/grlx/v2/internal/cook"
+	"github.com/gogrlx/grlx/v2/internal/ingredients"
 )
 
-func (f File) append(ctx context.Context, test bool) (types.Result, error) {
+func (f File) append(ctx context.Context, test bool) (cook.Result, error) {
 	// TODO
 	// "name": "string", "text": "[]string", "makedirs": "bool",
 	// "source": "string", "source_hash": "string",
@@ -20,20 +21,20 @@ func (f File) append(ctx context.Context, test bool) (types.Result, error) {
 	var notes []fmt.Stringer
 	name, ok := f.params["name"].(string)
 	if !ok {
-		return types.Result{
+		return cook.Result{
 			Succeeded: false, Failed: true, Notes: notes,
-		}, types.ErrMissingName
+		}, ingredients.ErrMissingName
 	}
 	name = filepath.Clean(name)
 	if name == "/" {
-		return types.Result{
+		return cook.Result{
 			Succeeded: false, Failed: true, Notes: notes,
-		}, types.ErrModifyRoot
+		}, ErrModifyRoot
 	}
 	res, missing, err := f.contains(ctx, test)
 	notes = append(notes, res.Notes...)
 	if err == nil {
-		return types.Result{
+		return cook.Result{
 			Succeeded: res.Succeeded, Failed: res.Failed,
 			Changed: res.Changed, Notes: notes,
 		}, err
@@ -41,28 +42,28 @@ func (f File) append(ctx context.Context, test bool) (types.Result, error) {
 	if os.IsNotExist(err) {
 		f, err := os.Create(name)
 		if err != nil {
-			return types.Result{
+			return cook.Result{
 				Succeeded: false, Failed: true, Notes: notes,
 			}, err
 		}
 		defer f.Close()
 		_, writeErr := missing.WriteTo(f)
 		if writeErr != nil {
-			return types.Result{
+			return cook.Result{
 				Succeeded: false, Failed: true, Notes: notes,
 			}, err
 		}
-		notes = append(notes, types.Snprintf("appended %v", name))
-		return types.Result{
+		notes = append(notes, cook.Snprintf("appended %v", name))
+		return cook.Result{
 			Succeeded: true, Failed: false,
 			Changed: true, Notes: notes,
 		}, nil
 	}
-	if errors.Is(err, types.ErrMissingContent) {
+	if errors.Is(err, ErrMissingContent) {
 		f, err := os.OpenFile(name, os.O_APPEND|os.O_WRONLY, 0o644)
 		// TODO: Bug consider muxing errors to make this more descriptive of the issue that occurred
 		if err != nil {
-			return types.Result{
+			return cook.Result{
 				Succeeded: false, Failed: true, Notes: notes,
 			}, err
 		}
@@ -73,18 +74,18 @@ func (f File) append(ctx context.Context, test bool) (types.Result, error) {
 			line = scanner.Text()
 			_, err := f.WriteString(line)
 			if err != nil {
-				return types.Result{
+				return cook.Result{
 					Succeeded: false, Failed: true, Notes: notes,
 				}, err
 			}
 		}
-		notes = append(notes, types.Snprintf("appended %v", name))
-		return types.Result{
+		notes = append(notes, cook.Snprintf("appended %v", name))
+		return cook.Result{
 			Succeeded: true, Failed: false,
 			Changed: true, Notes: notes,
 		}, nil
 	}
-	return types.Result{
+	return cook.Result{
 		Succeeded: false, Failed: true,
 		Changed: false, Notes: notes,
 	}, err

@@ -12,7 +12,6 @@ import (
 
 	"github.com/gogrlx/grlx/v2/internal/config"
 	"github.com/gogrlx/grlx/v2/internal/pki"
-	"github.com/gogrlx/grlx/v2/internal/types"
 )
 
 var APIClient *http.Client
@@ -32,7 +31,7 @@ func CreateSecureTransport() error {
 	}
 	ok := certPool.AppendCertsFromPEM(rootPEM)
 	if !ok {
-		return errors.Join(types.ErrCannotParseRootCA, fmt.Errorf("apiClient: failed to parse root certificate from %q", RootCA))
+		return errors.Join(pki.ErrCannotParseRootCA, fmt.Errorf("apiClient: failed to parse root certificate from %q", RootCA))
 	}
 	var apiTransport http.RoundTripper = &http.Transport{
 		Proxy: http.ProxyFromEnvironment,

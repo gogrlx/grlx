@@ -6,8 +6,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/gogrlx/grlx/v2/internal/cook"
 	"github.com/gogrlx/grlx/v2/internal/ingredients"
-	"github.com/gogrlx/grlx/v2/internal/types"
 )
 
 var ErrGroupMethodUndefined = fmt.Errorf("group method undefined")
@@ -18,7 +18,7 @@ type Group struct {
 	params map[string]interface{}
 }
 
-func (g Group) Parse(id, method string, params map[string]interface{}) (types.RecipeCooker, error) {
+func (g Group) Parse(id, method string, params map[string]interface{}) (cook.RecipeCooker, error) {
 	if params == nil {
 		params = map[string]interface{}{}
 	}
@@ -42,10 +42,10 @@ func (g Group) validate() error {
 			if v.Key == "name" {
 				name, ok := g.params[v.Key].(string)
 				if !ok {
-					return types.ErrMissingName
+					return ingredients.ErrMissingName
 				}
 				if name == "" {
-					return types.ErrMissingName
+					return ingredients.ErrMissingName
 				}
 
 			} else {
@@ -58,7 +58,7 @@ func (g Group) validate() error {
 	return nil
 }
 
-func (g Group) Test(ctx context.Context) (types.Result, error) {
+func (g Group) Test(ctx context.Context) (cook.Result, error) {
 	switch g.method {
 	case "present":
 		return g.present(ctx, true)
@@ -67,12 +67,12 @@ func (g Group) Test(ctx context.Context) (types.Result, error) {
 	case "absent":
 		return g.absent(ctx, true)
 	default:
-		return types.Result{Succeeded: false, Failed: true, Changed: false, Notes: nil},
+		return cook.Result{Succeeded: false, Failed: true, Changed: false, Notes: nil},
 			errors.Join(ErrGroupMethodUndefined, fmt.Errorf("method %s undefined", g.method))
 	}
 }
 
-func (g Group) Apply(ctx context.Context) (types.Result, error) {
+func (g Group) Apply(ctx context.Context) (cook.Result, error) {
 	switch g.method {
 	case "present":
 		return g.present(ctx, false)
@@ -81,7 +81,7 @@ func (g Group) Apply(ctx context.Context) (types.Result, error) {
 	case "absent":
 		return g.absent(ctx, false)
 	default:
-		return types.Result{Succeeded: false, Failed: true, Changed: false, Notes: nil},
+		return cook.Result{Succeeded: false, Failed: true, Changed: false, Notes: nil},
 			errors.Join(ErrGroupMethodUndefined, fmt.Errorf("method %s undefined", g.method))
 
 	}

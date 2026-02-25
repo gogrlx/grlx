@@ -4,10 +4,11 @@ import (
 	"context"
 	"path/filepath"
 
-	"github.com/gogrlx/grlx/v2/internal/types"
+	"github.com/gogrlx/grlx/v2/internal/cook"
+	"github.com/gogrlx/grlx/v2/internal/ingredients"
 )
 
-func (f File) managed(ctx context.Context, test bool) (types.Result, error) {
+func (f File) managed(ctx context.Context, test bool) (cook.Result, error) {
 	// TODO
 	// "name": "string", "source": "string", "source_hash": "string", "user": "string",
 	// "group": "string", "mode": "string", "attrs": "string", "template": "bool",
@@ -18,20 +19,20 @@ func (f File) managed(ctx context.Context, test bool) (types.Result, error) {
 	return f.undef()
 	name, ok := f.params["name"].(string)
 	if !ok {
-		return types.Result{
+		return cook.Result{
 			Succeeded: false, Failed: true,
-		}, types.ErrMissingName
+		}, ingredients.ErrMissingName
 	}
 	name = filepath.Clean(name)
 	if name == "" {
-		return types.Result{
+		return cook.Result{
 			Succeeded: false, Failed: true,
-		}, types.ErrMissingName
+		}, ingredients.ErrMissingName
 	}
 	if name == "/" {
-		return types.Result{
+		return cook.Result{
 			Succeeded: false, Failed: true,
-		}, types.ErrModifyRoot
+		}, ErrModifyRoot
 	}
 	return f.undef()
 }

@@ -23,7 +23,6 @@ import (
 	"github.com/gogrlx/grlx/v2/internal/ingredients/test"
 	"github.com/gogrlx/grlx/v2/internal/jobs"
 	"github.com/gogrlx/grlx/v2/internal/pki"
-	"github.com/gogrlx/grlx/v2/internal/types"
 
 	nats_server "github.com/nats-io/nats-server/v2/server"
 	nats "github.com/nats-io/nats.go"
@@ -87,7 +86,7 @@ func StartAPIServer() {
 	FarmerInterface := config.FarmerInterface
 	FarmerAPIPort := config.FarmerAPIPort
 	KeyFile := config.KeyFile
-	r := api.NewRouter(types.Version{
+	r := api.NewRouter(config.Version{
 		Arch:      runtime.GOOS,
 		Compiler:  runtime.Version(),
 		GitCommit: GitCommit,

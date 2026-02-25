@@ -25,7 +25,7 @@ import (
 	"github.com/taigrr/log-socket/log"
 
 	"github.com/gogrlx/grlx/v2/internal/config"
-	"github.com/gogrlx/grlx/v2/internal/types"
+	"github.com/gogrlx/grlx/v2/internal/cook"
 )
 
 // Job represents a job
@@ -68,7 +68,7 @@ func logJobs(msg *nats.Msg) {
 	JID := tComponents[3]
 
 	// Get the completedStep data
-	var completedStep types.StepCompletion
+	var completedStep cook.StepCompletion
 	err := json.Unmarshal(msg.Data, &completedStep)
 	if err != nil {
 		log.Error(err)

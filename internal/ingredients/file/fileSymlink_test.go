@@ -6,7 +6,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/gogrlx/grlx/v2/internal/types"
+	"github.com/gogrlx/grlx/v2/internal/cook"
+	"github.com/gogrlx/grlx/v2/internal/ingredients"
 )
 
 func TestSymlink(t *testing.T) {
@@ -18,7 +19,7 @@ func TestSymlink(t *testing.T) {
 	tests := []struct {
 		name     string
 		params   map[string]interface{}
-		expected types.Result
+		expected cook.Result
 		error    error
 		test     bool
 	}{
@@ -27,36 +28,36 @@ func TestSymlink(t *testing.T) {
 			params: map[string]interface{}{
 				"name": 1,
 			},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: false,
 				Failed:    true,
 				Notes:     []fmt.Stringer{},
 			},
-			error: types.ErrMissingName,
+			error: ingredients.ErrMissingName,
 		},
 		{
 			name: "SymlinkRoot",
 			params: map[string]interface{}{
 				"name": "/",
 			},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: false,
 				Failed:    true,
 				Notes:     []fmt.Stringer{},
 			},
-			error: types.ErrModifyRoot,
+			error: ErrModifyRoot,
 		},
 		{
 			name: "SymlinkMissingTarget",
 			params: map[string]interface{}{
 				"name": "/tmp/test",
 			},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: false,
 				Failed:    true,
 				Notes:     []fmt.Stringer{},
 			},
-			error: types.ErrMissingTarget,
+			error: ErrMissingTarget,
 		},
 		{
 			name: "SymlinkCreateTest",
@@ -64,11 +65,11 @@ func TestSymlink(t *testing.T) {
 				"name":   tempFile,
 				"target": tempTarget,
 			},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: true,
 				Failed:    false,
 				Changed:   false,
-				Notes:     []fmt.Stringer{types.Snprintf("would create symlink %s pointing to %s", tempFile, tempTarget)},
+				Notes:     []fmt.Stringer{cook.Snprintf("would create symlink %s pointing to %s", tempFile, tempTarget)},
 			},
 			error: nil,
 			test:  true,
@@ -79,11 +80,11 @@ func TestSymlink(t *testing.T) {
 				"name":   tempFile,
 				"target": tempTarget,
 			},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: true,
 				Failed:    false,
 				Changed:   true,
-				Notes:     []fmt.Stringer{types.Snprintf("created symlink %s pointing to %s", tempFile, tempTarget)},
+				Notes:     []fmt.Stringer{cook.Snprintf("created symlink %s pointing to %s", tempFile, tempTarget)},
 			},
 			error: nil,
 		},
@@ -93,7 +94,7 @@ func TestSymlink(t *testing.T) {
 				"name":   existingSymlink,
 				"target": tempTarget,
 			},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: false,
 				Failed:    true,
 				Changed:   false,

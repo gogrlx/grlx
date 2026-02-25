@@ -11,6 +11,7 @@ import (
 	certs "github.com/gogrlx/grlx/v2/internal/certs"
 	"github.com/gogrlx/grlx/v2/internal/config"
 	"github.com/gogrlx/grlx/v2/internal/cook"
+	"github.com/gogrlx/grlx/v2/internal/ingredients"
 	"github.com/gogrlx/grlx/v2/internal/ingredients/cmd"
 	"github.com/gogrlx/grlx/v2/internal/ingredients/test"
 	"github.com/gogrlx/grlx/v2/internal/pki"
@@ -24,6 +25,7 @@ func init() {
 	sproutID = pki.GetSproutID()
 	createConfigRoot()
 	pki.SetupPKISprout()
+	cook.NewRecipeCooker = ingredients.NewRecipeCooker
 }
 
 var (

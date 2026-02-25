@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/djherbis/atime"
-	"github.com/gogrlx/grlx/v2/internal/types"
+	"github.com/gogrlx/grlx/v2/internal/cook"
 )
 
 func TestTouch(t *testing.T) {
@@ -24,14 +24,14 @@ func TestTouch(t *testing.T) {
 	tests := []struct {
 		name     string
 		params   map[string]interface{}
-		expected types.Result
+		expected cook.Result
 		error    error
 		test     bool
 	}{
 		{
 			name:   "no name",
 			params: map[string]interface{}{},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: false,
 				Failed:    true,
 				Changed:   false,
@@ -45,23 +45,23 @@ func TestTouch(t *testing.T) {
 			params: map[string]interface{}{
 				"name": "/",
 			},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: false,
 				Failed:    true,
 				Notes:     []fmt.Stringer{},
 			},
-			error: types.ErrModifyRoot,
+			error: ErrModifyRoot,
 		},
 		{
 			name: "default",
 			params: map[string]interface{}{
 				"name": existingFile,
 			},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: true,
 				Failed:    false,
 				Changed:   true,
-				Notes:     []fmt.Stringer{types.Snprintf("timestamps of `%s` changed", existingFile)},
+				Notes:     []fmt.Stringer{cook.Snprintf("timestamps of `%s` changed", existingFile)},
 			},
 			error: nil,
 			test:  false,
@@ -71,11 +71,11 @@ func TestTouch(t *testing.T) {
 			params: map[string]interface{}{
 				"name": existingFile,
 			},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: true,
 				Failed:    false,
 				Changed:   true,
-				Notes:     []fmt.Stringer{types.Snprintf("timestamps of `%s` will be changed", existingFile)},
+				Notes:     []fmt.Stringer{cook.Snprintf("timestamps of `%s` will be changed", existingFile)},
 			},
 			error: nil,
 			test:  true,
@@ -86,11 +86,11 @@ func TestTouch(t *testing.T) {
 				"name":  existingFile,
 				"atime": "2021-01-01T00:00:00Z",
 			},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: true,
 				Failed:    false,
 				Changed:   true,
-				Notes:     []fmt.Stringer{types.Snprintf("timestamps of `%s` changed", existingFile)},
+				Notes:     []fmt.Stringer{cook.Snprintf("timestamps of `%s` changed", existingFile)},
 			},
 			error: nil,
 			test:  false,
@@ -101,11 +101,11 @@ func TestTouch(t *testing.T) {
 				"name":  existingFile,
 				"atime": "-1",
 			},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: false,
 				Failed:    true,
 				Changed:   false,
-				Notes:     []fmt.Stringer{types.Snprintf("failed to parse atime")},
+				Notes:     []fmt.Stringer{cook.Snprintf("failed to parse atime")},
 			},
 			error: nil,
 			test:  false,
@@ -116,11 +116,11 @@ func TestTouch(t *testing.T) {
 				"name":  existingFile,
 				"mtime": "2021-01-01T00:00:00Z",
 			},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: true,
 				Failed:    false,
 				Changed:   true,
-				Notes:     []fmt.Stringer{types.Snprintf("timestamps of `%s` changed", existingFile)},
+				Notes:     []fmt.Stringer{cook.Snprintf("timestamps of `%s` changed", existingFile)},
 			},
 			error: nil,
 			test:  false,
@@ -131,11 +131,11 @@ func TestTouch(t *testing.T) {
 				"name":  existingFile,
 				"mtime": "-1",
 			},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: false,
 				Failed:    true,
 				Changed:   false,
-				Notes:     []fmt.Stringer{types.Snprintf("failed to parse mtime")},
+				Notes:     []fmt.Stringer{cook.Snprintf("failed to parse mtime")},
 			},
 			error: nil,
 			test:  false,
@@ -146,11 +146,11 @@ func TestTouch(t *testing.T) {
 				"name":     existingFile,
 				"makedirs": true,
 			},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: true,
 				Failed:    false,
 				Changed:   true,
-				Notes:     []fmt.Stringer{types.Snprintf("timestamps of `%s` changed", existingFile)},
+				Notes:     []fmt.Stringer{cook.Snprintf("timestamps of `%s` changed", existingFile)},
 			},
 			error: nil,
 			test:  false,
@@ -160,13 +160,13 @@ func TestTouch(t *testing.T) {
 			params: map[string]interface{}{
 				"name": missingDir,
 			},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: false,
 				Failed:    true,
 				Changed:   true,
-				Notes:     []fmt.Stringer{types.Snprintf("filepath `%s` is missing and `makedirs` is false", missingBase)},
+				Notes:     []fmt.Stringer{cook.Snprintf("filepath `%s` is missing and `makedirs` is false", missingBase)},
 			},
-			error: types.ErrPathNotFound,
+			error: ErrPathNotFound,
 			test:  false,
 		},
 		{
@@ -175,11 +175,11 @@ func TestTouch(t *testing.T) {
 				"name":     missingDir,
 				"makedirs": true,
 			},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: true,
 				Failed:    false,
 				Changed:   true,
-				Notes:     []fmt.Stringer{types.Snprintf("file `%s` to be created with provided timestamps", missingDir)},
+				Notes:     []fmt.Stringer{cook.Snprintf("file `%s` to be created with provided timestamps", missingDir)},
 			},
 			error: nil,
 			test:  true,
@@ -190,11 +190,11 @@ func TestTouch(t *testing.T) {
 				"name":     missingDir,
 				"makedirs": true,
 			},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: true,
 				Failed:    false,
 				Changed:   true,
-				Notes:     []fmt.Stringer{types.Snprintf("timestamps of `%s` changed", missingDir)},
+				Notes:     []fmt.Stringer{cook.Snprintf("timestamps of `%s` changed", missingDir)},
 			},
 			error: nil,
 			test:  false,
@@ -205,11 +205,11 @@ func TestTouch(t *testing.T) {
 				"name":  existingFile,
 				"mtime": "2021-01-01T00:00:00Z",
 			},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: true,
 				Failed:    false,
 				Changed:   true,
-				Notes:     []fmt.Stringer{types.Snprintf("mtime of `%s` will be changed", existingFile)},
+				Notes:     []fmt.Stringer{cook.Snprintf("mtime of `%s` will be changed", existingFile)},
 			},
 			error: nil,
 			test:  true,
@@ -220,11 +220,11 @@ func TestTouch(t *testing.T) {
 				"name":  existingFile,
 				"atime": "2021-01-01T00:00:00Z",
 			},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: true,
 				Failed:    false,
 				Changed:   true,
-				Notes:     []fmt.Stringer{types.Snprintf("atime of `%s` will be changed", existingFile)},
+				Notes:     []fmt.Stringer{cook.Snprintf("atime of `%s` will be changed", existingFile)},
 			},
 			error: nil,
 			test:  true,

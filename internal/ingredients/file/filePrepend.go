@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/gogrlx/grlx/v2/internal/types"
+	"github.com/gogrlx/grlx/v2/internal/cook"
+	"github.com/gogrlx/grlx/v2/internal/ingredients"
 )
 
-func (f File) prepend(ctx context.Context, test bool) (types.Result, error) {
+func (f File) prepend(ctx context.Context, test bool) (cook.Result, error) {
 	// TODO
 	// "name": "string", "text": "[]string", "makedirs": "bool",
 	// "source": "string", "source_hash": "string",
@@ -17,20 +18,20 @@ func (f File) prepend(ctx context.Context, test bool) (types.Result, error) {
 
 	name, ok := f.params["name"].(string)
 	if !ok {
-		return types.Result{
+		return cook.Result{
 			Succeeded: false, Failed: true, Notes: notes,
-		}, types.ErrMissingName
+		}, ingredients.ErrMissingName
 	}
 	name = filepath.Clean(name)
 	if name == "" {
-		return types.Result{
+		return cook.Result{
 			Succeeded: false, Failed: true, Notes: notes,
-		}, types.ErrMissingName
+		}, ingredients.ErrMissingName
 	}
 	if name == "/" {
-		return types.Result{
+		return cook.Result{
 			Succeeded: false, Failed: true, Notes: notes,
-		}, types.ErrModifyRoot
+		}, ErrModifyRoot
 	}
 
 	return f.undef()

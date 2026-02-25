@@ -7,18 +7,16 @@ import (
 	"path/filepath"
 	"sort"
 	"testing"
-
-	"github.com/gogrlx/grlx/v2/internal/types"
 )
 
-// func collectIncludesRecurse(sproutID, basepath string, starter map[types.RecipeName]bool) (map[types.RecipeName]bool, error) {
-// func getRecipeTree(recipes []*types.Step) ([]*types.Step, error) {
-// func includesFromMap(recipe map[string]interface{}) ([]types.RecipeName, error) {
-// func makeRecipeSteps(recipes map[string]interface{}) ([]*types.Step, error) {
-// func pathToRecipeName(path string) (types.RecipeName, error) {
-// func recipeToStep(id string, recipe map[string]interface{}) (types.Step, error) {
+// func collectIncludesRecurse(sproutID, basepath string, starter map[RecipeName]bool) (map[RecipeName]bool, error) {
+// func getRecipeTree(recipes []*Step) ([]*Step, error) {
+// func includesFromMap(recipe map[string]interface{}) ([]RecipeName, error) {
+// func makeRecipeSteps(recipes map[string]interface{}) ([]*Step, error) {
+// func pathToRecipeName(path string) (RecipeName, error) {
+// func recipeToStep(id string, recipe map[string]interface{}) (Step, error) {
 // func renderRecipeTemplate(sproutID, recipeName string, file []byte) ([]byte, error) {
-// func resolveRelativeFilePath(relatedRecipePath string, recipeID types.RecipeName) (string, error) {
+// func resolveRelativeFilePath(relatedRecipePath string, recipeID RecipeName) (string, error) {
 // func stepsFromMap(recipe map[string]interface{}) (map[string]interface{}, error) {
 // func unmarshalRecipe(recipe []byte) (map[string]interface{}, error) {
 
@@ -26,45 +24,45 @@ func TestDeInterfaceRequisites(t *testing.T) {
 	testCases := []struct {
 		id              string
 		requisiteString string
-		Expected        types.RequisiteSet
-		ReqType         types.ReqType
+		Expected        RequisiteSet
+		ReqType         ReqType
 		Err             error
 	}{
 		{
 			id:              "empty",
-			requisiteString: `{"data":null}`, Expected: types.RequisiteSet{},
-			ReqType: types.OnChanges, Err: ErrInvalidFormat,
+			requisiteString: `{"data":null}`, Expected: RequisiteSet{},
+			ReqType: OnChanges, Err: ErrInvalidFormat,
 		},
 		{
 			id: "onchanges", requisiteString: `{"data":["single dependency"]}`,
-			Expected: types.RequisiteSet{types.Requisite{
-				Condition: types.OnChanges,
-				StepIDs:   []types.StepID{types.StepID("single dependency")},
-			}}, ReqType: types.OnChanges,
+			Expected: RequisiteSet{Requisite{
+				Condition: OnChanges,
+				StepIDs:   []StepID{StepID("single dependency")},
+			}}, ReqType: OnChanges,
 			Err: nil,
 		},
 		{
 			id: "two onchanges", requisiteString: `{"data":["one dependency", "another dependency"]}`,
-			Expected: types.RequisiteSet{types.Requisite{
-				Condition: types.OnChanges,
-				StepIDs:   []types.StepID{types.StepID("one dependency"), types.StepID("another dependency")},
-			}}, ReqType: types.OnChanges,
+			Expected: RequisiteSet{Requisite{
+				Condition: OnChanges,
+				StepIDs:   []StepID{StepID("one dependency"), StepID("another dependency")},
+			}}, ReqType: OnChanges,
 			Err: nil,
 		},
 		{
 			id: "single string onchanges", requisiteString: `{"data":"single dependency"}`,
-			Expected: types.RequisiteSet{types.Requisite{
-				Condition: types.OnChanges,
-				StepIDs:   []types.StepID{types.StepID("single dependency")},
-			}}, ReqType: types.OnChanges,
+			Expected: RequisiteSet{Requisite{
+				Condition: OnChanges,
+				StepIDs:   []StepID{StepID("single dependency")},
+			}}, ReqType: OnChanges,
 			Err: nil,
 		},
 		{
 			id: "onfail", requisiteString: `{"data":["one dependency", "another dependency"]}`,
-			Expected: types.RequisiteSet{types.Requisite{
-				Condition: types.OnFail,
-				StepIDs:   []types.StepID{types.StepID("one dependency"), types.StepID("another dependency")},
-			}}, ReqType: types.OnFail,
+			Expected: RequisiteSet{Requisite{
+				Condition: OnFail,
+				StepIDs:   []StepID{StepID("one dependency"), StepID("another dependency")},
+			}}, ReqType: OnFail,
 			Err: nil,
 		},
 	}
@@ -95,8 +93,8 @@ func TestExtractRequisites(t *testing.T) {
 	testCases := []struct {
 		id          string
 		stepString  string
-		ExpectedReq types.RequisiteSet
-	}{{id: "empty", stepString: "{}", ExpectedReq: types.RequisiteSet{}}}
+		ExpectedReq RequisiteSet
+	}{{id: "empty", stepString: "{}", ExpectedReq: RequisiteSet{}}}
 	for _, tc := range testCases {
 		t.Run(tc.id, func(t *testing.T) {
 			m := make(map[string]interface{})
@@ -120,7 +118,7 @@ func TestExtractIncludes(t *testing.T) {
 		id          string
 		sprout      string
 		basepath    string
-		recipe      types.RecipeName
+		recipe      RecipeName
 		mapContents []string
 	}{
 		{
@@ -182,7 +180,7 @@ func TestExtractIncludes(t *testing.T) {
 func TestCollectAllIncludes(t *testing.T) {
 	testCases := []struct {
 		id     string
-		recipe types.RecipeName
+		recipe RecipeName
 		sprout string
 	}{{
 		id:     "dev",
@@ -202,7 +200,7 @@ func TestCollectAllIncludes(t *testing.T) {
 func TestRelativeRecipeToAbsolute(t *testing.T) {
 	testCases := []struct {
 		id              string
-		recipe          types.RecipeName
+		recipe          RecipeName
 		filepath        string
 		err             error
 		relatedFilepath string

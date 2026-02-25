@@ -7,11 +7,12 @@ import (
 
 	log "github.com/taigrr/log-socket/log"
 
+	apitypes "github.com/gogrlx/grlx/v2/internal/api/types"
+	"github.com/gogrlx/grlx/v2/internal/config"
 	"github.com/gogrlx/grlx/v2/internal/cook"
 	"github.com/gogrlx/grlx/v2/internal/ingredients/cmd"
 	"github.com/gogrlx/grlx/v2/internal/ingredients/test"
 	"github.com/gogrlx/grlx/v2/internal/pki"
-	"github.com/gogrlx/grlx/v2/internal/types"
 
 	nats "github.com/nats-io/nats.go"
 )
@@ -23,7 +24,7 @@ func init() {
 
 func natsInit(nc *nats.Conn) error {
 	log.Debugf("Announcing on Farmer...")
-	startup := types.Startup{}
+	startup := config.Startup{}
 	startup.Version.Arch = runtime.GOARCH
 	startup.Version.Compiler = runtime.Version()
 	startup.Version.GitCommit = GitCommit
@@ -42,7 +43,7 @@ func natsInit(nc *nats.Conn) error {
 	}
 
 	_, err = nc.Subscribe("grlx.sprouts."+sproutID+".cmd.run", func(m *nats.Msg) {
-		var cmdRun types.CmdRun
+		var cmdRun apitypes.CmdRun
 		json.NewDecoder(bytes.NewBuffer(m.Data)).Decode(&cmdRun)
 		log.Trace(cmdRun)
 		results, err := cmd.SRun(cmdRun)
@@ -59,7 +60,7 @@ func natsInit(nc *nats.Conn) error {
 		return err
 	}
 	_, err = nc.Subscribe("grlx.sprouts."+sproutID+".test.ping", func(m *nats.Msg) {
-		var ping types.PingPong
+		var ping apitypes.PingPong
 		json.NewDecoder(bytes.NewBuffer(m.Data)).Decode(&ping)
 		log.Trace(ping)
 		pong, _ := test.SPing(ping)
@@ -70,10 +71,10 @@ func natsInit(nc *nats.Conn) error {
 		return err
 	}
 	_, err = nc.Subscribe("grlx.sprouts."+sproutID+".cook", func(m *nats.Msg) {
-		var rEnvelope types.RecipeEnvelope
+		var rEnvelope cook.RecipeEnvelope
 		json.NewDecoder(bytes.NewBuffer(m.Data)).Decode(&rEnvelope)
 		log.Trace(rEnvelope)
-		ackB, _ := json.Marshal(types.Ack{Acknowledged: true, JobID: rEnvelope.JobID})
+		ackB, _ := json.Marshal(cook.Ack{Acknowledged: true, JobID: rEnvelope.JobID})
 		m.Respond(ackB)
 		go func() {
 			err = cook.CookRecipeEnvelope(rEnvelope)

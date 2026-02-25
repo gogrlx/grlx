@@ -10,7 +10,8 @@ import (
 
 	"github.com/fatih/color"
 	gcmd "github.com/gogrlx/grlx/v2/cmd/grlx/ingredients/cmd"
-	"github.com/gogrlx/grlx/v2/internal/types"
+	apitypes "github.com/gogrlx/grlx/v2/internal/api/types"
+	"github.com/gogrlx/grlx/v2/internal/pki"
 	"github.com/spf13/cobra"
 )
 
@@ -40,14 +41,14 @@ var cmdCmdRun = &cobra.Command{
 			cmd.Help()
 			return
 		}
-		var command types.CmdRun
+		var command apitypes.CmdRun
 		command.Command = args[0]
 		if len(args) > 1 {
 			command.Args = args[1:]
 		}
 		command.CWD = cwd
 		command.Timeout = time.Second * time.Duration(timeout)
-		command.Env = make(types.EnvVar)
+		command.Env = make(apitypes.EnvVar)
 		for _, pair := range strings.Split(environment, " ") {
 			if strings.ContainsRune(pair, '=') {
 				kv := strings.SplitN(pair, "=", 2)
@@ -59,7 +60,7 @@ var cmdCmdRun = &cobra.Command{
 		results, err := gcmd.FRun(sproutTarget, command)
 		if err != nil {
 			switch err {
-			case types.ErrSproutIDNotFound:
+			case pki.ErrSproutIDNotFound:
 				log.Fatalf("A targeted Sprout does not exist or is not accepted..")
 			default:
 				// TODO: handle endpoint timeouts here
@@ -81,7 +82,7 @@ var cmdCmdRun = &cobra.Command{
 					color.Red("%s: \n returned an invalid message!\n", keyID)
 					continue
 				}
-				var value types.CmdRun
+				var value apitypes.CmdRun
 				err = json.NewDecoder(bytes.NewBuffer(jw)).Decode(&value)
 				if err != nil {
 					color.Red("%s returned an invalid message!\n", keyID)

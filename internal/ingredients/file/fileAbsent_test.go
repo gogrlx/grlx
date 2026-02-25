@@ -7,7 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/gogrlx/grlx/v2/internal/types"
+	"github.com/gogrlx/grlx/v2/internal/cook"
+	"github.com/gogrlx/grlx/v2/internal/ingredients"
 )
 
 func TestAbsent(t *testing.T) {
@@ -21,7 +22,7 @@ func TestAbsent(t *testing.T) {
 	tests := []struct {
 		name     string
 		params   map[string]interface{}
-		expected types.Result
+		expected cook.Result
 		error    error
 		test     bool
 	}{
@@ -30,35 +31,35 @@ func TestAbsent(t *testing.T) {
 			params: map[string]interface{}{
 				"name": 1,
 			},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: false,
 				Failed:    true,
 				Notes:     []fmt.Stringer{},
 			},
-			error: types.ErrMissingName,
+			error: ingredients.ErrMissingName,
 		},
 		{
 			name: "AbsentRoot",
 			params: map[string]interface{}{
 				"name": "/",
 			},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: false,
 				Failed:    true,
 				Notes:     []fmt.Stringer{},
 			},
-			error: types.ErrDeleteRoot,
+			error: ErrDeleteRoot,
 		},
 		{
 			name: "AbsentNonExistent",
 			params: map[string]interface{}{
 				"name": filepath.Join(tempDir, "there-isnt-a-file-here"),
 			},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: true,
 				Failed:    false,
 				Changed:   false,
-				Notes:     []fmt.Stringer{types.Snprintf("%s is already absent", filepath.Join(tempDir, "there-isnt-a-file-here"))},
+				Notes:     []fmt.Stringer{cook.Snprintf("%s is already absent", filepath.Join(tempDir, "there-isnt-a-file-here"))},
 			},
 			error: nil,
 		},
@@ -67,11 +68,11 @@ func TestAbsent(t *testing.T) {
 			params: map[string]interface{}{
 				"name": existingFile,
 			},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: true,
 				Failed:    false,
 				Changed:   true,
-				Notes:     []fmt.Stringer{types.Snprintf("%s would be deleted", existingFile)},
+				Notes:     []fmt.Stringer{cook.Snprintf("%s would be deleted", existingFile)},
 			},
 			test: true,
 		},
@@ -80,11 +81,11 @@ func TestAbsent(t *testing.T) {
 			params: map[string]interface{}{
 				"name": existingFile,
 			},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: true,
 				Failed:    false,
 				Changed:   true,
-				Notes:     []fmt.Stringer{types.Snprintf("%s has been deleted", existingFile)},
+				Notes:     []fmt.Stringer{cook.Snprintf("%s has been deleted", existingFile)},
 			},
 		},
 		{
@@ -92,7 +93,7 @@ func TestAbsent(t *testing.T) {
 			params: map[string]interface{}{
 				"name": sampleDir,
 			},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: false,
 				Failed:    true,
 				Changed:   false,

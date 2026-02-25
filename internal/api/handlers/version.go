@@ -6,12 +6,12 @@ import (
 
 	log "github.com/taigrr/log-socket/log"
 
-	"github.com/gogrlx/grlx/v2/internal/types"
+	"github.com/gogrlx/grlx/v2/internal/config"
 )
 
-var buildVersion types.Version
+var buildVersion config.Version
 
-func SetBuildVersion(v types.Version) {
+func SetBuildVersion(v config.Version) {
 	buildVersion = v
 }
 

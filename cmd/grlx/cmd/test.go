@@ -8,7 +8,8 @@ import (
 
 	"github.com/fatih/color"
 	test "github.com/gogrlx/grlx/v2/cmd/grlx/ingredients/test"
-	"github.com/gogrlx/grlx/v2/internal/types"
+	apitypes "github.com/gogrlx/grlx/v2/internal/api/types"
+	"github.com/gogrlx/grlx/v2/internal/pki"
 	"github.com/spf13/cobra"
 )
 
@@ -40,7 +41,7 @@ var testCmdPing = &cobra.Command{
 		// TODO: output error message in correct outputMode
 		if err != nil {
 			switch err {
-			case types.ErrSproutIDNotFound:
+			case pki.ErrSproutIDNotFound:
 				log.Fatalf("A targeted Sprout does not exist or is not accepted..")
 			default:
 				log.Panic(err)
@@ -61,7 +62,7 @@ var testCmdPing = &cobra.Command{
 					color.Red("%s: \n returned an invalid message!\n", keyID)
 					continue
 				}
-				var value types.PingPong
+				var value apitypes.PingPong
 				err = json.NewDecoder(bytes.NewBuffer(jw)).Decode(&value)
 				if err != nil {
 					color.Red("%s returned an invalid message!\n", keyID)

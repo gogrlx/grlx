@@ -7,9 +7,8 @@ import (
 	httpc "net/http"
 	"os"
 
-	// "github.com/gogrlx/grlx/v2/internal/ingredients/file"
+	"github.com/gogrlx/grlx/v2/internal/ingredients/file"
 	"github.com/gogrlx/grlx/v2/internal/ingredients/file/hashers"
-	"github.com/gogrlx/grlx/v2/internal/types"
 )
 
 type HTTPFile struct {
@@ -64,7 +63,7 @@ func (hf HTTPFile) Properties() (map[string]interface{}, error) {
 	return hf.Props, nil
 }
 
-func (hf HTTPFile) Parse(id, source, destination, hash string, properties map[string]interface{}) (types.FileProvider, error) {
+func (hf HTTPFile) Parse(id, source, destination, hash string, properties map[string]interface{}) (file.FileProvider, error) {
 	if properties == nil {
 		properties = make(map[string]interface{})
 	}
@@ -93,6 +92,6 @@ func (lf HTTPFile) Verify(ctx context.Context) (bool, error) {
 	return cf.Verify(ctx)
 }
 
-// func init() {
-// 	file.RegisterProvider(HTTPFile{})
-// }
+func init() {
+	file.RegisterProvider(HTTPFile{})
+}

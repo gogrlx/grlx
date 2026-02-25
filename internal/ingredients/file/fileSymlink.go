@@ -6,7 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/gogrlx/grlx/v2/internal/types"
+	"github.com/gogrlx/grlx/v2/internal/cook"
+	"github.com/gogrlx/grlx/v2/internal/ingredients"
 )
 
 // symlink creates a symlink at the given path
@@ -21,46 +22,46 @@ import (
 // if mode is set, then the symlink will be set to that mode
 // if test is true, then the symlink will not be created, but the result will indicate
 // what would have happened
-func (f File) symlink(ctx context.Context, test bool) (types.Result, error) {
+func (f File) symlink(ctx context.Context, test bool) (cook.Result, error) {
 	// parameters to implement:
 	// "name": "string", "target": "string", "force": "bool", "backupname": "string",
 	// "makedirs": "bool", "user": "string", "group": "string", "mode": "string",
 	var notes []fmt.Stringer
 	name, ok := f.params["name"].(string)
 	if !ok {
-		return types.Result{
+		return cook.Result{
 			Succeeded: false, Failed: true,
-		}, types.ErrMissingName
+		}, ingredients.ErrMissingName
 	}
 	name = filepath.Clean(name)
 	if name == "" {
-		return types.Result{
+		return cook.Result{
 			Succeeded: false, Failed: true,
-		}, types.ErrMissingName
+		}, ingredients.ErrMissingName
 	}
 	if name == "/" {
-		return types.Result{
+		return cook.Result{
 			Succeeded: false, Failed: true,
-		}, types.ErrModifyRoot
+		}, ErrModifyRoot
 	}
 	target, ok := f.params["target"].(string)
 	if !ok {
-		return types.Result{
+		return cook.Result{
 			Succeeded: false, Failed: true,
-		}, types.ErrMissingTarget
+		}, ErrMissingTarget
 	}
 	target = filepath.Clean(target)
 	if target == "" {
-		return types.Result{
+		return cook.Result{
 			Succeeded: false, Failed: true,
-		}, types.ErrMissingTarget
+		}, ErrMissingTarget
 	}
 
 	nameStat, err := os.Stat(name)
 	if os.IsNotExist(err) {
 		if test {
-			notes = append(notes, types.Snprintf("would create symlink %s pointing to %s", name, target))
-			return types.Result{
+			notes = append(notes, cook.Snprintf("would create symlink %s pointing to %s", name, target))
+			return cook.Result{
 				Succeeded: true, Failed: false,
 				Changed: true, Notes: notes,
 			}, nil
@@ -70,18 +71,18 @@ func (f File) symlink(ctx context.Context, test bool) (types.Result, error) {
 			// create the symlink
 			err = os.Symlink(target, name)
 			if err != nil {
-				return types.Result{
+				return cook.Result{
 					Succeeded: false, Failed: true,
 				}, err
 			}
-			notes = append(notes, types.Snprintf("created symlink %s pointing to %s", name, target))
-			return types.Result{
+			notes = append(notes, cook.Snprintf("created symlink %s pointing to %s", name, target))
+			return cook.Result{
 				Succeeded: true, Failed: false,
 				Changed: true, Notes: notes,
 			}, nil
 		}
 	} else if err != nil {
-		return types.Result{
+		return cook.Result{
 			Succeeded: false, Failed: true,
 		}, err
 	}

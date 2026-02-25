@@ -9,7 +9,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/gogrlx/grlx/v2/internal/types"
+	"github.com/gogrlx/grlx/v2/internal/cook"
+	"github.com/gogrlx/grlx/v2/internal/ingredients"
 )
 
 func TestManaged(t *testing.T) {
@@ -31,7 +32,7 @@ func TestManaged(t *testing.T) {
 	tests := []struct {
 		name     string
 		params   map[string]interface{}
-		expected types.Result
+		expected cook.Result
 		error    error
 		test     bool
 	}{
@@ -41,24 +42,24 @@ func TestManaged(t *testing.T) {
 				"name": 1,
 				"text": "string",
 			},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: false,
 				Failed:    true,
 				Notes:     []fmt.Stringer{},
 			},
-			error: types.ErrMissingName,
+			error: ingredients.ErrMissingName,
 		},
 		{
 			name: "root",
 			params: map[string]interface{}{
 				"name": "/",
 			},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: false,
 				Failed:    true,
 				Notes:     []fmt.Stringer{},
 			},
-			error: types.ErrModifyRoot,
+			error: ErrModifyRoot,
 		},
 		{
 			name: "Simple case",
@@ -67,7 +68,7 @@ func TestManaged(t *testing.T) {
 				"source":      "grlx://test/managed-file",
 				"skip_verify": true,
 			},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: true,
 				Failed:    false,
 				Changed:   true,
@@ -85,7 +86,7 @@ func TestManaged(t *testing.T) {
 				"skip_verify": true,
 				"backup":      true,
 			},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: true,
 				Failed:    false,
 				Changed:   true,
@@ -102,7 +103,7 @@ func TestManaged(t *testing.T) {
 				"source":      "grlx://test/managed-file",
 				"source_hash": hashString,
 			},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: true,
 				Failed:    false,
 				Changed:   true,
@@ -121,7 +122,7 @@ func TestManaged(t *testing.T) {
 				"source_hash": hashString,
 				"create":      false,
 			},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: true,
 				Failed:    false,
 				Changed:   true,
@@ -138,7 +139,7 @@ func TestManaged(t *testing.T) {
 				"source":      "https://releases.grlx.dev/linux/amd64/v1.0.0/grlx",
 				"source_hash": "md5:0f9847d3b437488309329463b1454f40",
 			},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: true,
 				Failed:    false,
 				Changed:   true,

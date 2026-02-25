@@ -7,7 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/gogrlx/grlx/v2/internal/types"
+	"github.com/gogrlx/grlx/v2/internal/cook"
+	"github.com/gogrlx/grlx/v2/internal/ingredients"
 )
 
 func TestAppend(t *testing.T) {
@@ -47,7 +48,7 @@ func TestAppend(t *testing.T) {
 	tests := []struct {
 		name     string
 		params   map[string]interface{}
-		expected types.Result
+		expected cook.Result
 		error    error
 		test     bool
 	}{
@@ -56,24 +57,24 @@ func TestAppend(t *testing.T) {
 			params: map[string]interface{}{
 				"name": 1,
 			},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: false,
 				Failed:    true,
 				Notes:     []fmt.Stringer{},
 			},
-			error: types.ErrMissingName,
+			error: ingredients.ErrMissingName,
 		},
 		{
 			name: "AppendRoot",
 			params: map[string]interface{}{
 				"name": "/",
 			},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: false,
 				Failed:    true,
 				Notes:     []fmt.Stringer{},
 			},
-			error: types.ErrModifyRoot,
+			error: ErrModifyRoot,
 		},
 		{
 			name: "AppendFileInvalidPermissions",
@@ -81,18 +82,18 @@ func TestAppend(t *testing.T) {
 				"name": fileReadOnly,
 				"text": "test",
 			},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: false,
 				Failed:    true,
 				Changed:   false,
-				Notes:     []fmt.Stringer{types.Snprintf("file %s does not contain all specified content", fileReadOnly)},
+				Notes:     []fmt.Stringer{cook.Snprintf("file %s does not contain all specified content", fileReadOnly)},
 			},
 			error: fmt.Errorf("open %s: permission denied", fileReadOnly),
 		},
 		{
 			name:   "AppendFileWithContent",
 			params: map[string]interface{}{"name": fileWithContent, "text": "test"},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: true,
 				Failed:    false,
 				Changed:   false,
@@ -103,33 +104,33 @@ func TestAppend(t *testing.T) {
 		{
 			name:   "AppendFileWithoutContent",
 			params: map[string]interface{}{"name": fileWithoutContent, "text": "test"},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: true,
 				Failed:    false,
 				Changed:   false,
-				Notes:     []fmt.Stringer{types.Snprintf("file %s does not contain all specified content", fileWithoutContent), types.Snprintf("appended %s", fileWithoutContent)},
+				Notes:     []fmt.Stringer{cook.Snprintf("file %s does not contain all specified content", fileWithoutContent), cook.Snprintf("appended %s", fileWithoutContent)},
 			},
 			error: nil,
 		},
 		{
 			name:   "AppendFileWithoutContent",
 			params: map[string]interface{}{"name": fileWithoutContent, "text": "test"},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: true,
 				Failed:    false,
 				Changed:   false,
-				Notes:     []fmt.Stringer{types.Snprintf("file %s does not contain all specified content", fileWithoutContent), types.Snprintf("appended %s", fileWithoutContent)},
+				Notes:     []fmt.Stringer{cook.Snprintf("file %s does not contain all specified content", fileWithoutContent), cook.Snprintf("appended %s", fileWithoutContent)},
 			},
 			error: nil,
 		},
 		{
 			name:   "AppendDirectory",
 			params: map[string]interface{}{"name": fakePath},
-			expected: types.Result{
+			expected: cook.Result{
 				Succeeded: false,
 				Failed:    true,
 				Changed:   false,
-				Notes:     []fmt.Stringer{types.Snprintf("failed to open %s", fakePath)},
+				Notes:     []fmt.Stringer{cook.Snprintf("failed to open %s", fakePath)},
 			},
 			error: fmt.Errorf("open %s: permission denied", fakePath),
 		},

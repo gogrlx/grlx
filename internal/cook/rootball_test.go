@@ -1,10 +1,8 @@
-package rootball
+package cook
 
 import (
 	"errors"
 	"testing"
-
-	. "github.com/gogrlx/grlx/v2/internal/types"
 )
 
 var (
@@ -17,11 +15,11 @@ var (
 	f  Step
 	g  Step
 	h  Step
-	i  Step
+	iS Step
 	j  Step
 	k  Step
 	l  Step
-	m  Step
+	mS Step
 )
 
 func createSteps() {
@@ -34,21 +32,21 @@ func createSteps() {
 	f.ID = "f"
 	g.ID = "g"
 	h.ID = "h"
-	i.ID = "i"
+	iS.ID = "i"
 	j.ID = "j"
 	k.ID = "k"
 	l.ID = "l"
-	m.ID = "m"
+	mS.ID = "m"
 	a.Requisites = RequisiteSet{Requisite{StepIDs: []StepID{"b", "c"}}}
 	b.Requisites = RequisiteSet{Requisite{StepIDs: []StepID{"d"}}}
 	e.Requisites = RequisiteSet{Requisite{StepIDs: []StepID{"a", "d"}}}
 	g.Requisites = RequisiteSet{Requisite{StepIDs: []StepID{"h"}}}
 	h.Requisites = RequisiteSet{Requisite{StepIDs: []StepID{"i"}}}
-	i.Requisites = RequisiteSet{Requisite{StepIDs: []StepID{"g", "a", "e"}}}
+	iS.Requisites = RequisiteSet{Requisite{StepIDs: []StepID{"g", "a", "e"}}}
 	j.Requisites = RequisiteSet{Requisite{StepIDs: []StepID{"a", "b"}}}
 	k.Requisites = RequisiteSet{Requisite{StepIDs: []StepID{"j", "b"}}}
 	l.Requisites = RequisiteSet{Requisite{StepIDs: []StepID{"k", "j", "b"}}}
-	m.Requisites = RequisiteSet{Requisite{StepIDs: []StepID{"j", "b", "a", "k"}}}
+	mS.Requisites = RequisiteSet{Requisite{StepIDs: []StepID{"j", "b", "a", "k"}}}
 }
 
 func TestGenerateTree(t *testing.T) {
@@ -69,7 +67,7 @@ func TestGenerateTree(t *testing.T) {
 		{
 			name: "deeply nested deps",
 			recipeFile: RecipeFile{
-				Steps:    []*Step{&a, &b, &d, &c, &j, &k, &l, &m},
+				Steps:    []*Step{&a, &b, &d, &c, &j, &k, &l, &mS},
 				Includes: []string{},
 			},
 
@@ -77,16 +75,13 @@ func TestGenerateTree(t *testing.T) {
 		},
 		{
 			name:       "g-h-i cycle",
-			recipeFile: RecipeFile{Steps: []*Step{&g, &h, &i, &a, &b, &c, &d, &e}},
+			recipeFile: RecipeFile{Steps: []*Step{&g, &h, &iS, &a, &b, &c, &d, &e}},
 			expected:   "",
 			err:        ErrDependencyCycleFound,
 		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			//			for _, recipe := range tc.recipeFile.Steps {
-			//				recipe.Requisites = RequisiteSet{}
-			//			}
 			createSteps()
 			roots, err := ValidateTrees(tc.recipeFile.Steps)
 			if !errors.Is(err, tc.err) {
@@ -142,7 +137,6 @@ func TestAllRequisitesDefined(t *testing.T) {
 						t.Errorf("%s was found but should not have been.", e)
 					}
 				}
-				// compare the error types here
 			}
 			for _, e := range tc.undefined {
 				found := false
@@ -204,7 +198,6 @@ func TestNoDuplicateIDs(t *testing.T) {
 						t.Errorf("%s was found but should not have been.", e)
 					}
 				}
-				// compare the error types here
 			}
 			for _, e := range tc.duplicates {
 				found := false
@@ -265,7 +258,6 @@ func TestHasCycle(t *testing.T) {
 						t.Errorf("%s was found but should not have been.", e)
 					}
 				}
-				// compare the error types here
 			}
 			for _, e := range tc.duplicates {
 				found := false

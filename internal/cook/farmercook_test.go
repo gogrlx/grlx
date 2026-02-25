@@ -5,8 +5,6 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-
-	"github.com/gogrlx/grlx/v2/internal/types"
 )
 
 func TestCook(t *testing.T) {
@@ -22,7 +20,7 @@ func TestCook(t *testing.T) {
 func TestResolveRecipeFilePath(t *testing.T) {
 	testCases := []struct {
 		id       string
-		recipe   types.RecipeName
+		recipe   RecipeName
 		filepath string
 		err      error
 	}{{
@@ -77,8 +75,8 @@ func TestResolveRecipeFilePath(t *testing.T) {
 // func TestParseRecipeFile(t *testing.T) {
 // 	testCases := []struct {
 // 		id          string
-// 		recipe      types.RecipeName
-// 		recipeSteps []types.RecipeCooker
+// 		recipe      RecipeName
+// 		recipeSteps []RecipeCooker
 // 	}{}
 //
 // 	for _, tc := range testCases {

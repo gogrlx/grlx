@@ -7,10 +7,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/gogrlx/grlx/v2/internal/types"
+	"github.com/gogrlx/grlx/v2/internal/cook"
+	"github.com/gogrlx/grlx/v2/internal/ingredients"
 )
 
-func (f File) content(ctx context.Context, test bool) (types.Result, error) {
+func (f File) content(ctx context.Context, test bool) (cook.Result, error) {
 	// TODO
 	// "text": "[]string",
 	// "makedirs": "bool", "source": "string",
@@ -31,7 +32,7 @@ func (f File) content(ctx context.Context, test bool) (types.Result, error) {
 	var ok bool
 	err := f.validate()
 	if err != nil {
-		return types.Result{
+		return cook.Result{
 			Succeeded: false, Failed: true,
 			Changed: false, Notes: notes,
 		}, err
@@ -39,20 +40,20 @@ func (f File) content(ctx context.Context, test bool) (types.Result, error) {
 	{
 		name, ok = f.params["name"].(string)
 		if !ok {
-			return types.Result{
+			return cook.Result{
 				Succeeded: false, Failed: true,
-			}, types.ErrMissingName
+			}, ingredients.ErrMissingName
 		}
 		name = filepath.Clean(name)
 		if name == "" {
-			return types.Result{
+			return cook.Result{
 				Succeeded: false, Failed: true,
-			}, types.ErrMissingName
+			}, ingredients.ErrMissingName
 		}
 		if name == "/" {
-			return types.Result{
+			return cook.Result{
 				Succeeded: false, Failed: true,
-			}, types.ErrModifyRoot
+			}, ErrModifyRoot
 		}
 	}
 	{
@@ -62,14 +63,14 @@ func (f File) content(ctx context.Context, test bool) (types.Result, error) {
 		if os.IsNotExist(statErr) && makedirs {
 			err := os.MkdirAll(dir, 0o755)
 			if err != nil {
-				return types.Result{
+				return cook.Result{
 					Succeeded: false, Failed: true,
 					Changed: false, Notes: notes,
 				}, err
 			}
-			notes = append(notes, types.Snprintf("created directory %s", dir))
+			notes = append(notes, cook.Snprintf("created directory %s", dir))
 		} else if statErr != nil {
-			return types.Result{
+			return cook.Result{
 				Succeeded: false, Failed: true,
 				Changed: false, Notes: notes,
 			}, statErr
@@ -80,12 +81,12 @@ func (f File) content(ctx context.Context, test bool) (types.Result, error) {
 		if skipVerify {
 			_, statErr := os.Stat(name)
 			if statErr == nil {
-				return types.Result{
+				return cook.Result{
 					Succeeded: false, Failed: true,
 					Changed: len(notes) != 0, Notes: notes,
 				}, nil
 			} else if !os.IsNotExist(statErr) {
-				return types.Result{
+				return cook.Result{
 					Succeeded: false, Failed: true,
 					Changed: len(notes) != 0, Notes: notes,
 				}, statErr
@@ -96,9 +97,9 @@ func (f File) content(ctx context.Context, test bool) (types.Result, error) {
 		source, _ = f.params["source"].(string)
 		sourceHash, _ = f.params["source_hash"].(string)
 		if source != "" && sourceHash == "" && !skipVerify {
-			return types.Result{
+			return cook.Result{
 				Succeeded: false, Failed: true, Notes: notes,
-			}, types.ErrMissingHash
+			}, ErrMissingHash
 		} else if source != "" {
 			cachedName := fmt.Sprintf("%s-source", f.id)
 			file, err := f.Parse(cachedName, "cached", map[string]interface{}{
@@ -106,8 +107,8 @@ func (f File) content(ctx context.Context, test bool) (types.Result, error) {
 				"skip_verify": skipVerify, "name": cachedName,
 			})
 			if err != nil {
-				notes = append(notes, types.Snprintf("failed to cache source %s", source))
-				return types.Result{
+				notes = append(notes, cook.Snprintf("failed to cache source %s", source))
+				return cook.Result{
 					Succeeded: false, Failed: true,
 					Changed: false, Notes: notes,
 				}, err
@@ -116,10 +117,10 @@ func (f File) content(ctx context.Context, test bool) (types.Result, error) {
 			// Append the cache apply to the notes and append the rest
 			notes = append(notes, cacheRes.Notes...)
 			if err != nil || !cacheRes.Succeeded {
-				return types.Result{
+				return cook.Result{
 					Succeeded: false, Failed: true,
 					Changed: false, Notes: notes,
-				}, errors.Join(err, types.ErrCacheFailure)
+				}, errors.Join(err, ErrCacheFailure)
 			}
 			foundSource = true
 		}
@@ -145,16 +146,16 @@ func (f File) content(ctx context.Context, test bool) (types.Result, error) {
 				if skipVerify {
 					// TODO
 				} else if len(srces) != len(srcHashes) {
-					notes = append(notes, types.SimpleNote("sources and source_hashes must be the same length"))
-					return types.Result{
+					notes = append(notes, cook.SimpleNote("sources and source_hashes must be the same length"))
+					return cook.Result{
 						Succeeded: false, Failed: true,
 						Changed: len(notes) != 1, Notes: notes,
-					}, types.ErrMissingHash
+					}, ErrMissingHash
 				}
 			}
 		}
 		for i, src := range srces {
-			var file types.RecipeCooker
+			var file cook.RecipeCooker
 			var err error
 			if srcStr, ok := src.(string); ok && srcStr != "" {
 				cachedName := fmt.Sprintf("%s-source-%d", f.id, i)
@@ -162,11 +163,11 @@ func (f File) content(ctx context.Context, test bool) (types.Result, error) {
 					if srcHash, ok := srcHashes[i].(string); ok && srcHash != "" {
 						cachedName = srcHash
 					} else {
-						notes = append(notes, types.Snprintf("missing source_hash for source %s", srcStr))
-						return types.Result{
+						notes = append(notes, cook.Snprintf("missing source_hash for source %s", srcStr))
+						return cook.Result{
 							Succeeded: false, Failed: true,
 							Changed: false, Notes: notes,
-						}, types.ErrMissingHash
+						}, ErrMissingHash
 					}
 				}
 				file, err = f.Parse(cachedName, "cached", map[string]interface{}{
@@ -174,35 +175,35 @@ func (f File) content(ctx context.Context, test bool) (types.Result, error) {
 					"skip_verify": skipVerify, "name": cachedName,
 				})
 				if err != nil {
-					notes = append(notes, types.Snprintf("failed to cache source %s", srcStr))
-					return types.Result{
+					notes = append(notes, cook.Snprintf("failed to cache source %s", srcStr))
+					return cook.Result{
 						Succeeded: false, Failed: true,
 						Changed: false, Notes: notes,
 					}, err
 				}
 			} else {
-				notes = append(notes, types.Snprintf("invalid source %v", src))
-				return types.Result{
+				notes = append(notes, cook.Snprintf("invalid source %v", src))
+				return cook.Result{
 					Succeeded: false, Failed: true,
 					Changed: false, Notes: notes,
-				}, types.ErrMissingSource
+				}, ErrMissingSource
 			}
 			cacheRes, err := file.Apply(ctx)
 			// Append the cache apply to the notes and append the rest
 			notes = append(notes, cacheRes.Notes...)
 			if err != nil || !cacheRes.Succeeded {
-				notes = append(notes, types.Snprintf("failed to cache source %s", src))
-				return types.Result{
+				notes = append(notes, cook.Snprintf("failed to cache source %s", src))
+				return cook.Result{
 					Succeeded: false, Failed: true,
 					Changed: false, Notes: notes,
-				}, errors.Join(err, types.ErrCacheFailure)
+				}, errors.Join(err, ErrCacheFailure)
 			}
 			sourceDest, err := file.(*File).dest()
 			if err != nil {
 				f, err := os.Open(sourceDest)
 				if err != nil {
-					notes = append(notes, types.Snprintf("failed to open cached source %s", sourceDest))
-					return types.Result{
+					notes = append(notes, cook.Snprintf("failed to open cached source %s", sourceDest))
+					return cook.Result{
 						Succeeded: false, Failed: true,
 						Changed: false, Notes: notes,
 					}, err
@@ -220,8 +221,8 @@ func (f File) content(ctx context.Context, test bool) (types.Result, error) {
 					"name": name + "-source",
 				})
 				if err != nil {
-					notes = append(notes, types.Snprintf("failed to cache source %s", src))
-					return types.Result{
+					notes = append(notes, cook.Snprintf("failed to cache source %s", src))
+					return cook.Result{
 						Succeeded: false, Failed: true,
 						Changed: false, Notes: notes,
 					}, err
@@ -230,11 +231,11 @@ func (f File) content(ctx context.Context, test bool) (types.Result, error) {
 				// Append the cache apply to the notes and append the rest
 				notes = append(notes, cacheRes.Notes...)
 				if err != nil || !cacheRes.Succeeded {
-					notes = append(notes, types.Snprintf("failed to cache source %s", src))
-					return types.Result{
+					notes = append(notes, cook.Snprintf("failed to cache source %s", src))
+					return cook.Result{
 						Succeeded: false, Failed: true,
 						Changed: false, Notes: notes,
-					}, errors.Join(err, types.ErrCacheFailure)
+					}, errors.Join(err, ErrCacheFailure)
 				}
 				sourceDest, err = srcFile.(*File).dest()
 			} else if skipVerify, ok := f.params["skip_verify"].(bool); ok && skipVerify {
@@ -243,8 +244,8 @@ func (f File) content(ctx context.Context, test bool) (types.Result, error) {
 					"skip_verify": skipVerify, "name": name + "-source",
 				})
 				if err != nil {
-					notes = append(notes, types.Snprintf("failed to cache source %s", srcFile))
-					return types.Result{
+					notes = append(notes, cook.Snprintf("failed to cache source %s", srcFile))
+					return cook.Result{
 						Succeeded: false, Failed: true,
 						Changed: false, Notes: notes,
 					}, err
@@ -253,23 +254,23 @@ func (f File) content(ctx context.Context, test bool) (types.Result, error) {
 				// Append the cache apply to the notes and append the rest
 				notes = append(notes, cacheRes.Notes...)
 				if err != nil || !cacheRes.Succeeded {
-					notes = append(notes, types.Snprintf("failed to cache source %s", srcFile))
-					return types.Result{
+					notes = append(notes, cook.Snprintf("failed to cache source %s", srcFile))
+					return cook.Result{
 						Succeeded: false, Failed: true,
 						Changed: false, Notes: notes,
-					}, errors.Join(err, types.ErrCacheFailure)
+					}, errors.Join(err, ErrCacheFailure)
 				}
 				sourceDest, err = srcFile.(*File).dest()
 			} else {
-				return types.Result{
+				return cook.Result{
 					Succeeded: false, Failed: true, Notes: notes,
-				}, types.ErrMissingHash
+				}, ErrMissingHash
 			}
 		}
 		f, err := os.Open(sourceDest)
 		if err != nil {
-			notes = append(notes, types.Snprintf("failed to open cached source %s", sourceDest))
-			return types.Result{
+			notes = append(notes, cook.Snprintf("failed to open cached source %s", sourceDest))
+			return cook.Result{
 				Succeeded: false, Failed: true,
 				Changed: false, Notes: notes,
 			}, err

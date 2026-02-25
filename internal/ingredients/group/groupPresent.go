@@ -6,11 +6,11 @@ import (
 	"os/exec"
 	"os/user"
 
-	"github.com/gogrlx/grlx/v2/internal/types"
+	"github.com/gogrlx/grlx/v2/internal/cook"
 )
 
-func (g Group) present(ctx context.Context, test bool) (types.Result, error) {
-	var result types.Result
+func (g Group) present(ctx context.Context, test bool) (cook.Result, error) {
+	var result cook.Result
 
 	groupName, ok := g.params["name"].(string)
 	if groupName == "" || !ok {
@@ -35,7 +35,7 @@ func (g Group) present(ctx context.Context, test bool) (types.Result, error) {
 			result.Succeeded = true
 			result.Failed = false
 			result.Changed = true
-			result.Notes = append(result.Notes, types.SimpleNote("would have added a group by executing: "+cmd.String()))
+			result.Notes = append(result.Notes, cook.SimpleNote("would have added a group by executing: "+cmd.String()))
 			return result, nil
 		}
 		err = cmd.Run()
@@ -53,7 +53,7 @@ func (g Group) present(ctx context.Context, test bool) (types.Result, error) {
 			result.Succeeded = true
 			result.Failed = false
 			result.Changed = true
-			result.Notes = append(result.Notes, types.SimpleNote("would have modified the existing group by executing: "+cmd.String()))
+			result.Notes = append(result.Notes, cook.SimpleNote("would have modified the existing group by executing: "+cmd.String()))
 			return result, nil
 		}
 		err = cmd.Run()
@@ -68,6 +68,6 @@ func (g Group) present(ctx context.Context, test bool) (types.Result, error) {
 	result.Succeeded = true
 	result.Failed = false
 	result.Changed = false
-	result.Notes = append(result.Notes, types.SimpleNote("group already exists"))
+	result.Notes = append(result.Notes, cook.SimpleNote("group already exists"))
 	return result, nil
 }

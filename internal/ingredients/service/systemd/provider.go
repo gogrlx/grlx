@@ -8,8 +8,8 @@ import (
 
 	"github.com/taigrr/systemctl"
 
+	"github.com/gogrlx/grlx/v2/internal/ingredients"
 	"github.com/gogrlx/grlx/v2/internal/ingredients/service"
-	"github.com/gogrlx/grlx/v2/internal/types"
 )
 
 type SystemdService struct {
@@ -36,16 +36,16 @@ func (s SystemdService) Enable(ctx context.Context) error {
 	return systemctl.Enable(ctx, s.name, systemctl.Options{UserMode: s.userMode})
 }
 
-func (s SystemdService) Parse(id, method string, properties map[string]interface{}) (types.ServiceProvider, error) {
+func (s SystemdService) Parse(id, method string, properties map[string]interface{}) (service.ServiceProvider, error) {
 	name, userMode := "", false
 	if properties == nil {
 		properties = make(map[string]interface{})
 	}
 	if properties["name"] == nil {
-		return nil, types.ErrMissingName
+		return nil, ingredients.ErrMissingName
 	}
 	if nameI, ok := properties["name"].(string); !ok || nameI == "" {
-		return nil, types.ErrMissingName
+		return nil, ingredients.ErrMissingName
 	} else {
 		name = nameI
 	}
