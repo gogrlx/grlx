@@ -16,6 +16,15 @@ import (
 	"github.com/gogrlx/grlx/v2/internal/cook"
 )
 
+// needsShell reports whether cmd contains shell metacharacters that require
+// interpretation by /bin/sh (pipes, redirects, subshells, quotes, etc.).
+func needsShell(cmd string) bool {
+	return strings.ContainsAny(cmd, "|><$;`\"'&\\") ||
+		strings.Contains(cmd, "&&") ||
+		strings.Contains(cmd, "||") ||
+		strings.Contains(cmd, "\n")
+}
+
 func (c Cmd) run(ctx context.Context, test bool) (cook.Result, error) {
 	var result cook.Result
 	var err error
@@ -26,11 +35,22 @@ func (c Cmd) run(ctx context.Context, test bool) (cook.Result, error) {
 		result.Failed = true
 		return result, errors.New("invalid command; name must be a string")
 	}
-	splitCmd := strings.Split(cmd, " ")
-	if len(splitCmd) == 0 {
+	cmd = strings.TrimSpace(cmd)
+	if cmd == "" {
 		return result, errors.New("invalid command; name must not be empty")
 	}
-	args := splitCmd[1:]
+
+	var executable string
+	var args []string
+
+	if needsShell(cmd) {
+		executable = "/bin/sh"
+		args = []string{"-c", cmd}
+	} else {
+		splitCmd := strings.Fields(cmd)
+		executable = splitCmd[0]
+		args = splitCmd[1:]
+	}
 
 	runas := ""
 	path := ""
@@ -88,9 +108,9 @@ func (c Cmd) run(ctx context.Context, test bool) (cook.Result, error) {
 		}
 		timeoutCTX, cancel := context.WithTimeout(ctx, ttimeout)
 		defer cancel()
-		command = exec.CommandContext(timeoutCTX, splitCmd[0], args...)
+		command = exec.CommandContext(timeoutCTX, executable, args...)
 	} else {
-		command = exec.CommandContext(ctx, splitCmd[0], args...)
+		command = exec.CommandContext(ctx, executable, args...)
 	}
 	if runas != "" && runtime.GOOS != "windows" {
 		u, lookupErr := user.Lookup(runas)
