@@ -439,8 +439,7 @@ func PutNKey(id string) error {
 	}
 	resp, err := nkeyClient.Do(req)
 	if err != nil {
-		// TODO handle error
-		return err
+		return fmt.Errorf("failed to submit NKey: %w", err)
 	}
 	resp.Body.Close()
 	return nil
