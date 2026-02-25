@@ -5,8 +5,8 @@ import (
 )
 
 var (
-	ErrNoRecipe        = errors.New("no recipe")
-	ErrInvalidFormat   = errors.New("invalid recipe format")
-	ErrDuplicateKey    = errors.New("duplicate key in joined maps")
-	ErrPathIsDirectory = errors.New("path provided is a directory")
+	ErrNoRecipe              = errors.New("no recipe")
+	ErrInvalidFormat         = errors.New("invalid recipe format")
+	ErrDuplicateKey          = errors.New("duplicate key in joined maps")
+	ErrRecipePathIsDirectory = errors.New("recipe path resolved to a directory instead of a .grlx file")
 )
