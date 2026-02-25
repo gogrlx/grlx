@@ -91,7 +91,7 @@ func (f File) directory(ctx context.Context, test bool) (cook.Result, error) {
 			if test {
 				notes = append(notes, cook.Snprintf("would chown %s to %s", name, d.user))
 			} else {
-				chownErr := os.Chown(name, int(uid), -1)
+				chownErr := os.Chown(name, int(uint32(uid)), -1)
 				if chownErr != nil {
 					return cook.Result{
 						Succeeded: false, Failed: true, Notes: notes,
@@ -106,7 +106,7 @@ func (f File) directory(ctx context.Context, test bool) (cook.Result, error) {
 						return nil
 					}
 					notes = append(notes, cook.Snprintf("chown %s to %s", name, val))
-					return os.Chown(path, int(uid), -1)
+					return os.Chown(path, int(uint32(uid)), -1)
 				})
 				if walkErr != nil {
 					return cook.Result{
@@ -135,7 +135,7 @@ func (f File) directory(ctx context.Context, test bool) (cook.Result, error) {
 			if test {
 				notes = append(notes, cook.Snprintf("would chown %s to %s", name, d.group))
 			} else {
-				chownErr := os.Chown(name, -1, int(gid))
+				chownErr := os.Chown(name, -1, int(uint32(gid)))
 				if chownErr != nil {
 					return cook.Result{
 						Succeeded: false, Failed: true, Notes: notes,
@@ -150,7 +150,7 @@ func (f File) directory(ctx context.Context, test bool) (cook.Result, error) {
 						return nil
 					}
 					notes = append(notes, cook.Snprintf("chown %s to %s", name, val))
-					return os.Chown(path, -1, int(gid))
+					return os.Chown(path, -1, int(uint32(gid)))
 				})
 				if walkErr != nil {
 					return cook.Result{
