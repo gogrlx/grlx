@@ -10,7 +10,7 @@ import (
 	"github.com/gogrlx/grlx/v2/internal/ingredients"
 )
 
-var ErrCmdMethodUndefined = fmt.Errorf("cmd method undefined")
+var ErrCmdMethodUndefined = errors.New("cmd method undefined")
 
 type Cmd struct {
 	id     string

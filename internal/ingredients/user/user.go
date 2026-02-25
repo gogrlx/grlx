@@ -10,7 +10,7 @@ import (
 	"github.com/gogrlx/grlx/v2/internal/ingredients"
 )
 
-var ErrUserMethodUndefined = fmt.Errorf("user method undefined")
+var ErrUserMethodUndefined = errors.New("user method undefined")
 
 type User struct {
 	id     string

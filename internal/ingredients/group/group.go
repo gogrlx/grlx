@@ -10,7 +10,7 @@ import (
 	"github.com/gogrlx/grlx/v2/internal/ingredients"
 )
 
-var ErrGroupMethodUndefined = fmt.Errorf("group method undefined")
+var ErrGroupMethodUndefined = errors.New("group method undefined")
 
 type Group struct {
 	id     string

@@ -22,7 +22,7 @@ func (g Group) present(ctx context.Context, test bool) (cook.Result, error) {
 
 	gid := ""
 	if gidInter, ok := g.params["gid"]; ok {
-		gid, ok = gidInter.(string)
+		gid, _ = gidInter.(string)
 	}
 	if gid != "" {
 		args = append(args, "-g"+gid)

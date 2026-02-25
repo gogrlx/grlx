@@ -18,14 +18,12 @@ import (
 )
 
 var (
-	focusedStyle        = lipgloss.NewStyle().Foreground(lipgloss.Color("#00ffef"))
-	blurredStyle        = lipgloss.NewStyle().Foreground(lipgloss.Color("#ced4da"))
-	cursorStyle         = focusedStyle.Copy()
-	noStyle             = lipgloss.NewStyle()
-	helpStyle           = blurredStyle.Copy()
-	cursorModeHelpStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#ced4da"))
+	focusedStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#00ffef"))
+	blurredStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#ced4da"))
+	cursorStyle  = focusedStyle
+	noStyle      = lipgloss.NewStyle()
 
-	focusedButton = focusedStyle.Copy().Render("[ Submit ]")
+	focusedButton = focusedStyle.Render("[ Submit ]")
 	blurredButton = fmt.Sprintf("[ %s ]", blurredStyle.Render("Submit"))
 )
 
@@ -65,12 +63,9 @@ var initCmd = &cobra.Command{
 }
 
 type configModel struct {
-	focusIndex      int
-	inputs          []textinput.Model
-	farmerAPIPort   int
-	farmerBusPort   int
-	farmerInterface string
-	cursorMode      cursor.Mode
+	focusIndex int
+	inputs     []textinput.Model
+	cursorMode cursor.Mode
 }
 
 func initialModel() configModel {

@@ -8,10 +8,10 @@ import (
 
 var ErrDependencyCycleFound = errors.New("found a dependency cycle")
 
+// RecipeFile represents a parsed recipe file with its steps and include relationships.
 type RecipeFile struct {
 	Steps      []*Step
 	Includes   []string
-	includes   []*RecipeFile
 	IsIncluded bool
 	ID         string
 }

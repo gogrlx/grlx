@@ -16,18 +16,11 @@ import (
 func (f File) directory(ctx context.Context, test bool) (cook.Result, error) {
 	notes := []fmt.Stringer{}
 	type dir struct {
-		user           string
-		group          string
-		recurse        bool
-		maxDepth       int
-		dirMode        string
-		fileMode       string
-		makeDirs       bool
-		clean          bool
-		followSymlinks bool
-		force          bool
-		backupName     string
-		allowSymlink   bool
+		user     string
+		group    string
+		dirMode  string
+		fileMode string
+		makeDirs bool
 	}
 	name, ok := f.params["name"].(string)
 	if !ok {

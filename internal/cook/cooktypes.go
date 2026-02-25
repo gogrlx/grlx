@@ -52,14 +52,10 @@ type (
 		Acknowledged bool
 		JobID        string
 	}
-	RecipeName string
-	Function   string
-	StepID     string
-	Ingredient string
-	recipe     struct {
-		Includes []RecipeName      `json:"include" yaml:"include"`
-		States   []map[StepID]Step `json:"states" yaml:"states"`
-	}
+	RecipeName   string
+	Function     string
+	StepID       string
+	Ingredient   string
 	RequisiteSet []Requisite
 	Step         struct {
 		Ingredient  Ingredient `json:"ingredient" yaml:"ingredient"`

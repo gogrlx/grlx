@@ -73,6 +73,10 @@ func (f File) contains(ctx context.Context, test bool) (cook.Result, bytes.Buffe
 					}, content, errors.Join(err, ErrCacheFailure)
 				}
 				sourceDest, err = srcFile.(*File).dest()
+				if err != nil {
+					notes = append(notes, cook.Snprintf("failed to get cached source destination: %v", err))
+					return cook.Result{Succeeded: false, Failed: true, Changed: false, Notes: notes}, content, err
+				}
 			} else if skipVerify, ok := f.params["skip_verify"].(bool); ok && skipVerify {
 				srcFile, err := f.Parse(f.id+"-source", "cached", map[string]interface{}{
 					"source":      src,
@@ -94,6 +98,10 @@ func (f File) contains(ctx context.Context, test bool) (cook.Result, bytes.Buffe
 					}, content, errors.Join(err, ErrCacheFailure)
 				}
 				sourceDest, err = srcFile.(*File).dest()
+				if err != nil {
+					notes = append(notes, cook.Snprintf("failed to get cached source destination: %v", err))
+					return cook.Result{Succeeded: false, Failed: true, Changed: false, Notes: notes}, content, err
+				}
 			} else {
 				return cook.Result{
 					Succeeded: false, Failed: true, Notes: notes,
@@ -108,7 +116,10 @@ func (f File) contains(ctx context.Context, test bool) (cook.Result, bytes.Buffe
 				}, content, err
 			}
 			defer f.Close()
-			io.Copy(&content, f)
+			if _, cpErr := io.Copy(&content, f); cpErr != nil {
+				notes = append(notes, cook.Snprintf("failed to read source: %v", cpErr))
+				return cook.Result{Succeeded: false, Failed: true, Changed: false, Notes: notes}, content, cpErr
+			}
 		}
 	}
 	{
@@ -189,7 +200,10 @@ func (f File) contains(ctx context.Context, test bool) (cook.Result, bytes.Buffe
 				}, content, err
 			}
 			defer srcFile.Close()
-			io.Copy(&content, srcFile)
+			if _, cpErr := io.Copy(&content, srcFile); cpErr != nil {
+				notes = append(notes, cook.Snprintf("failed to read source: %v", cpErr))
+				return cook.Result{Succeeded: false, Failed: true, Changed: false, Notes: notes}, content, cpErr
+			}
 			if test {
 				notes = append(notes, cook.Snprintf("copy %s", srcFile.Name()))
 			}
@@ -219,6 +233,10 @@ func (f File) contains(ctx context.Context, test bool) (cook.Result, bytes.Buffe
 					}, content, errors.Join(err, ErrCacheFailure)
 				}
 				sourceDest, err = srcFile.(*File).dest()
+				if err != nil {
+					notes = append(notes, cook.Snprintf("failed to get cached source destination: %v", err))
+					return cook.Result{Succeeded: false, Failed: true, Changed: false, Notes: notes}, content, err
+				}
 			} else if skipVerify, ok := f.params["skip_verify"].(bool); ok && skipVerify {
 				srcFile, err := f.Parse(f.id+"-source", "cached", map[string]interface{}{
 					"source":      src,
@@ -241,6 +259,10 @@ func (f File) contains(ctx context.Context, test bool) (cook.Result, bytes.Buffe
 					}, content, errors.Join(err, ErrCacheFailure)
 				}
 				sourceDest, err = srcFile.(*File).dest()
+				if err != nil {
+					notes = append(notes, cook.Snprintf("failed to get cached source destination: %v", err))
+					return cook.Result{Succeeded: false, Failed: true, Changed: false, Notes: notes}, content, err
+				}
 			} else {
 				return cook.Result{
 					Succeeded: false, Failed: true,
@@ -255,7 +277,10 @@ func (f File) contains(ctx context.Context, test bool) (cook.Result, bytes.Buffe
 				}, content, err
 			}
 			defer f.Close()
-			io.Copy(&content, f)
+			if _, cpErr := io.Copy(&content, f); cpErr != nil {
+				notes = append(notes, cook.Snprintf("failed to read source: %v", cpErr))
+				return cook.Result{Succeeded: false, Failed: true, Changed: false, Notes: notes}, content, cpErr
+			}
 		}
 	}
 	file, err := os.Open(name)

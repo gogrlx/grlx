@@ -42,7 +42,7 @@ func SetupPKIFarmer() {
 		err = os.MkdirAll(FarmerPKI, os.ModePerm)
 		if err != nil {
 			// TODO check if no permissions to create, log, and then exit
-			log.Panicf(err.Error())
+			log.Panicf("failed to create PKI directory: %v", err)
 		}
 	}
 	for _, acceptanceState := range []string{
@@ -59,7 +59,7 @@ func SetupPKIFarmer() {
 		if os.IsNotExist(err) {
 			err = os.MkdirAll(stateFolder, os.ModePerm)
 			if err != nil {
-				log.Panicf(err.Error())
+				log.Panicf("failed to create sprout state directory: %v", err)
 			}
 		} else {
 			log.Fatal(err)
@@ -76,11 +76,11 @@ func SetupPKISprout() {
 	if os.IsNotExist(err) {
 		err = os.MkdirAll(SproutPKI, os.ModePerm)
 		if err != nil {
-			log.Panicf(err.Error())
+			log.Panicf("failed to create sprout PKI directory: %v", err)
 		}
 	} else {
 		// TODO: work out what the other errors could be here
-		log.Panicf(err.Error())
+		log.Panicf("unexpected error checking sprout PKI directory: %v", err)
 	}
 }
 
@@ -427,7 +427,10 @@ func PutNKey(id string) error {
 	}
 	keySub := KeySubmission{NKey: nkey, SproutID: id}
 
-	jw, _ := json.Marshal(keySub)
+	jw, err := json.Marshal(keySub)
+	if err != nil {
+		return fmt.Errorf("failed to marshal key submission: %w", err)
+	}
 	url := config.FarmerURL + "/pki/putnkey"
 	req, err := http.NewRequest(http.MethodPut, url, bytes.NewBuffer(jw))
 	if err != nil {
