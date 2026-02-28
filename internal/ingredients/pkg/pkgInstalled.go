@@ -54,7 +54,7 @@ func (p Pkg) installed(ctx context.Context, test bool) (cook.Result, error) {
 		}, nil
 	}
 	opts := p.buildOptions()
-	err = mgr.Install(ctx, targets, opts...)
+	_, err = mgr.Install(ctx, targets, opts...)
 	if err != nil {
 		return failResult(err)
 	}

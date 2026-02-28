@@ -66,7 +66,7 @@ func (p Pkg) latest(ctx context.Context, test bool) (cook.Result, error) {
 		return cook.Result{Succeeded: true, Changed: true, Notes: notes}, nil
 	}
 	opts := p.buildOptions()
-	err = mgr.Install(ctx, targets, opts...)
+	_, err = mgr.Install(ctx, targets, opts...)
 	if err != nil {
 		return failResult(err)
 	}

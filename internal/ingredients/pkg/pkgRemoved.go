@@ -40,7 +40,7 @@ func (p Pkg) removed(ctx context.Context, test bool) (cook.Result, error) {
 		}, nil
 	}
 	targets := snack.Targets(toRemove...)
-	err = mgr.Remove(ctx, targets, snack.WithAssumeYes())
+	_, err = mgr.Remove(ctx, targets, snack.WithAssumeYes())
 	if err != nil {
 		return failResult(err)
 	}
