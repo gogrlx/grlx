@@ -56,7 +56,10 @@ func CookRecipeEnvelope(envelope RecipeEnvelope) error {
 		select {
 		// each time a step completes, check if any other steps can be started
 		case completion := <-completionChan:
-			b, _ := json.Marshal(completion)
+			b, marshalErr := json.Marshal(completion)
+			if marshalErr != nil {
+				log.Errorf("failed to marshal step completion: %v", marshalErr)
+			}
 
 			conn.Publish("grlx.cook."+pki.GetSproutID()+"."+envelope.JobID, b)
 			log.Infof("Step %s completed with status %v", completion.ID, completion)
@@ -150,7 +153,10 @@ func CookRecipeEnvelope(envelope RecipeEnvelope) error {
 				ChangesMade:      false,
 				Changes:          nil,
 			}
-			b, _ := json.Marshal(completion)
+			b, marshalErr := json.Marshal(completion)
+			if marshalErr != nil {
+				log.Errorf("failed to marshal step completion: %v", marshalErr)
+			}
 
 			conn.Publish("grlx.cook."+pki.GetSproutID()+"."+envelope.JobID, b)
 			log.Info("All steps completed")
