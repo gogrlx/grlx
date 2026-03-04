@@ -11,13 +11,14 @@ require (
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/djherbis/atime v1.1.0
 	github.com/fatih/color v1.18.0
+	github.com/gogrlx/snack v0.0.0-20260301154914-397e865107cb
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
 	github.com/nats-io/nats-server/v2 v2.12.4
 	github.com/nats-io/nats.go v1.49.0
 	github.com/nats-io/nkeys v0.4.15
 	github.com/spf13/cobra v1.10.2
-	github.com/taigrr/jety v0.1.0
+	github.com/taigrr/jety v0.3.0
 	github.com/taigrr/log-socket v1.0.6
 	github.com/taigrr/systemctl v1.1.0
 	gopkg.in/yaml.v3 v3.0.1
@@ -30,17 +31,16 @@ require (
 	github.com/atotto/clipboard v0.1.4 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/charmbracelet/colorprofile v0.4.2 // indirect
-	github.com/charmbracelet/ultraviolet v0.0.0-20260223171050-89c142e4aa73 // indirect
+	github.com/charmbracelet/ultraviolet v0.0.0-20260303162955-0b88c25f3fff // indirect
 	github.com/charmbracelet/x/ansi v0.11.6 // indirect
 	github.com/charmbracelet/x/cellbuf v0.0.15 // indirect
-	github.com/charmbracelet/x/exp/charmtone v0.0.0-20260223200540-d6a276319c45 // indirect
+	github.com/charmbracelet/x/exp/charmtone v0.0.0-20260302105528-e9b285c73169 // indirect
 	github.com/charmbracelet/x/term v0.2.2 // indirect
 	github.com/charmbracelet/x/termios v0.1.1 // indirect
 	github.com/charmbracelet/x/windows v0.2.2 // indirect
 	github.com/clipperhouse/displaywidth v0.11.0 // indirect
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
-	github.com/gogrlx/snack v0.0.0-20260228072652-e4844cca05b6 // indirect
 	github.com/google/go-tpm v0.9.8 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
