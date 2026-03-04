@@ -28,6 +28,13 @@ func init() {
 	cook.NewRecipeCooker = ingredients.NewRecipeCooker
 }
 
+// Default retry delays for sprout startup operations. These can be overridden
+// via the "rootca_retry_delay" and "nkey_retry_delay" config keys respectively.
+const (
+	DefaultRootCARetryDelay = 5 * time.Second
+	DefaultNKeyRetryDelay   = 5 * time.Second
+)
+
 var (
 	BuildTime string
 	GitCommit string
@@ -36,20 +43,21 @@ var (
 )
 
 func main() {
-	os.MkdirAll(config.CacheDir, os.ModeDir)
+	if err := os.MkdirAll(config.CacheDir, os.ModeDir); err != nil {
+		log.Fatalf("failed to create cache directory %s: %v", config.CacheDir, err)
+	}
 	config.LoadConfig("sprout")
 	defer log.Flush()
 	certs.GenNKey(false)
+	rootCARetryDelay := config.GetDurationOrDefault("rootca_retry_delay", DefaultRootCARetryDelay)
 	for err := pki.LoadRootCA("sprout"); err != nil; err = pki.LoadRootCA("sprout") {
 		log.Debugf("Error with RootCA: %v", err)
-		// TODO make this delay configurable
-		time.Sleep(time.Second * 5)
+		time.Sleep(rootCARetryDelay)
 	}
+	nkeyRetryDelay := config.GetDurationOrDefault("nkey_retry_delay", DefaultNKeyRetryDelay)
 	for err := pki.PutNKey(sproutID); err != nil; err = pki.PutNKey(sproutID) {
 		log.Debugf("Error submitting NKey: %v", err)
-
-		// TODO make this delay configurable
-		time.Sleep(time.Second * 5)
+		time.Sleep(nkeyRetryDelay)
 	}
 	go ConnectSprout()
 	select {}
@@ -67,7 +75,6 @@ func createConfigRoot() {
 			log.Panicf("failed to create config directory: %v", err)
 		}
 	} else {
-		// TODO: work out what the other errors could be here
 		log.Panicf("unexpected error checking config directory: %v", err)
 	}
 }
@@ -80,8 +87,7 @@ func ConnectSprout() {
 	FarmerBusURL := config.FarmerBusURL
 	opt, err := nats.NkeyOptionFromSeed(config.NKeySproutPrivFile)
 	if err != nil {
-		// TODO: handle error
-		log.Panic(err)
+		log.Panicf("failed to load NKey seed: %v", err)
 	}
 	certPool := x509.NewCertPool()
 	rootPEM, err := os.ReadFile(SproutRootCA)
@@ -110,7 +116,6 @@ func ConnectSprout() {
 		nc, err = nats.Connect(FarmerBusURL, nats.Secure(config), opt,
 			nats.MaxReconnects(-1),
 			nats.ReconnectWait(time.Second*15),
-			// TODO: Add a reconnect handler
 			nats.DisconnectHandler(func(_ *nats.Conn) {
 				connectionAttempts++
 				log.Debugf("Reconnecting to Farmer, attempt: %d\n", connectionAttempts)
@@ -119,11 +124,6 @@ func ConnectSprout() {
 	}
 	log.Debugf("Successfully connected to the Farmer")
 
-	//	nc, err := nats.Connect(serverUrl, opt)
-	//	if err != nil {
-	//		//TODO: handle error
-	//		panic(err)
-	//	}
 	test.RegisterNatsConn(nc)
 	cmd.RegisterNatsConn(nc)
 	cook.RegisterNatsConn(nc)

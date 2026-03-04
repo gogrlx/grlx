@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/taigrr/log-socket/log"
 
@@ -13,10 +14,16 @@ import (
 )
 
 var (
+	ErrCookTimeout     = errors.New("recipe cooking timed out")
 	ErrStalled         = errors.New("no steps are in progress")
 	ErrRequisiteNotMet = errors.New("requisite not met")
 	nonCCM             = sync.Mutex{}
 )
+
+// DefaultCookTimeout is the maximum time allowed for a recipe envelope to
+// complete all steps. If all steps are not finished within this duration,
+// the operation is cancelled and an error is returned.
+const DefaultCookTimeout = 30 * time.Minute
 
 func CookRecipeEnvelope(envelope RecipeEnvelope) error {
 	nonCCM.Lock()
@@ -161,7 +168,20 @@ func CookRecipeEnvelope(envelope RecipeEnvelope) error {
 			conn.Publish("grlx.cook."+pki.GetSproutID()+"."+envelope.JobID, b)
 			log.Info("All steps completed")
 			return nil
-			// TODO add a timeout case
+		case <-time.After(DefaultCookTimeout):
+			cancel()
+			log.Errorf("recipe %s timed out after %v", envelope.JobID, DefaultCookTimeout)
+			completion := StepCompletion{
+				ID:               StepID(fmt.Sprintf("timeout-%s", envelope.JobID)),
+				CompletionStatus: StepFailed,
+				Error:            ErrCookTimeout,
+			}
+			b, marshalErr := json.Marshal(completion)
+			if marshalErr != nil {
+				log.Errorf("failed to marshal timeout completion: %v", marshalErr)
+			}
+			conn.Publish("grlx.cook."+pki.GetSproutID()+"."+envelope.JobID, b)
+			return ErrCookTimeout
 		}
 	}
 }

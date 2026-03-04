@@ -281,3 +281,13 @@ func SetSproutID(id string) {
 	jety.Set("sproutid", id)
 	jety.WriteConfig()
 }
+
+// GetDurationOrDefault reads a duration config value by key.
+// If the key is unset or zero, the provided default is returned.
+func GetDurationOrDefault(key string, defaultVal time.Duration) time.Duration {
+	val := jety.GetDuration(key)
+	if val == 0 {
+		return defaultVal
+	}
+	return val
+}

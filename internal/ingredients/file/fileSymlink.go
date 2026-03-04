@@ -2,6 +2,7 @@ package file
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -87,5 +88,5 @@ func (f File) symlink(ctx context.Context, test bool) (cook.Result, error) {
 		}, err
 	}
 
-	return f.undef()
+	return cook.Result{Succeeded: false, Failed: true, Changed: false, Notes: nil}, errors.Join(ErrFileMethodUndefined, fmt.Errorf("method %s undefined", f.method))
 }

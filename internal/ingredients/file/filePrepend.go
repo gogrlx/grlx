@@ -2,6 +2,7 @@ package file
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path/filepath"
 
@@ -34,5 +35,5 @@ func (f File) prepend(ctx context.Context, test bool) (cook.Result, error) {
 		}, ErrModifyRoot
 	}
 
-	return f.undef()
+	return cook.Result{Succeeded: false, Failed: true, Changed: false, Notes: nil}, errors.Join(ErrFileMethodUndefined, fmt.Errorf("method %s undefined", f.method))
 }

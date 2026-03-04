@@ -41,8 +41,10 @@ func SetupPKIFarmer() {
 	if os.IsNotExist(err) {
 		err = os.MkdirAll(FarmerPKI, os.ModePerm)
 		if err != nil {
-			// TODO check if no permissions to create, log, and then exit
-			log.Panicf("failed to create PKI directory: %v", err)
+			if os.IsPermission(err) {
+				log.Fatalf("insufficient permissions to create PKI directory %s: %v", FarmerPKI, err)
+			}
+			log.Fatalf("failed to create PKI directory %s: %v", FarmerPKI, err)
 		}
 	}
 	for _, acceptanceState := range []string{
@@ -79,7 +81,7 @@ func SetupPKISprout() {
 			log.Panicf("failed to create sprout PKI directory: %v", err)
 		}
 	} else {
-		// TODO: work out what the other errors could be here
+
 		log.Panicf("unexpected error checking sprout PKI directory: %v", err)
 	}
 }
