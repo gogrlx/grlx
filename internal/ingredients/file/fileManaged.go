@@ -148,7 +148,8 @@ func (f File) managed(ctx context.Context, test bool) (cook.Result, error) {
 	}
 
 	// Get the cached file path
-	sourceDest, err := cacheFile.(*File).dest()
+	cf := cacheFile.(File)
+	sourceDest, err := cf.dest()
 	if err != nil {
 		notes = append(notes, cook.Snprintf("failed to get cached source destination: %v", err))
 		return cook.Result{
