@@ -77,9 +77,9 @@ func CookRecipeEnvelope(envelope RecipeEnvelope) error {
 				// mark the step as in progress
 				requisitesMet, err := RequisitesAreMet(stepMap[id], completionMap)
 				if err != nil {
-					t := completionMap[id]
-					t.CompletionStatus = StepFailed
-					completionMap[id] = t
+					entry := completionMap[id]
+					entry.CompletionStatus = StepFailed
+					completionMap[id] = entry
 					go func(cChan chan StepCompletion, id StepID, err error) {
 						cChan <- StepCompletion{
 							ID:               id,
@@ -92,9 +92,9 @@ func CookRecipeEnvelope(envelope RecipeEnvelope) error {
 				if !requisitesMet {
 					continue
 				}
-				t := completionMap[id]
-				t.CompletionStatus = StepInProgress
-				completionMap[id] = t
+				entry := completionMap[id]
+				entry.CompletionStatus = StepInProgress
+				completionMap[id] = entry
 				// all requisites are met, so start the step in a goroutine
 				go func(step Step, cChan chan StepCompletion) {
 					// use the ingredient package to load and cook the step
