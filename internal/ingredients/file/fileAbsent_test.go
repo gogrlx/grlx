@@ -89,7 +89,7 @@ func TestAbsent(t *testing.T) {
 			},
 		},
 		{
-			name: "AbesentDeletePopulatedDirs",
+			name: "AbsentDeletePopulatedDirs",
 			params: map[string]interface{}{
 				"name": sampleDir,
 			},
