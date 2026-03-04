@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -17,27 +16,22 @@ import (
 )
 
 func TestCached(t *testing.T) {
-	tempDir := t.TempDir()
-	tempFile := tempDir + "/testFile"
-	_, err := os.Create(tempFile)
-	if err != nil {
-		t.Error(err)
-	}
-
 	tests := []struct {
 		name     string
 		params   map[string]interface{}
-		expected cook.Result
+		expected func(cacheDir string) cook.Result
 		error    error
 		test     bool
 	}{
 		{
 			name:   "TestCachedMissingSource",
 			params: map[string]interface{}{},
-			expected: cook.Result{
-				Succeeded: false,
-				Failed:    true,
-				Notes:     []fmt.Stringer{},
+			expected: func(_ string) cook.Result {
+				return cook.Result{
+					Succeeded: false,
+					Failed:    true,
+					Notes:     []fmt.Stringer{},
+				}
 			},
 			error: ErrMissingSource,
 		},
@@ -46,10 +40,12 @@ func TestCached(t *testing.T) {
 			params: map[string]interface{}{
 				"source": "test",
 			},
-			expected: cook.Result{
-				Succeeded: false,
-				Failed:    true,
-				Notes:     []fmt.Stringer{},
+			expected: func(_ string) cook.Result {
+				return cook.Result{
+					Succeeded: false,
+					Failed:    true,
+					Notes:     []fmt.Stringer{},
+				}
 			},
 			error: ErrMissingHash,
 		},
@@ -57,13 +53,15 @@ func TestCached(t *testing.T) {
 			name: "TestSuccesfulCached",
 			params: map[string]interface{}{
 				"name":        "testName",
-				"source":      "/test",
+				"source":      tempFile,
 				"skip_verify": true,
 			},
-			expected: cook.Result{
-				Succeeded: true,
-				Failed:    false,
-				Notes:     []fmt.Stringer{cook.SimpleNote("skip_testName has been cached")},
+			expected: func(cacheDir string) cook.Result {
+				return cook.Result{
+					Succeeded: true,
+					Failed:    false,
+					Notes:     []fmt.Stringer{cook.Snprintf("%s has been cached", filepath.Join(cacheDir, "skip_testName"))},
+				}
 			},
 			error: nil,
 		},
@@ -71,13 +69,15 @@ func TestCached(t *testing.T) {
 			name: "TestSuccesfulCachedTest",
 			params: map[string]interface{}{
 				"name":        "testName",
-				"source":      "/test",
+				"source":      tempFile,
 				"skip_verify": true,
 			},
-			expected: cook.Result{
-				Succeeded: true,
-				Failed:    false,
-				Notes:     []fmt.Stringer{cook.SimpleNote("skip_testName would be cached")},
+			expected: func(cacheDir string) cook.Result {
+				return cook.Result{
+					Succeeded: true,
+					Failed:    false,
+					Notes:     []fmt.Stringer{cook.Snprintf("%s would be cached", filepath.Join(cacheDir, "skip_testName"))},
+				}
 			},
 			error: nil,
 			test:  true,
@@ -86,19 +86,25 @@ func TestCached(t *testing.T) {
 			name: "TestMissingName",
 			params: map[string]interface{}{
 				"name":        "",
-				"source":      "/test",
+				"source":      tempFile,
 				"skip_verify": true,
 			},
-			expected: cook.Result{
-				Succeeded: false,
-				Failed:    true,
-				Notes:     []fmt.Stringer{},
+			expected: func(_ string) cook.Result {
+				return cook.Result{
+					Succeeded: false,
+					Failed:    true,
+					Notes:     []fmt.Stringer{},
+				}
 			},
 			error: ingredients.ErrMissingName,
 		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			td := t.TempDir()
+			config.CacheDir = td
+			defer func() { config.CacheDir = "" }()
+
 			f := File{
 				id:     "",
 				method: "",
@@ -112,7 +118,7 @@ func TestCached(t *testing.T) {
 					t.Errorf("expected error %v, got %v", test.error, err)
 				}
 			}
-			compareResults(t, result, test.expected)
+			compareResults(t, result, test.expected(td))
 		})
 	}
 }
@@ -140,7 +146,6 @@ func TestCachedSkipVerify(t *testing.T) {
 	dest := filepath.Join(td, "skip_dst")
 	skipped := filepath.Join(td, "skip_skip_dst")
 	config.CacheDir = td
-	// Unset the cache dir so that we don't interfere with other tests
 	defer func() {
 		config.CacheDir = ""
 	}()

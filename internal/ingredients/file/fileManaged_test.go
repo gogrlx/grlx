@@ -4,31 +4,54 @@ import (
 	"context"
 	"crypto/md5"
 	"fmt"
-	"io"
+	"net"
+	"net/http"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/gogrlx/grlx/v2/internal/config"
 	"github.com/gogrlx/grlx/v2/internal/cook"
 	"github.com/gogrlx/grlx/v2/internal/ingredients"
 )
 
 func TestManaged(t *testing.T) {
-	// TODO: Determine how to set up the farmer local file system path
 	tempDir := t.TempDir()
+	cd := config.CacheDir
+	defer func() { config.CacheDir = cd }()
+	config.CacheDir = filepath.Join(tempDir, "cache")
+	if err := os.MkdirAll(config.CacheDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a source file for local provider tests
+	sourceFile := filepath.Join(tempDir, "source-file")
+	if err := os.WriteFile(sourceFile, []byte("source content"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Compute hash of source file
+	h := md5.New()
+	h.Write([]byte("source content"))
+	hashString := fmt.Sprintf("md5:%x", h.Sum(nil))
+
 	existingFile := filepath.Join(tempDir, "managed-file")
-	f, err := os.Create(existingFile)
+	if err := os.WriteFile(existingFile, []byte("existing content"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Set up a local HTTP server for the external case
+	listener, err := net.Listen("tcp", "localhost:0")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer f.Close()
-	f.WriteString("This is the existing file content")
-	h := md5.New()
-	if _, err := io.Copy(h, f); err != nil {
-		t.Fatal(err)
-	}
-	existingFileHash := h.Sum(nil)
-	hashString := fmt.Sprintf("md5:%x", existingFileHash)
+	defer listener.Close()
+	go http.Serve(listener, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("source content"))
+	}))
+	port := listener.Addr().(*net.TCPAddr).Port
+	httpSource := fmt.Sprintf("http://localhost:%d/managed-file", port)
+
 	tests := []struct {
 		name     string
 		params   map[string]interface{}
@@ -65,15 +88,13 @@ func TestManaged(t *testing.T) {
 			name: "Simple case",
 			params: map[string]interface{}{
 				"name":        existingFile,
-				"source":      "grlx://test/managed-file",
+				"source":      sourceFile,
 				"skip_verify": true,
 			},
 			expected: cook.Result{
 				Succeeded: true,
 				Failed:    false,
 				Changed:   true,
-				// TODO: Notes not implemented yet for file.managed
-				Notes: []fmt.Stringer{},
 			},
 			error: nil,
 			test:  false,
@@ -82,7 +103,7 @@ func TestManaged(t *testing.T) {
 			name: "Simple case with backup",
 			params: map[string]interface{}{
 				"name":        existingFile,
-				"source":      "grlx://test/managed-file",
+				"source":      sourceFile,
 				"skip_verify": true,
 				"backup":      true,
 			},
@@ -90,8 +111,6 @@ func TestManaged(t *testing.T) {
 				Succeeded: true,
 				Failed:    false,
 				Changed:   true,
-				// TODO: Notes not implemented yet for file.managed
-				Notes: []fmt.Stringer{},
 			},
 			error: nil,
 			test:  false,
@@ -100,15 +119,13 @@ func TestManaged(t *testing.T) {
 			name: "Simple case with source_hash",
 			params: map[string]interface{}{
 				"name":        existingFile,
-				"source":      "grlx://test/managed-file",
+				"source":      sourceFile,
 				"source_hash": hashString,
 			},
 			expected: cook.Result{
 				Succeeded: true,
 				Failed:    false,
 				Changed:   true,
-				// TODO: Notes not implemented yet for file.managed
-				Notes: []fmt.Stringer{},
 			},
 			error: nil,
 			test:  false,
@@ -118,7 +135,7 @@ func TestManaged(t *testing.T) {
 			name: "Simple case no create",
 			params: map[string]interface{}{
 				"name":        existingFile,
-				"source":      "grlx://test/managed-file",
+				"source":      sourceFile,
 				"source_hash": hashString,
 				"create":      false,
 			},
@@ -126,25 +143,21 @@ func TestManaged(t *testing.T) {
 				Succeeded: true,
 				Failed:    false,
 				Changed:   true,
-				// TODO: Notes not implemented yet for file.managed
-				Notes: []fmt.Stringer{},
 			},
 			error: nil,
 			test:  false,
 		},
 		{
-			name: "External case",
+			name: "External case via HTTP",
 			params: map[string]interface{}{
-				"name":        existingFile,
-				"source":      "https://releases.grlx.dev/linux/amd64/v1.0.0/grlx",
-				"source_hash": "md5:0f9847d3b437488309329463b1454f40",
+				"name":        filepath.Join(tempDir, "http-managed"),
+				"source":      httpSource,
+				"source_hash": hashString,
 			},
 			expected: cook.Result{
 				Succeeded: true,
 				Failed:    false,
 				Changed:   true,
-				// TODO: Notes not implemented yet for file.managed
-				Notes: []fmt.Stringer{},
 			},
 			error: nil,
 			test:  false,
@@ -153,15 +166,26 @@ func TestManaged(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			f := File{
-				id:     "",
+				id:     test.name,
 				method: "managed",
 				params: test.params,
 			}
 			result, err := f.managed(context.TODO(), test.test)
-			if test.error != nil && err.Error() != test.error.Error() {
-				t.Errorf("expected error %v, got %v", test.error, err)
+			if test.error != nil {
+				if err == nil {
+					t.Errorf("expected error %v, got nil", test.error)
+				} else if err.Error() != test.error.Error() {
+					t.Errorf("expected error %v, got %v", test.error, err)
+				}
+			} else if err != nil {
+				t.Errorf("expected no error, got %v", err)
 			}
-			compareResults(t, result, test.expected)
+			if result.Succeeded != test.expected.Succeeded {
+				t.Errorf("expected succeeded to be %v, got %v", test.expected.Succeeded, result.Succeeded)
+			}
+			if result.Failed != test.expected.Failed {
+				t.Errorf("expected failed to be %v, got %v", test.expected.Failed, result.Failed)
+			}
 		})
 	}
 }

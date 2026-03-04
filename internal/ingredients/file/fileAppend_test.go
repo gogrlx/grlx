@@ -91,7 +91,7 @@ func TestAppend(t *testing.T) {
 				Changed:   false,
 				Notes:     []fmt.Stringer{cook.Snprintf("file %s does not contain all specified content", fileReadOnly)},
 			},
-			error: fmt.Errorf("open %s: permission denied", fileReadOnly),
+			error: fmt.Errorf("failed to open %s for appending: open %s: permission denied", fileReadOnly, fileReadOnly),
 		},
 		{
 			name:   "AppendFileWithContent",

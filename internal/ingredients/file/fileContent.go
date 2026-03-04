@@ -143,7 +143,7 @@ func (f File) content(ctx context.Context, test bool) (cook.Result, error) {
 			if srcHashes, ok = f.params["source_hashes"].([]interface{}); ok {
 				foundSource = true
 				if skipVerify {
-					// TODO
+					// skip_verify with sources but no hashes - nothing to verify
 				} else if len(srces) != len(srcHashes) {
 					notes = append(notes, cook.SimpleNote("sources and source_hashes must be the same length"))
 					return cook.Result{
@@ -154,6 +154,9 @@ func (f File) content(ctx context.Context, test bool) (cook.Result, error) {
 			}
 		}
 		for i, src := range srces {
+			if !foundSource {
+				break
+			}
 			var file cook.RecipeCooker
 			var err error
 			if srcStr, ok := src.(string); ok && srcStr != "" {
@@ -197,7 +200,7 @@ func (f File) content(ctx context.Context, test bool) (cook.Result, error) {
 					Changed: false, Notes: notes,
 				}, errors.Join(err, ErrCacheFailure)
 			}
-			sourceDest, err := file.(*File).dest()
+			sourceDest, err := file.(File).dest()
 			if err != nil {
 				f, err := os.Open(sourceDest)
 				if err != nil {
@@ -236,7 +239,7 @@ func (f File) content(ctx context.Context, test bool) (cook.Result, error) {
 						Changed: false, Notes: notes,
 					}, errors.Join(err, ErrCacheFailure)
 				}
-				sourceDest, err = srcFile.(*File).dest()
+				sourceDest, err = srcFile.(File).dest()
 				if err != nil {
 					notes = append(notes, cook.Snprintf("failed to get cached source destination: %v", err))
 					return cook.Result{Succeeded: false, Failed: true, Changed: false, Notes: notes}, err
@@ -263,7 +266,7 @@ func (f File) content(ctx context.Context, test bool) (cook.Result, error) {
 						Changed: false, Notes: notes,
 					}, errors.Join(err, ErrCacheFailure)
 				}
-				sourceDest, err = srcFile.(*File).dest()
+				sourceDest, err = srcFile.(File).dest()
 				if err != nil {
 					notes = append(notes, cook.Snprintf("failed to get cached source destination: %v", err))
 					return cook.Result{Succeeded: false, Failed: true, Changed: false, Notes: notes}, err
@@ -274,19 +277,24 @@ func (f File) content(ctx context.Context, test bool) (cook.Result, error) {
 				}, ErrMissingHash
 			}
 		}
-		f, err := os.Open(sourceDest)
-		if err != nil {
-			notes = append(notes, cook.Snprintf("failed to open cached source %s", sourceDest))
-			return cook.Result{
-				Succeeded: false, Failed: true,
-				Changed: false, Notes: notes,
-			}, err
+		if sourceDest != "" {
+			f, err := os.Open(sourceDest)
+			if err != nil {
+				notes = append(notes, cook.Snprintf("failed to open cached source %s", sourceDest))
+				return cook.Result{
+					Succeeded: false, Failed: true,
+					Changed: false, Notes: notes,
+				}, err
+			}
+			defer f.Close()
+			// io.Copy(&content, f)
 		}
-		defer f.Close()
-		//	io.Copy(&content, f)
 	}
 
 	// TODO: text and sources processing is incomplete
 	_ = text
-	return f.undef()
+	return cook.Result{
+		Succeeded: false, Failed: true,
+		Changed: len(notes) > 0, Notes: notes,
+	}, nil
 }
