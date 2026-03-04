@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 )
 
 var (
@@ -35,7 +36,11 @@ func (cf CacheFile) Verify(ctx context.Context) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	hash, matches, err := hf(f, cf.Hash)
+	hashValue := cf.Hash
+	if strings.Contains(hashValue, ":") {
+		hashValue = strings.SplitN(hashValue, ":", 2)[1]
+	}
+	hash, matches, err := hf(f, hashValue)
 	if err != nil {
 		return false, errors.Join(err, ErrHashMismatch, fmt.Errorf("recipe step %s: hash for %s failed: expected %s but found %s", cf.ID, cf.Destination, cf.Hash, hash))
 	}

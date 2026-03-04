@@ -3,6 +3,8 @@ package file
 import (
 	"context"
 	"errors"
+
+	"github.com/gogrlx/grlx/v2/internal/ingredients/file/hashers"
 )
 
 type FileProvider interface {
@@ -18,8 +20,8 @@ var (
 	ErrMissingHash    = errors.New("file is missing a hash")
 	ErrCacheFailure   = errors.New("file caching failed")
 	ErrMissingContent = errors.New("file is missing content")
-	ErrFileNotFound   = errors.New("file not found")
-	ErrHashMismatch   = errors.New("file hash mismatch")
+	ErrFileNotFound   = hashers.ErrFileNotFound
+	ErrHashMismatch   = hashers.ErrHashMismatch
 	ErrDeleteRoot     = errors.New("cannot delete root directory")
 	ErrModifyRoot     = errors.New("cannot modify root directory")
 	ErrMissingTarget  = errors.New("target is missing")

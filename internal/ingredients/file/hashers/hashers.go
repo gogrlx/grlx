@@ -10,6 +10,7 @@ import (
 	"hash/crc32"
 	"io"
 	"os"
+	"strings"
 	"sync"
 )
 
@@ -54,6 +55,22 @@ func GetHashFunc(hashType string) (HashFunc, error) {
 }
 
 func GuessHashType(hash string) string {
+	if strings.Contains(hash, ":") {
+		return strings.SplitN(hash, ":", 2)[0]
+	}
+	// Guess by hash length
+	switch len(hash) {
+	case 32:
+		return "md5"
+	case 40:
+		return "sha1"
+	case 64:
+		return "sha256"
+	case 128:
+		return "sha512"
+	case 8:
+		return "crc"
+	}
 	return "unknown"
 }
 
