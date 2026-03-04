@@ -56,7 +56,10 @@ func CookRecipeEnvelope(envelope RecipeEnvelope) error {
 		select {
 		// each time a step completes, check if any other steps can be started
 		case completion := <-completionChan:
-			b, _ := json.Marshal(completion)
+			b, marshalErr := json.Marshal(completion)
+			if marshalErr != nil {
+				log.Errorf("failed to marshal step completion: %v", marshalErr)
+			}
 
 			conn.Publish("grlx.cook."+pki.GetSproutID()+"."+envelope.JobID, b)
 			log.Infof("Step %s completed with status %v", completion.ID, completion)
@@ -74,9 +77,9 @@ func CookRecipeEnvelope(envelope RecipeEnvelope) error {
 				// mark the step as in progress
 				requisitesMet, err := RequisitesAreMet(stepMap[id], completionMap)
 				if err != nil {
-					t := completionMap[id]
-					t.CompletionStatus = StepFailed
-					completionMap[id] = t
+					entry := completionMap[id]
+					entry.CompletionStatus = StepFailed
+					completionMap[id] = entry
 					go func(cChan chan StepCompletion, id StepID, err error) {
 						cChan <- StepCompletion{
 							ID:               id,
@@ -89,9 +92,9 @@ func CookRecipeEnvelope(envelope RecipeEnvelope) error {
 				if !requisitesMet {
 					continue
 				}
-				t := completionMap[id]
-				t.CompletionStatus = StepInProgress
-				completionMap[id] = t
+				entry := completionMap[id]
+				entry.CompletionStatus = StepInProgress
+				completionMap[id] = entry
 				// all requisites are met, so start the step in a goroutine
 				go func(step Step, cChan chan StepCompletion) {
 					// use the ingredient package to load and cook the step
@@ -150,7 +153,10 @@ func CookRecipeEnvelope(envelope RecipeEnvelope) error {
 				ChangesMade:      false,
 				Changes:          nil,
 			}
-			b, _ := json.Marshal(completion)
+			b, marshalErr := json.Marshal(completion)
+			if marshalErr != nil {
+				log.Errorf("failed to marshal step completion: %v", marshalErr)
+			}
 
 			conn.Publish("grlx.cook."+pki.GetSproutID()+"."+envelope.JobID, b)
 			log.Info("All steps completed")

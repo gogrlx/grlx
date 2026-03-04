@@ -71,7 +71,7 @@ func (f File) append(ctx context.Context, test bool) (cook.Result, error) {
 		line := ""
 		for scanner.Scan() {
 			line = scanner.Text()
-			_, err := f.WriteString(line)
+			_, err := f.WriteString(line + "\n")
 			if err != nil {
 				return cook.Result{
 					Succeeded: false, Failed: true, Notes: notes,

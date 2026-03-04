@@ -6,7 +6,6 @@ import (
 )
 
 func TestRequisitesAreMet(t *testing.T) {
-	// TODO
 
 	completionmap := map[StepID]StepCompletion{
 		"failed": {

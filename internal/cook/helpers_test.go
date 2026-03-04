@@ -163,6 +163,7 @@ func TestExtractIncludes(t *testing.T) {
 			}
 			if len(r) != len(tc.mapContents) {
 				t.Errorf("expected %v but got %v", tc.mapContents, r)
+				return
 			}
 			sort.Slice(r, func(i, j int) bool {
 				return string(r[i]) < string(r[j])
@@ -268,6 +269,7 @@ func TestJoinMaps(t *testing.T) {
 			}
 			if len(r) != len(tc.expected) {
 				t.Errorf("expected %v but got %v", tc.expected, r)
+				return
 			}
 			for k, v := range tc.expected {
 				if r[k] != v {

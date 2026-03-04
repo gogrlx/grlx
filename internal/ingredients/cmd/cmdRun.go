@@ -90,7 +90,7 @@ func (c Cmd) run(ctx context.Context, test bool) (cook.Result, error) {
 	// sanity check env vars
 	envVars := map[string]string{}
 	for _, envVar := range env {
-		sp := strings.Split(envVar, "=")
+		sp := strings.SplitN(envVar, "=", 2)
 		if len(sp) != 2 {
 			return result, fmt.Errorf("invalid env var %s; vars must be key=value pairs", envVar)
 		}
