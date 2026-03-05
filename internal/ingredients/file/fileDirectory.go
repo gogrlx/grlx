@@ -43,11 +43,11 @@ func (f File) directory(ctx context.Context, test bool) (cook.Result, error) {
 	d := dir{}
 	// create the directory if it doesn't exist
 	{
+		st, statErr := os.Stat(name)
+		dirExists := statErr == nil && st.IsDir()
 		// create the dir if "makeDirs" is true or not defined
 		if val, ok := f.params["makedirs"].(bool); ok && val || !ok {
 			d.makeDirs = true
-			st, statErr := os.Stat(name)
-			dirExists := statErr == nil && st.IsDir()
 			if test {
 				if dirExists {
 					notes = append(notes, cook.Snprintf("directory %s already exists", name))
@@ -68,7 +68,10 @@ func (f File) directory(ctx context.Context, test bool) (cook.Result, error) {
 					notes = append(notes, cook.Snprintf("created directory %s", name))
 				}
 			}
-
+		} else if !dirExists {
+			return cook.Result{
+				Succeeded: false, Failed: true, Notes: notes,
+			}, fmt.Errorf("directory %s does not exist and makedirs is disabled: %w", name, ErrPathNotFound)
 		}
 	}
 	// chown the directory to the named user

@@ -44,14 +44,14 @@ func (f File) append(ctx context.Context, test bool) (cook.Result, error) {
 		if err != nil {
 			return cook.Result{
 				Succeeded: false, Failed: true, Notes: notes,
-			}, err
+			}, fmt.Errorf("failed to create %s: %w", name, err)
 		}
 		defer f.Close()
 		_, writeErr := missing.WriteTo(f)
 		if writeErr != nil {
 			return cook.Result{
 				Succeeded: false, Failed: true, Notes: notes,
-			}, err
+			}, fmt.Errorf("failed to write to %s: %w", name, writeErr)
 		}
 		notes = append(notes, cook.Snprintf("appended %v", name))
 		return cook.Result{
