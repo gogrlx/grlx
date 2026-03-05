@@ -86,15 +86,19 @@ var cmdCook = &cobra.Command{
 					b.WriteString(color.GreenString(fmt.Sprintf("\tResult: %s\n", "Success")))
 				case cook.StepFailed:
 					b.WriteString(color.RedString(fmt.Sprintf("\tResult: %s\n", "Failure")))
+				case cook.StepSkipped:
+					b.WriteString(color.YellowString(fmt.Sprintf("\tResult: %s\n", "Skipped")))
 				default:
-					// TODO add a status for skipped steps
 					b.WriteString(color.YellowString(fmt.Sprintf("\tResult: %s\n", "Unknown")))
 				}
 				b.WriteString("\tExecution Notes: \n")
 				for _, change := range step.Changes {
 					b.WriteString(fmt.Sprintf("\t\t%s\n", change))
 				}
-				// TODO add started and duration
+				if !step.Started.IsZero() {
+					b.WriteString(fmt.Sprintf("\tStarted:  %s\n", step.Started.Format(time.RFC3339)))
+					b.WriteString(fmt.Sprintf("\tDuration: %s\n", step.Duration.Round(time.Millisecond)))
+				}
 				b.WriteString("----------\n")
 				printTex.Lock()
 				fmt.Print(b.String())
@@ -158,12 +162,16 @@ var cmdCook = &cobra.Command{
 			for k, v := range completionSteps {
 				successes := -2 // -2 because we don't count the start and completed steps
 				failures := 0
+				skipped := 0
 				errors := []string{}
 				for _, step := range v {
-					if step.CompletionStatus == cook.StepCompleted {
+					switch step.CompletionStatus {
+					case cook.StepCompleted:
 						successes++
-					} else if step.CompletionStatus == cook.StepFailed {
+					case cook.StepFailed:
 						failures++
+					case cook.StepSkipped:
+						skipped++
 					}
 					if step.Error != nil {
 						errors = append(errors, step.Error.Error())
@@ -172,6 +180,9 @@ var cmdCook = &cobra.Command{
 				fmt.Printf("Summary for %s, JID %s:\n", k, jid)
 				fmt.Printf("\tSuccesses:\t%d\n", successes)
 				fmt.Printf("\tFailures:\t%d\n", failures)
+				if skipped > 0 {
+					fmt.Printf("\tSkipped:\t%d\n", skipped)
+				}
 				fmt.Printf("\tErrors:\t\t%d\n", len(errors))
 				for _, err := range errors {
 					fmt.Printf("\t\t%s\n", err)

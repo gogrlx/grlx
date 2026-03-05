@@ -16,6 +16,8 @@ func SummarizeSteps(steps []SproutStepCompletion) map[string]Summary {
 		case StepFailed:
 			stepSummary.Failures += 1
 			stepSummary.Errors = append(stepSummary.Errors, step.CompletedStep.Error)
+		case StepSkipped:
+			// Skipped steps don't count as successes or failures
 		}
 		summary[step.SproutID] = stepSummary
 	}

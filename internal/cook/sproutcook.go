@@ -104,12 +104,15 @@ func CookRecipeEnvelope(envelope RecipeEnvelope) error {
 				completionMap[id] = entry
 				// all requisites are met, so start the step in a goroutine
 				go func(step Step, cChan chan StepCompletion) {
+					started := time.Now()
 					// use the ingredient package to load and cook the step
 					ingredient, err := NewRecipeCooker(step.ID, step.Ingredient, step.Method, step.Properties)
 					if err != nil {
 						cChan <- StepCompletion{
 							ID:               step.ID,
 							CompletionStatus: StepFailed,
+							Started:          started,
+							Duration:         time.Since(started),
 							Error:            err,
 						}
 						return
@@ -124,6 +127,7 @@ func CookRecipeEnvelope(envelope RecipeEnvelope) error {
 						res, err = ingredient.Apply(bgCtx)
 					}
 
+					duration := time.Since(started)
 					notes := []string{}
 					for _, change := range res.Notes {
 						notes = append(notes, change.String())
@@ -134,6 +138,8 @@ func CookRecipeEnvelope(envelope RecipeEnvelope) error {
 							CompletionStatus: StepCompleted,
 							ChangesMade:      res.Changed,
 							Changes:          notes,
+							Started:          started,
+							Duration:         duration,
 							Error:            err,
 						}
 					} else {
@@ -142,6 +148,8 @@ func CookRecipeEnvelope(envelope RecipeEnvelope) error {
 							CompletionStatus: StepFailed,
 							ChangesMade:      res.Changed,
 							Changes:          notes,
+							Started:          started,
+							Duration:         duration,
 							Error:            err,
 						}
 					}

@@ -7,6 +7,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/fatih/color"
+
 	apitypes "github.com/gogrlx/grlx/v2/internal/api/types"
 	"github.com/gogrlx/grlx/v2/internal/pki"
 )
@@ -146,5 +148,19 @@ func WriteOutput(i interface{}, mode string) {
 		fallthrough
 	case "text":
 		fmt.Println(i)
+	}
+}
+
+// OutputError formats and prints an error in the appropriate output mode.
+// For JSON mode it writes a structured error object; for text mode it prints
+// the error in red to stdout.
+func OutputError(err error, mode string) {
+	switch mode {
+	case "json":
+		WriteJSONErr(err)
+	case "":
+		fallthrough
+	case "text":
+		fmt.Fprintln(os.Stdout, color.RedString("Error: %v", err))
 	}
 }
