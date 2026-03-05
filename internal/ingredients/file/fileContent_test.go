@@ -38,6 +38,7 @@ func TestFileContent(t *testing.T) {
 		params   map[string]interface{}
 		expected cook.Result
 		error    error
+		errorIs  error
 		test     bool
 	}{
 		{
@@ -160,9 +161,8 @@ func TestFileContent(t *testing.T) {
 				Changed:   false,
 				Notes:     []fmt.Stringer{},
 			},
-			// TODO: This should be a lot cleaner, relying on a stdblib error that we have little control over is difficult to test.
-			error: errors.Join(fmt.Errorf("open %s: no such file or directory", filepath.Join(config.CacheDir, "test1")), ErrCacheFailure),
-			test:  false,
+			errorIs: ErrCacheFailure,
+			test:    false,
 		},
 	}
 	// WIP test cases that depend on incomplete file.content implementation
@@ -183,7 +183,11 @@ func TestFileContent(t *testing.T) {
 			}
 			result, err := f.content(context.TODO(), test.test)
 			if err != nil {
-				if test.error == nil {
+				if test.errorIs != nil {
+					if !errors.Is(err, test.errorIs) {
+						t.Errorf("expected error to wrap %v, got %v", test.errorIs, err)
+					}
+				} else if test.error == nil {
 					t.Errorf("expected error to be nil but got %v", err)
 				} else if err.Error() != test.error.Error() {
 					t.Errorf("expected error %v, got %v", test.error, err)
