@@ -21,6 +21,7 @@ import (
 var (
 	async       bool
 	cookTimeout int
+	testMode    bool
 )
 
 var cmdCook = &cobra.Command{
@@ -35,7 +36,7 @@ var cmdCook = &cobra.Command{
 		cmdCook.Recipe = cook.RecipeName(args[0])
 		cmdCook.Async = async
 		cmdCook.Env = environment
-		//	cmdCook.Test = test
+		cmdCook.Test = testMode
 
 		results, err := client.Cook(sproutTarget, cmdCook)
 		if err != nil {
@@ -197,6 +198,7 @@ func init() {
 	cmdCook.Flags().BoolVar(&async, "async", false, "Don't print any output, just return the JID to look up results later")
 	cmdCook.PersistentFlags().StringVarP(&sproutTarget, "target", "T", "", "list of sprouts to target")
 	cmdCook.Flags().IntVar(&cookTimeout, "cook-timeout", 30, "Cancel cook execution and return after X seconds")
+	cmdCook.Flags().BoolVar(&testMode, "test", false, "Run in test mode (dry run without applying changes)")
 	cmdCook.MarkPersistentFlagRequired("target")
 	rootCmd.AddCommand(cmdCook)
 }

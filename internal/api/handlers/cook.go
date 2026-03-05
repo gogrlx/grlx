@@ -79,7 +79,7 @@ func Cook(w http.ResponseWriter, r *http.Request) {
 		for _, target := range targetAction.Target {
 			go func(target pki.KeyManager) {
 				defer wg.Done()
-				err := cook.SendCookEvent(target.SproutID, command.Recipe, jid)
+				err := cook.SendCookEvent(target.SproutID, command.Recipe, jid, command.Test)
 				if err != nil {
 					m.Lock()
 					errs[target.SproutID] = err
