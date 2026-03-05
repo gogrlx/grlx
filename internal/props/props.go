@@ -1,11 +1,18 @@
 package props
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"sync"
 	"time"
 )
+
+// DefaultPropTTL is the default time-to-live for cached properties.
+const DefaultPropTTL = 5 * time.Minute
+
+// ErrInvalidPropKey is returned when a sproutID or property name is empty.
+var ErrInvalidPropKey = errors.New("sproutID and property name must not be empty")
 
 type expProp struct {
 	Value  interface{}
@@ -27,24 +34,20 @@ func GetStringPropFunc(sproutID string) func(string) string {
 	}
 }
 
-// TODO: implement GetProp
 func getStringProp(sproutID, name string) string {
 	propCacheLock.RLock()
 	sproutProps, ok := propCache[sproutID]
 	if !ok || sproutProps == nil {
 		propCacheLock.RUnlock()
-		// get from sprout
 		return ""
 	}
 	prop, ok := sproutProps[name]
 	if !ok || prop == (expProp{}) {
 		propCacheLock.RUnlock()
-		// get from sprout
 		return ""
 	}
 	if prop.Expiry.Before(time.Now()) {
 		propCacheLock.RUnlock()
-		// get from sprout — need write lock to delete
 		propCacheLock.Lock()
 		delete(propCache[sproutID], name)
 		propCacheLock.Unlock()
@@ -60,8 +63,23 @@ func SetPropFunc(sproutID string) func(string, string) error {
 	}
 }
 
-// TODO: implement SetProp
 func setProp(sproutID, name, value string) error {
+	return setPropWithTTL(sproutID, name, value, DefaultPropTTL)
+}
+
+func setPropWithTTL(sproutID, name, value string, ttl time.Duration) error {
+	if sproutID == "" || name == "" {
+		return ErrInvalidPropKey
+	}
+	propCacheLock.Lock()
+	defer propCacheLock.Unlock()
+	if propCache[sproutID] == nil {
+		propCache[sproutID] = make(map[string]expProp)
+	}
+	propCache[sproutID][name] = expProp{
+		Value:  value,
+		Expiry: time.Now().Add(ttl),
+	}
 	return nil
 }
 
@@ -71,8 +89,17 @@ func GetDeletePropFunc(sproutID string) func(string) error {
 	}
 }
 
-// TODO: implement DeleteProp
 func deleteProp(sproutID, name string) error {
+	if sproutID == "" || name == "" {
+		return ErrInvalidPropKey
+	}
+	propCacheLock.Lock()
+	defer propCacheLock.Unlock()
+	sproutProps, ok := propCache[sproutID]
+	if !ok || sproutProps == nil {
+		return nil
+	}
+	delete(sproutProps, name)
 	return nil
 }
 
@@ -82,7 +109,6 @@ func GetPropsFunc(sproutID string) func() map[string]interface{} {
 	}
 }
 
-// TODO: implement getProps
 func getProps(sproutID string) map[string]interface{} {
 	propCacheLock.RLock()
 	sproutProps, ok := propCache[sproutID]
