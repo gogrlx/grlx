@@ -135,7 +135,7 @@ func TestAppend(t *testing.T) {
 				Changed:   false,
 				Notes:     []fmt.Stringer{cook.Snprintf("failed to open %s", fakePath)},
 			},
-			error: fmt.Errorf("open %s: permission denied", fakePath),
+			error: fmt.Errorf("failed to create %s: open %s: permission denied", fakePath, fakePath),
 		},
 	}
 	for _, test := range tests {

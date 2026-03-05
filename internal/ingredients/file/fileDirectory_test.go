@@ -101,7 +101,7 @@ func TestDirectory(t *testing.T) {
 				Failed:    true,
 				Notes:     []fmt.Stringer{},
 			},
-			error: fmt.Errorf("chmod %s: no such file or directory", fileModeDNE),
+			error: fmt.Errorf("directory %s does not exist and makedirs is disabled: %s", fileModeDNE, ErrPathNotFound),
 		},
 		{
 			name: "DirectoryTestChangeFileMode",
@@ -119,7 +119,6 @@ func TestDirectory(t *testing.T) {
 			error: nil,
 		},
 		{
-			// TODO: Update to match error for a directory that doesn't exist
 			name: "DirectoryChangeFileModeNotExist",
 			params: map[string]interface{}{
 				"name":      fileModeDNE,
@@ -131,7 +130,7 @@ func TestDirectory(t *testing.T) {
 				Failed:    true,
 				Notes:     []fmt.Stringer{},
 			},
-			error: fmt.Errorf("chmod %s: no such file or directory", fileModeDNE),
+			error: fmt.Errorf("directory %s does not exist and makedirs is disabled: %s", fileModeDNE, ErrPathNotFound),
 		},
 	}
 	for _, test := range tests {
