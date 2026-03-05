@@ -35,5 +35,6 @@ jobs:
           version: "~> v2"
           args: release --snapshot --clean --skip=publish
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
+          GORELEASER_KEY: ${{ secrets.GORELEASER_KEY }}

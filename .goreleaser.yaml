@@ -407,20 +407,35 @@ signs:
     output: true
 
 changelog:
+  use: github
   sort: asc
+  abbrev: -1
   filters:
     exclude:
       - "^docs:"
       - "^test:"
       - "^ci:"
       - "^chore:"
+      - "^style:"
   groups:
-    - title: Features
-      regexp: "^.*feat[(\\w)]*:+.*$"
+    - title: "Breaking Changes"
+      regexp: "^.*!:+.*$"
       order: 0
-    - title: "Bug fixes"
-      regexp: "^.*fix[(\\w)]*:+.*$"
+    - title: "Features"
+      regexp: "^.*feat[(\\w)]*:+.*$"
       order: 1
+    - title: "Bug Fixes"
+      regexp: "^.*fix[(\\w)]*:+.*$"
+      order: 2
+    - title: "Performance"
+      regexp: "^.*perf[(\\w)]*:+.*$"
+      order: 3
+    - title: "Refactor"
+      regexp: "^.*refactor[(\\w)]*:+.*$"
+      order: 4
+    - title: "Build"
+      regexp: "^.*build[(\\w)]*:+.*$"
+      order: 5
     - title: Others
       order: 999
 

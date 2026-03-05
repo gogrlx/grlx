@@ -60,3 +60,4 @@ jobs:
           DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
           AUR_KEY: ${{ secrets.AUR_KEY }}
           GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
+          GORELEASER_KEY: ${{ secrets.GORELEASER_KEY }}
