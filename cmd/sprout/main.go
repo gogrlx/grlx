@@ -17,6 +17,8 @@ import (
 	"github.com/gogrlx/grlx/v2/internal/pki"
 
 	nats "github.com/nats-io/nats.go"
+
+	"github.com/taigrr/jety"
 )
 
 func init() {
@@ -27,13 +29,6 @@ func init() {
 	pki.SetupPKISprout()
 	cook.NewRecipeCooker = ingredients.NewRecipeCooker
 }
-
-// Default retry delays for sprout startup operations. These can be overridden
-// via the "rootca_retry_delay" and "nkey_retry_delay" config keys respectively.
-const (
-	DefaultRootCARetryDelay = 5 * time.Second
-	DefaultNKeyRetryDelay   = 5 * time.Second
-)
 
 var (
 	BuildTime string
@@ -49,12 +44,12 @@ func main() {
 	config.LoadConfig("sprout")
 	defer log.Flush()
 	certs.GenNKey(false)
-	rootCARetryDelay := config.GetDurationOrDefault("rootca_retry_delay", DefaultRootCARetryDelay)
+	rootCARetryDelay := jety.GetDuration("rootca_retry_delay")
 	for err := pki.LoadRootCA("sprout"); err != nil; err = pki.LoadRootCA("sprout") {
 		log.Debugf("Error with RootCA: %v", err)
 		time.Sleep(rootCARetryDelay)
 	}
-	nkeyRetryDelay := config.GetDurationOrDefault("nkey_retry_delay", DefaultNKeyRetryDelay)
+	nkeyRetryDelay := jety.GetDuration("nkey_retry_delay")
 	for err := pki.PutNKey(sproutID); err != nil; err = pki.PutNKey(sproutID) {
 		log.Debugf("Error submitting NKey: %v", err)
 		time.Sleep(nkeyRetryDelay)

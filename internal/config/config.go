@@ -208,6 +208,8 @@ func LoadConfig(binary string) {
 			jety.SetDefault("joblogdir", "/var/cache/grlx/sprout/jobs")
 			jety.SetDefault("nkeysproutprivfile", "/etc/grlx/pki/sprout/sprout.nkey")
 			jety.SetDefault("cachedir", "/var/cache/grlx/sprout/files/provided")
+			jety.SetDefault("rootca_retry_delay", 5*time.Second)
+			jety.SetDefault("nkey_retry_delay", 5*time.Second)
 
 			JobLogDir = jety.GetString("joblogdir")
 		}
@@ -280,14 +282,4 @@ func Init() string {
 func SetSproutID(id string) {
 	jety.Set("sproutid", id)
 	jety.WriteConfig()
-}
-
-// GetDurationOrDefault reads a duration config value by key.
-// If the key is unset or zero, the provided default is returned.
-func GetDurationOrDefault(key string, defaultVal time.Duration) time.Duration {
-	val := jety.GetDuration(key)
-	if val == 0 {
-		return defaultVal
-	}
-	return val
 }
