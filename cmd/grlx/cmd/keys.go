@@ -3,7 +3,6 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/fatih/color"
@@ -11,7 +10,6 @@ import (
 
 	"github.com/gogrlx/grlx/v2/cmd/grlx/util"
 	gpki "github.com/gogrlx/grlx/v2/internal/api/client"
-	apitypes "github.com/gogrlx/grlx/v2/internal/api/types"
 	"github.com/gogrlx/grlx/v2/internal/pki"
 )
 
@@ -50,16 +48,8 @@ var keysAccept = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		if targetAll {
 			keyList, err := gpki.ListKeys()
-			// TODO: utility function for switched output mode errors
 			if err != nil {
-				switch outputMode {
-				case "":
-					fallthrough
-				case "text":
-					color.Red("Error: %v", err)
-				case "json":
-					util.WriteJSONErr(err)
-				}
+				util.OutputError(err, outputMode)
 				return
 			}
 			if !noConfirm {
@@ -115,16 +105,9 @@ var keysAccept = &cobra.Command{
 			}
 		}
 		ok, err := gpki.AcceptKey(keyID)
-		// TODO: output error message in correct outputMode
 		if err != nil {
-			switch err {
-			case pki.ErrSproutIDNotFound:
-				log.Fatalf("Sprout %s does not exist.", keyID)
-			case pki.ErrAlreadyAccepted:
-				log.Fatalf("Sprout %s has already been accepted.", keyID)
-			default:
-				panic(err)
-			}
+			util.OutputError(err, outputMode)
+			return
 		}
 		switch outputMode {
 		case "json":
@@ -149,11 +132,9 @@ var keysList = &cobra.Command{
 	Short: "List the Sprout keys available on the farmer.",
 	Run: func(cmd *cobra.Command, args []string) {
 		keys, err := gpki.ListKeys()
-		// TODO: output error message in correct outputMode
-		// for example, invalid cert for interface
-		// or 'unsigned'
 		if err != nil {
-			panic(err)
+			util.OutputError(err, outputMode)
+			return
 		}
 		switch outputMode {
 		case "json":
@@ -200,14 +181,9 @@ var keysDelete = &cobra.Command{
 			}
 		}
 		ok, err := gpki.DeleteKey(keyID)
-		// TODO: output error message in correct outputMode
 		if err != nil {
-			switch err {
-			case pki.ErrSproutIDNotFound:
-				log.Fatalf("Sprout %s does not exist.", keyID)
-			default:
-				panic(err)
-			}
+			util.OutputError(err, outputMode)
+			return
 		}
 		switch outputMode {
 		case "json":
@@ -243,17 +219,9 @@ var keysUnaccept = &cobra.Command{
 			}
 		}
 		ok, err := gpki.UnacceptKey(keyID)
-		// TODO: output error message in correct outputMode
 		if err != nil {
-			switch err {
-			case pki.ErrSproutIDNotFound:
-				log.Fatalf("Sprout %s does not exist.", keyID)
-			case pki.ErrAlreadyUnaccepted:
-				log.Fatalf("Sprout %s has already been unaccepted.", keyID)
-
-			default:
-				panic(err)
-			}
+			util.OutputError(err, outputMode)
+			return
 		}
 		switch outputMode {
 		case "json":
@@ -289,17 +257,9 @@ var keysReject = &cobra.Command{
 			}
 		}
 		ok, err := gpki.RejectKey(keyID)
-		// TODO: output error message in correct outputMode
 		if err != nil {
-			switch err {
-			case pki.ErrSproutIDNotFound:
-				log.Fatalf("Sprout %s does not exist.", keyID)
-			case pki.ErrAlreadyRejected:
-				log.Fatalf("Sprout %s has already been rejected.", keyID)
-
-			default:
-				panic(err)
-			}
+			util.OutputError(err, outputMode)
+			return
 		}
 		switch outputMode {
 		case "json":
@@ -335,30 +295,24 @@ var keysDeny = &cobra.Command{
 			}
 		}
 		ok, err := gpki.DenyKey(keyID)
-		// TODO: output error message in correct outputMode
-
+		if err != nil {
+			util.OutputError(err, outputMode)
+			return
+		}
 		switch outputMode {
+		case "json":
+			jw, _ := json.Marshal(ok)
+			fmt.Println(string(jw))
+			return
 		case "":
 			fallthrough
 		case "text":
-			if err != nil {
-				switch err {
-				case pki.ErrSproutIDNotFound:
-					log.Fatalf("Sprout %s does not exist.", keyID)
-				case pki.ErrAlreadyDenied:
-					log.Fatalf("Sprout %s has already been denied.", keyID)
-				default:
-					log.Fatal(err)
-				}
-			}
 			if ok {
 				fmt.Printf("%s Denied.\n", keyID)
 				return
 			}
 			color.Red("%s could not be Denied!\n", keyID)
-		default:
-			util.WriteOutput(apitypes.Inline{Success: ok, Error: err}, outputMode)
+			os.Exit(1)
 		}
-		os.Exit(1)
 	},
 }

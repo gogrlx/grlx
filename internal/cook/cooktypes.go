@@ -3,6 +3,7 @@ package cook
 import (
 	"context"
 	"fmt"
+	"time"
 )
 
 const (
@@ -34,6 +35,8 @@ type (
 		CompletionStatus CompletionStatus
 		ChangesMade      bool
 		Changes          []string
+		Started          time.Time     `json:"started,omitempty"`
+		Duration         time.Duration `json:"duration,omitempty"`
 		Error            error
 	}
 	RecipeCooker interface {

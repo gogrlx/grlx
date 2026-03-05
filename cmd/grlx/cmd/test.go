@@ -4,13 +4,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"log"
 
 	"github.com/fatih/color"
-	test "github.com/gogrlx/grlx/v2/cmd/grlx/ingredients/test"
-	apitypes "github.com/gogrlx/grlx/v2/internal/api/types"
-	"github.com/gogrlx/grlx/v2/internal/pki"
 	"github.com/spf13/cobra"
+
+	test "github.com/gogrlx/grlx/v2/cmd/grlx/ingredients/test"
+	"github.com/gogrlx/grlx/v2/cmd/grlx/util"
+	apitypes "github.com/gogrlx/grlx/v2/internal/api/types"
 )
 
 // testCmd represents the test command
@@ -38,14 +38,9 @@ var testCmdPing = &cobra.Command{
 			sproutTarget = ".*"
 		}
 		results, err := test.FPing(sproutTarget)
-		// TODO: output error message in correct outputMode
 		if err != nil {
-			switch err {
-			case pki.ErrSproutIDNotFound:
-				log.Fatalf("A targeted Sprout does not exist or is not accepted..")
-			default:
-				log.Panic(err)
-			}
+			util.OutputError(err, outputMode)
+			return
 		}
 		switch outputMode {
 		case "json":
