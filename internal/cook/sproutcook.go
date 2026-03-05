@@ -5,11 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
 	"github.com/taigrr/log-socket/log"
 
+	"github.com/gogrlx/grlx/v2/internal/config"
 	"github.com/gogrlx/grlx/v2/internal/pki"
 )
 
@@ -71,7 +74,7 @@ func CookRecipeEnvelope(envelope RecipeEnvelope) error {
 			conn.Publish("grlx.cook."+pki.GetSproutID()+"."+envelope.JobID, b)
 			log.Infof("Step %s completed with status %v", completion.ID, completion)
 			wg.Done()
-			// TODO also collect the results of the step and store them into a log folder by JID
+			logStepResult(envelope.JobID, completion)
 			completionMap[completion.ID] = completion
 			noneInProgress := true
 			for id, step := range completionMap {
@@ -103,7 +106,7 @@ func CookRecipeEnvelope(envelope RecipeEnvelope) error {
 				entry.CompletionStatus = StepInProgress
 				completionMap[id] = entry
 				// all requisites are met, so start the step in a goroutine
-				go func(step Step, cChan chan StepCompletion) {
+				go func(ctx context.Context, step Step, cChan chan StepCompletion, testMode bool) {
 					started := time.Now()
 					// use the ingredient package to load and cook the step
 					ingredient, err := NewRecipeCooker(step.ID, step.Ingredient, step.Method, step.Properties)
@@ -118,42 +121,36 @@ func CookRecipeEnvelope(envelope RecipeEnvelope) error {
 						return
 					}
 					var res Result
-					// TODO allow for cancellation
-					bgCtx := context.Background()
-					// TODO make sure envelope.Test is set in grlx and farmer
-					if envelope.Test {
-						res, err = ingredient.Test(bgCtx)
+					if testMode {
+						res, err = ingredient.Test(ctx)
 					} else {
-						res, err = ingredient.Apply(bgCtx)
+						res, err = ingredient.Apply(ctx)
 					}
 
 					duration := time.Since(started)
-					notes := []string{}
-					for _, change := range res.Notes {
-						notes = append(notes, change.String())
-					}
-					if res.Succeeded {
-						cChan <- StepCompletion{
-							ID:               step.ID,
-							CompletionStatus: StepCompleted,
-							ChangesMade:      res.Changed,
-							Changes:          notes,
-							Started:          started,
-							Duration:         duration,
-							Error:            err,
-						}
-					} else {
-						cChan <- StepCompletion{
-							ID:               step.ID,
-							CompletionStatus: StepFailed,
-							ChangesMade:      res.Changed,
-							Changes:          notes,
-							Started:          started,
-							Duration:         duration,
-							Error:            err,
+					// in test mode, res.Changed and res.Notes may not be populated
+					var changed bool
+					var notes []string
+					if !testMode {
+						changed = res.Changed
+						for _, note := range res.Notes {
+							notes = append(notes, note.String())
 						}
 					}
-				}(stepMap[id], completionChan)
+					status := StepCompleted
+					if !res.Succeeded {
+						status = StepFailed
+					}
+					cChan <- StepCompletion{
+						ID:               step.ID,
+						CompletionStatus: status,
+						ChangesMade:      changed,
+						Changes:          notes,
+						Started:          started,
+						Duration:         duration,
+						Error:            err,
+					}
+				}(ctx, stepMap[id], completionChan, envelope.Test)
 				noneInProgress = false
 			}
 			if noneInProgress {
@@ -192,6 +189,32 @@ func CookRecipeEnvelope(envelope RecipeEnvelope) error {
 			return ErrCookTimeout
 		}
 	}
+}
+
+// logStepResult writes a step completion result to the local job log directory,
+// organized by JID. Each step is appended as a JSON line to <JobLogDir>/<JID>.jsonl.
+func logStepResult(jobID string, completion StepCompletion) {
+	if config.JobLogDir == "" {
+		return
+	}
+	if err := os.MkdirAll(config.JobLogDir, 0o700); err != nil {
+		log.Errorf("failed to create job log directory: %v", err)
+		return
+	}
+	logFile := filepath.Join(config.JobLogDir, fmt.Sprintf("%s.jsonl", jobID))
+	b, err := json.Marshal(completion)
+	if err != nil {
+		log.Errorf("failed to marshal step completion for logging: %v", err)
+		return
+	}
+	f, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	if err != nil {
+		log.Errorf("failed to open job log file %s: %v", logFile, err)
+		return
+	}
+	defer f.Close()
+	f.Write(b)
+	f.WriteString("\n")
 }
 
 // RequisitesAreMet returns true if all of the requisites for the given step are met

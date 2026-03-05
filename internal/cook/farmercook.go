@@ -26,7 +26,7 @@ func populateFuncMap(sproutID string) template.FuncMap {
 	return v
 }
 
-func SendCookEvent(sproutID string, recipeID RecipeName, JID string) error {
+func SendCookEvent(sproutID string, recipeID RecipeName, JID string, test bool) error {
 	basepath := getBasePath()
 	includes, err := collectAllIncludes(sproutID, basepath, recipeID)
 	if err != nil {
@@ -89,6 +89,7 @@ func SendCookEvent(sproutID string, recipeID RecipeName, JID string) error {
 	rEnvelope := RecipeEnvelope{
 		JobID: JID,
 		Steps: validSteps,
+		Test:  test,
 	}
 	b, _ := json.Marshal(rEnvelope)
 	log.Noticef("cooking sprout %s: %s", sproutID, JID)
