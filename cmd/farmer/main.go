@@ -76,7 +76,7 @@ func createConfigRoot() {
 			log.Panicf("failed to create config directory: %v", err)
 		}
 	} else {
-		// TODO work out what the other errors could be here
+
 		log.Panicf("unexpected error checking config directory: %v", err)
 	}
 }
@@ -194,9 +194,9 @@ func ConnectFarmer() {
 	}
 	var err error
 	opt, err := nats.NkeyOptionFromSeed(config.NKeyFarmerPrivFile)
-	_ = opt
+
 	if err != nil {
-		// TODO handle error
+		// NKey seed is critical for NATS authentication
 		log.Panic(err)
 	}
 	certPool := x509.NewCertPool()

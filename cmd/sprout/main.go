@@ -17,6 +17,8 @@ import (
 	"github.com/gogrlx/grlx/v2/internal/pki"
 
 	nats "github.com/nats-io/nats.go"
+
+	"github.com/taigrr/jety"
 )
 
 func init() {
@@ -36,20 +38,21 @@ var (
 )
 
 func main() {
-	os.MkdirAll(config.CacheDir, os.ModeDir)
+	if err := os.MkdirAll(config.CacheDir, os.ModeDir); err != nil {
+		log.Fatalf("failed to create cache directory %s: %v", config.CacheDir, err)
+	}
 	config.LoadConfig("sprout")
 	defer log.Flush()
 	certs.GenNKey(false)
+	rootCARetryDelay := jety.GetDuration("rootca_retry_delay")
 	for err := pki.LoadRootCA("sprout"); err != nil; err = pki.LoadRootCA("sprout") {
 		log.Debugf("Error with RootCA: %v", err)
-		// TODO make this delay configurable
-		time.Sleep(time.Second * 5)
+		time.Sleep(rootCARetryDelay)
 	}
+	nkeyRetryDelay := jety.GetDuration("nkey_retry_delay")
 	for err := pki.PutNKey(sproutID); err != nil; err = pki.PutNKey(sproutID) {
 		log.Debugf("Error submitting NKey: %v", err)
-
-		// TODO make this delay configurable
-		time.Sleep(time.Second * 5)
+		time.Sleep(nkeyRetryDelay)
 	}
 	go ConnectSprout()
 	select {}
@@ -67,7 +70,6 @@ func createConfigRoot() {
 			log.Panicf("failed to create config directory: %v", err)
 		}
 	} else {
-		// TODO: work out what the other errors could be here
 		log.Panicf("unexpected error checking config directory: %v", err)
 	}
 }
@@ -80,8 +82,7 @@ func ConnectSprout() {
 	FarmerBusURL := config.FarmerBusURL
 	opt, err := nats.NkeyOptionFromSeed(config.NKeySproutPrivFile)
 	if err != nil {
-		// TODO: handle error
-		log.Panic(err)
+		log.Panicf("failed to load NKey seed: %v", err)
 	}
 	certPool := x509.NewCertPool()
 	rootPEM, err := os.ReadFile(SproutRootCA)
@@ -110,7 +111,6 @@ func ConnectSprout() {
 		nc, err = nats.Connect(FarmerBusURL, nats.Secure(config), opt,
 			nats.MaxReconnects(-1),
 			nats.ReconnectWait(time.Second*15),
-			// TODO: Add a reconnect handler
 			nats.DisconnectHandler(func(_ *nats.Conn) {
 				connectionAttempts++
 				log.Debugf("Reconnecting to Farmer, attempt: %d\n", connectionAttempts)
@@ -119,11 +119,6 @@ func ConnectSprout() {
 	}
 	log.Debugf("Successfully connected to the Farmer")
 
-	//	nc, err := nats.Connect(serverUrl, opt)
-	//	if err != nil {
-	//		//TODO: handle error
-	//		panic(err)
-	//	}
 	test.RegisterNatsConn(nc)
 	cmd.RegisterNatsConn(nc)
 	cook.RegisterNatsConn(nc)

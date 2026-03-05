@@ -62,16 +62,6 @@ func (f File) validate() error {
 	return nil
 }
 
-// this is a helper func to replace fallthroughs so I can keep the
-// cases sorted alphabetically. It's not exported and won't stick around.
-// TODO remove undef func
-func (f File) undef() (cook.Result, error) {
-	return cook.Result{
-		Succeeded: false, Failed: true,
-		Changed: false, Notes: nil,
-	}, errors.Join(ErrFileMethodUndefined, fmt.Errorf("method %s undefined", f.method))
-}
-
 func (f File) Test(ctx context.Context) (cook.Result, error) {
 	// Technically, we should be able to do the name check here, but
 	// I'm not sure if that's a good idea or not.
@@ -105,8 +95,10 @@ func (f File) Test(ctx context.Context) (cook.Result, error) {
 	case "symlink":
 		return f.symlink(ctx, true)
 	default:
-		// TODO define error type
-		return f.undef()
+		return cook.Result{
+			Succeeded: false, Failed: true,
+			Changed: false, Notes: nil,
+		}, errors.Join(ErrFileMethodUndefined, fmt.Errorf("method %s undefined", f.method))
 	}
 }
 
@@ -178,11 +170,10 @@ func (f File) Apply(ctx context.Context) (cook.Result, error) {
 	case "symlink":
 		return f.symlink(ctx, false)
 	default:
-		// TODO define error type
 		return cook.Result{
 			Succeeded: false, Failed: true,
 			Changed: false, Notes: nil,
-		}, fmt.Errorf("method %s undefined", f.method)
+		}, errors.Join(ErrFileMethodUndefined, fmt.Errorf("method %s undefined", f.method))
 
 	}
 }
