@@ -4,16 +4,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
-	"math"
 	"os"
 	"os/exec"
-	"os/user"
-	"runtime"
-	"strconv"
 	"sync"
-	"syscall"
 	"time"
 
 	nats "github.com/nats-io/nats.go"
@@ -74,30 +68,23 @@ func SRun(cmd apitypes.CmdRun) (apitypes.CmdRun, error) {
 	}
 	command.Env = env
 
-	var uid uint32
-	// TODO fix for windows support
-	if cmd.RunAs != "" && runtime.GOOS != "windows" {
-		u, err := user.Lookup(cmd.RunAs)
-		if err != nil {
+	if cmd.RunAs != "" {
+		if err := setRunAs(command, cmd.RunAs); err != nil {
 			return cmd, err
 		}
-		uid64, err := strconv.Atoi(u.Uid)
-		if err != nil {
-			return cmd, err
-		}
-		if uid64 > math.MaxInt32 {
-			return cmd, fmt.Errorf("UID %d is invalid", uid64)
-		}
-		uid = uint32(uid64)
-		command.SysProcAttr = &syscall.SysProcAttr{}
-		command.SysProcAttr.Credential = &syscall.Credential{Uid: uid}
 	}
 	command.Dir = cmd.CWD
 
-	// TODO replace os.Stdout/err here with writes to websocket to get live returnable data
 	var stdoutBuf, stderrBuf bytes.Buffer
-	command.Stdout = io.MultiWriter(&stdoutBuf) //, os.Stdout)
-	command.Stderr = io.MultiWriter(&stderrBuf) //, os.Stderr)
+	stdoutWriters := []io.Writer{&stdoutBuf}
+	stderrWriters := []io.Writer{&stderrBuf}
+	// Stream output over NATS for live monitoring when a connection is available.
+	if nc != nil && cmd.StreamTopic != "" {
+		stdoutWriters = append(stdoutWriters, &natsWriter{conn: nc, topic: cmd.StreamTopic, stream: "stdout"})
+		stderrWriters = append(stderrWriters, &natsWriter{conn: nc, topic: cmd.StreamTopic, stream: "stderr"})
+	}
+	command.Stdout = io.MultiWriter(stdoutWriters...)
+	command.Stderr = io.MultiWriter(stderrWriters...)
 	timer := time.Now()
 	err := command.Run()
 	cmd.Duration = time.Since(timer)

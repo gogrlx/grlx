@@ -28,6 +28,10 @@ type (
 		Env     EnvVar        `json:"env"`
 		Timeout time.Duration `json:"timeout"`
 
+		// StreamTopic, when set, enables live output streaming over NATS.
+		// Each chunk of stdout/stderr is published to this topic as JSON.
+		StreamTopic string `json:"stream_topic,omitempty"`
+
 		Stdout   string        `json:"stdout"`
 		Stderr   string        `json:"stderr"`
 		Duration time.Duration `json:"duration"`
