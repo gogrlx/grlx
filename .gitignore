@@ -13,3 +13,7 @@ cmd/farmer/farmer
 cmd/grlx/grlx
 cmd/sprout/sprout
 *.log
+
+/farmer
+/grlx
+/sprout

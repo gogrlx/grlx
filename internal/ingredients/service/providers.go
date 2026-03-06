@@ -14,7 +14,7 @@ var (
 	provMap map[string]ServiceProvider
 
 	ErrUnknownInit   = errors.New("unknown init system")
-	ErrDuplicateInit = errors.New("provider for init system already initilaized")
+	ErrDuplicateInit = errors.New("provider for init system already initialized")
 	Init             string
 )
 
@@ -44,24 +44,18 @@ func guessInit() string {
 		Init = c
 		return c
 	}
-	// Check if the init system is systemd
-	// https://manpages.ubuntu.com/manpages/xenial/en/man3/sd_booted.3.html
-	if _, ok := os.Stat("/run/systemd/system"); ok == nil {
-		return "systemd"
-	}
-
+	// Check all registered providers (systemd, rcd, etc.) via their IsInit probe.
 	for _, initSys := range provMap {
 		if initSys.IsInit() {
 			Init = initSys.InitName()
 			return Init
 		}
 	}
-	// otherwise, return the name of the process in PID 1
-	f, err := os.ReadFile("/proc/1/comm")
-	if err != nil {
-		return "unknown"
+	// Fallback: try reading the name of PID 1 (Linux procfs).
+	if f, err := os.ReadFile("/proc/1/comm"); err == nil {
+		return string(f)
 	}
-	return string(f)
+	return "unknown"
 }
 
 func NewServiceProvider(id string, method string, params map[string]interface{}) (ServiceProvider, error) {
