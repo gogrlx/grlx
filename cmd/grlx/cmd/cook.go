@@ -110,10 +110,16 @@ var cmdCook = &cobra.Command{
 			log.Printf("Error subscribing to %s: %v\n", topic, err)
 			log.Fatal(err)
 		}
-		// TODO convert this to a request and get back the list of targeted sprouts
 		triggerMsg := config.TriggerMsg{JID: jid}
 		b, _ := json.Marshal(triggerMsg)
-		nc.Publish(fmt.Sprintf("grlx.farmer.cook.trigger.%s", jid), b)
+		triggerReply, err := nc.Request(fmt.Sprintf("grlx.farmer.cook.trigger.%s", jid), b, 15*time.Second)
+		if err != nil {
+			log.Fatalf("Failed to trigger cook: %v", err)
+		}
+		var targetedSprouts []string
+		if err := json.Unmarshal(triggerReply.Data, &targetedSprouts); err == nil && len(targetedSprouts) > 0 {
+			fmt.Printf("Cooking on %d sprout(s): %s\n", len(targetedSprouts), strings.Join(targetedSprouts, ", "))
+		}
 		localTimeout := time.After(time.Duration(cookTimeout) * time.Second)
 		dripTimeout := time.After(120 * time.Second)
 		concurrent := 0

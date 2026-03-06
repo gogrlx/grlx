@@ -60,7 +60,8 @@ func NewToken() (string, error) {
 	return createSignedToken(kp)
 }
 
-// TODO move sprout auth into same package as CLI
+// Sign signs a nonce using the local private key.
+// Used by both the CLI and the sprout for mutual authentication.
 func Sign(nonce []byte) ([]byte, error) {
 	seed, err := getPrivateSeed()
 	if err != nil {

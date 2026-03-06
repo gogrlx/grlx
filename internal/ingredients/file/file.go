@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"sort"
 
 	"github.com/gogrlx/grlx/v2/internal/config"
 	"github.com/gogrlx/grlx/v2/internal/cook"
@@ -40,6 +41,10 @@ func (f File) validate() error {
 	if err != nil {
 		return err
 	}
+	// Sort by key for deterministic validation order.
+	sort.Slice(propSet, func(i, j int) bool {
+		return propSet[i].Key < propSet[j].Key
+	})
 	for _, v := range propSet {
 		if v.IsReq {
 			if v.Key == "name" {
@@ -50,9 +55,7 @@ func (f File) validate() error {
 				if name == "" {
 					return ingredients.ErrMissingName
 				}
-
 			} else {
-				// TODO: this might need to be changed to be more deterministic
 				if _, ok := f.params[v.Key]; !ok {
 					return fmt.Errorf("missing required property %s", v.Key)
 				}

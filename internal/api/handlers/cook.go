@@ -70,7 +70,16 @@ func Cook(w http.ResponseWriter, r *http.Request) {
 			log.Errorf("error receiving message from NATS: %v", err)
 			return
 		}
-		msg.Ack()
+		// Reply with the list of targeted sprout IDs so the CLI knows
+		// which sprouts are being cooked.
+		sproutIDs := make([]string, len(targetAction.Target))
+		for i, t := range targetAction.Target {
+			sproutIDs[i] = t.SproutID
+		}
+		replyData, _ := json.Marshal(sproutIDs)
+		if err := msg.Respond(replyData); err != nil {
+			log.Errorf("error replying to cook trigger: %v", err)
+		}
 		var wg sync.WaitGroup
 		var m sync.Mutex
 		errs := make(map[string]error)
