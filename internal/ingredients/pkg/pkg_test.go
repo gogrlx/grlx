@@ -14,8 +14,9 @@ func TestMethods(t *testing.T) {
 		t.Errorf("expected ingredient name 'pkg', got %q", name)
 	}
 	expected := []string{
-		"group_installed", "held", "installed", "latest",
-		"purged", "removed", "unheld", "uptodate",
+		"cleaned", "group_installed", "held", "installed",
+		"key_managed", "latest", "purged", "removed",
+		"repo_managed", "unheld", "upgraded", "uptodate",
 	}
 	if len(methods) != len(expected) {
 		t.Fatalf("expected %d methods, got %d", len(expected), len(methods))
@@ -46,8 +47,9 @@ func TestParseInvalidMethod(t *testing.T) {
 func TestParseValidMethods(t *testing.T) {
 	p := Pkg{}
 	methods := []string{
-		"installed", "latest", "removed", "purged",
+		"cleaned", "installed", "latest", "removed", "purged",
 		"uptodate", "held", "unheld", "group_installed",
+		"repo_managed", "key_managed", "upgraded",
 	}
 	for _, method := range methods {
 		cooker, err := p.Parse("test-id", method, map[string]interface{}{"name": "nginx"})
@@ -84,6 +86,10 @@ func TestPropertiesForMethod(t *testing.T) {
 		{"held", []string{"name", "pkgs"}, false},
 		{"unheld", []string{"name", "pkgs"}, false},
 		{"group_installed", []string{"name"}, false},
+		{"cleaned", []string{"name", "autoremove"}, false},
+		{"repo_managed", []string{"name", "url", "absent"}, false},
+		{"key_managed", []string{"name", "absent"}, false},
+		{"upgraded", []string{"name", "fromrepo", "pkgs", "refresh"}, false},
 		{"bogus", nil, true},
 	}
 	for _, tc := range tests {

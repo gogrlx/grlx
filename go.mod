@@ -11,7 +11,7 @@ require (
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/djherbis/atime v1.1.0
 	github.com/fatih/color v1.18.0
-	github.com/gogrlx/snack v0.0.0-20260301154914-397e865107cb
+	github.com/gogrlx/snack v0.3.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
 	github.com/nats-io/nats-server/v2 v2.12.4

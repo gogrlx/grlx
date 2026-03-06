@@ -24,13 +24,17 @@ func init() {
 
 func (p Pkg) Methods() (string, []string) {
 	return "pkg", []string{
+		"cleaned",
 		"group_installed",
 		"held",
 		"installed",
+		"key_managed",
 		"latest",
 		"purged",
 		"removed",
+		"repo_managed",
 		"unheld",
+		"upgraded",
 		"uptodate",
 	}
 }
@@ -64,6 +68,11 @@ func (p Pkg) Properties() (map[string]interface{}, error) {
 
 func (p Pkg) PropertiesForMethod(method string) (map[string]string, error) {
 	switch method {
+	case "cleaned":
+		return map[string]string{
+			"name":       "string,req",
+			"autoremove": "bool,opt",
+		}, nil
 	case "installed":
 		return map[string]string{
 			"name":      "string,req",
@@ -109,6 +118,24 @@ func (p Pkg) PropertiesForMethod(method string) (map[string]string, error) {
 		return map[string]string{
 			"name": "string,req",
 		}, nil
+	case "repo_managed":
+		return map[string]string{
+			"name":   "string,req",
+			"url":    "string,opt",
+			"absent": "bool,opt",
+		}, nil
+	case "key_managed":
+		return map[string]string{
+			"name":   "string,req",
+			"absent": "bool,opt",
+		}, nil
+	case "upgraded":
+		return map[string]string{
+			"name":     "string,req",
+			"fromrepo": "string,opt",
+			"pkgs":     "[]string,opt",
+			"refresh":  "bool,opt",
+		}, nil
 	default:
 		return nil, ingredients.ErrInvalidMethod
 	}
@@ -116,6 +143,8 @@ func (p Pkg) PropertiesForMethod(method string) (map[string]string, error) {
 
 func (p Pkg) Apply(ctx context.Context) (cook.Result, error) {
 	switch p.method {
+	case "cleaned":
+		return p.cleaned(ctx, false)
 	case "installed":
 		return p.installed(ctx, false)
 	case "latest":
@@ -132,6 +161,12 @@ func (p Pkg) Apply(ctx context.Context) (cook.Result, error) {
 		return p.unheld(ctx, false)
 	case "group_installed":
 		return p.groupInstalled(ctx, false)
+	case "repo_managed":
+		return p.repoManaged(ctx, false)
+	case "key_managed":
+		return p.keyManaged(ctx, false)
+	case "upgraded":
+		return p.upgraded(ctx, false)
 	default:
 		return cook.Result{}, ingredients.ErrInvalidMethod
 	}
@@ -139,6 +174,8 @@ func (p Pkg) Apply(ctx context.Context) (cook.Result, error) {
 
 func (p Pkg) Test(ctx context.Context) (cook.Result, error) {
 	switch p.method {
+	case "cleaned":
+		return p.cleaned(ctx, true)
 	case "installed":
 		return p.installed(ctx, true)
 	case "latest":
@@ -155,6 +192,12 @@ func (p Pkg) Test(ctx context.Context) (cook.Result, error) {
 		return p.unheld(ctx, true)
 	case "group_installed":
 		return p.groupInstalled(ctx, true)
+	case "repo_managed":
+		return p.repoManaged(ctx, true)
+	case "key_managed":
+		return p.keyManaged(ctx, true)
+	case "upgraded":
+		return p.upgraded(ctx, true)
 	default:
 		return cook.Result{}, ingredients.ErrInvalidMethod
 	}
