@@ -4,24 +4,21 @@ package rcd
 
 import (
 	"context"
-	"fmt"
 	"os"
-	"os/exec"
-	"path/filepath"
-	"strings"
 
 	"github.com/gogrlx/grlx/v2/internal/ingredients"
 	"github.com/gogrlx/grlx/v2/internal/ingredients/service"
+	"github.com/taigrr/rcd"
 )
 
-const rcConfPath = "/etc/rc.conf"
-
-// RCDService implements service.ServiceProvider for BSD rc.d init systems.
+// RCDService implements service.ServiceProvider for BSD rc.d init systems,
+// delegating to the github.com/taigrr/rcd library.
 type RCDService struct {
 	id     string
 	name   string
 	method string
 	props  map[string]interface{}
+	opts   rcd.Options
 }
 
 func init() {
@@ -52,123 +49,50 @@ func (s RCDService) InitName() string {
 }
 
 func (s RCDService) IsInit() bool {
-	// BSD systems use rc.d if /etc/rc.d exists and PID 1 is init/rc.
-	if info, err := os.Stat("/etc/rc.d"); err == nil && info.IsDir() {
-		return true
-	}
-	return false
-}
-
-// rcScript returns the path to the rc.d script for this service.
-func (s RCDService) rcScript() string {
-	// Check /usr/local/etc/rc.d first (ports/packages), then /etc/rc.d (base).
-	local := filepath.Join("/usr/local/etc/rc.d", s.name)
-	if _, err := os.Stat(local); err == nil {
-		return local
-	}
-	return filepath.Join("/etc/rc.d", s.name)
-}
-
-func (s RCDService) serviceCmd(ctx context.Context, action string) error {
-	cmd := exec.CommandContext(ctx, "service", s.name, action)
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("service %s %s: %w: %s", s.name, action, err, strings.TrimSpace(string(out)))
-	}
-	return nil
+	info, err := os.Stat("/etc/rc.d")
+	return err == nil && info.IsDir()
 }
 
 func (s RCDService) Start(ctx context.Context) error {
-	return s.serviceCmd(ctx, "start")
+	return rcd.Start(ctx, s.name, s.opts)
 }
 
 func (s RCDService) Stop(ctx context.Context) error {
-	return s.serviceCmd(ctx, "stop")
+	return rcd.Stop(ctx, s.name, s.opts)
 }
 
 func (s RCDService) Restart(ctx context.Context) error {
-	return s.serviceCmd(ctx, "restart")
+	return rcd.Restart(ctx, s.name, s.opts)
 }
 
 func (s RCDService) Status(ctx context.Context) (string, error) {
-	cmd := exec.CommandContext(ctx, "service", s.name, "status")
-	out, err := cmd.CombinedOutput()
-	return strings.TrimSpace(string(out)), err
+	return rcd.Status(ctx, s.name, s.opts)
 }
 
 func (s RCDService) IsRunning(ctx context.Context) (bool, error) {
-	cmd := exec.CommandContext(ctx, "service", s.name, "status")
-	err := cmd.Run()
-	if err != nil {
-		// Exit code 1 means not running.
-		if exitErr, ok := err.(*exec.ExitError); ok {
-			if exitErr.ExitCode() == 1 {
-				return false, nil
-			}
-		}
-		return false, err
-	}
-	return true, nil
-}
-
-// rcVarName returns the rc.conf variable name for enabling this service.
-// e.g. "nginx" -> "nginx_enable".
-func (s RCDService) rcVarName() string {
-	return s.name + "_enable"
+	return rcd.IsActive(ctx, s.name, s.opts)
 }
 
 func (s RCDService) Enable(ctx context.Context) error {
-	cmd := exec.CommandContext(ctx, "sysrc", s.rcVarName()+"=YES")
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("sysrc enable %s: %w: %s", s.name, err, strings.TrimSpace(string(out)))
-	}
-	return nil
+	return rcd.Enable(ctx, s.name, s.opts)
 }
 
 func (s RCDService) Disable(ctx context.Context) error {
-	cmd := exec.CommandContext(ctx, "sysrc", s.rcVarName()+"=NO")
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("sysrc disable %s: %w: %s", s.name, err, strings.TrimSpace(string(out)))
-	}
-	return nil
+	return rcd.Disable(ctx, s.name, s.opts)
 }
 
 func (s RCDService) IsEnabled(ctx context.Context) (bool, error) {
-	cmd := exec.CommandContext(ctx, "sysrc", "-n", s.rcVarName())
-	out, err := cmd.Output()
-	if err != nil {
-		// Variable not set means not enabled.
-		return false, nil
-	}
-	val := strings.TrimSpace(string(out))
-	return strings.EqualFold(val, "yes"), nil
+	return rcd.IsEnabled(ctx, s.name, s.opts)
 }
 
-// Mask prevents a service from being started by removing its rc.d script
-// execute bit. BSD doesn't have a formal mask concept like systemd.
 func (s RCDService) Mask(ctx context.Context) error {
-	script := s.rcScript()
-	return os.Chmod(script, 0o444)
+	return rcd.Mask(ctx, s.name, s.opts)
 }
 
-// Unmask restores the execute bit on the service's rc.d script.
 func (s RCDService) Unmask(ctx context.Context) error {
-	script := s.rcScript()
-	return os.Chmod(script, 0o755)
+	return rcd.Unmask(ctx, s.name, s.opts)
 }
 
-// IsMasked checks if the rc.d script lacks execute permission.
 func (s RCDService) IsMasked(ctx context.Context) (bool, error) {
-	script := s.rcScript()
-	info, err := os.Stat(script)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return false, fmt.Errorf("service script not found: %s", script)
-		}
-		return false, err
-	}
-	// Masked if the script is not executable.
-	return info.Mode()&0o111 == 0, nil
+	return rcd.IsMasked(ctx, s.name, s.opts)
 }
