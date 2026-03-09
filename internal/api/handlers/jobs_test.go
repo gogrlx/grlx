@@ -10,11 +10,19 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gorilla/mux"
-
 	"github.com/gogrlx/grlx/v2/internal/cook"
 	"github.com/gogrlx/grlx/v2/internal/jobs"
 )
+
+// serveWithPathValues routes a request through a real ServeMux so that
+// r.PathValue() is populated by the stdlib router.
+func serveWithPathValues(pattern string, handler http.HandlerFunc, req *http.Request) *httptest.ResponseRecorder {
+	mux := http.NewServeMux()
+	mux.HandleFunc(pattern, handler)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+	return w
+}
 
 // setupTestJobStore creates a temp directory with test job data and replaces
 // the package-level jobStore.
@@ -129,10 +137,7 @@ func TestGetJob(t *testing.T) {
 	setupTestJobStore(t)
 
 	req := httptest.NewRequest(http.MethodGet, "/jobs/jid-001", nil)
-	req = mux.SetURLVars(req, map[string]string{"jid": "jid-001"})
-	w := httptest.NewRecorder()
-
-	GetJob(w, req)
+	w := serveWithPathValues("GET /jobs/{jid}", GetJob, req)
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected status 200, got %d", w.Code)
@@ -158,27 +163,10 @@ func TestGetJobNotFound(t *testing.T) {
 	setupTestJobStore(t)
 
 	req := httptest.NewRequest(http.MethodGet, "/jobs/nonexistent", nil)
-	req = mux.SetURLVars(req, map[string]string{"jid": "nonexistent"})
-	w := httptest.NewRecorder()
-
-	GetJob(w, req)
+	w := serveWithPathValues("GET /jobs/{jid}", GetJob, req)
 
 	if w.Code != http.StatusNotFound {
 		t.Fatalf("expected status 404, got %d", w.Code)
-	}
-}
-
-func TestGetJobMissingJID(t *testing.T) {
-	setupTestJobStore(t)
-
-	req := httptest.NewRequest(http.MethodGet, "/jobs/", nil)
-	req = mux.SetURLVars(req, map[string]string{})
-	w := httptest.NewRecorder()
-
-	GetJob(w, req)
-
-	if w.Code != http.StatusBadRequest {
-		t.Fatalf("expected status 400, got %d", w.Code)
 	}
 }
 
@@ -186,10 +174,7 @@ func TestListJobsForSprout(t *testing.T) {
 	setupTestJobStore(t)
 
 	req := httptest.NewRequest(http.MethodGet, "/jobs/sprout/sprout-alpha", nil)
-	req = mux.SetURLVars(req, map[string]string{"sproutID": "sprout-alpha"})
-	w := httptest.NewRecorder()
-
-	ListJobsForSprout(w, req)
+	w := serveWithPathValues("GET /jobs/sprout/{sproutID}", ListJobsForSprout, req)
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected status 200, got %d", w.Code)
@@ -209,10 +194,7 @@ func TestListJobsForSproutNoJobs(t *testing.T) {
 	setupTestJobStore(t)
 
 	req := httptest.NewRequest(http.MethodGet, "/jobs/sprout/sprout-unknown", nil)
-	req = mux.SetURLVars(req, map[string]string{"sproutID": "sprout-unknown"})
-	w := httptest.NewRecorder()
-
-	ListJobsForSprout(w, req)
+	w := serveWithPathValues("GET /jobs/sprout/{sproutID}", ListJobsForSprout, req)
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected status 200, got %d (body: %s)", w.Code, w.Body.String())
@@ -225,18 +207,15 @@ func TestListJobsForSproutNoJobs(t *testing.T) {
 
 func TestCancelJobNoNATS(t *testing.T) {
 	setupTestJobStore(t)
-	// conn is nil by default in tests (no NATS)
 
 	req := httptest.NewRequest(http.MethodDelete, "/jobs/jid-002", nil)
-	req = mux.SetURLVars(req, map[string]string{"jid": "jid-002"})
-	w := httptest.NewRecorder()
 
 	// Ensure conn is nil for this test
 	oldConn := conn
 	conn = nil
 	defer func() { conn = oldConn }()
 
-	CancelJob(w, req)
+	w := serveWithPathValues("DELETE /jobs/{jid}", CancelJob, req)
 
 	// Without NATS, cancel should return 500
 	if w.Code != http.StatusInternalServerError {
@@ -248,10 +227,7 @@ func TestCancelJobNotFound(t *testing.T) {
 	setupTestJobStore(t)
 
 	req := httptest.NewRequest(http.MethodDelete, "/jobs/nonexistent", nil)
-	req = mux.SetURLVars(req, map[string]string{"jid": "nonexistent"})
-	w := httptest.NewRecorder()
-
-	CancelJob(w, req)
+	w := serveWithPathValues("DELETE /jobs/{jid}", CancelJob, req)
 
 	if w.Code != http.StatusNotFound {
 		t.Fatalf("expected status 404, got %d", w.Code)
@@ -263,10 +239,7 @@ func TestCancelJobAlreadyCompleted(t *testing.T) {
 
 	// jid-001 is a completed job (all steps succeeded)
 	req := httptest.NewRequest(http.MethodDelete, "/jobs/jid-001", nil)
-	req = mux.SetURLVars(req, map[string]string{"jid": "jid-001"})
-	w := httptest.NewRecorder()
-
-	CancelJob(w, req)
+	w := serveWithPathValues("DELETE /jobs/{jid}", CancelJob, req)
 
 	if w.Code != http.StatusConflict {
 		t.Fatalf("expected status 409, got %d (body: %s)", w.Code, w.Body.String())

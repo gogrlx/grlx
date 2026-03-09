@@ -7,19 +7,17 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gorilla/mux"
-
 	"github.com/gogrlx/grlx/v2/internal/props"
 )
 
-// newPropsRouter returns a mux.Router with the props routes registered,
+// newPropsRouter returns an http.ServeMux with the props routes registered,
 // without auth/logging middleware so tests can call them directly.
-func newPropsRouter() *mux.Router {
-	r := mux.NewRouter()
-	r.HandleFunc("/props/{sproutID}", GetAllProps).Methods(http.MethodGet)
-	r.HandleFunc("/props/{sproutID}/{name}", GetProp).Methods(http.MethodGet)
-	r.HandleFunc("/props/{sproutID}/{name}", SetProp).Methods(http.MethodPut)
-	r.HandleFunc("/props/{sproutID}/{name}", DeleteProp).Methods(http.MethodDelete)
+func newPropsRouter() *http.ServeMux {
+	r := http.NewServeMux()
+	r.HandleFunc("GET /props/{sproutID}", GetAllProps)
+	r.HandleFunc("GET /props/{sproutID}/{name}", GetProp)
+	r.HandleFunc("PUT /props/{sproutID}/{name}", SetProp)
+	r.HandleFunc("DELETE /props/{sproutID}/{name}", DeleteProp)
 	return r
 }
 

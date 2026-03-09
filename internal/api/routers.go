@@ -5,7 +5,6 @@ import (
 
 	"github.com/gogrlx/grlx/v2/internal/api/handlers"
 
-	"github.com/gorilla/mux"
 	"github.com/taigrr/log-socket/browser"
 	"github.com/taigrr/log-socket/ws"
 
@@ -14,160 +13,103 @@ import (
 	"github.com/gogrlx/grlx/v2/internal/config"
 )
 
-type Route struct {
-	Method      string
-	Pattern     string
-	HandlerFunc http.HandlerFunc
-}
-
 // BuildInfoStruct holds the current build version information.
 var BuildInfoStruct config.Version
 
-func NewRouter(v config.Version, certificate string) *mux.Router {
+// Route holds the method and pattern for a named API route.
+// Used by the CLI client to construct request URLs.
+type Route struct {
+	Method  string
+	Pattern string
+}
+
+// Routes maps route names to their method and URL pattern.
+// This is consumed by the API client for URL construction.
+var Routes = map[string]Route{
+	"GetVersion":        {Method: http.MethodGet, Pattern: "/version"},
+	"GetLogSocket":      {Method: http.MethodGet, Pattern: "/logs/ws"},
+	"GetLogPage":        {Method: http.MethodGet, Pattern: "/logs"},
+	"GetCertificate":    {Method: http.MethodGet, Pattern: "/auth/cert/"},
+	"PutNKey":           {Method: http.MethodPut, Pattern: "/pki/putnkey"},
+	"GetID":             {Method: http.MethodPost, Pattern: "/pki/getnkey"},
+	"AcceptID":          {Method: http.MethodPost, Pattern: "/pki/acceptnkey"},
+	"RejectID":          {Method: http.MethodPost, Pattern: "/pki/rejectnkey"},
+	"ListID":            {Method: http.MethodPost, Pattern: "/pki/listnkey"},
+	"DenyID":            {Method: http.MethodPost, Pattern: "/pki/denynkey"},
+	"UnacceptID":        {Method: http.MethodPost, Pattern: "/pki/unacceptnkey"},
+	"DeleteID":          {Method: http.MethodPost, Pattern: "/pki/deletenkey"},
+	"TestPing":          {Method: http.MethodPost, Pattern: "/test/ping"},
+	"Cook":              {Method: http.MethodPost, Pattern: "/cook"},
+	"CmdRun":            {Method: http.MethodPost, Pattern: "/cmd/run"},
+	"ListSprouts":       {Method: http.MethodGet, Pattern: "/sprouts"},
+	"GetSprout":         {Method: http.MethodPost, Pattern: "/sprouts/get"},
+	"ListJobs":          {Method: http.MethodGet, Pattern: "/jobs"},
+	"GetJob":            {Method: http.MethodGet, Pattern: "/jobs/{jid}"},
+	"CancelJob":         {Method: http.MethodDelete, Pattern: "/jobs/{jid}"},
+	"ListJobsForSprout": {Method: http.MethodGet, Pattern: "/jobs/sprout/{sproutID}"},
+	"GetAllProps":       {Method: http.MethodGet, Pattern: "/props/{sproutID}"},
+	"GetProp":           {Method: http.MethodGet, Pattern: "/props/{sproutID}/{name}"},
+	"SetProp":           {Method: http.MethodPut, Pattern: "/props/{sproutID}/{name}"},
+	"DeleteProp":        {Method: http.MethodDelete, Pattern: "/props/{sproutID}/{name}"},
+}
+
+// NewRouter creates an http.ServeMux with all API routes registered.
+// Uses Go 1.22+ method and path parameter patterns.
+func NewRouter(v config.Version, certificate string) *http.ServeMux {
 	handlers.SetBuildVersion(v)
 	BuildInfoStruct = v
 	_ = certificate // reserved for future TLS configuration
-	router := mux.NewRouter().StrictSlash(true)
-	for name, route := range Routes {
-		var handler http.Handler
-		handler = route.HandlerFunc
-		handler = Logger(handler, name)
-		handler = Auth(handler, name)
-		router.
-			Methods(route.Method).
-			Path(route.Pattern).
-			Name(name).
-			Handler(handler)
+	mux := http.NewServeMux()
 
+	// Public routes (no auth required)
+	mux.Handle("GET /auth/cert/", Logger(http.HandlerFunc(handlers.GetCertificate), "GetCertificate"))
+	mux.Handle("PUT /pki/putnkey", Logger(http.HandlerFunc(handlers.PutNKey), "PutNKey"))
+
+	// Auth-required routes
+	register := func(pattern string, name string, h http.HandlerFunc) {
+		mux.Handle(pattern, Logger(Auth(http.HandlerFunc(h), name), name))
 	}
-	return router
-}
 
-// TODO start using subrouters
-var Routes = map[string]Route{
-	"GetVersion": {
-		Method:      http.MethodGet,
-		Pattern:     "/version",
-		HandlerFunc: handlers.GetVersion,
-	},
-	"GetLogSocket": {
-		Method:      http.MethodGet,
-		Pattern:     "/logs/ws",
-		HandlerFunc: ws.LogSocketHandler,
-	},
-	"GetLogPage": {
-		Method:      http.MethodGet,
-		Pattern:     "/logs",
-		HandlerFunc: browser.LogSocketViewHandler,
-	},
-	"GetCertificate": {
-		Method:      http.MethodGet,
-		Pattern:     "/auth/cert/",
-		HandlerFunc: handlers.GetCertificate,
-	},
-	"PutNKey": {
-		Method:      http.MethodPut,
-		Pattern:     "/pki/putnkey",
-		HandlerFunc: handlers.PutNKey,
-	},
-	"GetID": {
-		Method:      http.MethodPost,
-		Pattern:     "/pki/getnkey",
-		HandlerFunc: handlers.GetNKey,
-	},
-	"AcceptID": {
-		Method:      http.MethodPost,
-		Pattern:     "/pki/acceptnkey",
-		HandlerFunc: handlers.AcceptNKey,
-	},
-	"RejectID": {
-		Method:      http.MethodPost,
-		Pattern:     "/pki/rejectnkey",
-		HandlerFunc: handlers.RejectNKey,
-	},
-	"ListID": {
-		Method:      http.MethodPost,
-		Pattern:     "/pki/listnkey",
-		HandlerFunc: handlers.ListNKey,
-	},
-	"DenyID": {
-		Method:      http.MethodPost,
-		Pattern:     "/pki/denynkey",
-		HandlerFunc: handlers.DenyNKey,
-	},
-	"UnacceptID": {
-		Method:      http.MethodPost,
-		Pattern:     "/pki/unacceptnkey",
-		HandlerFunc: handlers.UnacceptNKey,
-	},
-	"DeleteID": {
-		Method:      http.MethodPost,
-		Pattern:     "/pki/deletenkey",
-		HandlerFunc: handlers.DeleteNKey,
-	},
-	"TestPing": {
-		Method:      http.MethodPost,
-		Pattern:     "/test/ping",
-		HandlerFunc: test.HTestPing,
-	},
-	"Cook": {
-		Method:      http.MethodPost,
-		Pattern:     "/cook",
-		HandlerFunc: handlers.Cook,
-	},
-	"CmdRun": {
-		Method:      http.MethodPost,
-		Pattern:     "/cmd/run",
-		HandlerFunc: cmd.HCmdRun,
-	},
-	"ListSprouts": {
-		Method:      http.MethodGet,
-		Pattern:     "/sprouts",
-		HandlerFunc: handlers.ListSprouts,
-	},
-	"GetSprout": {
-		Method:      http.MethodPost,
-		Pattern:     "/sprouts/get",
-		HandlerFunc: handlers.GetSprout,
-	},
-	"ListJobs": {
-		Method:      http.MethodGet,
-		Pattern:     "/jobs",
-		HandlerFunc: handlers.ListJobs,
-	},
-	"GetJob": {
-		Method:      http.MethodGet,
-		Pattern:     "/jobs/{jid}",
-		HandlerFunc: handlers.GetJob,
-	},
-	"CancelJob": {
-		Method:      http.MethodDelete,
-		Pattern:     "/jobs/{jid}",
-		HandlerFunc: handlers.CancelJob,
-	},
-	"ListJobsForSprout": {
-		Method:      http.MethodGet,
-		Pattern:     "/jobs/sprout/{sproutID}",
-		HandlerFunc: handlers.ListJobsForSprout,
-	},
-	"GetAllProps": {
-		Method:      http.MethodGet,
-		Pattern:     "/props/{sproutID}",
-		HandlerFunc: handlers.GetAllProps,
-	},
-	"GetProp": {
-		Method:      http.MethodGet,
-		Pattern:     "/props/{sproutID}/{name}",
-		HandlerFunc: handlers.GetProp,
-	},
-	"SetProp": {
-		Method:      http.MethodPut,
-		Pattern:     "/props/{sproutID}/{name}",
-		HandlerFunc: handlers.SetProp,
-	},
-	"DeleteProp": {
-		Method:      http.MethodDelete,
-		Pattern:     "/props/{sproutID}/{name}",
-		HandlerFunc: handlers.DeleteProp,
-	},
+	// Version
+	register("GET /version", "GetVersion", handlers.GetVersion)
+
+	// Logs
+	register("GET /logs/ws", "GetLogSocket", ws.LogSocketHandler)
+	register("GET /logs", "GetLogPage", browser.LogSocketViewHandler)
+
+	// PKI
+	register("POST /pki/getnkey", "GetID", handlers.GetNKey)
+	register("POST /pki/acceptnkey", "AcceptID", handlers.AcceptNKey)
+	register("POST /pki/rejectnkey", "RejectID", handlers.RejectNKey)
+	register("POST /pki/listnkey", "ListID", handlers.ListNKey)
+	register("POST /pki/denynkey", "DenyID", handlers.DenyNKey)
+	register("POST /pki/unacceptnkey", "UnacceptID", handlers.UnacceptNKey)
+	register("POST /pki/deletenkey", "DeleteID", handlers.DeleteNKey)
+
+	// Test
+	register("POST /test/ping", "TestPing", test.HTestPing)
+
+	// Cook
+	register("POST /cook", "Cook", handlers.Cook)
+
+	// Cmd
+	register("POST /cmd/run", "CmdRun", cmd.HCmdRun)
+
+	// Sprouts
+	register("GET /sprouts", "ListSprouts", handlers.ListSprouts)
+	register("POST /sprouts/get", "GetSprout", handlers.GetSprout)
+
+	// Jobs
+	register("GET /jobs", "ListJobs", handlers.ListJobs)
+	register("GET /jobs/{jid}", "GetJob", handlers.GetJob)
+	register("DELETE /jobs/{jid}", "CancelJob", handlers.CancelJob)
+	register("GET /jobs/sprout/{sproutID}", "ListJobsForSprout", handlers.ListJobsForSprout)
+
+	// Props
+	register("GET /props/{sproutID}", "GetAllProps", handlers.GetAllProps)
+	register("GET /props/{sproutID}/{name}", "GetProp", handlers.GetProp)
+	register("PUT /props/{sproutID}/{name}", "SetProp", handlers.SetProp)
+	register("DELETE /props/{sproutID}/{name}", "DeleteProp", handlers.DeleteProp)
+
+	return mux
 }
