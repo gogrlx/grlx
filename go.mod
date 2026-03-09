@@ -21,7 +21,7 @@ require (
 	github.com/taigrr/jety v0.3.0
 	github.com/taigrr/log-socket v1.0.6
 	github.com/taigrr/rcd v0.0.2
-	github.com/taigrr/systemctl v1.1.0
+	github.com/taigrr/systemctl v1.1.1-0.20260309204324-da8db0d3a3c3
 	gopkg.in/yaml.v3 v3.0.1
 )
 

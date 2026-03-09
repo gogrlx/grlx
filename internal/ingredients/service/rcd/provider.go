@@ -65,6 +65,10 @@ func (s RCDService) Restart(ctx context.Context) error {
 	return rcd.Restart(ctx, s.name, s.opts)
 }
 
+func (s RCDService) Reload(ctx context.Context) error {
+	return rcd.Reload(ctx, s.name, s.opts)
+}
+
 func (s RCDService) Status(ctx context.Context) (string, error) {
 	return rcd.Status(ctx, s.name, s.opts)
 }

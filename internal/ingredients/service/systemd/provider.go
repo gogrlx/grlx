@@ -69,6 +69,10 @@ func (s SystemdService) Restart(ctx context.Context) error {
 	return systemctl.Restart(ctx, s.name, systemctl.Options{UserMode: s.userMode})
 }
 
+func (s SystemdService) Reload(ctx context.Context) error {
+	return systemctl.Reload(ctx, s.name, systemctl.Options{UserMode: s.userMode})
+}
+
 func (s SystemdService) Stop(ctx context.Context) error {
 	return systemctl.Stop(ctx, s.name, systemctl.Options{UserMode: s.userMode})
 }

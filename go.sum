@@ -195,8 +195,8 @@ github.com/taigrr/log-socket v1.0.6 h1:vCuOUUCysp6imSABY3RnVWtt1IZ0UTblTVLJYs0Na
 github.com/taigrr/log-socket v1.0.6/go.mod h1:dD/8yDyxbmgTd1qFBpQXusDRIGC04qIYHotgsTXoEfQ=
 github.com/taigrr/rcd v0.0.2 h1:rknhFpvvq2BRX7Q8UamfIl3xbVp5+cRidqj29oppZuY=
 github.com/taigrr/rcd v0.0.2/go.mod h1:8fJw1Bg/qZfyPybrfbRka8pVmTE1Atuvx/L06JYivZA=
-github.com/taigrr/systemctl v1.1.0 h1:MtvDiIZBW4+XeN0INi3YXatFHR0llsOZJwGZer80Dv4=
-github.com/taigrr/systemctl v1.1.0/go.mod h1:WpBwbTwwMCJSETxTVeYGBXIGSdiYkBBJQHpagYav0zM=
+github.com/taigrr/systemctl v1.1.1-0.20260309204324-da8db0d3a3c3 h1:XmS99P7o9m8M/CZtR2y5ZqMuc7bFJ02CB/VIvs7LPmM=
+github.com/taigrr/systemctl v1.1.1-0.20260309204324-da8db0d3a3c3/go.mod h1:CyMRHeIOr4oJZN6juZup9dG40s+/v2kqLAv0nPHetxk=
 github.com/testcontainers/testcontainers-go v0.40.0 h1:pSdJYLOVgLE8YdUY2FHQ1Fxu+aMnb6JfVz1mxk7OeMU=
 github.com/testcontainers/testcontainers-go v0.40.0/go.mod h1:FSXV5KQtX2HAMlm7U3APNyLkkap35zNLxukw9oBi/MY=
 github.com/tklauser/go-sysconf v0.3.12 h1:0QaGUFOdQaIVdPgfITYzaTegZvdCjmYO52cSFAEVmqU=
