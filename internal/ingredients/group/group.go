@@ -105,13 +105,15 @@ func (g Group) PropertiesForMethod(method string) (map[string]string, error) {
 		return ingredients.MethodPropsSet{
 			ingredients.MethodProps{Key: "name", Type: "string", IsReq: true},
 			ingredients.MethodProps{Key: "gid", Type: "string", IsReq: false},
+			ingredients.MethodProps{Key: "system", Type: "bool", IsReq: false},
+			ingredients.MethodProps{Key: "members", Type: "[]string", IsReq: false},
 		}.ToMap(), nil
 	default:
 		return nil, fmt.Errorf("method %s undefined", method)
 	}
 }
 
-func (u Group) Methods() (string, []string) {
+func (g Group) Methods() (string, []string) {
 	return "group", []string{"absent", "exists", "present"}
 }
 
