@@ -21,6 +21,7 @@ import (
 	"github.com/gogrlx/grlx/v2/internal/cook"
 	"github.com/gogrlx/grlx/v2/internal/ingredients/cmd"
 	"github.com/gogrlx/grlx/v2/internal/ingredients/test"
+	"github.com/gogrlx/grlx/v2/internal/facts"
 	"github.com/gogrlx/grlx/v2/internal/jobs"
 	"github.com/gogrlx/grlx/v2/internal/pki"
 	"github.com/gogrlx/grlx/v2/internal/props"
@@ -254,6 +255,7 @@ func ConnectFarmer() {
 	cook.RegisterNatsConn(nc)
 	jobs.RegisterNatsConn(nc)
 	handlers.RegisterNatsConn(nc)
+	facts.RegisterFarmerListener(nc)
 	// Start the job log reaper to clean up old job files.
 	jobStore := jobs.NewStore()
 	jobStore.StartReaper(config.JobLogTTL)
