@@ -150,4 +150,24 @@ var Routes = map[string]Route{
 		Pattern:     "/jobs/sprout/{sproutID}",
 		HandlerFunc: handlers.ListJobsForSprout,
 	},
+	"GetAllProps": {
+		Method:      http.MethodGet,
+		Pattern:     "/props/{sproutID}",
+		HandlerFunc: handlers.GetAllProps,
+	},
+	"GetProp": {
+		Method:      http.MethodGet,
+		Pattern:     "/props/{sproutID}/{name}",
+		HandlerFunc: handlers.GetProp,
+	},
+	"SetProp": {
+		Method:      http.MethodPut,
+		Pattern:     "/props/{sproutID}/{name}",
+		HandlerFunc: handlers.SetProp,
+	},
+	"DeleteProp": {
+		Method:      http.MethodDelete,
+		Pattern:     "/props/{sproutID}/{name}",
+		HandlerFunc: handlers.DeleteProp,
+	},
 }
