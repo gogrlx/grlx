@@ -39,6 +39,7 @@ var (
 	GrlxRootCA           string
 	JobLogDir            string
 	JobLogTTL            time.Duration
+	PropsDir             string
 	KeyFile              string
 	LogLevel             log.Level
 	NKeyFarmerPrivFile   string
@@ -143,6 +144,7 @@ func LoadConfig(binary string) {
 			jety.SetDefault("keyfile", "/etc/grlx/pki/farmer/tls-key.pem")
 			jety.SetDefault("joblogdir", "/var/cache/grlx/farmer/jobs")
 			jety.SetDefault("joblogttl", 30*24*time.Hour) // 30 days default
+			jety.SetDefault("propsdir", "/var/cache/grlx/farmer/props")
 			jety.SetDefault("nkeyfarmerpubfile", "/etc/grlx/pki/farmer/farmer.nkey.pub")
 			jety.SetDefault("nkeyfarmerprivfile", "/etc/grlx/pki/farmer/farmer.nkey")
 			jety.SetDefault("rootca", "/etc/grlx/pki/farmer/tls-rootca.pem")
@@ -150,6 +152,7 @@ func LoadConfig(binary string) {
 			jety.SetDefault("farmerorganization", "grlx farmer")
 			JobLogDir = jety.GetString("joblogdir")
 			JobLogTTL = jety.GetDuration("joblogttl")
+			PropsDir = jety.GetString("propsdir")
 			CertHosts = jety.GetStringSlice("certhosts")
 
 			AdminPubKeys := jety.GetStringMap("pubkeys")

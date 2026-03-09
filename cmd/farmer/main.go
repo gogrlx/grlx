@@ -23,6 +23,7 @@ import (
 	"github.com/gogrlx/grlx/v2/internal/ingredients/test"
 	"github.com/gogrlx/grlx/v2/internal/jobs"
 	"github.com/gogrlx/grlx/v2/internal/pki"
+	"github.com/gogrlx/grlx/v2/internal/props"
 
 	nats_server "github.com/nats-io/nats-server/v2/server"
 	nats "github.com/nats-io/nats.go"
@@ -46,6 +47,7 @@ func main() {
 	defer log.Flush()
 	log := log.CreateClient()
 	log.LogLevel = (config.LogLevel)
+	props.InitStore(config.PropsDir)
 	createConfigRoot()
 	pki.SetupPKIFarmer()
 	certs.GenCert()
