@@ -3,6 +3,7 @@ package user
 import (
 	"context"
 	"fmt"
+	"os/user"
 	"testing"
 	"time"
 
@@ -47,6 +48,12 @@ func TestUserParse(t *testing.T) {
 			params: map[string]interface{}{"name": "testuser"},
 		},
 		{
+			name:   "valid absent with purge",
+			id:     "test-user-absent-purge",
+			method: "absent",
+			params: map[string]interface{}{"name": "testuser", "purge": true},
+		},
+		{
 			name:   "valid exists",
 			id:     "test-user-exists",
 			method: "exists",
@@ -57,12 +64,15 @@ func TestUserParse(t *testing.T) {
 			id:     "test-user-present",
 			method: "present",
 			params: map[string]interface{}{
-				"name":   "testuser",
-				"uid":    "1234",
-				"gid":    "1234",
-				"shell":  "/bin/bash",
-				"home":   "/home/testuser",
-				"groups": []string{"wheel", "docker"},
+				"name":       "testuser",
+				"uid":        "1234",
+				"gid":        "1234",
+				"shell":      "/bin/bash",
+				"home":       "/home/testuser",
+				"groups":     []string{"wheel", "docker"},
+				"comment":    "Test User",
+				"createhome": true,
+				"system":     false,
 			},
 		},
 		{
@@ -154,14 +164,13 @@ func TestUserPropertiesForMethod(t *testing.T) {
 	u := User{}
 
 	tests := []struct {
-		method     string
-		wantErr    bool
-		wantKeys   []string
-		wantAbsent []string
+		method   string
+		wantErr  bool
+		wantKeys []string
 	}{
 		{
 			method:   "absent",
-			wantKeys: []string{"name"},
+			wantKeys: []string{"name", "purge"},
 		},
 		{
 			method:   "exists",
@@ -169,7 +178,7 @@ func TestUserPropertiesForMethod(t *testing.T) {
 		},
 		{
 			method:   "present",
-			wantKeys: []string{"name", "uid", "gid", "groups", "shell", "home"},
+			wantKeys: []string{"name", "uid", "gid", "groups", "shell", "home", "comment", "createhome", "system"},
 		},
 		{
 			method:  "nonexistent",
@@ -272,7 +281,6 @@ func TestUserExists(t *testing.T) {
 }
 
 func TestUserAbsentAlreadyAbsent(t *testing.T) {
-	// When user doesn't exist, absent is a no-op
 	u := User{
 		id:     "test-absent",
 		method: "absent",
@@ -306,7 +314,6 @@ func TestUserAbsentInvalidName(t *testing.T) {
 }
 
 func TestUserAbsentTestModeExistingUser(t *testing.T) {
-	// Test mode on an existing user (root) — should say "would be deleted"
 	u := User{
 		id:     "test-absent-test",
 		method: "absent",
@@ -319,6 +326,9 @@ func TestUserAbsentTestModeExistingUser(t *testing.T) {
 	if !result.Succeeded || result.Failed {
 		t.Error("expected succeeded result in test mode")
 	}
+	if !result.Changed {
+		t.Error("expected changed=true in test mode")
+	}
 	if len(result.Notes) != 1 {
 		t.Fatalf("expected 1 note, got %d", len(result.Notes))
 	}
@@ -328,7 +338,6 @@ func TestUserAbsentTestModeExistingUser(t *testing.T) {
 }
 
 func TestUserPresentTestModeExistingUser(t *testing.T) {
-	// Test mode on an existing user (root) — should describe what would happen
 	u := User{
 		id:     "test-present-test",
 		method: "present",
@@ -341,13 +350,9 @@ func TestUserPresentTestModeExistingUser(t *testing.T) {
 	if !result.Succeeded || result.Failed {
 		t.Error("expected succeeded result in test mode")
 	}
-	if !result.Changed {
-		t.Error("expected changed=true in test mode")
-	}
 }
 
 func TestUserPresentTestModeNewUser(t *testing.T) {
-	// Test mode for a user that doesn't exist — should plan a useradd
 	u := User{
 		id:     "test-present-new",
 		method: "present",
@@ -370,15 +375,83 @@ func TestUserPresentTestModeNewUser(t *testing.T) {
 	if len(result.Notes) < 1 {
 		t.Fatal("expected at least 1 note")
 	}
-	// Note should reference useradd
 	noteStr := result.Notes[0].String()
 	if noteStr == "" {
 		t.Error("expected non-empty note")
 	}
 }
 
+func TestUserPresentExistingNoChanges(t *testing.T) {
+	// root user with no specific properties — should detect no changes needed
+	u := User{
+		id:     "test-present-noop",
+		method: "present",
+		params: map[string]interface{}{"name": "root"},
+	}
+	result, err := u.present(context.Background(), false)
+	if err != nil {
+		t.Fatalf("present() unexpected error: %v", err)
+	}
+	if !result.Succeeded || result.Failed {
+		t.Error("expected succeeded result")
+	}
+	if result.Changed {
+		t.Error("expected changed=false when no modifications needed")
+	}
+}
+
+func TestUserPresentTestModeWithAllOptions(t *testing.T) {
+	u := User{
+		id:     "test-present-all",
+		method: "present",
+		params: map[string]interface{}{
+			"name":       "grlx-test-nonexistent-user-abc123",
+			"uid":        "9999",
+			"gid":        "9999",
+			"shell":      "/bin/zsh",
+			"home":       "/home/grlx-test",
+			"comment":    "Test User",
+			"groups":     []interface{}{"wheel", "docker"},
+			"createhome": true,
+			"system":     false,
+		},
+	}
+	result, err := u.present(context.Background(), true)
+	if err != nil {
+		t.Fatalf("present() test mode unexpected error: %v", err)
+	}
+	if !result.Succeeded || result.Failed {
+		t.Error("expected succeeded result in test mode")
+	}
+	if !result.Changed {
+		t.Error("expected changed=true in test mode")
+	}
+}
+
+func TestUserPresentTestModeSystemUser(t *testing.T) {
+	u := User{
+		id:     "test-present-system",
+		method: "present",
+		params: map[string]interface{}{
+			"name":       "grlx-test-svc",
+			"system":     true,
+			"createhome": false,
+			"shell":      "/usr/sbin/nologin",
+		},
+	}
+	result, err := u.present(context.Background(), true)
+	if err != nil {
+		t.Fatalf("present() test mode unexpected error: %v", err)
+	}
+	if !result.Succeeded || result.Failed {
+		t.Error("expected succeeded result in test mode")
+	}
+	if !result.Changed {
+		t.Error("expected changed=true for new system user")
+	}
+}
+
 func TestUserTestDispatch(t *testing.T) {
-	// Test the Test() method dispatch for all valid methods
 	tests := []struct {
 		method  string
 		params  map[string]interface{}
@@ -425,7 +498,6 @@ func TestUserApplyDispatchUndefined(t *testing.T) {
 func TestUserExistsContextCancellation(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
 	defer cancel()
-	// Even with cancelled context, exists should still work (no exec calls)
 	u := User{id: "test-ctx", method: "exists", params: map[string]interface{}{"name": "root"}}
 	result, err := u.exists(ctx, false)
 	if err != nil {
@@ -437,7 +509,6 @@ func TestUserExistsContextCancellation(t *testing.T) {
 }
 
 func TestUserParseValidation(t *testing.T) {
-	// Verify Parse returns errors that match ErrMissingName
 	u := User{}
 	_, err := u.Parse("id", "absent", map[string]interface{}{})
 	if err == nil {
@@ -445,5 +516,108 @@ func TestUserParseValidation(t *testing.T) {
 	}
 	if err != ingredients.ErrMissingName {
 		t.Errorf("expected ErrMissingName, got %v", err)
+	}
+}
+
+func TestStringSliceParam(t *testing.T) {
+	// Test []string (direct)
+	params := map[string]interface{}{
+		"groups": []string{"wheel", "docker"},
+	}
+	got := stringSliceParam(params, "groups")
+	if len(got) != 2 || got[0] != "wheel" || got[1] != "docker" {
+		t.Errorf("expected [wheel docker], got %v", got)
+	}
+
+	// Test []interface{} (from JSON)
+	params2 := map[string]interface{}{
+		"groups": []interface{}{"wheel", "docker"},
+	}
+	got2 := stringSliceParam(params2, "groups")
+	if len(got2) != 2 || got2[0] != "wheel" || got2[1] != "docker" {
+		t.Errorf("expected [wheel docker], got %v", got2)
+	}
+
+	// Test missing key
+	got3 := stringSliceParam(params, "missing")
+	if got3 != nil {
+		t.Errorf("expected nil, got %v", got3)
+	}
+}
+
+func TestBoolParam(t *testing.T) {
+	params := map[string]interface{}{
+		"createhome": true,
+		"system":     false,
+		"badtype":    "yes",
+	}
+	if !boolParam(params, "createhome", false) {
+		t.Error("expected true for createhome")
+	}
+	if boolParam(params, "system", true) {
+		t.Error("expected false for system")
+	}
+	if !boolParam(params, "missing", true) {
+		t.Error("expected default true for missing key")
+	}
+	if boolParam(params, "badtype", false) {
+		t.Error("expected default false for bad type")
+	}
+}
+
+func TestBuildUseraddArgs(t *testing.T) {
+	args := buildUseraddArgs("testuser", "1000", "1000", "/bin/bash", "/home/test", "Test User", []string{"wheel", "docker"}, true, false)
+	expected := []string{"-u", "1000", "-g", "1000", "-s", "/bin/bash", "-d", "/home/test", "-c", "Test User", "-G", "wheel,docker", "-m", "testuser"}
+	if len(args) != len(expected) {
+		t.Fatalf("expected %d args, got %d: %v", len(expected), len(args), args)
+	}
+	for i, a := range args {
+		if a != expected[i] {
+			t.Errorf("arg %d: expected %q, got %q", i, expected[i], a)
+		}
+	}
+}
+
+func TestBuildUseraddArgsSystem(t *testing.T) {
+	args := buildUseraddArgs("svcuser", "", "", "/usr/sbin/nologin", "", "", nil, false, true)
+	expected := []string{"-s", "/usr/sbin/nologin", "-r", "svcuser"}
+	if len(args) != len(expected) {
+		t.Fatalf("expected %d args, got %d: %v", len(expected), len(args), args)
+	}
+	for i, a := range args {
+		if a != expected[i] {
+			t.Errorf("arg %d: expected %q, got %q", i, expected[i], a)
+		}
+	}
+}
+
+func TestBuildUsermodArgsNoChanges(t *testing.T) {
+	existing := &user.User{
+		Uid:     "0",
+		Gid:     "0",
+		HomeDir: "/root",
+		Name:    "root",
+	}
+	args := buildUsermodArgs("root", "0", "0", "", "/root", "root", nil, existing)
+	if args != nil {
+		t.Errorf("expected nil args when no changes needed, got %v", args)
+	}
+}
+
+func TestBuildUsermodArgsWithChanges(t *testing.T) {
+	existing := &user.User{
+		Uid:     "1000",
+		Gid:     "1000",
+		HomeDir: "/home/olduser",
+		Name:    "Old Name",
+	}
+	args := buildUsermodArgs("testuser", "1001", "", "", "/home/newuser", "New Name", []string{"wheel"}, existing)
+	// Should have: -u 1001 -d /home/newuser -c "New Name" -G wheel testuser
+	if args == nil {
+		t.Fatal("expected non-nil args")
+	}
+	// Verify the name is last
+	if args[len(args)-1] != "testuser" {
+		t.Errorf("expected username last, got %q", args[len(args)-1])
 	}
 }

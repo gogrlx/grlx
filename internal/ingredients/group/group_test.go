@@ -62,6 +62,17 @@ func TestGroupParse(t *testing.T) {
 			},
 		},
 		{
+			name:   "valid present with all options",
+			id:     "test-group-present-all",
+			method: "present",
+			params: map[string]interface{}{
+				"name":    "testgroup",
+				"gid":     "5000",
+				"system":  false,
+				"members": []string{"alice", "bob"},
+			},
+		},
+		{
 			name:   "valid present with name only",
 			id:     "test-group-present-min",
 			method: "present",
@@ -164,7 +175,7 @@ func TestGroupPropertiesForMethod(t *testing.T) {
 		},
 		{
 			method:   "present",
-			wantKeys: []string{"name", "gid"},
+			wantKeys: []string{"name", "gid", "system", "members"},
 		},
 		{
 			method:  "nonexistent",
@@ -312,6 +323,9 @@ func TestGroupAbsentTestModeExistingGroup(t *testing.T) {
 	if !result.Succeeded || result.Failed {
 		t.Error("expected succeeded result in test mode")
 	}
+	if !result.Changed {
+		t.Error("expected changed=true in test mode")
+	}
 	if len(result.Notes) != 1 {
 		t.Fatalf("expected 1 note, got %d", len(result.Notes))
 	}
@@ -321,7 +335,6 @@ func TestGroupAbsentTestModeExistingGroup(t *testing.T) {
 }
 
 func TestGroupPresentExistingGroupNoChange(t *testing.T) {
-	// root group already exists with its current GID — no change needed
 	g := Group{
 		id:     "test-present-existing",
 		method: "present",
@@ -370,7 +383,6 @@ func TestGroupPresentTestModeNewGroup(t *testing.T) {
 }
 
 func TestGroupPresentTestModeExistingGroupGidChange(t *testing.T) {
-	// root group exists but we request a different GID — test mode should plan groupmod
 	g := Group{
 		id:     "test-present-mod",
 		method: "present",
@@ -388,6 +400,52 @@ func TestGroupPresentTestModeExistingGroupGidChange(t *testing.T) {
 	}
 	if !result.Changed {
 		t.Error("expected changed=true in test mode for GID change")
+	}
+}
+
+func TestGroupPresentTestModeNewGroupWithMembers(t *testing.T) {
+	g := Group{
+		id:     "test-present-members",
+		method: "present",
+		params: map[string]interface{}{
+			"name":    "grlx-test-nonexistent-group-abc123",
+			"members": []interface{}{"alice", "bob"},
+		},
+	}
+	result, err := g.present(context.Background(), true)
+	if err != nil {
+		t.Fatalf("present() test mode unexpected error: %v", err)
+	}
+	if !result.Succeeded || result.Failed {
+		t.Error("expected succeeded result in test mode")
+	}
+	if !result.Changed {
+		t.Error("expected changed=true")
+	}
+	// Should have notes about both creation and members
+	if len(result.Notes) < 2 {
+		t.Errorf("expected at least 2 notes (create + members), got %d", len(result.Notes))
+	}
+}
+
+func TestGroupPresentTestModeSystemGroup(t *testing.T) {
+	g := Group{
+		id:     "test-present-system",
+		method: "present",
+		params: map[string]interface{}{
+			"name":   "grlx-test-sysgroup",
+			"system": true,
+		},
+	}
+	result, err := g.present(context.Background(), true)
+	if err != nil {
+		t.Fatalf("present() test mode unexpected error: %v", err)
+	}
+	if !result.Succeeded || result.Failed {
+		t.Error("expected succeeded result in test mode")
+	}
+	if !result.Changed {
+		t.Error("expected changed=true for new system group")
 	}
 }
 
@@ -471,5 +529,84 @@ func TestGroupParseValidation(t *testing.T) {
 	}
 	if err != ingredients.ErrMissingName {
 		t.Errorf("expected ErrMissingName, got %v", err)
+	}
+}
+
+func TestBuildGroupaddArgs(t *testing.T) {
+	args := buildGroupaddArgs("mygroup", "5000", true)
+	expected := []string{"-g", "5000", "-r", "mygroup"}
+	if len(args) != len(expected) {
+		t.Fatalf("expected %d args, got %d: %v", len(expected), len(args), args)
+	}
+	for i, a := range args {
+		if a != expected[i] {
+			t.Errorf("arg %d: expected %q, got %q", i, expected[i], a)
+		}
+	}
+}
+
+func TestBuildGroupaddArgsMinimal(t *testing.T) {
+	args := buildGroupaddArgs("mygroup", "", false)
+	expected := []string{"mygroup"}
+	if len(args) != len(expected) {
+		t.Fatalf("expected %d args, got %d: %v", len(expected), len(args), args)
+	}
+	if args[0] != "mygroup" {
+		t.Errorf("expected 'mygroup', got %q", args[0])
+	}
+}
+
+func TestBuildGroupmodArgs(t *testing.T) {
+	args := buildGroupmodArgs("mygroup", "6000")
+	expected := []string{"-g", "6000", "mygroup"}
+	if len(args) != len(expected) {
+		t.Fatalf("expected %d args, got %d: %v", len(expected), len(args), args)
+	}
+	for i, a := range args {
+		if a != expected[i] {
+			t.Errorf("arg %d: expected %q, got %q", i, expected[i], a)
+		}
+	}
+}
+
+func TestStringSliceParam(t *testing.T) {
+	// Test []string (direct)
+	params := map[string]interface{}{
+		"members": []string{"alice", "bob"},
+	}
+	got := stringSliceParam(params, "members")
+	if len(got) != 2 || got[0] != "alice" || got[1] != "bob" {
+		t.Errorf("expected [alice bob], got %v", got)
+	}
+
+	// Test []interface{} (from JSON)
+	params2 := map[string]interface{}{
+		"members": []interface{}{"alice", "bob"},
+	}
+	got2 := stringSliceParam(params2, "members")
+	if len(got2) != 2 || got2[0] != "alice" || got2[1] != "bob" {
+		t.Errorf("expected [alice bob], got %v", got2)
+	}
+
+	// Test missing key
+	got3 := stringSliceParam(params, "missing")
+	if got3 != nil {
+		t.Errorf("expected nil, got %v", got3)
+	}
+}
+
+func TestBoolParam(t *testing.T) {
+	params := map[string]interface{}{
+		"system":  true,
+		"badtype": "yes",
+	}
+	if !boolParam(params, "system", false) {
+		t.Error("expected true for system")
+	}
+	if !boolParam(params, "missing", true) {
+		t.Error("expected default true for missing key")
+	}
+	if boolParam(params, "badtype", false) {
+		t.Error("expected default false for bad type")
 	}
 }

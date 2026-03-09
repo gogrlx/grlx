@@ -96,6 +96,7 @@ func (u User) PropertiesForMethod(method string) (map[string]string, error) {
 	case "absent":
 		return ingredients.MethodPropsSet{
 			ingredients.MethodProps{Key: "name", Type: "string", IsReq: true},
+			ingredients.MethodProps{Key: "purge", Type: "bool", IsReq: false},
 		}.ToMap(), nil
 	case "exists":
 		return ingredients.MethodPropsSet{
@@ -109,6 +110,9 @@ func (u User) PropertiesForMethod(method string) (map[string]string, error) {
 			ingredients.MethodProps{Key: "groups", Type: "[]string", IsReq: false},
 			ingredients.MethodProps{Key: "shell", Type: "string", IsReq: false},
 			ingredients.MethodProps{Key: "home", Type: "string", IsReq: false},
+			ingredients.MethodProps{Key: "comment", Type: "string", IsReq: false},
+			ingredients.MethodProps{Key: "createhome", Type: "bool", IsReq: false},
+			ingredients.MethodProps{Key: "system", Type: "bool", IsReq: false},
 		}.ToMap(), nil
 	default:
 		return nil, fmt.Errorf("method %s undefined", method)
