@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/gorilla/mux"
 	log "github.com/taigrr/log-socket/log"
 
 	"github.com/gogrlx/grlx/v2/internal/jobs"
@@ -51,10 +50,9 @@ func ListJobs(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetJob returns a specific job by JID.
-// The JID is extracted from the URL path via gorilla/mux.
+// The JID is extracted from the URL path parameter {jid}.
 func GetJob(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	jid := vars["jid"]
+	jid := r.PathValue("jid")
 	if jid == "" {
 		http.Error(w, "missing jid parameter", http.StatusBadRequest)
 		return
@@ -79,10 +77,9 @@ func GetJob(w http.ResponseWriter, r *http.Request) {
 }
 
 // ListJobsForSprout returns all jobs for a specific sprout.
-// The sprout ID is extracted from the URL path.
+// The sprout ID is extracted from the URL path parameter {sproutID}.
 func ListJobsForSprout(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	sproutID := vars["sproutID"]
+	sproutID := r.PathValue("sproutID")
 	if sproutID == "" {
 		http.Error(w, "missing sproutID parameter", http.StatusBadRequest)
 		return
@@ -117,8 +114,7 @@ func ListJobsForSprout(w http.ResponseWriter, r *http.Request) {
 // The sprout must be subscribed to the cancel subject to act on it.
 // Returns 202 Accepted if the cancel message was published successfully.
 func CancelJob(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	jid := vars["jid"]
+	jid := r.PathValue("jid")
 	if jid == "" {
 		http.Error(w, "missing jid parameter", http.StatusBadRequest)
 		return

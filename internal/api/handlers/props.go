@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/gorilla/mux"
 	log "github.com/taigrr/log-socket/log"
 
 	apitypes "github.com/gogrlx/grlx/v2/internal/api/types"
@@ -19,8 +18,7 @@ type propRequest struct {
 // GetAllProps returns all non-expired properties for a sprout.
 // GET /props/{sproutID}
 func GetAllProps(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	sproutID := vars["sproutID"]
+	sproutID := r.PathValue("sproutID")
 	if sproutID == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		jw, _ := json.Marshal(apitypes.Inline{Success: false})
@@ -45,9 +43,8 @@ func GetAllProps(w http.ResponseWriter, r *http.Request) {
 // GetProp returns a single property value for a sprout.
 // GET /props/{sproutID}/{name}
 func GetProp(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	sproutID := vars["sproutID"]
-	name := vars["name"]
+	sproutID := r.PathValue("sproutID")
+	name := r.PathValue("name")
 	if sproutID == "" || name == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		jw, _ := json.Marshal(apitypes.Inline{Success: false})
@@ -74,9 +71,8 @@ func GetProp(w http.ResponseWriter, r *http.Request) {
 // SetProp creates or updates a property for a sprout.
 // PUT /props/{sproutID}/{name}
 func SetProp(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	sproutID := vars["sproutID"]
-	name := vars["name"]
+	sproutID := r.PathValue("sproutID")
+	name := r.PathValue("name")
 	if sproutID == "" || name == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		jw, _ := json.Marshal(apitypes.Inline{Success: false})
@@ -104,9 +100,8 @@ func SetProp(w http.ResponseWriter, r *http.Request) {
 // DeleteProp removes a property for a sprout.
 // DELETE /props/{sproutID}/{name}
 func DeleteProp(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	sproutID := vars["sproutID"]
-	name := vars["name"]
+	sproutID := r.PathValue("sproutID")
+	name := r.PathValue("name")
 	if sproutID == "" || name == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		jw, _ := json.Marshal(apitypes.Inline{Success: false})
