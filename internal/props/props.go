@@ -84,7 +84,6 @@ func setPropWithTTL(sproutID, name, value string, ttl time.Duration) error {
 		return ErrInvalidPropKey
 	}
 	propCacheLock.Lock()
-	defer propCacheLock.Unlock()
 	if propCache[sproutID] == nil {
 		propCache[sproutID] = make(map[string]expProp)
 	}
@@ -92,6 +91,8 @@ func setPropWithTTL(sproutID, name, value string, ttl time.Duration) error {
 		Value:  value,
 		Expiry: time.Now().Add(ttl),
 	}
+	propCacheLock.Unlock()
+	persistSprout(sproutID)
 	return nil
 }
 
@@ -112,12 +113,14 @@ func deleteProp(sproutID, name string) error {
 		return ErrInvalidPropKey
 	}
 	propCacheLock.Lock()
-	defer propCacheLock.Unlock()
 	sproutProps, ok := propCache[sproutID]
 	if !ok || sproutProps == nil {
+		propCacheLock.Unlock()
 		return nil
 	}
 	delete(sproutProps, name)
+	propCacheLock.Unlock()
+	persistSprout(sproutID)
 	return nil
 }
 

@@ -16,6 +16,7 @@ type ServiceProvider interface {
 
 	IsRunning(context.Context) (bool, error)
 	Restart(context.Context) error
+	Reload(context.Context) error
 
 	Mask(context.Context) error
 	Unmask(context.Context) error

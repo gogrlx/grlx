@@ -20,6 +20,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/nats-io/nats.go"
 	"github.com/taigrr/log-socket/log"
@@ -58,6 +59,62 @@ func RegisterNatsConn(conn *nats.Conn) {
 }
 
 func logJobCreation(msg *nats.Msg) {
+	// Subject: grlx.sprouts.<sproutID>.cook
+	tComponents := strings.Split(msg.Subject, ".")
+	if len(tComponents) < 4 {
+		log.Errorf("unexpected subject format for job creation: %s", msg.Subject)
+		return
+	}
+	sprout := tComponents[2]
+
+	var envelope cook.RecipeEnvelope
+	if err := json.Unmarshal(msg.Data, &envelope); err != nil {
+		log.Errorf("failed to unmarshal recipe envelope: %v", err)
+		return
+	}
+	if envelope.JobID == "" {
+		return
+	}
+
+	// Ensure the sprout directory exists.
+	sproutDir := filepath.Join(config.JobLogDir, sprout)
+	if err := os.MkdirAll(sproutDir, 0o700); err != nil {
+		log.Errorf("failed to create sprout job dir: %v", err)
+		return
+	}
+
+	// Write a creation marker so the job appears in listings immediately,
+	// even before any step completions arrive.
+	jobFile := filepath.Join(sproutDir, fmt.Sprintf("%s.jsonl", envelope.JobID))
+	if _, err := os.Stat(jobFile); err == nil {
+		// File already exists (shouldn't happen, but be safe).
+		return
+	}
+
+	// Write a "not started" step for each step in the envelope so the job
+	// shows up with the correct total count right away.
+	f, err := os.Create(jobFile)
+	if err != nil {
+		log.Errorf("failed to create job file for %s: %v", envelope.JobID, err)
+		return
+	}
+	defer f.Close()
+
+	for _, step := range envelope.Steps {
+		placeholder := cook.StepCompletion{
+			ID:               step.ID,
+			CompletionStatus: cook.StepNotStarted,
+			Started:          time.Now(),
+		}
+		b, marshalErr := json.Marshal(placeholder)
+		if marshalErr != nil {
+			log.Errorf("failed to marshal placeholder step: %v", marshalErr)
+			continue
+		}
+		f.Write(b)
+		f.WriteString("\n")
+	}
+	log.Noticef("job %s created for sprout %s (%d steps)", envelope.JobID, sprout, len(envelope.Steps))
 }
 
 func logJobs(msg *nats.Msg) {

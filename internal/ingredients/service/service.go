@@ -103,6 +103,12 @@ func (s Service) Apply(ctx context.Context) (cook.Result, error) {
 			return cook.Result{Succeeded: false, Failed: true, Changed: false, Notes: nil}, err
 		}
 		return cook.Result{Succeeded: true, Failed: false, Changed: true, Notes: []fmt.Stringer{cook.SimpleNote(fmt.Sprintf("%s has been restarted", s.name))}}, err
+	case "reloaded":
+		err = sp.Reload(ctx)
+		if err != nil {
+			return cook.Result{Succeeded: false, Failed: true, Changed: false, Notes: nil}, err
+		}
+		return cook.Result{Succeeded: true, Failed: false, Changed: true, Notes: []fmt.Stringer{cook.SimpleNote(fmt.Sprintf("%s has been reloaded", s.name))}}, err
 	default:
 		return cook.Result{}, ingredients.ErrInvalidMethod
 	}
@@ -170,6 +176,8 @@ func (s Service) Test(ctx context.Context) (cook.Result, error) {
 		return cook.Result{Succeeded: true, Notes: []fmt.Stringer{cook.SimpleNote(fmt.Sprintf("%s is already disabled", s.name))}}, nil
 	case "restarted":
 		return cook.Result{Succeeded: true, Changed: true, Notes: []fmt.Stringer{cook.SimpleNote(fmt.Sprintf("%s would be restarted", s.name))}}, nil
+	case "reloaded":
+		return cook.Result{Succeeded: true, Changed: true, Notes: []fmt.Stringer{cook.SimpleNote(fmt.Sprintf("%s would be reloaded", s.name))}}, nil
 	default:
 		return cook.Result{}, ingredients.ErrInvalidMethod
 	}
@@ -210,6 +218,7 @@ func (s Service) Methods() (string, []string) {
 		"disabled",
 		"enabled",
 		"masked",
+		"reloaded",
 		"restarted",
 		"running",
 		"stopped",

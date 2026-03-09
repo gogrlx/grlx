@@ -10,6 +10,7 @@ import (
 	apitypes "github.com/gogrlx/grlx/v2/internal/api/types"
 	"github.com/gogrlx/grlx/v2/internal/config"
 	"github.com/gogrlx/grlx/v2/internal/cook"
+	"github.com/gogrlx/grlx/v2/internal/facts"
 	"github.com/gogrlx/grlx/v2/internal/ingredients/cmd"
 	"github.com/gogrlx/grlx/v2/internal/ingredients/test"
 	"github.com/gogrlx/grlx/v2/internal/pki"
@@ -40,6 +41,25 @@ func natsInit(nc *nats.Conn) error {
 		log.Fatal(err)
 	} else {
 		log.Tracef("Successfully published startup message on `%s`.", startupEvent)
+	}
+
+	// Publish system facts on startup.
+	sysFacts := facts.Collect()
+	sysFacts.SproutID = sproutID
+	factsB, _ := json.Marshal(sysFacts)
+	if pubErr := nc.Publish("grlx.sprouts."+sproutID+".facts", factsB); pubErr != nil {
+		log.Errorf("failed to publish system facts: %v", pubErr)
+	}
+
+	// Respond to on-demand facts requests from the farmer.
+	_, err = nc.Subscribe("grlx.sprouts."+sproutID+".facts.request", func(m *nats.Msg) {
+		fresh := facts.Collect()
+		fresh.SproutID = sproutID
+		b, _ := json.Marshal(fresh)
+		m.Respond(b)
+	})
+	if err != nil {
+		return err
 	}
 
 	_, err = nc.Subscribe("grlx.sprouts."+sproutID+".cmd.run", func(m *nats.Msg) {
