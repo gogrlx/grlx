@@ -209,14 +209,14 @@ func ConnectFarmer() {
 		log.Errorf("nats: failed to parse root certificate from %v", RootCA)
 	}
 
-	config := &tls.Config{
+	tlsCfg := &tls.Config{
 		ServerName: FarmerInterface,
 		RootCAs:    certPool,
 		MinVersion: tls.VersionTLS12,
 	}
 	log.Debug("Attempting to pair Farmer to NATS bus.")
 	nc, err := nats.Connect(BusURL,
-		nats.Secure(config),
+		nats.Secure(tlsCfg),
 		opt,
 		nats.RetryOnFailedConnect(true),
 		nats.MaxReconnects(maxFarmerReconnect),
@@ -252,6 +252,9 @@ func ConnectFarmer() {
 	cook.RegisterNatsConn(nc)
 	jobs.RegisterNatsConn(nc)
 	handlers.RegisterNatsConn(nc)
+	// Start the job log reaper to clean up old job files.
+	jobStore := jobs.NewStore()
+	jobStore.StartReaper(config.JobLogTTL)
 	defer nc.Close()
 	select {}
 }
