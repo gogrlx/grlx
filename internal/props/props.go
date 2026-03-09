@@ -34,6 +34,13 @@ func GetStringPropFunc(sproutID string) func(string) string {
 	}
 }
 
+// GetStringProp returns the string value of a single property for a sprout.
+// Returns an empty string if the sprout or property does not exist, or if the
+// property has expired.
+func GetStringProp(sproutID, name string) string {
+	return getStringProp(sproutID, name)
+}
+
 func getStringProp(sproutID, name string) string {
 	propCacheLock.RLock()
 	sproutProps, ok := propCache[sproutID]
@@ -63,6 +70,11 @@ func SetPropFunc(sproutID string) func(string, string) error {
 	}
 }
 
+// SetProp sets a property for a sprout with the default TTL.
+func SetProp(sproutID, name, value string) error {
+	return setProp(sproutID, name, value)
+}
+
 func setProp(sproutID, name, value string) error {
 	return setPropWithTTL(sproutID, name, value, DefaultPropTTL)
 }
@@ -89,6 +101,12 @@ func GetDeletePropFunc(sproutID string) func(string) error {
 	}
 }
 
+// DeleteProp removes a property for a sprout. Returns nil if the property
+// does not exist.
+func DeleteProp(sproutID, name string) error {
+	return deleteProp(sproutID, name)
+}
+
 func deleteProp(sproutID, name string) error {
 	if sproutID == "" || name == "" {
 		return ErrInvalidPropKey
@@ -107,6 +125,12 @@ func GetPropsFunc(sproutID string) func() map[string]interface{} {
 	return func() map[string]interface{} {
 		return getProps(sproutID)
 	}
+}
+
+// GetProps returns all non-expired properties for a sprout. Returns nil if the
+// sprout has no properties.
+func GetProps(sproutID string) map[string]interface{} {
+	return getProps(sproutID)
 }
 
 func getProps(sproutID string) map[string]interface{} {
