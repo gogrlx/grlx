@@ -164,9 +164,9 @@ func TestUserPropertiesForMethod(t *testing.T) {
 	u := User{}
 
 	tests := []struct {
-		method     string
-		wantErr    bool
-		wantKeys   []string
+		method   string
+		wantErr  bool
+		wantKeys []string
 	}{
 		{
 			method:   "absent",

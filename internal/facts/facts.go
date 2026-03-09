@@ -9,14 +9,14 @@ import (
 
 // SystemFacts holds auto-collected system properties.
 type SystemFacts struct {
-	OS           string   `json:"os"`
-	Arch         string   `json:"arch"`
-	Hostname     string   `json:"hostname"`
-	GoVersion    string   `json:"go_version"`
-	NumCPU       int      `json:"num_cpu"`
-	IPAddresses  []string `json:"ip_addresses"`
-	KernelArch   string   `json:"kernel_arch"`
-	SproutID     string   `json:"sprout_id,omitempty"`
+	OS          string   `json:"os"`
+	Arch        string   `json:"arch"`
+	Hostname    string   `json:"hostname"`
+	GoVersion   string   `json:"go_version"`
+	NumCPU      int      `json:"num_cpu"`
+	IPAddresses []string `json:"ip_addresses"`
+	KernelArch  string   `json:"kernel_arch"`
+	SproutID    string   `json:"sprout_id,omitempty"`
 }
 
 // Collect gathers system facts from the local machine.
