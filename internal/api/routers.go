@@ -120,4 +120,14 @@ var Routes = map[string]Route{
 		Pattern:     "/cmd/run",
 		HandlerFunc: cmd.HCmdRun,
 	},
+	"ListSprouts": {
+		Method:      http.MethodGet,
+		Pattern:     "/sprouts",
+		HandlerFunc: handlers.ListSprouts,
+	},
+	"GetSprout": {
+		Method:      http.MethodPost,
+		Pattern:     "/sprouts/get",
+		HandlerFunc: handlers.GetSprout,
+	},
 }
