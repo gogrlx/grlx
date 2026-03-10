@@ -285,6 +285,21 @@ func Init() string {
 	return jety.GetString("init")
 }
 
+// StaticProps returns the "props.static" config section as a nested map.
+// Returns nil if the section is not defined.
+//
+// Expected YAML structure:
+//
+//	props:
+//	  static:
+//	    sprout-id-1:
+//	      key: value
+//	    sprout-id-2:
+//	      key: value
+func StaticProps() map[string]interface{} {
+	return jety.GetStringMap("props.static")
+}
+
 func SetSproutID(id string) {
 	jety.Set("sproutid", id)
 	jety.WriteConfig()
