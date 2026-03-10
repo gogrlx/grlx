@@ -50,6 +50,7 @@ func main() {
 	log := log.CreateClient()
 	log.LogLevel = (config.LogLevel)
 	props.InitStore(config.PropsDir)
+	props.LoadStaticProps(config.StaticProps())
 	loadCohortRegistry()
 	createConfigRoot()
 	pki.SetupPKIFarmer()
@@ -165,6 +166,8 @@ func handleSIGHUP() {
 
 		// Reload config before restarting the API server
 		config.LoadConfig("farmer")
+		props.ClearStaticProps()
+		props.LoadStaticProps(config.StaticProps())
 		loadCohortRegistry()
 		StartAPIServer()
 		log.Info("Servers reloaded successfully")
