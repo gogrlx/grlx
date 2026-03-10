@@ -10,21 +10,6 @@ import (
 // BuildInfoStruct holds the current build version information.
 var BuildInfoStruct config.Version
 
-// Route holds the method and pattern for a named API route.
-// Used by the CLI client to construct request URLs.
-type Route struct {
-	Method  string
-	Pattern string
-}
-
-// Routes maps route names to their method and URL pattern.
-// Only HTTPS routes remain here; all command/control routes are over NATS.
-var Routes = map[string]Route{
-	"GetVersion":     {Method: http.MethodGet, Pattern: "/version"},
-	"GetCertificate": {Method: http.MethodGet, Pattern: "/auth/cert/"},
-	"PutNKey":        {Method: http.MethodPut, Pattern: "/pki/putnkey"},
-}
-
 // NewRouter creates an http.ServeMux with HTTPS-only API routes.
 // PKI management, sprout commands, jobs, props, cohorts, and auth
 // are all handled over the NATS bus. Only certificate download,
