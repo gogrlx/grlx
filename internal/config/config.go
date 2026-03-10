@@ -9,8 +9,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/taigrr/jety"
 	"github.com/gogrlx/grlx/v2/internal/log"
+	"github.com/taigrr/jety"
 )
 
 const GrlxExt = "grlx"
@@ -24,6 +24,7 @@ var (
 	APIIdleTimeout       time.Duration
 	APIReadTimeout       time.Duration
 	APIWriteTimeout      time.Duration
+	AuditLogDir          string
 	CacheDir             string
 	CertFile             string
 	CertHosts            []string
@@ -142,6 +143,7 @@ func LoadConfig(binary string) {
 			jety.SetDefault("certfile", "/etc/grlx/pki/farmer/tls-cert.pem")
 			jety.SetDefault("farmerpki", "/etc/grlx/pki/farmer/")
 			jety.SetDefault("keyfile", "/etc/grlx/pki/farmer/tls-key.pem")
+			jety.SetDefault("auditlogdir", "/var/log/grlx/audit")
 			jety.SetDefault("joblogdir", "/var/cache/grlx/farmer/jobs")
 			jety.SetDefault("joblogttl", 30*24*time.Hour) // 30 days default
 			jety.SetDefault("propsdir", "/var/cache/grlx/farmer/props")
@@ -243,6 +245,7 @@ func LoadConfig(binary string) {
 	APIIdleTimeout = jety.GetDuration("apiidletimeout")
 	APIReadTimeout = jety.GetDuration("apireadtimeout")
 	APIWriteTimeout = jety.GetDuration("apiwritetimeout")
+	AuditLogDir = jety.GetString("auditlogdir")
 	CacheDir = jety.GetString("cachedir")
 	CertFile = jety.GetString("certfile")
 	CertHosts = jety.GetStringSlice("certhosts")
