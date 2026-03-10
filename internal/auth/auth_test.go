@@ -47,34 +47,19 @@ func TestContainsKey(t *testing.T) {
 	}
 }
 
-func TestListUsersEmpty(t *testing.T) {
-	users := ListUsers()
-	if users == nil {
-		t.Fatal("ListUsers should return non-nil map")
-	}
-	// With no config loaded, should return empty map
-	total := 0
-	for _, keys := range users {
-		total += len(keys)
-	}
-	// May or may not be empty depending on test environment config
-	_ = total
-}
-
 func TestDangerouslyAllowRoot(t *testing.T) {
-	// Default should be false (no config set)
 	if DangerouslyAllowRoot() {
 		t.Error("DangerouslyAllowRoot should default to false")
 	}
 }
 
 func TestWhoAmIInvalidToken(t *testing.T) {
-	_, role, err := WhoAmI("invalid-token")
+	_, roleName, err := WhoAmI("invalid-token")
 	if err == nil {
 		t.Error("expected error for invalid token")
 	}
-	if role != "" {
-		t.Errorf("expected empty role, got %q", role)
+	if roleName != "" {
+		t.Errorf("expected empty role name, got %q", roleName)
 	}
 }
 
@@ -84,11 +69,87 @@ func TestTokenHasRouteAccessInvalidToken(t *testing.T) {
 	}
 }
 
-func TestPubkeyRoleNoConfig(t *testing.T) {
-	// With no config, should return empty role
-	role := pubkeyRole("ANONEXISTENTKEY")
-	if role != "" {
-		t.Errorf("expected empty role for unknown key, got %q", role)
+func TestTokenHasScopedAccessInvalidToken(t *testing.T) {
+	if TokenHasScopedAccess("bad-token", rbac.ActionCook, []string{"web-1"}, nil) {
+		t.Error("expected TokenHasScopedAccess to return false for invalid token")
 	}
-	_ = rbac.RoleAdmin // ensure import is used
+}
+
+func TestTokenScopeFilterInvalidToken(t *testing.T) {
+	result := TokenScopeFilter("bad-token", rbac.ActionCook, []string{"web-1"}, nil)
+	if result != nil {
+		t.Errorf("expected nil for invalid token, got %v", result)
+	}
+}
+
+func TestLookupRoleNoPolicy(t *testing.T) {
+	// With no policy loaded, lookupRole should return nil
+	role := lookupRole("ANONEXISTENTKEY")
+	if role != nil {
+		t.Error("expected nil role for unknown key with no policy")
+	}
+}
+
+func TestSetPolicyAndLookup(t *testing.T) {
+	rs := rbac.NewRoleStore()
+	adminRole := &rbac.Role{
+		Name:  "test-admin",
+		Rules: []rbac.Rule{{Action: rbac.ActionAdmin, Scope: "*"}},
+	}
+	rs.Register(adminRole)
+
+	urm := rbac.NewUserRoleMap()
+	urm.Set("ATESTPUBKEY123", "test-admin")
+
+	SetPolicy(rs, urm, nil)
+	defer SetPolicy(nil, nil, nil) // cleanup
+
+	role := lookupRole("ATESTPUBKEY123")
+	if role == nil {
+		t.Fatal("expected role for configured pubkey")
+	}
+	if role.Name != "test-admin" {
+		t.Errorf("expected role name 'test-admin', got %q", role.Name)
+	}
+	if !role.HasRouteAccess("Cook") {
+		t.Error("admin role should have access to Cook")
+	}
+	if !role.HasRouteAccess("AcceptID") {
+		t.Error("admin role should have access to AcceptID")
+	}
+
+	// Unknown key still returns nil
+	if lookupRole("AUNKNOWNKEY") != nil {
+		t.Error("expected nil for unknown pubkey")
+	}
+}
+
+func TestListAllUsersEmpty(t *testing.T) {
+	SetPolicy(rbac.NewRoleStore(), rbac.NewUserRoleMap(), nil)
+	defer SetPolicy(nil, nil, nil)
+
+	users := ListAllUsers()
+	if users == nil {
+		t.Fatal("ListAllUsers should return non-nil map")
+	}
+}
+
+func TestListRolesEmpty(t *testing.T) {
+	SetPolicy(rbac.NewRoleStore(), rbac.NewUserRoleMap(), nil)
+	defer SetPolicy(nil, nil, nil)
+
+	roles := ListRoles()
+	if len(roles) != 0 {
+		t.Errorf("expected 0 roles, got %d", len(roles))
+	}
+}
+
+func TestGetRoleNotFound(t *testing.T) {
+	SetPolicy(rbac.NewRoleStore(), rbac.NewUserRoleMap(), nil)
+	defer SetPolicy(nil, nil, nil)
+
+	_, err := GetRole("nonexistent")
+	if err == nil {
+		t.Error("expected error for nonexistent role")
+	}
 }

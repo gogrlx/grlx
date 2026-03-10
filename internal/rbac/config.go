@@ -2,9 +2,196 @@ package rbac
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/taigrr/jety"
 )
+
+// RoleStore holds all custom role definitions loaded from config.
+type RoleStore struct {
+	roles map[string]*Role
+}
+
+// NewRoleStore creates an empty role store.
+func NewRoleStore() *RoleStore {
+	return &RoleStore{roles: make(map[string]*Role)}
+}
+
+// Register adds a role to the store, replacing any existing role with
+// the same name. Validates the role before registration.
+func (rs *RoleStore) Register(r *Role) error {
+	if err := r.Validate(); err != nil {
+		return err
+	}
+	rs.roles[r.Name] = r
+	return nil
+}
+
+// Get retrieves a role by name.
+func (rs *RoleStore) Get(name string) (*Role, error) {
+	r, ok := rs.roles[name]
+	if !ok {
+		return nil, fmt.Errorf("%w: %q", ErrUnknownRole, name)
+	}
+	return r, nil
+}
+
+// List returns all role names.
+func (rs *RoleStore) List() []string {
+	names := make([]string, 0, len(rs.roles))
+	for name := range rs.roles {
+		names = append(names, name)
+	}
+	return names
+}
+
+// LoadRolesFromConfig reads the "roles" section from the farmer config
+// and returns a populated RoleStore. Returns an empty store if the
+// section is missing.
+//
+// Expected config format:
+//
+//	roles:
+//	  sre-team:
+//	    - action: admin
+//	  dev-team:
+//	    - action: view
+//	      scope: "*"
+//	    - action: cook
+//	      scope: "cohort:staging"
+//	    - action: cmd
+//	      scope: "cohort:dev"
+//	  readonly:
+//	    - action: view
+//	    - action: user_read
+func LoadRolesFromConfig() (*RoleStore, error) {
+	store := NewRoleStore()
+
+	raw := jety.GetStringMap("roles")
+	if len(raw) == 0 {
+		return store, nil
+	}
+
+	for name, v := range raw {
+		role, err := parseRoleEntry(name, v)
+		if err != nil {
+			return nil, fmt.Errorf("parsing role %q: %w", name, err)
+		}
+		if err := store.Register(role); err != nil {
+			return nil, fmt.Errorf("registering role %q: %w", name, err)
+		}
+	}
+
+	return store, nil
+}
+
+func parseRoleEntry(name string, raw any) (*Role, error) {
+	role := &Role{Name: name}
+
+	rulesRaw, ok := raw.([]any)
+	if !ok {
+		return nil, fmt.Errorf("role %q: rules must be a list", name)
+	}
+
+	for i, ruleRaw := range rulesRaw {
+		m, ok := ruleRaw.(map[string]any)
+		if !ok {
+			return nil, fmt.Errorf("role %q rule %d: must be a map", name, i)
+		}
+
+		actionStr, _ := m["action"].(string)
+		action, err := ParseAction(strings.TrimSpace(actionStr))
+		if err != nil {
+			return nil, fmt.Errorf("role %q rule %d: %w", name, i, err)
+		}
+
+		scope, _ := m["scope"].(string)
+		scope = strings.TrimSpace(scope)
+		if scope == "" {
+			scope = "*"
+		}
+
+		rule := Rule{Action: action, Scope: scope}
+		role.Rules = append(role.Rules, rule)
+	}
+
+	return role, nil
+}
+
+// UserRoleMap maps public keys to role names. Loaded from the "users"
+// section of the farmer config.
+type UserRoleMap struct {
+	pubkeyToRole map[string]string
+}
+
+// NewUserRoleMap creates an empty map.
+func NewUserRoleMap() *UserRoleMap {
+	return &UserRoleMap{pubkeyToRole: make(map[string]string)}
+}
+
+// Set assigns a role to a pubkey.
+func (m *UserRoleMap) Set(pubkey, roleName string) {
+	m.pubkeyToRole[pubkey] = roleName
+}
+
+// RoleName returns the role name for a pubkey, or empty string if not found.
+func (m *UserRoleMap) RoleName(pubkey string) string {
+	return m.pubkeyToRole[pubkey]
+}
+
+// All returns the full map of pubkey → role name.
+func (m *UserRoleMap) All() map[string]string {
+	result := make(map[string]string, len(m.pubkeyToRole))
+	for k, v := range m.pubkeyToRole {
+		result[k] = v
+	}
+	return result
+}
+
+// LoadUsersFromConfig reads the "users" section from the farmer config.
+//
+// Expected format:
+//
+//	users:
+//	  sre-team:
+//	    - APUBKEY1...
+//	  dev-team:
+//	    - APUBKEY2...
+//
+// Also reads legacy format:
+//
+//	pubkeys:
+//	  admin:
+//	    - APUBKEY1...
+//
+// Legacy pubkeys.admin maps to a built-in "admin" role if no explicit
+// role definition exists (backward compatibility).
+func LoadUsersFromConfig() *UserRoleMap {
+	m := NewUserRoleMap()
+
+	// New format: users.<role> = [pubkeys...]
+	usersMap := jety.GetStringMap("users")
+	for roleName, v := range usersMap {
+		keys := parseStringSlice(v)
+		for _, k := range keys {
+			m.Set(k, roleName)
+		}
+	}
+
+	// Legacy format: pubkeys.<role> = [pubkeys...]
+	pubkeysMap := jety.GetStringMap("pubkeys")
+	for roleName, v := range pubkeysMap {
+		keys := parseStringSlice(v)
+		for _, k := range keys {
+			// Don't override if already set from users section.
+			if m.RoleName(k) == "" {
+				m.Set(k, roleName)
+			}
+		}
+	}
+
+	return m
+}
 
 // LoadCohortsFromConfig reads the "cohorts" section from the farmer config
 // (via jety) and returns a populated Registry. It does not fail on an

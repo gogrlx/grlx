@@ -27,7 +27,132 @@ func init() {
 	authCmd.AddCommand(authTokenCmd)
 	authCmd.AddCommand(authWhoAmICmd)
 	authCmd.AddCommand(authUsersCmd)
+	authCmd.AddCommand(authRolesCmd)
 	rootCmd.AddCommand(authCmd)
+}
+
+var authWhoAmICmd = &cobra.Command{
+	Use:   "whoami",
+	Short: "Show the identity and role of the current CLI user",
+	Args:  cobra.NoArgs,
+	Run: func(cmd *cobra.Command, _ []string) {
+		err := client.CreateSecureTransport()
+		if err != nil {
+			log.Fatal(err)
+		}
+		info, err := client.WhoAmI()
+		switch outputMode {
+		case "json":
+			result := struct {
+				Pubkey string `json:"pubkey"`
+				Role   string `json:"role"`
+				Error  string `json:"error,omitempty"`
+			}{Pubkey: info.Pubkey, Role: info.RoleName}
+			if err != nil {
+				result.Error = err.Error()
+			}
+			jw, _ := json.Marshal(result)
+			fmt.Println(string(jw))
+			if err != nil {
+				os.Exit(1)
+			}
+		case "":
+			fallthrough
+		case "text":
+			if err != nil {
+				log.Println("Error: " + err.Error())
+				os.Exit(1)
+			}
+			fmt.Printf("Pubkey: %s\nRole:   %s\n", info.Pubkey, info.RoleName)
+		}
+	},
+}
+
+var authUsersCmd = &cobra.Command{
+	Use:   "users",
+	Short: "List all configured users and their roles",
+	Args:  cobra.NoArgs,
+	Run: func(cmd *cobra.Command, _ []string) {
+		err := client.CreateSecureTransport()
+		if err != nil {
+			log.Fatal(err)
+		}
+		result, err := client.ListUsers()
+		switch outputMode {
+		case "json":
+			jw, _ := json.Marshal(result)
+			fmt.Println(string(jw))
+			if err != nil {
+				os.Exit(1)
+			}
+		case "":
+			fallthrough
+		case "text":
+			if err != nil {
+				log.Println("Error: " + err.Error())
+				os.Exit(1)
+			}
+			fmt.Println("Users:")
+			for pubkey, roleName := range result.Users {
+				fmt.Printf("  %s → %s\n", pubkey, roleName)
+			}
+			if len(result.Roles) > 0 {
+				fmt.Println("\nRoles:")
+				for _, role := range result.Roles {
+					fmt.Printf("  %s:\n", role.Name)
+					for _, rule := range role.Rules {
+						if rule.Scope == "" || rule.Scope == "*" {
+							fmt.Printf("    - %s (all)\n", rule.Action)
+						} else {
+							fmt.Printf("    - %s → %s\n", rule.Action, rule.Scope)
+						}
+					}
+				}
+			}
+		}
+	},
+}
+
+var authRolesCmd = &cobra.Command{
+	Use:   "roles",
+	Short: "List all configured role definitions",
+	Args:  cobra.NoArgs,
+	Run: func(cmd *cobra.Command, _ []string) {
+		err := client.CreateSecureTransport()
+		if err != nil {
+			log.Fatal(err)
+		}
+		result, err := client.ListUsers()
+		switch outputMode {
+		case "json":
+			jw, _ := json.Marshal(result.Roles)
+			fmt.Println(string(jw))
+			if err != nil {
+				os.Exit(1)
+			}
+		case "":
+			fallthrough
+		case "text":
+			if err != nil {
+				log.Println("Error: " + err.Error())
+				os.Exit(1)
+			}
+			if len(result.Roles) == 0 {
+				fmt.Println("No roles configured.")
+				return
+			}
+			for _, role := range result.Roles {
+				fmt.Printf("%s:\n", role.Name)
+				for _, rule := range role.Rules {
+					if rule.Scope == "" || rule.Scope == "*" {
+						fmt.Printf("  - %s (all)\n", rule.Action)
+					} else {
+						fmt.Printf("  - %s → %s\n", rule.Action, rule.Scope)
+					}
+				}
+			}
+		}
+	},
 }
 
 var authPrivKeyCmd = &cobra.Command{
@@ -78,7 +203,6 @@ var authPubKeyCmd = &cobra.Command{
 				pubkey.Error = err.Error()
 			}
 			jw, _ := json.Marshal(pubkey)
-			// TODO: Unmarshall the array specifically instead of the results object
 			fmt.Println(string(jw))
 			if err != nil {
 				os.Exit(1)
@@ -92,77 +216,6 @@ var authPubKeyCmd = &cobra.Command{
 				os.Exit(1)
 			}
 			fmt.Println(pubKey)
-		}
-	},
-}
-
-var authWhoAmICmd = &cobra.Command{
-	Use:   "whoami",
-	Short: "Show the identity and role of the current CLI user",
-	Args:  cobra.NoArgs,
-	Run: func(cmd *cobra.Command, _ []string) {
-		err := client.CreateSecureTransport()
-		if err != nil {
-			log.Fatal(err)
-		}
-		info, err := client.WhoAmI()
-		switch outputMode {
-		case "json":
-			result := struct {
-				Pubkey string `json:"pubkey"`
-				Role   string `json:"role"`
-				Error  string `json:"error,omitempty"`
-			}{Pubkey: info.Pubkey, Role: string(info.Role)}
-			if err != nil {
-				result.Error = err.Error()
-			}
-			jw, _ := json.Marshal(result)
-			fmt.Println(string(jw))
-			if err != nil {
-				os.Exit(1)
-			}
-		case "":
-			fallthrough
-		case "text":
-			if err != nil {
-				log.Println("Error: " + err.Error())
-				os.Exit(1)
-			}
-			fmt.Printf("Pubkey: %s\nRole:   %s\n", info.Pubkey, info.Role)
-		}
-	},
-}
-
-var authUsersCmd = &cobra.Command{
-	Use:   "users",
-	Short: "List all configured users and their roles",
-	Args:  cobra.NoArgs,
-	Run: func(cmd *cobra.Command, _ []string) {
-		err := client.CreateSecureTransport()
-		if err != nil {
-			log.Fatal(err)
-		}
-		users, err := client.ListUsers()
-		switch outputMode {
-		case "json":
-			jw, _ := json.Marshal(users)
-			fmt.Println(string(jw))
-			if err != nil {
-				os.Exit(1)
-			}
-		case "":
-			fallthrough
-		case "text":
-			if err != nil {
-				log.Println("Error: " + err.Error())
-				os.Exit(1)
-			}
-			for role, keys := range users {
-				fmt.Printf("%s:\n", role)
-				for _, k := range keys {
-					fmt.Printf("  %s\n", k)
-				}
-			}
 		}
 	},
 }

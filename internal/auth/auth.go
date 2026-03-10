@@ -2,6 +2,7 @@ package auth
 
 import (
 	"errors"
+	"sync"
 
 	"github.com/nats-io/nkeys"
 	"github.com/taigrr/jety"
@@ -16,6 +17,78 @@ var (
 	ErrPrivkeyExists = errors.New("private key already exists in config")
 	ErrNoPubkeys     = errors.New("no pubkeys found in config")
 )
+
+// policyState holds the loaded RBAC policy. It is populated by LoadPolicy
+// during farmer startup and used by all auth checks.
+var (
+	policyMu    sync.RWMutex
+	roleStore   *rbac.RoleStore
+	userRoleMap *rbac.UserRoleMap
+	cohortReg   *rbac.Registry
+)
+
+// LoadPolicy reads roles, users, and cohorts from the farmer config.
+// It must be called during farmer startup before serving requests.
+func LoadPolicy() error {
+	policyMu.Lock()
+	defer policyMu.Unlock()
+
+	var err error
+	roleStore, err = rbac.LoadRolesFromConfig()
+	if err != nil {
+		return err
+	}
+	userRoleMap = rbac.LoadUsersFromConfig()
+	cohortReg, err = rbac.LoadCohortsFromConfig()
+	if err != nil {
+		return err
+	}
+
+	// If no roles defined but legacy pubkeys.admin exists, create a
+	// built-in admin role so existing configs keep working.
+	if len(roleStore.List()) == 0 {
+		legacyKeys, legacyErr := GetPubkeysByRole("admin")
+		if legacyErr == nil && len(legacyKeys) > 0 {
+			adminRole := &rbac.Role{
+				Name:  "admin",
+				Rules: []rbac.Rule{{Action: rbac.ActionAdmin, Scope: "*"}},
+			}
+			roleStore.Register(adminRole)
+			for _, k := range legacyKeys {
+				if userRoleMap.RoleName(k) == "" {
+					userRoleMap.Set(k, "admin")
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+// SetPolicy sets the policy stores directly (for testing).
+func SetPolicy(rs *rbac.RoleStore, urm *rbac.UserRoleMap, cr *rbac.Registry) {
+	policyMu.Lock()
+	defer policyMu.Unlock()
+	roleStore = rs
+	userRoleMap = urm
+	cohortReg = cr
+}
+
+// CohortResolver returns a function that resolves a cohort name to its
+// member sprouts, using the loaded cohort registry. Returns nil if no
+// registry is loaded.
+func CohortResolver(allSproutIDs []string) func(string) (map[string]bool, error) {
+	policyMu.RLock()
+	reg := cohortReg
+	policyMu.RUnlock()
+
+	if reg == nil {
+		return nil
+	}
+	return func(name string) (map[string]bool, error) {
+		return reg.Resolve(name, allSproutIDs)
+	}
+}
 
 func GetPubkey() (string, error) {
 	seed, err := getPrivateSeed()
@@ -63,7 +136,6 @@ func NewToken() (string, error) {
 }
 
 // Sign signs a nonce using the local private key.
-// Used by both the CLI and the sprout for mutual authentication.
 func Sign(nonce []byte) ([]byte, error) {
 	seed, err := getPrivateSeed()
 	if err != nil {
@@ -79,12 +151,13 @@ func Sign(nonce []byte) ([]byte, error) {
 }
 
 // DangerouslyAllowRoot returns true if the farmer config has
-// dangerously_allow_root set. This bypasses all auth checks and
-// should only be used for development.
+// dangerously_allow_root set. Bypasses all auth checks (dev only).
 func DangerouslyAllowRoot() bool {
 	return jety.GetBool("dangerously_allow_root")
 }
 
+// TokenHasAccess is the legacy auth check — returns true if the token
+// maps to any configured user. Kept for backward compatibility.
 func TokenHasAccess(token string, method string) bool {
 	if DangerouslyAllowRoot() {
 		return true
@@ -100,9 +173,8 @@ func TokenHasAccess(token string, method string) bool {
 	return pubkeyHasAccess(pk, method)
 }
 
-// TokenHasRouteAccess checks whether the bearer token has permission to
-// access the named route, using role-based access control. The routeName
-// must match a key from the api.Routes map (e.g. "Cook", "AcceptID").
+// TokenHasRouteAccess checks whether the bearer token has permission
+// for the named route (e.g. "Cook", "AcceptID"). Uses policy-based RBAC.
 func TokenHasRouteAccess(token string, routeName string) bool {
 	if DangerouslyAllowRoot() {
 		return true
@@ -115,13 +187,60 @@ func TokenHasRouteAccess(token string, routeName string) bool {
 	if err != nil {
 		return false
 	}
-	role := pubkeyRole(pk)
-	return rbac.RoleHasAccess(role, routeName)
+	role := lookupRole(pk)
+	if role == nil {
+		return false
+	}
+	return role.HasRouteAccess(routeName)
 }
 
-// WhoAmI returns the public key and role for a given token.
-// Returns empty strings if the token is invalid.
-func WhoAmI(token string) (pubkey string, role rbac.Role, err error) {
+// TokenHasScopedAccess checks whether the token has permission for a
+// specific action on specific sprout IDs. Used by handlers that need
+// scope-level checks (cook, cmd, props, etc.).
+func TokenHasScopedAccess(token string, action rbac.Action, sproutIDs []string, allSproutIDs []string) bool {
+	if DangerouslyAllowRoot() {
+		return true
+	}
+	ua, err := decodeToken(token)
+	if err != nil {
+		return false
+	}
+	pk, err := ua.IsValid()
+	if err != nil {
+		return false
+	}
+	role := lookupRole(pk)
+	if role == nil {
+		return false
+	}
+	resolver := CohortResolver(allSproutIDs)
+	return role.HasScopedAccessMulti(action, sproutIDs, resolver)
+}
+
+// TokenScopeFilter returns the subset of sproutIDs that the token's role
+// permits for the given action.
+func TokenScopeFilter(token string, action rbac.Action, sproutIDs []string, allSproutIDs []string) []string {
+	if DangerouslyAllowRoot() {
+		return sproutIDs
+	}
+	ua, err := decodeToken(token)
+	if err != nil {
+		return nil
+	}
+	pk, err := ua.IsValid()
+	if err != nil {
+		return nil
+	}
+	role := lookupRole(pk)
+	if role == nil {
+		return nil
+	}
+	resolver := CohortResolver(allSproutIDs)
+	return role.ScopeFilter(action, sproutIDs, resolver)
+}
+
+// WhoAmI returns the public key and role name for a given token.
+func WhoAmI(token string) (pubkey string, roleName string, err error) {
 	ua, err := decodeToken(token)
 	if err != nil {
 		return "", "", err
@@ -130,7 +249,130 @@ func WhoAmI(token string) (pubkey string, role rbac.Role, err error) {
 	if err != nil {
 		return "", "", err
 	}
-	return pk, pubkeyRole(pk), nil
+
+	policyMu.RLock()
+	defer policyMu.RUnlock()
+	name := ""
+	if userRoleMap != nil {
+		name = userRoleMap.RoleName(pk)
+	}
+	if name == "" {
+		// Check legacy
+		name = legacyRoleName(pk)
+	}
+
+	return pk, name, nil
+}
+
+// lookupRole returns the Role object for a pubkey, or nil if not found.
+func lookupRole(pubkey string) *rbac.Role {
+	policyMu.RLock()
+	defer policyMu.RUnlock()
+
+	if userRoleMap == nil || roleStore == nil {
+		return nil
+	}
+
+	name := userRoleMap.RoleName(pubkey)
+	if name == "" {
+		name = legacyRoleName(pubkey)
+	}
+	if name == "" {
+		return nil
+	}
+
+	role, err := roleStore.Get(name)
+	if err != nil {
+		return nil
+	}
+	return role
+}
+
+// legacyRoleName checks the legacy pubkeys config section.
+// Must be called with policyMu held (at least read).
+func legacyRoleName(pubkey string) string {
+	pubkeysMap := jety.GetStringMap("pubkeys")
+	for roleName, v := range pubkeysMap {
+		keys := extractStringSlice(v)
+		for _, k := range keys {
+			if k == pubkey {
+				return roleName
+			}
+		}
+	}
+	return ""
+}
+
+// pubkeyHasAccess is the legacy check — returns true if the pubkey
+// maps to any role. Kept for backward compatibility with TokenHasAccess.
+func pubkeyHasAccess(pubkey string, method string) bool {
+	return lookupRole(pubkey) != nil
+}
+
+// extractStringSlice handles both []any and []string from config values.
+func extractStringSlice(v any) []string {
+	switch s := v.(type) {
+	case []any:
+		result := make([]string, 0, len(s))
+		for _, item := range s {
+			if str, ok := item.(string); ok {
+				result = append(result, str)
+			}
+		}
+		return result
+	case []string:
+		return s
+	case string:
+		return []string{s}
+	default:
+		return nil
+	}
+}
+
+// ListAllUsers returns all configured users as a map of pubkey → role name.
+func ListAllUsers() map[string]string {
+	policyMu.RLock()
+	defer policyMu.RUnlock()
+
+	result := make(map[string]string)
+	if userRoleMap != nil {
+		for k, v := range userRoleMap.All() {
+			result[k] = v
+		}
+	}
+
+	// Add legacy users not already present
+	pubkeysMap := jety.GetStringMap("pubkeys")
+	for roleName, v := range pubkeysMap {
+		keys := extractStringSlice(v)
+		for _, k := range keys {
+			if _, exists := result[k]; !exists {
+				result[k] = roleName
+			}
+		}
+	}
+
+	return result
+}
+
+// ListRoles returns all configured role names.
+func ListRoles() []string {
+	policyMu.RLock()
+	defer policyMu.RUnlock()
+	if roleStore == nil {
+		return nil
+	}
+	return roleStore.List()
+}
+
+// GetRole returns the full role definition by name.
+func GetRole(name string) (*rbac.Role, error) {
+	policyMu.RLock()
+	defer policyMu.RUnlock()
+	if roleStore == nil {
+		return nil, rbac.ErrUnknownRole
+	}
+	return roleStore.Get(name)
 }
 
 func GetPubkeysByRole(role string) ([]string, error) {
@@ -163,108 +405,6 @@ func GetPubkeysByRole(role string) ([]string, error) {
 	} else {
 		return []string{adminKey}, nil
 	}
-}
-
-// pubkeyHasAccess is the legacy check — returns true if the pubkey has
-// any recognized role. Kept for backward compatibility with TokenHasAccess.
-func pubkeyHasAccess(pubkey string, method string) bool {
-	role := pubkeyRole(pubkey)
-	return role != ""
-}
-
-// pubkeyRole returns the role assigned to a pubkey. It checks the "users"
-// config section first (new format), then falls back to the legacy "pubkeys"
-// section where all keys are treated as admin. Returns empty string if not found.
-func pubkeyRole(pubkey string) rbac.Role {
-	// New format: users.<role> = [pubkey, ...]
-	usersMap := jety.GetStringMap("users")
-	if len(usersMap) > 0 {
-		for roleName, v := range usersMap {
-			role, err := rbac.ParseRole(roleName)
-			if err != nil {
-				continue
-			}
-			keys := extractStringSlice(v)
-			for _, k := range keys {
-				if k == pubkey {
-					return role
-				}
-			}
-		}
-	}
-
-	// Legacy format: pubkeys.<role> = [pubkey, ...]
-	// All keys under "admin" are admin; other role names are checked too.
-	pubkeysMap := jety.GetStringMap("pubkeys")
-	for roleName, v := range pubkeysMap {
-		role, err := rbac.ParseRole(roleName)
-		if err != nil {
-			// Legacy: unknown role names under pubkeys treated as admin
-			role = rbac.RoleAdmin
-		}
-		keys := extractStringSlice(v)
-		for _, k := range keys {
-			if k == pubkey {
-				return role
-			}
-		}
-	}
-
-	return ""
-}
-
-// extractStringSlice handles both []any and []string from config values.
-func extractStringSlice(v any) []string {
-	switch s := v.(type) {
-	case []any:
-		result := make([]string, 0, len(s))
-		for _, item := range s {
-			if str, ok := item.(string); ok {
-				result = append(result, str)
-			}
-		}
-		return result
-	case []string:
-		return s
-	case string:
-		return []string{s}
-	default:
-		return nil
-	}
-}
-
-// ListUsers returns all configured users grouped by role.
-// It checks both "users" and legacy "pubkeys" config sections.
-func ListUsers() map[rbac.Role][]string {
-	result := make(map[rbac.Role][]string)
-
-	// New format first
-	usersMap := jety.GetStringMap("users")
-	for roleName, v := range usersMap {
-		role, err := rbac.ParseRole(roleName)
-		if err != nil {
-			continue
-		}
-		keys := extractStringSlice(v)
-		result[role] = append(result[role], keys...)
-	}
-
-	// Legacy format: add any keys not already present
-	pubkeysMap := jety.GetStringMap("pubkeys")
-	for roleName, v := range pubkeysMap {
-		role, err := rbac.ParseRole(roleName)
-		if err != nil {
-			role = rbac.RoleAdmin
-		}
-		keys := extractStringSlice(v)
-		for _, k := range keys {
-			if !containsKey(result[role], k) {
-				result[role] = append(result[role], k)
-			}
-		}
-	}
-
-	return result
 }
 
 func containsKey(slice []string, key string) bool {

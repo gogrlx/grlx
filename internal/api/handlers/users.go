@@ -10,12 +10,21 @@ import (
 
 // UserInfo represents a user's identity and role as returned by WhoAmI.
 type UserInfo struct {
-	Pubkey string    `json:"pubkey"`
-	Role   rbac.Role `json:"role"`
+	Pubkey   string `json:"pubkey"`
+	RoleName string `json:"role"`
 }
 
-// UsersByRole maps role names to lists of public keys.
-type UsersByRole map[rbac.Role][]string
+// RoleInfo describes a role and its rules.
+type RoleInfo struct {
+	Name  string      `json:"name"`
+	Rules []rbac.Rule `json:"rules"`
+}
+
+// UsersListResponse contains all users and role definitions.
+type UsersListResponse struct {
+	Users map[string]string `json:"users"` // pubkey → role name
+	Roles []RoleInfo        `json:"roles"`
+}
 
 // WhoAmI returns the identity and role of the authenticated user.
 func WhoAmI(w http.ResponseWriter, r *http.Request) {
@@ -24,8 +33,8 @@ func WhoAmI(w http.ResponseWriter, r *http.Request) {
 		if auth.DangerouslyAllowRoot() {
 			w.Header().Set("Content-Type", "application/json")
 			json.NewEncoder(w).Encode(UserInfo{
-				Pubkey: "(dangerously_allow_root)",
-				Role:   rbac.RoleAdmin,
+				Pubkey:   "(dangerously_allow_root)",
+				RoleName: "admin",
 			})
 			return
 		}
@@ -33,7 +42,7 @@ func WhoAmI(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pubkey, role, err := auth.WhoAmI(token)
+	pubkey, roleName, err := auth.WhoAmI(token)
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
@@ -41,15 +50,31 @@ func WhoAmI(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(UserInfo{
-		Pubkey: pubkey,
-		Role:   role,
+		Pubkey:   pubkey,
+		RoleName: roleName,
 	})
 }
 
-// ListUsers returns all configured users grouped by role.
+// ListUsers returns all configured users and role definitions.
 func ListUsers(w http.ResponseWriter, r *http.Request) {
-	users := auth.ListUsers()
+	users := auth.ListAllUsers()
+
+	roleNames := auth.ListRoles()
+	roles := make([]RoleInfo, 0, len(roleNames))
+	for _, name := range roleNames {
+		role, err := auth.GetRole(name)
+		if err != nil {
+			continue
+		}
+		roles = append(roles, RoleInfo{
+			Name:  role.Name,
+			Rules: role.Rules,
+		})
+	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(users)
+	json.NewEncoder(w).Encode(UsersListResponse{
+		Users: users,
+		Roles: roles,
+	})
 }
