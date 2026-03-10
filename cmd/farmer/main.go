@@ -12,7 +12,7 @@ import (
 	"syscall"
 	"time"
 
-	log "github.com/gogrlx/grlx/v2/pkg/log"
+	log "github.com/gogrlx/grlx/v2/internal/log"
 
 	"github.com/gogrlx/grlx/v2/internal/api"
 	"github.com/gogrlx/grlx/v2/internal/api/handlers"
@@ -258,6 +258,10 @@ func ConnectFarmer() {
 	}
 	connectionAttempts = 0
 	log.Debugf("Successfully joined Farmer to NATS bus")
+
+	if err := log.ConnectNATS(BusURL); err != nil {
+		log.Errorf("Failed to connect log-nats backend: %v", err)
+	}
 
 	_, err = nc.Subscribe("grlx.sprouts.announce.>", func(m *nats.Msg) {
 		log.Infof("Received a join event: %s\n", string(m.Data))

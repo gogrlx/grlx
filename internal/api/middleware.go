@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/gogrlx/grlx/v2/internal/auth"
-	log "github.com/gogrlx/grlx/v2/pkg/log"
+	log "github.com/gogrlx/grlx/v2/internal/log"
 )
 
 func Logger(inner http.Handler, name string) http.Handler {

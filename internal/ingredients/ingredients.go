@@ -6,7 +6,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/gogrlx/grlx/v2/pkg/log"
+	"github.com/gogrlx/grlx/v2/internal/log"
 
 	"github.com/gogrlx/grlx/v2/internal/cook"
 )

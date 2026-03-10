@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/gorilla/mux"
 	log "github.com/gogrlx/grlx/v2/internal/log"
 
 	apitypes "github.com/gogrlx/grlx/v2/internal/api/types"

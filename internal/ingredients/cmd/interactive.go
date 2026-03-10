@@ -11,7 +11,7 @@ import (
 	"time"
 
 	nats "github.com/nats-io/nats.go"
-	"github.com/gogrlx/grlx/v2/pkg/log"
+	"github.com/gogrlx/grlx/v2/internal/log"
 
 	apitypes "github.com/gogrlx/grlx/v2/internal/api/types"
 	"github.com/gogrlx/grlx/v2/internal/pki"

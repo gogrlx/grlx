@@ -9,7 +9,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/nats-io/nats.go"
 	"github.com/spf13/cobra"
-	"github.com/gogrlx/grlx/v2/pkg/log"
+	"github.com/gogrlx/grlx/v2/internal/log"
 
 	"github.com/gogrlx/grlx/v2/internal/api/client"
 	apitypes "github.com/gogrlx/grlx/v2/internal/api/types"
