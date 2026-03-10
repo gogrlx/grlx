@@ -4,9 +4,6 @@ import (
 	"net/http"
 
 	"github.com/gogrlx/grlx/v2/internal/api/handlers"
-
-	cmd "github.com/gogrlx/grlx/v2/internal/api/handlers/ingredients/cmd"
-	test "github.com/gogrlx/grlx/v2/internal/api/handlers/ingredients/test"
 	"github.com/gogrlx/grlx/v2/internal/config"
 )
 
@@ -21,39 +18,18 @@ type Route struct {
 }
 
 // Routes maps route names to their method and URL pattern.
-// This is consumed by the API client for URL construction.
+// Only HTTPS routes remain here; all command/control routes are over NATS.
 var Routes = map[string]Route{
-	"GetVersion":        {Method: http.MethodGet, Pattern: "/version"},
-	"GetCertificate":    {Method: http.MethodGet, Pattern: "/auth/cert/"},
-	"PutNKey":           {Method: http.MethodPut, Pattern: "/pki/putnkey"},
-	"GetID":             {Method: http.MethodPost, Pattern: "/pki/getnkey"},
-	"AcceptID":          {Method: http.MethodPost, Pattern: "/pki/acceptnkey"},
-	"RejectID":          {Method: http.MethodPost, Pattern: "/pki/rejectnkey"},
-	"ListID":            {Method: http.MethodPost, Pattern: "/pki/listnkey"},
-	"DenyID":            {Method: http.MethodPost, Pattern: "/pki/denynkey"},
-	"UnacceptID":        {Method: http.MethodPost, Pattern: "/pki/unacceptnkey"},
-	"DeleteID":          {Method: http.MethodPost, Pattern: "/pki/deletenkey"},
-	"TestPing":          {Method: http.MethodPost, Pattern: "/test/ping"},
-	"Cook":              {Method: http.MethodPost, Pattern: "/cook"},
-	"CmdRun":            {Method: http.MethodPost, Pattern: "/cmd/run"},
-	"ListCohorts":       {Method: http.MethodGet, Pattern: "/cohorts"},
-	"ResolveCohort":     {Method: http.MethodPost, Pattern: "/cohorts/resolve"},
-	"ListSprouts":       {Method: http.MethodGet, Pattern: "/sprouts"},
-	"GetSprout":         {Method: http.MethodPost, Pattern: "/sprouts/get"},
-	"ListJobs":          {Method: http.MethodGet, Pattern: "/jobs"},
-	"GetJob":            {Method: http.MethodGet, Pattern: "/jobs/{jid}"},
-	"CancelJob":         {Method: http.MethodDelete, Pattern: "/jobs/{jid}"},
-	"ListJobsForSprout": {Method: http.MethodGet, Pattern: "/jobs/sprout/{sproutID}"},
-	"GetAllProps":       {Method: http.MethodGet, Pattern: "/props/{sproutID}"},
-	"GetProp":           {Method: http.MethodGet, Pattern: "/props/{sproutID}/{name}"},
-	"SetProp":           {Method: http.MethodPut, Pattern: "/props/{sproutID}/{name}"},
-	"DeleteProp":        {Method: http.MethodDelete, Pattern: "/props/{sproutID}/{name}"},
-	"WhoAmI":            {Method: http.MethodGet, Pattern: "/auth/whoami"},
-	"ListUsers":         {Method: http.MethodGet, Pattern: "/auth/users"},
+	"GetVersion":     {Method: http.MethodGet, Pattern: "/version"},
+	"GetCertificate": {Method: http.MethodGet, Pattern: "/auth/cert/"},
+	"PutNKey":        {Method: http.MethodPut, Pattern: "/pki/putnkey"},
 }
 
-// NewRouter creates an http.ServeMux with all API routes registered.
-// Uses Go 1.22+ method and path parameter patterns.
+// NewRouter creates an http.ServeMux with HTTPS-only API routes.
+// PKI management, sprout commands, jobs, props, cohorts, and auth
+// are all handled over the NATS bus. Only certificate download,
+// new sprout key submission, version info, and the file server
+// remain on HTTPS.
 func NewRouter(v config.Version, certificate string) *http.ServeMux {
 	handlers.SetBuildVersion(v)
 	BuildInfoStruct = v
@@ -64,55 +40,14 @@ func NewRouter(v config.Version, certificate string) *http.ServeMux {
 	mux.Handle("GET /auth/cert/", Logger(http.HandlerFunc(handlers.GetCertificate), "GetCertificate"))
 	mux.Handle("PUT /pki/putnkey", Logger(http.HandlerFunc(handlers.PutNKey), "PutNKey"))
 
-	// Auth-required routes
-	register := func(pattern string, name string, h http.HandlerFunc) {
-		mux.Handle(pattern, Logger(Auth(http.HandlerFunc(h), name), name))
-	}
+	// Version (auth required)
+	mux.Handle("GET /version", Logger(Auth(http.HandlerFunc(handlers.GetVersion), "GetVersion"), "GetVersion"))
 
-	// Version
-	register("GET /version", "GetVersion", handlers.GetVersion)
-
-	// PKI
-	register("POST /pki/getnkey", "GetID", handlers.GetNKey)
-	register("POST /pki/acceptnkey", "AcceptID", handlers.AcceptNKey)
-	register("POST /pki/rejectnkey", "RejectID", handlers.RejectNKey)
-	register("POST /pki/listnkey", "ListID", handlers.ListNKey)
-	register("POST /pki/denynkey", "DenyID", handlers.DenyNKey)
-	register("POST /pki/unacceptnkey", "UnacceptID", handlers.UnacceptNKey)
-	register("POST /pki/deletenkey", "DeleteID", handlers.DeleteNKey)
-
-	// Test
-	register("POST /test/ping", "TestPing", test.HTestPing)
-
-	// Cook
-	register("POST /cook", "Cook", handlers.Cook)
-
-	// Cmd
-	register("POST /cmd/run", "CmdRun", cmd.HCmdRun)
-
-	// Cohorts
-	register("GET /cohorts", "ListCohorts", handlers.ListCohorts)
-	register("POST /cohorts/resolve", "ResolveCohort", handlers.ResolveCohort)
-
-	// Sprouts
-	register("GET /sprouts", "ListSprouts", handlers.ListSprouts)
-	register("POST /sprouts/get", "GetSprout", handlers.GetSprout)
-
-	// Jobs
-	register("GET /jobs", "ListJobs", handlers.ListJobs)
-	register("GET /jobs/{jid}", "GetJob", handlers.GetJob)
-	register("DELETE /jobs/{jid}", "CancelJob", handlers.CancelJob)
-	register("GET /jobs/sprout/{sproutID}", "ListJobsForSprout", handlers.ListJobsForSprout)
-
-	// Props
-	register("GET /props/{sproutID}", "GetAllProps", handlers.GetAllProps)
-	register("GET /props/{sproutID}/{name}", "GetProp", handlers.GetProp)
-	register("PUT /props/{sproutID}/{name}", "SetProp", handlers.SetProp)
-	register("DELETE /props/{sproutID}/{name}", "DeleteProp", handlers.DeleteProp)
-
-	// Auth / Users
-	register("GET /auth/whoami", "WhoAmI", handlers.WhoAmI)
-	register("GET /auth/users", "ListUsers", handlers.ListUsers)
+	// File server: serves files from the recipe directory.
+	// Sprouts fetch files using farmer:// URLs which resolve to this endpoint.
+	fileRoot := config.RecipeDir
+	fileServer := http.StripPrefix("/files/", http.FileServer(http.Dir(fileRoot)))
+	mux.Handle("GET /files/", Logger(Auth(fileServer, "FileServer"), "FileServer"))
 
 	return mux
 }

@@ -1,19 +1,14 @@
 package cmd
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
-	"net/http"
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
-	"github.com/gogrlx/grlx/v2/internal/log"
 
-	"github.com/gogrlx/grlx/v2/internal/api"
 	"github.com/gogrlx/grlx/v2/internal/api/client"
-	"github.com/gogrlx/grlx/v2/internal/auth"
-	"github.com/gogrlx/grlx/v2/internal/config"
+	"github.com/gogrlx/grlx/v2/internal/log"
 )
 
 var cmdCohorts = &cobra.Command{
@@ -29,26 +24,10 @@ var cmdCohortsList = &cobra.Command{
 	Short: "List all configured cohorts",
 	Args:  cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
-		httpClient := client.APIClient
-		ctx := context.Background()
-
-		url := config.FarmerURL + api.Routes["ListCohorts"].Pattern
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+		resp, err := client.NatsRequest("cohorts.list", nil)
 		if err != nil {
-			log.Fatal(err)
+			log.Fatalf("Failed to list cohorts: %v", err)
 		}
-		req.Header.Set("Accept", "application/json")
-		newToken, err := auth.NewToken()
-		if err != nil {
-			log.Fatal(err)
-		}
-		req.Header.Set("Authorization", newToken)
-
-		resp, err := httpClient.Do(req)
-		if err != nil {
-			log.Fatalf("Failed to contact farmer: %v", err)
-		}
-		defer resp.Body.Close()
 
 		var result struct {
 			Cohorts []struct {
@@ -56,7 +35,7 @@ var cmdCohortsList = &cobra.Command{
 				Type string `json:"type"`
 			} `json:"cohorts"`
 		}
-		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		if err := json.Unmarshal(resp, &result); err != nil {
 			log.Fatalf("Failed to decode response: %v", err)
 		}
 
