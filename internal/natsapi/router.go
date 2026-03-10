@@ -15,6 +15,7 @@ import (
 
 	"github.com/nats-io/nats.go"
 
+	"github.com/gogrlx/grlx/v2/internal/audit"
 	log "github.com/gogrlx/grlx/v2/internal/log"
 )
 
@@ -82,9 +83,19 @@ func Subscribe(nc *nats.Conn) error {
 
 	for method, h := range routes {
 		subject := "grlx.api." + method
-		handler := h // capture for closure
+		handler := h     // capture for closure
+		action := method // capture for audit
 		_, err := nc.Subscribe(subject, func(msg *nats.Msg) {
 			result, err := handler(msg.Data)
+
+			// Audit log: record all write actions; skip read-only unless
+			// audit logging level is raised in a future config option.
+			if !audit.IsReadOnly(action) {
+				if auditErr := audit.LogAction(action, msg.Data, result, err); auditErr != nil {
+					log.Errorf("natsapi: audit log failed for %s: %v", action, auditErr)
+				}
+			}
+
 			var resp response
 			if err != nil {
 				resp.Error = err.Error()

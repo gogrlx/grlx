@@ -16,6 +16,8 @@ import (
 
 	"github.com/gogrlx/grlx/v2/internal/api"
 	"github.com/gogrlx/grlx/v2/internal/api/handlers"
+	"github.com/gogrlx/grlx/v2/internal/audit"
+	"github.com/gogrlx/grlx/v2/internal/auth"
 	"github.com/gogrlx/grlx/v2/internal/certs"
 	"github.com/gogrlx/grlx/v2/internal/config"
 	"github.com/gogrlx/grlx/v2/internal/cook"
@@ -52,6 +54,7 @@ func main() {
 	props.LoadStaticProps(config.StaticProps())
 	loadCohortRegistry()
 	createConfigRoot()
+	initAuditLogger()
 	pki.SetupPKIFarmer()
 	certs.GenCert()
 	certs.GenNKey(true)
@@ -67,6 +70,21 @@ func main() {
 	// Auth nats bus
 	// Cli accept key, add to config file
 	// Update auth users via api
+}
+
+func initAuditLogger() {
+	auditDir := config.AuditLogDir
+	if auditDir == "" {
+		auditDir = "/var/log/grlx/audit"
+	}
+	logger, err := audit.NewLogger(auditDir)
+	if err != nil {
+		log.Errorf("Failed to initialize audit logger at %s: %v", auditDir, err)
+		return
+	}
+	audit.SetGlobal(logger)
+	audit.SetIdentityResolver(auth.WhoAmI)
+	log.Infof("Audit logging enabled: %s", auditDir)
 }
 
 func loadCohortRegistry() {
