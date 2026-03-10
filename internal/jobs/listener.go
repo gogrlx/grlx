@@ -22,8 +22,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/nats-io/nats.go"
 	"github.com/gogrlx/grlx/v2/internal/log"
+	"github.com/nats-io/nats.go"
 
 	"github.com/gogrlx/grlx/v2/internal/config"
 	"github.com/gogrlx/grlx/v2/internal/cook"

@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/nats-io/nats.go"
 	log "github.com/gogrlx/grlx/v2/internal/log"
+	"github.com/nats-io/nats.go"
 
 	"github.com/gogrlx/grlx/v2/internal/props"
 )

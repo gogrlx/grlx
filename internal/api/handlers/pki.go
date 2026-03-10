@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/nats-io/nkeys"
 	log "github.com/gogrlx/grlx/v2/internal/log"
+	"github.com/nats-io/nkeys"
 
 	apitypes "github.com/gogrlx/grlx/v2/internal/api/types"
 	"github.com/gogrlx/grlx/v2/internal/config"

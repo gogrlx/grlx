@@ -9,8 +9,8 @@ import (
 
 	apitypes "github.com/gogrlx/grlx/v2/internal/api/types"
 	"github.com/gogrlx/grlx/v2/internal/ingredients/test"
-	"github.com/gogrlx/grlx/v2/internal/pki"
 	log "github.com/gogrlx/grlx/v2/internal/log"
+	"github.com/gogrlx/grlx/v2/internal/pki"
 )
 
 // TODO: add callback event for when new key is PUT to the server

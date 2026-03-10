@@ -10,8 +10,8 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/gogrlx/grlx/v2/internal/log"
+	"github.com/google/uuid"
 	"gopkg.in/yaml.v3"
 
 	"github.com/gogrlx/grlx/v2/internal/config"

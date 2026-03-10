@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/fatih/color"
+	"github.com/gogrlx/grlx/v2/internal/log"
 	"github.com/nats-io/nats.go"
 	"github.com/spf13/cobra"
-	"github.com/gogrlx/grlx/v2/internal/log"
 
 	"github.com/gogrlx/grlx/v2/internal/api/client"
 	"github.com/gogrlx/grlx/v2/internal/cook"

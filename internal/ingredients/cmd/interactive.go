@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	nats "github.com/nats-io/nats.go"
 	"github.com/gogrlx/grlx/v2/internal/log"
+	nats "github.com/nats-io/nats.go"
 
 	apitypes "github.com/gogrlx/grlx/v2/internal/api/types"
 	"github.com/gogrlx/grlx/v2/internal/pki"
