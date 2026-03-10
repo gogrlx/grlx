@@ -1,0 +1,3 @@
+[submodule "grlx-web-ui"]
+	path = grlx-web-ui
+	url = https://github.com/gogrlx/grlx-web-ui.git

@@ -5,7 +5,7 @@ package serve
 
 import (
 	"encoding/json"
-	"fmt"
+	"io"
 	"net/http"
 
 	"github.com/gogrlx/grlx/v2/internal/api/client"
@@ -34,16 +34,37 @@ func NewMux() *http.ServeMux {
 	// Jobs
 	mux.HandleFunc("GET /api/v1/jobs", HandleNATSProxy("jobs.list"))
 	mux.HandleFunc("GET /api/v1/jobs/{jid}", HandleNATSProxyWithID("jobs.get"))
+	mux.HandleFunc("GET /api/v1/jobs/sprout/{id}", HandleNATSProxyWithID("jobs.forsprout"))
+	mux.HandleFunc("DELETE /api/v1/jobs/{jid}", HandleNATSProxyWithID("jobs.cancel"))
+
+	// Cook
+	mux.HandleFunc("POST /api/v1/cook", HandleNATSProxyWithBody("cook"))
 
 	// Props
 	mux.HandleFunc("GET /api/v1/props", HandleNATSProxy("props.list"))
 	mux.HandleFunc("GET /api/v1/props/{id}", HandleNATSProxyWithID("props.get"))
+	mux.HandleFunc("GET /api/v1/props/{id}/{key}", HandlePropsKeyProxy("props.getkey"))
+	mux.HandleFunc("PUT /api/v1/props/{id}/{key}", HandlePropsSetProxy("props.set"))
+	mux.HandleFunc("DELETE /api/v1/props/{id}/{key}", HandlePropsKeyProxy("props.delete"))
 
 	// Cohorts
 	mux.HandleFunc("GET /api/v1/cohorts", HandleNATSProxy("cohorts.list"))
+	mux.HandleFunc("POST /api/v1/cohorts/resolve", HandleNATSProxyWithBody("cohorts.resolve"))
 
-	// Web UI placeholder (will be replaced with embed.FS)
-	mux.HandleFunc("GET /", HandleUIPlaceholder)
+	// Keys (PKI)
+	mux.HandleFunc("GET /api/v1/keys", HandleNATSProxy("pki.list"))
+	mux.HandleFunc("POST /api/v1/keys/{id}/accept", HandleNATSProxyWithID("pki.accept"))
+	mux.HandleFunc("POST /api/v1/keys/{id}/reject", HandleNATSProxyWithID("pki.reject"))
+	mux.HandleFunc("POST /api/v1/keys/{id}/deny", HandleNATSProxyWithID("pki.deny"))
+	mux.HandleFunc("POST /api/v1/keys/{id}/unaccept", HandleNATSProxyWithID("pki.unaccept"))
+	mux.HandleFunc("DELETE /api/v1/keys/{id}", HandleNATSProxyWithID("pki.delete"))
+
+	// Auth
+	mux.HandleFunc("GET /api/v1/auth/whoami", HandleNATSProxy("auth.whoami"))
+	mux.HandleFunc("GET /api/v1/auth/users", HandleNATSProxy("auth.users"))
+
+	// Serve embedded web UI (SPA with index.html fallback)
+	mux.Handle("GET /", UIHandler())
 
 	return mux
 }
@@ -104,19 +125,94 @@ func HandleNATSProxyWithID(method string) http.HandlerFunc {
 	}
 }
 
-// HandleUIPlaceholder serves a placeholder page until the web UI is embedded.
-func HandleUIPlaceholder(w http.ResponseWriter, _ *http.Request) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprint(w, `<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="utf-8"><title>grlx</title></head>
-<body>
-<h1>grlx</h1>
-<p>Web UI not yet embedded. Build the web UI and embed it to serve it here.</p>
-<p>API available at <code>/api/v1/</code></p>
-</body>
-</html>`)
+// HandleNATSProxyWithBody returns a handler that reads the request body as JSON
+// and forwards it to a NATS subject.
+func HandleNATSProxyWithBody(method string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "failed to read request body"})
+			return
+		}
+		defer r.Body.Close()
+
+		var params any
+		if len(body) > 0 {
+			if err := json.Unmarshal(body, &params); err != nil {
+				WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid JSON body"})
+				return
+			}
+		}
+
+		result, err := client.NatsRequest(method, params)
+		if err != nil {
+			WriteJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(result)
+	}
+}
+
+// HandlePropsKeyProxy returns a handler that forwards a props request keyed
+// by both sprout ID and property key to a NATS subject.
+func HandlePropsKeyProxy(method string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+		key := r.PathValue("key")
+		if id == "" || key == "" {
+			WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "missing id or key parameter"})
+			return
+		}
+		params := map[string]string{"id": id, "key": key}
+		result, err := client.NatsRequest(method, params)
+		if err != nil {
+			WriteJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(result)
+	}
+}
+
+// HandlePropsSetProxy returns a handler that forwards a props set request
+// with the sprout ID, key, and the request body value to a NATS subject.
+func HandlePropsSetProxy(method string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+		key := r.PathValue("key")
+		if id == "" || key == "" {
+			WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "missing id or key parameter"})
+			return
+		}
+
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "failed to read request body"})
+			return
+		}
+		defer r.Body.Close()
+
+		var value any
+		if len(body) > 0 {
+			if err := json.Unmarshal(body, &value); err != nil {
+				WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid JSON body"})
+				return
+			}
+		}
+
+		params := map[string]any{"id": id, "key": key, "value": value}
+		result, err := client.NatsRequest(method, params)
+		if err != nil {
+			WriteJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(result)
+	}
 }
 
 // WithCORS wraps a handler with permissive CORS headers for local development.
