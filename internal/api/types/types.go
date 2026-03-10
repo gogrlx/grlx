@@ -6,6 +6,7 @@ import (
 
 	"github.com/gogrlx/grlx/v2/internal/cook"
 	"github.com/gogrlx/grlx/v2/internal/pki"
+	"github.com/gogrlx/grlx/v2/internal/rbac"
 )
 
 type (
@@ -61,6 +62,24 @@ type (
 		Name string `json:"name"`
 	}
 )
+
+// UserInfo represents a user's identity and role.
+type UserInfo struct {
+	Pubkey   string `json:"pubkey"`
+	RoleName string `json:"role"`
+}
+
+// RoleInfo describes a role and its rules.
+type RoleInfo struct {
+	Name  string      `json:"name"`
+	Rules []rbac.Rule `json:"rules"`
+}
+
+// UsersListResponse contains all users and role definitions.
+type UsersListResponse struct {
+	Users map[string]string `json:"users"` // pubkey → role name
+	Roles []RoleInfo        `json:"roles"`
+}
 
 var (
 	ErrAPIRouteNotFound = errors.New("API Route not found")

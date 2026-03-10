@@ -36,10 +36,6 @@ var authWhoAmICmd = &cobra.Command{
 	Short: "Show the identity and role of the current CLI user",
 	Args:  cobra.NoArgs,
 	Run: func(cmd *cobra.Command, _ []string) {
-		err := client.CreateSecureTransport()
-		if err != nil {
-			log.Fatal(err)
-		}
 		info, err := client.WhoAmI()
 		switch outputMode {
 		case "json":
@@ -73,10 +69,6 @@ var authUsersCmd = &cobra.Command{
 	Short: "List all configured users and their roles",
 	Args:  cobra.NoArgs,
 	Run: func(cmd *cobra.Command, _ []string) {
-		err := client.CreateSecureTransport()
-		if err != nil {
-			log.Fatal(err)
-		}
 		result, err := client.ListUsers()
 		switch outputMode {
 		case "json":
@@ -118,10 +110,6 @@ var authRolesCmd = &cobra.Command{
 	Short: "List all configured role definitions",
 	Args:  cobra.NoArgs,
 	Run: func(cmd *cobra.Command, _ []string) {
-		err := client.CreateSecureTransport()
-		if err != nil {
-			log.Fatal(err)
-		}
 		result, err := client.ListUsers()
 		switch outputMode {
 		case "json":

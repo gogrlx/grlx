@@ -16,11 +16,11 @@ import (
 )
 
 var (
-	cfgFile       string
-	sproutTarget  string
-	cohortTarget  string
-	outputMode    string
-	BuildInfo     config.Version
+	cfgFile      string
+	sproutTarget string
+	cohortTarget string
+	outputMode   string
+	BuildInfo    config.Version
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -99,6 +99,13 @@ func init() {
 			fmt.Printf("error: %v\n", err)
 			color.Red("The API client could not be created. Exiting!")
 			os.Exit(1)
+		}
+	}
+
+	// Connect to NATS for API operations (most commands need this).
+	if !skipTLS && !noFailForCert {
+		if natsErr := client.ConnectNats(); natsErr != nil {
+			fmt.Printf("warning: NATS connection failed: %v\n", natsErr)
 		}
 	}
 }

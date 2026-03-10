@@ -1,44 +1,63 @@
 package client
 
 import (
-	"bytes"
 	"encoding/json"
-	"net/http"
+	"fmt"
 
-	"github.com/gogrlx/grlx/v2/internal/api"
-	apitypes "github.com/gogrlx/grlx/v2/internal/api/types"
-	"github.com/gogrlx/grlx/v2/internal/auth"
-	"github.com/gogrlx/grlx/v2/internal/config"
 	"github.com/gogrlx/grlx/v2/internal/pki"
 )
 
 func ListKeys() (pki.KeysByType, error) {
 	var keys pki.KeysByType
-	FarmerURL := config.FarmerURL
-	url := FarmerURL + api.Routes["ListID"].Pattern
-	req, err := http.NewRequest(http.MethodPost, url, nil)
+	resp, err := NatsRequest("pki.list", nil)
 	if err != nil {
 		return keys, err
 	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
-	newToken, err := auth.NewToken()
-	if err != nil {
-		return keys, err
+	if err := json.Unmarshal(resp, &keys); err != nil {
+		return keys, fmt.Errorf("list keys: %w", err)
 	}
-	req.Header.Set("Authorization", newToken)
-	resp, err := APIClient.Do(req)
+	return keys, nil
+}
+
+func AcceptKey(id string) (bool, error) {
+	keyList, err := ListKeys()
 	if err != nil {
-		return keys, err
+		return false, err
 	}
-	defer resp.Body.Close()
-	err = json.NewDecoder(resp.Body).Decode(&keys)
-	return keys, err
+	keyFound := false
+	for _, keySet := range []pki.KeySet{
+		keyList.Unaccepted,
+		keyList.Denied,
+		keyList.Rejected,
+	} {
+		for _, key := range keySet.Sprouts {
+			if id == key.SproutID {
+				keyFound = true
+				break
+			}
+		}
+		if keyFound {
+			break
+		}
+	}
+	if !keyFound {
+		for _, key := range keyList.Accepted.Sprouts {
+			if id == key.SproutID {
+				return false, pki.ErrAlreadyAccepted
+			}
+		}
+		return false, pki.ErrSproutIDNotFound
+	}
+
+	_, err = NatsRequest("pki.accept", pki.KeyManager{SproutID: id})
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 func UnacceptKey(id string) (bool, error) {
 	keyList, err := ListKeys()
-	FarmerURL := config.FarmerURL
 	if err != nil {
 		return false, err
 	}
@@ -49,13 +68,13 @@ func UnacceptKey(id string) (bool, error) {
 		keyList.Rejected,
 	} {
 		for _, key := range keySet.Sprouts {
-			if keyFound {
-				break
-			}
 			if id == key.SproutID {
 				keyFound = true
 				break
 			}
+		}
+		if keyFound {
+			break
 		}
 	}
 	if !keyFound {
@@ -66,90 +85,12 @@ func UnacceptKey(id string) (bool, error) {
 		}
 		return false, pki.ErrSproutIDNotFound
 	}
-	var success apitypes.Inline
-	url := FarmerURL + api.Routes["UnacceptID"].Pattern
-	km := pki.KeyManager{SproutID: id}
-	jw, _ := json.Marshal(km)
 
-	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(jw))
+	_, err = NatsRequest("pki.unaccept", pki.KeyManager{SproutID: id})
 	if err != nil {
 		return false, err
 	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
-	newToken, err := auth.NewToken()
-	if err != nil {
-		return false, err
-	}
-	req.Header.Set("Authorization", newToken)
-	resp, err := APIClient.Do(req)
-	if err != nil {
-		return false, err
-	}
-	defer resp.Body.Close()
-	err = json.NewDecoder(resp.Body).Decode(&success)
-	if err != nil {
-		return false, err
-	}
-	return success.Success, success.Error
-}
-
-func DenyKey(id string) (bool, error) {
-	keyList, err := ListKeys()
-	if err != nil {
-		return false, err
-	}
-	keyFound := false
-	for _, keySet := range []pki.KeySet{
-		keyList.Accepted,
-		keyList.Unaccepted,
-		keyList.Rejected,
-	} {
-		for _, key := range keySet.Sprouts {
-			if keyFound {
-				break
-			}
-			if id == key.SproutID {
-				keyFound = true
-				break
-			}
-		}
-	}
-	if !keyFound {
-		for _, key := range keyList.Denied.Sprouts {
-			if id == key.SproutID {
-				return false, pki.ErrAlreadyDenied
-			}
-		}
-
-		return false, pki.ErrSproutIDNotFound
-	}
-	var success apitypes.Inline
-	FarmerURL := config.FarmerURL
-	url := FarmerURL + api.Routes["DenyID"].Pattern
-	km := pki.KeyManager{SproutID: id}
-	jw, _ := json.Marshal(km)
-	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(jw))
-	if err != nil {
-		return false, err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
-	newToken, err := auth.NewToken()
-	if err != nil {
-		return false, err
-	}
-	req.Header.Set("Authorization", newToken)
-	resp, err := APIClient.Do(req)
-	if err != nil {
-		return false, err
-	}
-	defer resp.Body.Close()
-	err = json.NewDecoder(resp.Body).Decode(&success)
-	if err != nil {
-		return false, err
-	}
-	return success.Success, success.Error
+	return true, nil
 }
 
 func RejectKey(id string) (bool, error) {
@@ -164,13 +105,13 @@ func RejectKey(id string) (bool, error) {
 		keyList.Denied,
 	} {
 		for _, key := range keySet.Sprouts {
-			if keyFound {
-				break
-			}
 			if id == key.SproutID {
 				keyFound = true
 				break
 			}
+		}
+		if keyFound {
+			break
 		}
 	}
 	if !keyFound {
@@ -181,33 +122,49 @@ func RejectKey(id string) (bool, error) {
 		}
 		return false, pki.ErrSproutIDNotFound
 	}
-	var success apitypes.Inline
-	FarmerURL := config.FarmerURL
-	url := FarmerURL + "/pki/rejectnkey"
-	km := pki.KeyManager{SproutID: id}
-	jw, _ := json.Marshal(km)
-	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(jw))
+
+	_, err = NatsRequest("pki.reject", pki.KeyManager{SproutID: id})
 	if err != nil {
 		return false, err
+	}
+	return true, nil
+}
+
+func DenyKey(id string) (bool, error) {
+	keyList, err := ListKeys()
+	if err != nil {
+		return false, err
+	}
+	keyFound := false
+	for _, keySet := range []pki.KeySet{
+		keyList.Accepted,
+		keyList.Unaccepted,
+		keyList.Rejected,
+	} {
+		for _, key := range keySet.Sprouts {
+			if id == key.SproutID {
+				keyFound = true
+				break
+			}
+		}
+		if keyFound {
+			break
+		}
+	}
+	if !keyFound {
+		for _, key := range keyList.Denied.Sprouts {
+			if id == key.SproutID {
+				return false, pki.ErrAlreadyDenied
+			}
+		}
+		return false, pki.ErrSproutIDNotFound
 	}
 
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
-	newToken, err := auth.NewToken()
+	_, err = NatsRequest("pki.deny", pki.KeyManager{SproutID: id})
 	if err != nil {
 		return false, err
 	}
-	req.Header.Set("Authorization", newToken)
-	resp, err := APIClient.Do(req)
-	if err != nil {
-		return false, err
-	}
-	defer resp.Body.Close()
-	err = json.NewDecoder(resp.Body).Decode(&success)
-	if err != nil {
-		return false, err
-	}
-	return success.Success, success.Error
+	return true, nil
 }
 
 func DeleteKey(id string) (bool, error) {
@@ -223,101 +180,22 @@ func DeleteKey(id string) (bool, error) {
 		keyList.Rejected,
 	} {
 		for _, key := range keySet.Sprouts {
-			if keyFound {
-				break
-			}
 			if id == key.SproutID {
 				keyFound = true
 				break
 			}
 		}
+		if keyFound {
+			break
+		}
 	}
 	if !keyFound {
 		return false, pki.ErrSproutIDNotFound
 	}
-	var success apitypes.Inline
-	FarmerURL := config.FarmerURL
-	url := FarmerURL + "/pki/deletenkey"
-	km := pki.KeyManager{SproutID: id}
-	jw, _ := json.Marshal(km)
-	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(jw))
-	if err != nil {
-		return false, err
-	}
 
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
-	newToken, err := auth.NewToken()
+	_, err = NatsRequest("pki.delete", pki.KeyManager{SproutID: id})
 	if err != nil {
 		return false, err
 	}
-	req.Header.Set("Authorization", newToken)
-	resp, err := APIClient.Do(req)
-	if err != nil {
-		return false, err
-	}
-	defer resp.Body.Close()
-	err = json.NewDecoder(resp.Body).Decode(&success)
-	if err != nil {
-		return false, err
-	}
-	return success.Success, success.Error
-}
-
-func AcceptKey(id string) (bool, error) {
-	keyList, err := ListKeys()
-	if err != nil {
-		return false, err
-	}
-	keyFound := false
-	for _, keySet := range []pki.KeySet{
-		keyList.Unaccepted,
-		keyList.Denied,
-		keyList.Rejected,
-	} {
-		for _, key := range keySet.Sprouts {
-			if keyFound {
-				break
-			}
-			if id == key.SproutID {
-				keyFound = true
-				break
-			}
-		}
-	}
-	if !keyFound {
-		for _, key := range keyList.Accepted.Sprouts {
-			if id == key.SproutID {
-				return false, pki.ErrAlreadyAccepted
-			}
-		}
-		return false, pki.ErrSproutIDNotFound
-	}
-	var success apitypes.Inline
-	FarmerURL := config.FarmerURL
-	url := FarmerURL + api.Routes["AcceptID"].Pattern
-	km := pki.KeyManager{SproutID: id}
-	jw, _ := json.Marshal(km)
-	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(jw))
-	if err != nil {
-		return false, err
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
-	newToken, err := auth.NewToken()
-	if err != nil {
-		return false, err
-	}
-	req.Header.Set("Authorization", newToken)
-	resp, err := APIClient.Do(req)
-	if err != nil {
-		return false, err
-	}
-	defer resp.Body.Close()
-	err = json.NewDecoder(resp.Body).Decode(&success)
-	if err != nil {
-		return false, err
-	}
-	return success.Success, success.Error
+	return true, nil
 }

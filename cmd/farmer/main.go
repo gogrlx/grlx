@@ -23,6 +23,7 @@ import (
 	"github.com/gogrlx/grlx/v2/internal/ingredients/cmd"
 	"github.com/gogrlx/grlx/v2/internal/ingredients/test"
 	"github.com/gogrlx/grlx/v2/internal/jobs"
+	"github.com/gogrlx/grlx/v2/internal/natsapi"
 	"github.com/gogrlx/grlx/v2/internal/pki"
 	"github.com/gogrlx/grlx/v2/internal/props"
 	"github.com/gogrlx/grlx/v2/internal/rbac"
@@ -75,6 +76,7 @@ func loadCohortRegistry() {
 		registry = rbac.NewRegistry()
 	}
 	handlers.SetCohortRegistry(registry)
+	natsapi.SetCohortRegistry(registry)
 	names := registry.List()
 	if len(names) > 0 {
 		log.Infof("Loaded %d cohort(s): %v", len(names), names)
@@ -276,6 +278,19 @@ func ConnectFarmer() {
 	jobs.RegisterNatsConn(nc)
 	handlers.RegisterNatsConn(nc)
 	facts.RegisterFarmerListener(nc)
+
+	// Set version info and subscribe NATS API handlers.
+	natsapi.SetBuildVersion(config.Version{
+		Arch:      runtime.GOOS,
+		Compiler:  runtime.Version(),
+		GitCommit: GitCommit,
+		Tag:       Tag,
+	})
+	if err := natsapi.Subscribe(nc); err != nil {
+		log.Errorf("Failed to subscribe NATS API handlers: %v", err)
+	} else {
+		log.Info("NATS API handlers registered")
+	}
 	// Start the job log reaper to clean up old job files.
 	jobStore := jobs.NewStore()
 	jobStore.StartReaper(config.JobLogTTL)
