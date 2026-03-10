@@ -8,7 +8,7 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
-	"github.com/taigrr/log-socket/log"
+	"github.com/gogrlx/grlx/v2/internal/log"
 
 	"github.com/gogrlx/grlx/v2/internal/api"
 	"github.com/gogrlx/grlx/v2/internal/api/client"

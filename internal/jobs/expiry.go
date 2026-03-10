@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	log "github.com/taigrr/log-socket/log"
+	log "github.com/gogrlx/grlx/v2/internal/log"
 )
 
 // StartReaper launches a background goroutine that periodically removes job

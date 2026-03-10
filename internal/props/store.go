@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	log "github.com/taigrr/log-socket/log"
+	log "github.com/gogrlx/grlx/v2/internal/log"
 )
 
 // propsDir is the directory where props are persisted as JSON files.

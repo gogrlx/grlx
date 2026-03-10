@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	log "github.com/taigrr/log-socket/log"
+	log "github.com/gogrlx/grlx/v2/internal/log"
 )
 
 // StaticPropTTL is the TTL for static props loaded from config.

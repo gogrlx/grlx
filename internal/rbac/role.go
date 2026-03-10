@@ -89,8 +89,6 @@ var routeActions = map[string]Action{
 
 	// Read-only
 	"GetVersion":        ActionView,
-	"GetLogSocket":      ActionView,
-	"GetLogPage":        ActionView,
 	"ListCohorts":       ActionView,
 	"ListSprouts":       ActionView,
 	"GetSprout":         ActionView,
