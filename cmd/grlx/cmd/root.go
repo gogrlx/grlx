@@ -16,10 +16,11 @@ import (
 )
 
 var (
-	cfgFile      string
-	sproutTarget string
-	outputMode   string
-	BuildInfo    config.Version
+	cfgFile       string
+	sproutTarget  string
+	cohortTarget  string
+	outputMode    string
+	BuildInfo     config.Version
 )
 
 // rootCmd represents the base command when called without any subcommands

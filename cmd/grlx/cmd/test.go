@@ -24,7 +24,7 @@ var testCmd = &cobra.Command{
 
 func init() {
 	testCmdPing.Flags().BoolVarP(&targetAll, "all", "A", false, "Ping all Sprouts")
-	testCmd.PersistentFlags().StringVarP(&sproutTarget, "target", "T", "", "List of target Sprouts")
+	addTargetFlags(testCmd)
 	testCmd.AddCommand(testCmdPing)
 	rootCmd.AddCommand(testCmd)
 }
@@ -36,6 +36,14 @@ var testCmdPing = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		if targetAll {
 			sproutTarget = ".*"
+		}
+		if !targetAll && cohortTarget != "" {
+			effectiveTarget, err := resolveEffectiveTarget()
+			if err != nil {
+				util.OutputError(err, outputMode)
+				return
+			}
+			sproutTarget = effectiveTarget
 		}
 		results, err := test.FPing(sproutTarget)
 		if err != nil {

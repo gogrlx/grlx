@@ -25,6 +25,7 @@ import (
 	"github.com/gogrlx/grlx/v2/internal/jobs"
 	"github.com/gogrlx/grlx/v2/internal/pki"
 	"github.com/gogrlx/grlx/v2/internal/props"
+	"github.com/gogrlx/grlx/v2/internal/rbac"
 
 	nats_server "github.com/nats-io/nats-server/v2/server"
 	nats "github.com/nats-io/nats.go"
@@ -49,6 +50,7 @@ func main() {
 	log := log.CreateClient()
 	log.LogLevel = (config.LogLevel)
 	props.InitStore(config.PropsDir)
+	loadCohortRegistry()
 	createConfigRoot()
 	pki.SetupPKIFarmer()
 	certs.GenCert()
@@ -65,6 +67,19 @@ func main() {
 	// Auth nats bus
 	// Cli accept key, add to config file
 	// Update auth users via api
+}
+
+func loadCohortRegistry() {
+	registry, err := rbac.LoadCohortsFromConfig()
+	if err != nil {
+		log.Errorf("Failed to load cohort config: %v", err)
+		registry = rbac.NewRegistry()
+	}
+	handlers.SetCohortRegistry(registry)
+	names := registry.List()
+	if len(names) > 0 {
+		log.Infof("Loaded %d cohort(s): %v", len(names), names)
+	}
 }
 
 func createConfigRoot() {
@@ -150,6 +165,7 @@ func handleSIGHUP() {
 
 		// Reload config before restarting the API server
 		config.LoadConfig("farmer")
+		loadCohortRegistry()
 		StartAPIServer()
 		log.Info("Servers reloaded successfully")
 	}
