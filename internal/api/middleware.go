@@ -20,22 +20,38 @@ func Logger(inner http.Handler, name string) http.Handler {
 	})
 }
 
+// Auth wraps a handler with authentication and role-based access control.
+// The name parameter must match a key from the Routes map so that
+// role permissions can be checked against the route.
+//
+// Public routes (GetCertificate, PutNKey) are allowed without a token.
+// If dangerously_allow_root is set in the farmer config, all requests
+// are allowed without authentication.
 func Auth(inner http.Handler, name string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch name {
 		case "GetCertificate", "PutNKey":
 			inner.ServeHTTP(w, r)
-		default:
-			authToken := r.Header.Get("Authorization")
-			if authToken == "" {
-				w.WriteHeader(http.StatusUnauthorized)
-				return
-			}
-			if auth.TokenHasAccess(authToken, r.Method) {
-				inner.ServeHTTP(w, r)
-			} else {
-				w.WriteHeader(http.StatusUnauthorized)
-			}
+			return
+		}
+
+		// Development bypass — no auth required.
+		if auth.DangerouslyAllowRoot() {
+			log.Tracef("dangerously_allow_root: bypassing auth for %s", name)
+			inner.ServeHTTP(w, r)
+			return
+		}
+
+		authToken := r.Header.Get("Authorization")
+		if authToken == "" {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		if auth.TokenHasRouteAccess(authToken, name) {
+			inner.ServeHTTP(w, r)
+		} else {
+			w.WriteHeader(http.StatusForbidden)
 		}
 	})
 }

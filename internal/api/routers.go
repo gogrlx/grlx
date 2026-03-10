@@ -53,6 +53,8 @@ var Routes = map[string]Route{
 	"GetProp":           {Method: http.MethodGet, Pattern: "/props/{sproutID}/{name}"},
 	"SetProp":           {Method: http.MethodPut, Pattern: "/props/{sproutID}/{name}"},
 	"DeleteProp":        {Method: http.MethodDelete, Pattern: "/props/{sproutID}/{name}"},
+	"WhoAmI":            {Method: http.MethodGet, Pattern: "/auth/whoami"},
+	"ListUsers":         {Method: http.MethodGet, Pattern: "/auth/users"},
 }
 
 // NewRouter creates an http.ServeMux with all API routes registered.
@@ -116,6 +118,10 @@ func NewRouter(v config.Version, certificate string) *http.ServeMux {
 	register("GET /props/{sproutID}/{name}", "GetProp", handlers.GetProp)
 	register("PUT /props/{sproutID}/{name}", "SetProp", handlers.SetProp)
 	register("DELETE /props/{sproutID}/{name}", "DeleteProp", handlers.DeleteProp)
+
+	// Auth / Users
+	register("GET /auth/whoami", "WhoAmI", handlers.WhoAmI)
+	register("GET /auth/users", "ListUsers", handlers.ListUsers)
 
 	return mux
 }
