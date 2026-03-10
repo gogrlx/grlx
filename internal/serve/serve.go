@@ -5,7 +5,6 @@ package serve
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 
@@ -64,8 +63,8 @@ func NewMux() *http.ServeMux {
 	mux.HandleFunc("GET /api/v1/auth/whoami", HandleNATSProxy("auth.whoami"))
 	mux.HandleFunc("GET /api/v1/auth/users", HandleNATSProxy("auth.users"))
 
-	// Web UI placeholder (will be replaced with embed.FS)
-	mux.HandleFunc("GET /", HandleUIPlaceholder)
+	// Serve embedded web UI (SPA with index.html fallback)
+	mux.Handle("GET /", UIHandler())
 
 	return mux
 }
@@ -214,21 +213,6 @@ func HandlePropsSetProxy(method string) http.HandlerFunc {
 		w.WriteHeader(http.StatusOK)
 		w.Write(result)
 	}
-}
-
-// HandleUIPlaceholder serves a placeholder page until the web UI is embedded.
-func HandleUIPlaceholder(w http.ResponseWriter, _ *http.Request) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprint(w, `<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="utf-8"><title>grlx</title></head>
-<body>
-<h1>grlx</h1>
-<p>Web UI not yet embedded. Build the web UI and embed it to serve it here.</p>
-<p>API available at <code>/api/v1/</code></p>
-</body>
-</html>`)
 }
 
 // WithCORS wraps a handler with permissive CORS headers for local development.

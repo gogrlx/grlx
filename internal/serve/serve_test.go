@@ -30,21 +30,23 @@ func TestHandleHealth(t *testing.T) {
 	}
 }
 
-func TestHandleUIPlaceholder(t *testing.T) {
+func TestUIHandlerServesEmbeddedUI(t *testing.T) {
+	handler := UIHandler()
+
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 
-	HandleUIPlaceholder(rec, req)
+	handler.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("expected status 200, got %d", rec.Code)
 	}
-	if ct := rec.Header().Get("Content-Type"); ct != "text/html; charset=utf-8" {
-		t.Fatalf("expected Content-Type text/html, got %q", ct)
-	}
 	body := rec.Body.String()
 	if len(body) == 0 {
 		t.Fatal("expected non-empty body")
+	}
+	if !strings.Contains(body, "grlx") {
+		t.Fatal("expected embedded UI to contain 'grlx'")
 	}
 }
 
