@@ -93,15 +93,6 @@ func init() {
 		color.Red("The RootCA could not be loaded from %s. Exiting!", config.GrlxRootCA)
 		os.Exit(1)
 	}
-	err = client.CreateSecureTransport()
-	if err != nil && !noFailForCert {
-		if os.Args[1] != "version" {
-			fmt.Printf("error: %v\n", err)
-			color.Red("The API client could not be created. Exiting!")
-			os.Exit(1)
-		}
-	}
-
 	// Connect to NATS for API operations (most commands need this).
 	if !skipTLS && !noFailForCert {
 		if natsErr := client.ConnectNats(); natsErr != nil {
