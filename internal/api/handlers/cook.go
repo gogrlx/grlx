@@ -14,7 +14,7 @@ import (
 	"github.com/gogrlx/grlx/v2/internal/cook"
 	"github.com/gogrlx/grlx/v2/internal/pki"
 	nats "github.com/nats-io/nats.go"
-	log "github.com/gogrlx/grlx/v2/pkg/log"
+	log "github.com/gogrlx/grlx/v2/internal/log"
 )
 
 func Cook(w http.ResponseWriter, r *http.Request) {

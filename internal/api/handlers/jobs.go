@@ -8,7 +8,7 @@ import (
 	"strconv"
 
 	"github.com/gorilla/mux"
-	log "github.com/gogrlx/grlx/v2/pkg/log"
+	log "github.com/gogrlx/grlx/v2/internal/log"
 
 	"github.com/gogrlx/grlx/v2/internal/jobs"
 )

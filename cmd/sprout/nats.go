@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"runtime"
 
-	log "github.com/gogrlx/grlx/v2/pkg/log"
+	log "github.com/gogrlx/grlx/v2/internal/log"
 
 	apitypes "github.com/gogrlx/grlx/v2/internal/api/types"
 	"github.com/gogrlx/grlx/v2/internal/config"

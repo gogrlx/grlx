@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	log "github.com/gogrlx/grlx/v2/pkg/log"
+	log "github.com/gogrlx/grlx/v2/internal/log"
 
 	certs "github.com/gogrlx/grlx/v2/internal/certs"
 	"github.com/gogrlx/grlx/v2/internal/config"
@@ -118,6 +118,10 @@ func ConnectSprout() {
 		)
 	}
 	log.Debugf("Successfully connected to the Farmer")
+
+	if err := log.ConnectNATS(FarmerBusURL); err != nil {
+		log.Errorf("Failed to connect log-nats backend: %v", err)
+	}
 
 	test.RegisterNatsConn(nc)
 	cmd.RegisterNatsConn(nc)

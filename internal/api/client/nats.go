@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/nats-io/nats.go"
-	"github.com/gogrlx/grlx/v2/pkg/log"
+	"github.com/gogrlx/grlx/v2/internal/log"
 
 	"github.com/gogrlx/grlx/v2/internal/auth"
 	"github.com/gogrlx/grlx/v2/internal/config"

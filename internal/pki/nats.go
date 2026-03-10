@@ -6,7 +6,7 @@ import (
 	"os"
 	"strconv"
 
-	log "github.com/gogrlx/grlx/v2/pkg/log"
+	log "github.com/gogrlx/grlx/v2/internal/log"
 
 	"github.com/gogrlx/grlx/v2/internal/auth"
 	"github.com/gogrlx/grlx/v2/internal/config"
