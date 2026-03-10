@@ -12,7 +12,7 @@ import (
 	"syscall"
 	"time"
 
-	log "github.com/taigrr/log-socket/log"
+	log "github.com/gogrlx/grlx/v2/pkg/log"
 
 	"github.com/gogrlx/grlx/v2/internal/api"
 	"github.com/gogrlx/grlx/v2/internal/api/handlers"
@@ -44,8 +44,6 @@ func main() {
 	config.LoadConfig("farmer")
 	fmt.Printf("Starting Farmer with URL %s\n", config.FarmerBusURL)
 	defer log.Flush()
-	log := log.CreateClient()
-	log.LogLevel = (config.LogLevel)
 	createConfigRoot()
 	pki.SetupPKIFarmer()
 	certs.GenCert()
@@ -171,9 +169,8 @@ func RunNATSServer() {
 	}
 	// Run server in Go routine.
 	go s.Start()
-	var logger log.Logger
-	logger.SetInfoDepth(6)
-	s.SetLogger(logger, true, true)
+	var natsLogger log.Logger
+	s.SetLogger(natsLogger, true, true)
 	// Wait for accept loop(s) to be started
 	if !s.ReadyForConnections(10 * time.Second) {
 		log.Panicf("Unable to start NATS Server")

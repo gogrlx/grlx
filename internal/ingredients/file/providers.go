@@ -6,7 +6,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/taigrr/log-socket/log"
+	"github.com/gogrlx/grlx/v2/pkg/log"
 )
 
 var (

@@ -6,8 +6,8 @@ import (
 	"github.com/gogrlx/grlx/v2/internal/api/handlers"
 
 	"github.com/gorilla/mux"
-	"github.com/taigrr/log-socket/browser"
-	"github.com/taigrr/log-socket/ws"
+	"github.com/taigrr/log-socket/v2/browser"
+	"github.com/taigrr/log-socket/v2/ws"
 
 	cmd "github.com/gogrlx/grlx/v2/internal/api/handlers/ingredients/cmd"
 	test "github.com/gogrlx/grlx/v2/internal/api/handlers/ingredients/test"
