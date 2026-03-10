@@ -23,7 +23,7 @@ import (
 	"time"
 
 	"github.com/nats-io/nats.go"
-	"github.com/taigrr/log-socket/log"
+	"github.com/gogrlx/grlx/v2/pkg/log"
 
 	"github.com/gogrlx/grlx/v2/internal/config"
 	"github.com/gogrlx/grlx/v2/internal/cook"

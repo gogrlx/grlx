@@ -17,7 +17,7 @@ import (
 	"time"
 
 	"github.com/gogrlx/grlx/v2/internal/config"
-	log "github.com/taigrr/log-socket/log"
+	log "github.com/gogrlx/grlx/v2/pkg/log"
 )
 
 func publicKey(priv interface{}) interface{} {

@@ -4,7 +4,7 @@ import (
 	"os"
 
 	"github.com/nats-io/nkeys"
-	log "github.com/taigrr/log-socket/log"
+	log "github.com/gogrlx/grlx/v2/pkg/log"
 
 	"github.com/gogrlx/grlx/v2/internal/config"
 )

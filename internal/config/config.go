@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/taigrr/jety"
-	"github.com/taigrr/log-socket/log"
+	"github.com/gogrlx/grlx/v2/pkg/log"
 )
 
 const GrlxExt = "grlx"

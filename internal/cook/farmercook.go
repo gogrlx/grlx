@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/taigrr/log-socket/log"
+	"github.com/gogrlx/grlx/v2/pkg/log"
 	"gopkg.in/yaml.v3"
 
 	"github.com/gogrlx/grlx/v2/internal/config"

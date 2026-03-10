@@ -5,9 +5,6 @@ import (
 
 	"github.com/gogrlx/grlx/v2/internal/api/handlers"
 
-	"github.com/taigrr/log-socket/browser"
-	"github.com/taigrr/log-socket/ws"
-
 	cmd "github.com/gogrlx/grlx/v2/internal/api/handlers/ingredients/cmd"
 	test "github.com/gogrlx/grlx/v2/internal/api/handlers/ingredients/test"
 	"github.com/gogrlx/grlx/v2/internal/config"
@@ -27,8 +24,6 @@ type Route struct {
 // This is consumed by the API client for URL construction.
 var Routes = map[string]Route{
 	"GetVersion":        {Method: http.MethodGet, Pattern: "/version"},
-	"GetLogSocket":      {Method: http.MethodGet, Pattern: "/logs/ws"},
-	"GetLogPage":        {Method: http.MethodGet, Pattern: "/logs"},
 	"GetCertificate":    {Method: http.MethodGet, Pattern: "/auth/cert/"},
 	"PutNKey":           {Method: http.MethodPut, Pattern: "/pki/putnkey"},
 	"GetID":             {Method: http.MethodPost, Pattern: "/pki/getnkey"},
@@ -76,10 +71,6 @@ func NewRouter(v config.Version, certificate string) *http.ServeMux {
 
 	// Version
 	register("GET /version", "GetVersion", handlers.GetVersion)
-
-	// Logs
-	register("GET /logs/ws", "GetLogSocket", ws.LogSocketHandler)
-	register("GET /logs", "GetLogPage", browser.LogSocketViewHandler)
 
 	// PKI
 	register("POST /pki/getnkey", "GetID", handlers.GetNKey)

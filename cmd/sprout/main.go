@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	log "github.com/taigrr/log-socket/log"
+	log "github.com/gogrlx/grlx/v2/pkg/log"
 
 	certs "github.com/gogrlx/grlx/v2/internal/certs"
 	"github.com/gogrlx/grlx/v2/internal/config"
