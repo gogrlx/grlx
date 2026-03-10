@@ -57,7 +57,11 @@ var cmdCmdRun = &cobra.Command{
 		}
 		command.Path = path
 		command.RunAs = user
-		results, err := gcmd.FRun(sproutTarget, command)
+		effectiveTarget, err := resolveEffectiveTarget()
+		if err != nil {
+			log.Fatal(err)
+		}
+		results, err := gcmd.FRun(effectiveTarget, command)
 		if err != nil {
 			switch err {
 			case pki.ErrSproutIDNotFound:
@@ -110,8 +114,7 @@ func init() {
 	cmdCmdRun.Flags().StringVarP(&cwd, "cwd", "w", "", "Current working directory to run the command in")
 	cmdCmdRun.Flags().IntVar(&timeout, "timeout", 30, "Cancel command execution and return after X seconds")
 	cmdCmdRun.Flags().StringVarP(&path, "path", "p", "", "Prepend a folder to the PATH before execution")
-	cmdCmd.PersistentFlags().StringVarP(&sproutTarget, "target", "T", "", "list of sprouts to target")
-	cmdCmd.MarkPersistentFlagRequired("target")
+	addTargetFlags(cmdCmd)
 	cmdCmd.AddCommand(cmdCmdRun)
 	rootCmd.AddCommand(cmdCmd)
 

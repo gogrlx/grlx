@@ -41,6 +41,8 @@ var Routes = map[string]Route{
 	"TestPing":          {Method: http.MethodPost, Pattern: "/test/ping"},
 	"Cook":              {Method: http.MethodPost, Pattern: "/cook"},
 	"CmdRun":            {Method: http.MethodPost, Pattern: "/cmd/run"},
+	"ListCohorts":       {Method: http.MethodGet, Pattern: "/cohorts"},
+	"ResolveCohort":     {Method: http.MethodPost, Pattern: "/cohorts/resolve"},
 	"ListSprouts":       {Method: http.MethodGet, Pattern: "/sprouts"},
 	"GetSprout":         {Method: http.MethodPost, Pattern: "/sprouts/get"},
 	"ListJobs":          {Method: http.MethodGet, Pattern: "/jobs"},
@@ -94,6 +96,10 @@ func NewRouter(v config.Version, certificate string) *http.ServeMux {
 
 	// Cmd
 	register("POST /cmd/run", "CmdRun", cmd.HCmdRun)
+
+	// Cohorts
+	register("GET /cohorts", "ListCohorts", handlers.ListCohorts)
+	register("POST /cohorts/resolve", "ResolveCohort", handlers.ResolveCohort)
 
 	// Sprouts
 	register("GET /sprouts", "ListSprouts", handlers.ListSprouts)

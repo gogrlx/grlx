@@ -25,8 +25,8 @@ var (
 )
 
 var cmdCook = &cobra.Command{
-	Use:   "cook <recipe> -T <target> [and optional args]...",
-	Short: "Cook a recipe against a target and see the output locally.",
+	Use:   "cook <recipe> (-T <target> | -C <cohort>) [flags]",
+	Short: "Cook a recipe against a target or cohort and see the output locally.",
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) != 1 {
 			cmd.Help()
@@ -38,7 +38,11 @@ var cmdCook = &cobra.Command{
 		cmdCook.Env = environment
 		cmdCook.Test = testMode
 
-		results, err := client.Cook(sproutTarget, cmdCook)
+		effectiveTarget, err := resolveEffectiveTarget()
+		if err != nil {
+			log.Fatal(err)
+		}
+		results, err := client.Cook(effectiveTarget, cmdCook)
 		if err != nil {
 			switch err {
 			case pki.ErrSproutIDNotFound:
@@ -202,9 +206,8 @@ var cmdCook = &cobra.Command{
 func init() {
 	cmdCook.Flags().StringVarP(&environment, "environment", "E", "", "")
 	cmdCook.Flags().BoolVar(&async, "async", false, "Don't print any output, just return the JID to look up results later")
-	cmdCook.PersistentFlags().StringVarP(&sproutTarget, "target", "T", "", "list of sprouts to target")
+	addTargetFlags(cmdCook)
 	cmdCook.Flags().IntVar(&cookTimeout, "cook-timeout", 30, "Cancel cook execution and return after X seconds")
 	cmdCook.Flags().BoolVar(&testMode, "test", false, "Run in test mode (dry run without applying changes)")
-	cmdCook.MarkPersistentFlagRequired("target")
 	rootCmd.AddCommand(cmdCook)
 }
