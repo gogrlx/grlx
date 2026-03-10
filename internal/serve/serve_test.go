@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -144,5 +145,202 @@ func TestNewMux(t *testing.T) {
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("expected 200 from mux health, got %d", rec.Code)
+	}
+}
+
+func TestHandleNATSProxyWithBodyInvalidJSON(t *testing.T) {
+	handler := HandleNATSProxyWithBody("test.method")
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/test", strings.NewReader("not valid json"))
+	rec := httptest.NewRecorder()
+
+	handler(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected status 400, got %d", rec.Code)
+	}
+
+	var body map[string]string
+	if err := json.NewDecoder(rec.Body).Decode(&body); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if body["error"] != "invalid JSON body" {
+		t.Fatalf("expected 'invalid JSON body' error, got %q", body["error"])
+	}
+}
+
+func TestHandleNATSProxyWithBodyNoConnection(t *testing.T) {
+	handler := HandleNATSProxyWithBody("test.method")
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/test", strings.NewReader(`{"key":"value"}`))
+	rec := httptest.NewRecorder()
+
+	handler(rec, req)
+
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("expected status 502, got %d", rec.Code)
+	}
+}
+
+func TestHandleNATSProxyWithBodyEmptyBody(t *testing.T) {
+	handler := HandleNATSProxyWithBody("test.method")
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/test", strings.NewReader(""))
+	rec := httptest.NewRecorder()
+
+	handler(rec, req)
+
+	// With no NATS connection, should get 502 (params is nil, request goes through)
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("expected status 502, got %d", rec.Code)
+	}
+}
+
+func TestHandlePropsKeyProxyMissingParams(t *testing.T) {
+	handler := HandlePropsKeyProxy("props.getkey")
+
+	// Missing both id and key (handler expects path values from mux)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/props//", nil)
+	rec := httptest.NewRecorder()
+
+	handler(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected status 400, got %d", rec.Code)
+	}
+}
+
+func TestHandlePropsKeyProxyNoConnection(t *testing.T) {
+	// Use the mux to get proper path values
+	mux := NewMux()
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/props/sprout-1/hostname", nil)
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	// The existing GET /api/v1/props/{id} route will match before {id}/{key},
+	// so use DELETE which only exists for the key variant
+	req = httptest.NewRequest(http.MethodDelete, "/api/v1/props/sprout-1/hostname", nil)
+	rec = httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("expected status 502, got %d", rec.Code)
+	}
+}
+
+func TestHandlePropsSetProxyInvalidJSON(t *testing.T) {
+	handler := HandlePropsSetProxy("props.set")
+
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/props/sprout-1/key", strings.NewReader("not json"))
+	rec := httptest.NewRecorder()
+
+	handler(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected status 400, got %d", rec.Code)
+	}
+}
+
+func TestMuxJobsSproutRoute(t *testing.T) {
+	mux := NewMux()
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/jobs/sprout/sprout-alpha", nil)
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	// No NATS connection, should get 502
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("expected status 502, got %d", rec.Code)
+	}
+}
+
+func TestMuxJobsCancelRoute(t *testing.T) {
+	mux := NewMux()
+
+	req := httptest.NewRequest(http.MethodDelete, "/api/v1/jobs/jid-001", nil)
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("expected status 502, got %d", rec.Code)
+	}
+}
+
+func TestMuxKeysRoutes(t *testing.T) {
+	mux := NewMux()
+
+	// List keys
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/keys", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("keys list: expected 502, got %d", rec.Code)
+	}
+
+	// Accept key
+	req = httptest.NewRequest(http.MethodPost, "/api/v1/keys/sprout-1/accept", nil)
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("keys accept: expected 502, got %d", rec.Code)
+	}
+
+	// Delete key
+	req = httptest.NewRequest(http.MethodDelete, "/api/v1/keys/sprout-1", nil)
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("keys delete: expected 502, got %d", rec.Code)
+	}
+}
+
+func TestMuxAuthRoutes(t *testing.T) {
+	mux := NewMux()
+
+	// Whoami
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/auth/whoami", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("whoami: expected 502, got %d", rec.Code)
+	}
+
+	// Users list
+	req = httptest.NewRequest(http.MethodGet, "/api/v1/auth/users", nil)
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("users: expected 502, got %d", rec.Code)
+	}
+}
+
+func TestMuxCookRoute(t *testing.T) {
+	mux := NewMux()
+
+	body := `{"target":"web*","action":{"recipe":"nginx.install","test":false}}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/cook", strings.NewReader(body))
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("cook: expected 502, got %d", rec.Code)
+	}
+}
+
+func TestMuxCohortsResolveRoute(t *testing.T) {
+	mux := NewMux()
+
+	body := `{"name":"webservers"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/cohorts/resolve", strings.NewReader(body))
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("cohorts resolve: expected 502, got %d", rec.Code)
 	}
 }
