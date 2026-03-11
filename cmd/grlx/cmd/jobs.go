@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/fatih/color"
+	"github.com/gogrlx/grlx/v2/internal/auth"
 	"github.com/gogrlx/grlx/v2/internal/log"
 	"github.com/nats-io/nats.go"
 	"github.com/spf13/cobra"
@@ -18,6 +19,8 @@ import (
 
 var (
 	jobsLimit    int
+	jobsLocal    bool
+	jobsUser     string
 	watchTimeout int
 )
 
@@ -29,14 +32,21 @@ var cmdJobs = &cobra.Command{
 var cmdJobsList = &cobra.Command{
 	Use:   "list [sproutID]",
 	Short: "List recent jobs, optionally filtered by sprout",
+	Long: `List recent jobs. By default queries the farmer.
+Use --local to list jobs from local CLI-side storage.
+Use --user to filter local jobs by the current user's key (requires --local).`,
 	Run: func(cmd *cobra.Command, args []string) {
 		var summaries []jobs.JobSummary
 		var err error
 
-		if len(args) > 0 {
-			summaries, err = client.ListJobsForSprout(args[0])
+		if jobsLocal {
+			summaries, err = listLocalJobs(args)
 		} else {
-			summaries, err = client.ListJobs(jobsLimit)
+			if len(args) > 0 {
+				summaries, err = client.ListJobsForSprout(args[0])
+			} else {
+				summaries, err = client.ListJobs(jobsLimit)
+			}
 		}
 		if err != nil {
 			log.Fatal(err)
@@ -44,9 +54,9 @@ var cmdJobsList = &cobra.Command{
 
 		switch outputMode {
 		case "json":
-			b, err := json.Marshal(summaries)
-			if err != nil {
-				log.Fatal(err)
+			b, jsonErr := json.Marshal(summaries)
+			if jsonErr != nil {
+				log.Fatal(jsonErr)
 			}
 			fmt.Println(string(b))
 		default:
@@ -59,12 +69,43 @@ var cmdJobsList = &cobra.Command{
 	},
 }
 
+func listLocalJobs(args []string) ([]jobs.JobSummary, error) {
+	storePath, err := jobs.DefaultCLIStorePath()
+	if err != nil {
+		return nil, fmt.Errorf("determining CLI store path: %w", err)
+	}
+	store, err := jobs.NewCLIStore(storePath)
+	if err != nil {
+		return nil, fmt.Errorf("opening CLI job store: %w", err)
+	}
+
+	userKey := jobsUser
+	if userKey == "me" {
+		key, keyErr := auth.GetPubkey()
+		if keyErr != nil {
+			return nil, fmt.Errorf("getting current user key: %w", keyErr)
+		}
+		userKey = key
+	}
+
+	// TODO: sprout filtering for local store can be added later.
+	_ = args
+
+	return store.ListJobs(jobsLimit, userKey)
+}
+
 var cmdJobsShow = &cobra.Command{
 	Use:   "show <JID>",
 	Short: "Show details of a specific job",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		jid := args[0]
+
+		if jobsLocal {
+			showLocalJob(jid)
+			return
+		}
+
 		summary, err := client.GetJob(jid)
 		if err != nil {
 			log.Fatal(err)
@@ -72,15 +113,54 @@ var cmdJobsShow = &cobra.Command{
 
 		switch outputMode {
 		case "json":
-			b, err := json.Marshal(summary)
-			if err != nil {
-				log.Fatal(err)
+			b, jsonErr := json.Marshal(summary)
+			if jsonErr != nil {
+				log.Fatal(jsonErr)
 			}
 			fmt.Println(string(b))
 		default:
 			printJobDetail(summary)
 		}
 	},
+}
+
+func showLocalJob(jid string) {
+	storePath, err := jobs.DefaultCLIStorePath()
+	if err != nil {
+		log.Fatal(err)
+	}
+	store, err := jobs.NewCLIStore(storePath)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	summary, meta, err := store.GetJob(jid)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	switch outputMode {
+	case "json":
+		wrapper := map[string]interface{}{
+			"summary": summary,
+		}
+		if meta != nil {
+			wrapper["meta"] = meta
+		}
+		b, jsonErr := json.Marshal(wrapper)
+		if jsonErr != nil {
+			log.Fatal(jsonErr)
+		}
+		fmt.Println(string(b))
+	default:
+		if meta != nil {
+			fmt.Printf("User:    %s\n", meta.UserKey)
+			if meta.Recipe != "" {
+				fmt.Printf("Recipe:  %s\n", meta.Recipe)
+			}
+		}
+		printJobDetail(summary)
+	}
 }
 
 var cmdJobsWatch = &cobra.Command{
@@ -283,6 +363,9 @@ func truncate(s string, max int) string {
 
 func init() {
 	cmdJobsList.Flags().IntVar(&jobsLimit, "limit", 50, "Maximum number of jobs to return")
+	cmdJobsList.Flags().BoolVar(&jobsLocal, "local", false, "List jobs from local CLI-side storage instead of the farmer")
+	cmdJobsList.Flags().StringVar(&jobsUser, "user", "", "Filter local jobs by user key (use 'me' for current user)")
+	cmdJobsShow.Flags().BoolVar(&jobsLocal, "local", false, "Show job from local CLI-side storage instead of the farmer")
 	cmdJobsWatch.Flags().IntVar(&watchTimeout, "timeout", 120, "Watch timeout in seconds")
 	cmdJobs.AddCommand(cmdJobsList)
 	cmdJobs.AddCommand(cmdJobsShow)

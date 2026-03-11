@@ -13,8 +13,10 @@ import (
 
 	"github.com/gogrlx/grlx/v2/internal/api/client"
 	apitypes "github.com/gogrlx/grlx/v2/internal/api/types"
+	"github.com/gogrlx/grlx/v2/internal/auth"
 	"github.com/gogrlx/grlx/v2/internal/config"
 	"github.com/gogrlx/grlx/v2/internal/cook"
+	"github.com/gogrlx/grlx/v2/internal/jobs"
 	"github.com/gogrlx/grlx/v2/internal/pki"
 )
 
@@ -124,6 +126,21 @@ var cmdCook = &cobra.Command{
 		if err := json.Unmarshal(triggerReply.Data, &targetedSprouts); err == nil && len(targetedSprouts) > 0 {
 			fmt.Printf("Cooking on %d sprout(s): %s\n", len(targetedSprouts), strings.Join(targetedSprouts, ", "))
 		}
+
+		// Record job locally with per-user tracking.
+		if cliStorePath, pathErr := jobs.DefaultCLIStorePath(); pathErr == nil {
+			if cliStore, storeErr := jobs.NewCLIStore(cliStorePath); storeErr == nil {
+				userKey, _ := auth.GetPubkey()
+				cliListener := jobs.NewCLIListener(cliStore, nc, userKey)
+				cliListener.RecordJobInit(jid, string(cmdCook.Recipe), targetedSprouts)
+				if subErr := cliListener.SubscribeJob(jid); subErr != nil {
+					log.Errorf("CLI job store: failed to subscribe: %v", subErr)
+				} else {
+					defer cliListener.Stop()
+				}
+			}
+		}
+
 		localTimeout := time.After(time.Duration(cookTimeout) * time.Second)
 		dripTimeout := time.After(120 * time.Second)
 		concurrent := 0
