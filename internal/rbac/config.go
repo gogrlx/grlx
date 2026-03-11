@@ -45,9 +45,27 @@ func (rs *RoleStore) List() []string {
 	return names
 }
 
+// BuiltinViewerRole returns the built-in "viewer" role with read-only
+// permissions. This role grants view and user_read actions with wildcard
+// scope — enough to list sprouts, view jobs/props/cohorts, and call
+// whoami, but no write operations (cook, cmd, pki, etc.).
+func BuiltinViewerRole() *Role {
+	return &Role{
+		Name: "viewer",
+		Rules: []Rule{
+			{Action: ActionView, Scope: "*"},
+			{Action: ActionUserRead, Scope: "*"},
+		},
+	}
+}
+
 // LoadRolesFromConfig reads the "roles" section from the farmer config
 // and returns a populated RoleStore. Returns an empty store if the
 // section is missing.
+//
+// Built-in roles (currently just "viewer") are always registered unless
+// the config defines a role with the same name, allowing admins to
+// override built-in definitions.
 //
 // Expected config format:
 //
@@ -66,6 +84,13 @@ func (rs *RoleStore) List() []string {
 //	    - action: user_read
 func LoadRolesFromConfig() (*RoleStore, error) {
 	store := NewRoleStore()
+
+	// Register built-in roles first. Config-defined roles with the same
+	// name will override these below.
+	builtins := []*Role{BuiltinViewerRole()}
+	for _, b := range builtins {
+		_ = store.Register(b) // built-ins are always valid
+	}
 
 	raw := jety.GetStringMap("roles")
 	if len(raw) == 0 {
