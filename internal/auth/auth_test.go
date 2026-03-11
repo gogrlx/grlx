@@ -153,3 +153,94 @@ func TestGetRoleNotFound(t *testing.T) {
 		t.Error("expected error for nonexistent role")
 	}
 }
+
+func TestBuiltinViewerRoleIntegration(t *testing.T) {
+	// Set up policy with the built-in viewer role and a user assigned to it.
+	rs := rbac.NewRoleStore()
+	viewer := rbac.BuiltinViewerRole()
+	if err := rs.Register(viewer); err != nil {
+		t.Fatalf("failed to register viewer: %v", err)
+	}
+
+	urm := rbac.NewUserRoleMap()
+	urm.Set("AVIEWERKEY123", "viewer")
+
+	SetPolicy(rs, urm, nil)
+	defer SetPolicy(nil, nil, nil)
+
+	role := lookupRole("AVIEWERKEY123")
+	if role == nil {
+		t.Fatal("expected viewer role for configured pubkey")
+	}
+	if role.Name != "viewer" {
+		t.Errorf("expected role name 'viewer', got %q", role.Name)
+	}
+
+	// Viewer can read
+	if !role.HasRouteAccess("ListSprouts") {
+		t.Error("viewer should access ListSprouts")
+	}
+	if !role.HasRouteAccess("GetJob") {
+		t.Error("viewer should access GetJob")
+	}
+	if !role.HasRouteAccess("WhoAmI") {
+		t.Error("viewer should access WhoAmI")
+	}
+
+	// Viewer cannot write
+	if role.HasRouteAccess("Cook") {
+		t.Error("viewer should not access Cook")
+	}
+	if role.HasRouteAccess("CmdRun") {
+		t.Error("viewer should not access CmdRun")
+	}
+	if role.HasRouteAccess("AcceptID") {
+		t.Error("viewer should not access AcceptID")
+	}
+	if role.HasRouteAccess("ListUsers") {
+		t.Error("viewer should not access ListUsers")
+	}
+}
+
+func TestViewerRoleVisibleInListRoles(t *testing.T) {
+	rs := rbac.NewRoleStore()
+	if err := rs.Register(rbac.BuiltinViewerRole()); err != nil {
+		t.Fatalf("failed to register viewer: %v", err)
+	}
+
+	SetPolicy(rs, rbac.NewUserRoleMap(), nil)
+	defer SetPolicy(nil, nil, nil)
+
+	roles := ListRoles()
+	found := false
+	for _, name := range roles {
+		if name == "viewer" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("expected 'viewer' in ListRoles output")
+	}
+}
+
+func TestGetBuiltinViewerRole(t *testing.T) {
+	rs := rbac.NewRoleStore()
+	if err := rs.Register(rbac.BuiltinViewerRole()); err != nil {
+		t.Fatalf("failed to register viewer: %v", err)
+	}
+
+	SetPolicy(rs, rbac.NewUserRoleMap(), nil)
+	defer SetPolicy(nil, nil, nil)
+
+	role, err := GetRole("viewer")
+	if err != nil {
+		t.Fatalf("GetRole('viewer') failed: %v", err)
+	}
+	if role.Name != "viewer" {
+		t.Errorf("expected name 'viewer', got %q", role.Name)
+	}
+	if len(role.Rules) != 2 {
+		t.Errorf("expected 2 rules, got %d", len(role.Rules))
+	}
+}

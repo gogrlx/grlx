@@ -78,6 +78,115 @@ func TestUserRoleMap(t *testing.T) {
 	}
 }
 
+func TestBuiltinViewerRole(t *testing.T) {
+	viewer := BuiltinViewerRole()
+
+	if viewer.Name != "viewer" {
+		t.Fatalf("expected name 'viewer', got %q", viewer.Name)
+	}
+	if err := viewer.Validate(); err != nil {
+		t.Fatalf("built-in viewer role failed validation: %v", err)
+	}
+
+	// Viewer should have view and user_read only
+	allowedActions := map[Action]bool{ActionView: true, ActionUserRead: true}
+	for _, rule := range viewer.Rules {
+		if !allowedActions[rule.Action] {
+			t.Errorf("viewer role has unexpected action: %q", rule.Action)
+		}
+	}
+
+	// Viewer should NOT have write actions
+	writeActions := []Action{ActionCook, ActionCmd, ActionPKI, ActionProps, ActionJobAdmin, ActionAdmin, ActionTest}
+	for _, action := range writeActions {
+		if viewer.HasAction(action) {
+			t.Errorf("viewer role should not have action %q", action)
+		}
+	}
+
+	// Viewer should have read actions
+	if !viewer.HasAction(ActionView) {
+		t.Error("viewer role should have ActionView")
+	}
+	if !viewer.HasAction(ActionUserRead) {
+		t.Error("viewer role should have ActionUserRead")
+	}
+}
+
+func TestBuiltinViewerRoleRouteAccess(t *testing.T) {
+	viewer := BuiltinViewerRole()
+
+	// Routes that should be accessible
+	readRoutes := []string{
+		"GetVersion", "ListSprouts", "GetSprout",
+		"ListJobs", "GetJob", "ListJobsForSprout",
+		"GetAllProps", "GetProp", "ListCohorts",
+		"ResolveCohort", "ListID", "WhoAmI",
+	}
+	for _, route := range readRoutes {
+		if !viewer.HasRouteAccess(route) {
+			t.Errorf("viewer should have access to %q", route)
+		}
+	}
+
+	// Routes that should be denied
+	writeRoutes := []string{
+		"Cook", "CmdRun", "TestPing", "SetProp", "DeleteProp",
+		"CancelJob", "AcceptID", "RejectID", "DenyID", "DeleteID",
+		"UnacceptID", "ListUsers",
+	}
+	for _, route := range writeRoutes {
+		if viewer.HasRouteAccess(route) {
+			t.Errorf("viewer should not have access to %q", route)
+		}
+	}
+}
+
+func TestLoadRolesFromConfig_BuiltinViewerPresent(t *testing.T) {
+	// LoadRolesFromConfig reads from jety, which we can't easily mock here
+	// without side effects. Instead, test that NewRoleStore + BuiltinViewerRole
+	// works correctly as a unit.
+	store := NewRoleStore()
+	builtin := BuiltinViewerRole()
+	if err := store.Register(builtin); err != nil {
+		t.Fatalf("failed to register built-in viewer: %v", err)
+	}
+
+	// Verify it's there
+	viewer, err := store.Get("viewer")
+	if err != nil {
+		t.Fatalf("expected viewer role to be registered: %v", err)
+	}
+	if viewer.Name != "viewer" {
+		t.Errorf("expected name 'viewer', got %q", viewer.Name)
+	}
+
+	// Override with custom viewer
+	customViewer := &Role{
+		Name: "viewer",
+		Rules: []Rule{
+			{Action: ActionView, Scope: "cohort:monitoring"},
+			{Action: ActionUserRead, Scope: "*"},
+		},
+	}
+	if err := store.Register(customViewer); err != nil {
+		t.Fatalf("failed to register custom viewer: %v", err)
+	}
+
+	// Custom should replace built-in
+	viewer, err = store.Get("viewer")
+	if err != nil {
+		t.Fatalf("viewer missing after override: %v", err)
+	}
+	if len(viewer.Rules) != 2 {
+		t.Fatalf("expected 2 rules from custom viewer, got %d", len(viewer.Rules))
+	}
+	// First rule should be scoped, not wildcard
+	if viewer.Rules[0].Scope != "cohort:monitoring" {
+		t.Errorf("expected cohort:monitoring scope, got %q", viewer.Rules[0].Scope)
+	}
+}
+
 func TestParseRoleEntry(t *testing.T) {
 	tests := []struct {
 		name    string
