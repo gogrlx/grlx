@@ -1,15 +1,66 @@
 package user
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"os/exec"
 	"os/user"
 	"strings"
 
 	"github.com/gogrlx/grlx/v2/internal/cook"
 )
+
+// validHashPrefixes lists accepted crypt(3) hash algorithm prefixes.
+var validHashPrefixes = []string{
+	"$1$",  // MD5
+	"$5$",  // SHA-256
+	"$6$",  // SHA-512
+	"$y$",  // yescrypt
+	"$2b$", // bcrypt
+	"$2a$", // bcrypt (older)
+}
+
+// isValidPasswordHash checks that a password hash string starts with a
+// recognised crypt(3) prefix.
+func isValidPasswordHash(hash string) bool {
+	for _, prefix := range validHashPrefixes {
+		if strings.HasPrefix(hash, prefix) {
+			return true
+		}
+	}
+	return false
+}
+
+// shadowPasswordHash reads /etc/shadow and returns the current password hash
+// for the given username.  Returns an empty string when the user is not found
+// or the file is unreadable.
+var shadowFilePath = "/etc/shadow"
+
+func shadowPasswordHash(username string) (string, error) {
+	f, err := os.Open(shadowFilePath)
+	if err != nil {
+		return "", fmt.Errorf("cannot read shadow file: %w", err)
+	}
+	defer f.Close()
+
+	scanner := bufio.NewScanner(f)
+	prefix := username + ":"
+	for scanner.Scan() {
+		line := scanner.Text()
+		if !strings.HasPrefix(line, prefix) {
+			continue
+		}
+		fields := strings.SplitN(line, ":", 3)
+		if len(fields) < 2 {
+			return "", nil
+		}
+		return fields[1], nil
+	}
+	return "", nil
+}
 
 func (u User) present(ctx context.Context, test bool) (cook.Result, error) {
 	var result cook.Result
@@ -25,14 +76,22 @@ func (u User) present(ctx context.Context, test bool) (cook.Result, error) {
 	shell := stringParam(u.params, "shell")
 	home := stringParam(u.params, "home")
 	comment := stringParam(u.params, "comment")
+	passwordHash := stringParam(u.params, "password_hash")
 	groups := stringSliceParam(u.params, "groups")
 	createHome := boolParam(u.params, "createhome", true)
 	system := boolParam(u.params, "system", false)
 
+	// Validate password hash format if provided.
+	if passwordHash != "" && !isValidPasswordHash(passwordHash) {
+		result.Failed = true
+		return result, fmt.Errorf("invalid password_hash: must start with a recognised crypt prefix (%s)",
+			strings.Join(validHashPrefixes, ", "))
+	}
+
 	existing, err := user.Lookup(userName)
 	if err != nil {
 		// User does not exist — useradd
-		args := buildUseraddArgs(userName, uid, gid, shell, home, comment, groups, createHome, system)
+		args := buildUseraddArgs(userName, uid, gid, shell, home, comment, passwordHash, groups, createHome, system)
 		cmd := exec.CommandContext(ctx, "useradd", args...)
 		if test {
 			result.Succeeded = true
@@ -55,7 +114,7 @@ func (u User) present(ctx context.Context, test bool) (cook.Result, error) {
 	}
 
 	// User exists — check if modifications are needed
-	args := buildUsermodArgs(userName, uid, gid, shell, home, comment, groups, existing)
+	args := buildUsermodArgs(userName, uid, gid, shell, home, comment, passwordHash, groups, existing)
 	if len(args) == 0 {
 		// No changes needed
 		result.Succeeded = true
@@ -85,7 +144,7 @@ func (u User) present(ctx context.Context, test bool) (cook.Result, error) {
 	return result, nil
 }
 
-func buildUseraddArgs(name, uid, gid, shell, home, comment string, groups []string, createHome, system bool) []string {
+func buildUseraddArgs(name, uid, gid, shell, home, comment, passwordHash string, groups []string, createHome, system bool) []string {
 	var args []string
 	if uid != "" {
 		args = append(args, "-u", uid)
@@ -102,6 +161,9 @@ func buildUseraddArgs(name, uid, gid, shell, home, comment string, groups []stri
 	if comment != "" {
 		args = append(args, "-c", comment)
 	}
+	if passwordHash != "" {
+		args = append(args, "-p", passwordHash)
+	}
 	if len(groups) > 0 {
 		args = append(args, "-G", strings.Join(groups, ","))
 	}
@@ -115,7 +177,7 @@ func buildUseraddArgs(name, uid, gid, shell, home, comment string, groups []stri
 	return args
 }
 
-func buildUsermodArgs(name, uid, gid, shell, home, comment string, groups []string, existing *user.User) []string {
+func buildUsermodArgs(name, uid, gid, shell, home, comment, passwordHash string, groups []string, existing *user.User) []string {
 	var args []string
 	if uid != "" && uid != existing.Uid {
 		args = append(args, "-u", uid)
@@ -134,6 +196,13 @@ func buildUsermodArgs(name, uid, gid, shell, home, comment string, groups []stri
 		// user.User.Name is the GECOS field
 		if comment != existing.Name {
 			args = append(args, "-c", comment)
+		}
+	}
+	if passwordHash != "" {
+		// Check if the hash differs from the current shadow entry.
+		currentHash, _ := shadowPasswordHash(name)
+		if currentHash != passwordHash {
+			args = append(args, "-p", passwordHash)
 		}
 	}
 	if len(groups) > 0 {

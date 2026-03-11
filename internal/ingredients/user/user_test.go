@@ -3,7 +3,9 @@ package user
 import (
 	"context"
 	"fmt"
+	"os"
 	"os/user"
+	"strings"
 	"testing"
 	"time"
 
@@ -178,7 +180,7 @@ func TestUserPropertiesForMethod(t *testing.T) {
 		},
 		{
 			method:   "present",
-			wantKeys: []string{"name", "uid", "gid", "groups", "shell", "home", "comment", "createhome", "system"},
+			wantKeys: []string{"name", "uid", "gid", "groups", "shell", "home", "comment", "createhome", "system", "password_hash"},
 		},
 		{
 			method:  "nonexistent",
@@ -566,7 +568,7 @@ func TestBoolParam(t *testing.T) {
 }
 
 func TestBuildUseraddArgs(t *testing.T) {
-	args := buildUseraddArgs("testuser", "1000", "1000", "/bin/bash", "/home/test", "Test User", []string{"wheel", "docker"}, true, false)
+	args := buildUseraddArgs("testuser", "1000", "1000", "/bin/bash", "/home/test", "Test User", "", []string{"wheel", "docker"}, true, false)
 	expected := []string{"-u", "1000", "-g", "1000", "-s", "/bin/bash", "-d", "/home/test", "-c", "Test User", "-G", "wheel,docker", "-m", "testuser"}
 	if len(args) != len(expected) {
 		t.Fatalf("expected %d args, got %d: %v", len(expected), len(args), args)
@@ -579,8 +581,22 @@ func TestBuildUseraddArgs(t *testing.T) {
 }
 
 func TestBuildUseraddArgsSystem(t *testing.T) {
-	args := buildUseraddArgs("svcuser", "", "", "/usr/sbin/nologin", "", "", nil, false, true)
+	args := buildUseraddArgs("svcuser", "", "", "/usr/sbin/nologin", "", "", "", nil, false, true)
 	expected := []string{"-s", "/usr/sbin/nologin", "-r", "svcuser"}
+	if len(args) != len(expected) {
+		t.Fatalf("expected %d args, got %d: %v", len(expected), len(args), args)
+	}
+	for i, a := range args {
+		if a != expected[i] {
+			t.Errorf("arg %d: expected %q, got %q", i, expected[i], a)
+		}
+	}
+}
+
+func TestBuildUseraddArgsWithPasswordHash(t *testing.T) {
+	hash := "$6$rounds=5000$salt$hashvalue"
+	args := buildUseraddArgs("testuser", "", "", "", "", "", hash, nil, true, false)
+	expected := []string{"-p", hash, "-m", "testuser"}
 	if len(args) != len(expected) {
 		t.Fatalf("expected %d args, got %d: %v", len(expected), len(args), args)
 	}
@@ -598,7 +614,7 @@ func TestBuildUsermodArgsNoChanges(t *testing.T) {
 		HomeDir: "/root",
 		Name:    "root",
 	}
-	args := buildUsermodArgs("root", "0", "0", "", "/root", "root", nil, existing)
+	args := buildUsermodArgs("root", "0", "0", "", "/root", "root", "", nil, existing)
 	if args != nil {
 		t.Errorf("expected nil args when no changes needed, got %v", args)
 	}
@@ -611,7 +627,7 @@ func TestBuildUsermodArgsWithChanges(t *testing.T) {
 		HomeDir: "/home/olduser",
 		Name:    "Old Name",
 	}
-	args := buildUsermodArgs("testuser", "1001", "", "", "/home/newuser", "New Name", []string{"wheel"}, existing)
+	args := buildUsermodArgs("testuser", "1001", "", "", "/home/newuser", "New Name", "", []string{"wheel"}, existing)
 	// Should have: -u 1001 -d /home/newuser -c "New Name" -G wheel testuser
 	if args == nil {
 		t.Fatal("expected non-nil args")
@@ -619,5 +635,195 @@ func TestBuildUsermodArgsWithChanges(t *testing.T) {
 	// Verify the name is last
 	if args[len(args)-1] != "testuser" {
 		t.Errorf("expected username last, got %q", args[len(args)-1])
+	}
+}
+
+func TestIsValidPasswordHash(t *testing.T) {
+	tests := []struct {
+		hash  string
+		valid bool
+	}{
+		{"$6$rounds=5000$salt$hashvalue", true},
+		{"$5$salt$hashvalue", true},
+		{"$1$salt$hashvalue", true},
+		{"$y$j9T$salt$hashvalue", true},
+		{"$2b$12$salt.hashvalue", true},
+		{"$2a$12$salt.hashvalue", true},
+		{"plaintext", false},
+		{"", false},
+		{"$7$unknown", false},
+		{"notahash$6$", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.hash, func(t *testing.T) {
+			if got := isValidPasswordHash(tt.hash); got != tt.valid {
+				t.Errorf("isValidPasswordHash(%q) = %v, want %v", tt.hash, got, tt.valid)
+			}
+		})
+	}
+}
+
+func TestShadowPasswordHash(t *testing.T) {
+	// Create a temporary shadow file for testing.
+	tmpFile, err := os.CreateTemp("", "shadow-test-*")
+	if err != nil {
+		t.Fatalf("failed to create temp file: %v", err)
+	}
+	defer os.Remove(tmpFile.Name())
+
+	content := `root:$6$salt$rootHash:19000:0:99999:7:::
+daemon:*:19000:0:99999:7:::
+testuser:$6$rounds=5000$testsalt$testhashvalue:19000:0:99999:7:::
+nobody:!:19000:0:99999:7:::
+`
+	if _, err := tmpFile.WriteString(content); err != nil {
+		t.Fatalf("failed to write temp shadow: %v", err)
+	}
+	tmpFile.Close()
+
+	// Override the shadow file path for testing.
+	origPath := shadowFilePath
+	shadowFilePath = tmpFile.Name()
+	defer func() { shadowFilePath = origPath }()
+
+	tests := []struct {
+		username string
+		wantHash string
+		wantErr  bool
+	}{
+		{"root", "$6$salt$rootHash", false},
+		{"testuser", "$6$rounds=5000$testsalt$testhashvalue", false},
+		{"daemon", "*", false},
+		{"nobody", "!", false},
+		{"nonexistent", "", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.username, func(t *testing.T) {
+			hash, err := shadowPasswordHash(tt.username)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("shadowPasswordHash(%q) error = %v, wantErr %v", tt.username, err, tt.wantErr)
+				return
+			}
+			if hash != tt.wantHash {
+				t.Errorf("shadowPasswordHash(%q) = %q, want %q", tt.username, hash, tt.wantHash)
+			}
+		})
+	}
+}
+
+func TestShadowPasswordHashMissingFile(t *testing.T) {
+	origPath := shadowFilePath
+	shadowFilePath = "/nonexistent/shadow"
+	defer func() { shadowFilePath = origPath }()
+
+	_, err := shadowPasswordHash("root")
+	if err == nil {
+		t.Error("expected error for missing shadow file")
+	}
+}
+
+func TestBuildUsermodArgsWithPasswordHash(t *testing.T) {
+	// Create a temp shadow file where testuser has an OLD hash.
+	tmpFile, err := os.CreateTemp("", "shadow-mod-*")
+	if err != nil {
+		t.Fatalf("failed to create temp file: %v", err)
+	}
+	defer os.Remove(tmpFile.Name())
+
+	content := "testuser:$6$oldsalt$oldhash:19000:0:99999:7:::\n"
+	if _, err := tmpFile.WriteString(content); err != nil {
+		t.Fatalf("failed to write: %v", err)
+	}
+	tmpFile.Close()
+
+	origPath := shadowFilePath
+	shadowFilePath = tmpFile.Name()
+	defer func() { shadowFilePath = origPath }()
+
+	existing := &user.User{
+		Uid:     "1000",
+		Gid:     "1000",
+		HomeDir: "/home/testuser",
+		Name:    "Test User",
+	}
+
+	// Different hash should trigger -p flag.
+	newHash := "$6$newsalt$newhash"
+	args := buildUsermodArgs("testuser", "", "", "", "", "", newHash, nil, existing)
+	if args == nil {
+		t.Fatal("expected non-nil args when password hash differs")
+	}
+	foundP := false
+	for i, a := range args {
+		if a == "-p" && i+1 < len(args) && args[i+1] == newHash {
+			foundP = true
+			break
+		}
+	}
+	if !foundP {
+		t.Errorf("expected -p %s in args, got %v", newHash, args)
+	}
+
+	// Same hash should NOT trigger -p flag.
+	sameHash := "$6$oldsalt$oldhash"
+	args2 := buildUsermodArgs("testuser", "", "", "", "", "", sameHash, nil, existing)
+	if args2 != nil {
+		t.Errorf("expected nil args when password hash matches, got %v", args2)
+	}
+}
+
+func TestUserPresentInvalidPasswordHash(t *testing.T) {
+	u := User{
+		id:     "test-present-bad-hash",
+		method: "present",
+		params: map[string]interface{}{
+			"name":          "grlx-test-nonexistent-user-abc123",
+			"password_hash": "plaintext-not-a-hash",
+		},
+	}
+	result, err := u.present(context.Background(), true)
+	if err == nil {
+		t.Fatal("expected error for invalid password hash")
+	}
+	if !result.Failed {
+		t.Error("expected failed result for invalid password hash")
+	}
+}
+
+func TestUserPresentTestModeWithPasswordHash(t *testing.T) {
+	u := User{
+		id:     "test-present-hash",
+		method: "present",
+		params: map[string]interface{}{
+			"name":          "grlx-test-nonexistent-user-abc123",
+			"password_hash": "$6$rounds=5000$salt$hashvalue",
+		},
+	}
+	result, err := u.present(context.Background(), true)
+	if err != nil {
+		t.Fatalf("present() test mode unexpected error: %v", err)
+	}
+	if !result.Succeeded || result.Failed {
+		t.Error("expected succeeded result in test mode")
+	}
+	if !result.Changed {
+		t.Error("expected changed=true in test mode for new user")
+	}
+	// Verify the command includes -p
+	noteStr := result.Notes[0].String()
+	if !strings.Contains(noteStr, "-p") {
+		t.Errorf("expected -p in useradd command, got %q", noteStr)
+	}
+}
+
+func TestUserParseWithPasswordHash(t *testing.T) {
+	u := User{}
+	_, err := u.Parse("test-hash", "present", map[string]interface{}{
+		"name":          "testuser",
+		"password_hash": "$6$salt$hash",
+	})
+	if err != nil {
+		t.Errorf("Parse() unexpected error: %v", err)
 	}
 }
