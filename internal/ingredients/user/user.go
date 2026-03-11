@@ -113,6 +113,7 @@ func (u User) PropertiesForMethod(method string) (map[string]string, error) {
 			ingredients.MethodProps{Key: "comment", Type: "string", IsReq: false},
 			ingredients.MethodProps{Key: "createhome", Type: "bool", IsReq: false},
 			ingredients.MethodProps{Key: "system", Type: "bool", IsReq: false},
+			ingredients.MethodProps{Key: "password_hash", Type: "string", IsReq: false},
 		}.ToMap(), nil
 	default:
 		return nil, fmt.Errorf("method %s undefined", method)
