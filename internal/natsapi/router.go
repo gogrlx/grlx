@@ -78,13 +78,15 @@ var routes = map[string]handler{
 
 // Subscribe registers all NATS API handlers on the given connection.
 // It subscribes to "grlx.api.>" and dispatches based on subject suffix.
+// Each handler is wrapped with RBAC enforcement middleware that checks
+// the caller's token before dispatching.
 func Subscribe(nc *nats.Conn) error {
 	SetNatsConn(nc)
 
 	for method, h := range routes {
 		subject := "grlx.api." + method
-		handler := h     // capture for closure
-		action := method // capture for audit
+		handler := authMiddleware(method, h) // wrap with RBAC enforcement
+		action := method                     // capture for audit
 		_, err := nc.Subscribe(subject, func(msg *nats.Msg) {
 			result, err := handler(msg.Data)
 

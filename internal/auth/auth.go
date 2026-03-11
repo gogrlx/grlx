@@ -194,6 +194,28 @@ func TokenHasRouteAccess(token string, routeName string) bool {
 	return role.HasRouteAccess(routeName)
 }
 
+// TokenHasAction checks whether the bearer token's role includes a
+// specific RBAC action (without scope checking). Use TokenHasScopedAccess
+// when scope-level checks are needed.
+func TokenHasAction(token string, action rbac.Action) bool {
+	if DangerouslyAllowRoot() {
+		return true
+	}
+	ua, err := decodeToken(token)
+	if err != nil {
+		return false
+	}
+	pk, err := ua.IsValid()
+	if err != nil {
+		return false
+	}
+	role := lookupRole(pk)
+	if role == nil {
+		return false
+	}
+	return role.HasAction(action)
+}
+
 // TokenHasScopedAccess checks whether the token has permission for a
 // specific action on specific sprout IDs. Used by handlers that need
 // scope-level checks (cook, cmd, props, etc.).
