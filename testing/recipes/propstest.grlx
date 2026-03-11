@@ -1,0 +1,23 @@
+steps:
+  deploy config:
+    file.managed:
+      - name: /etc/app/config.yaml
+      - source: grlx://configs/app.yaml
+      - user: {{ props "app_user" }}
+      - group: {{ props "app_group" }}
+      - mode: "644"
+{{- if (props "enable_monitoring") }}
+  install monitoring:
+    file.managed:
+      - name: /etc/monitoring/agent.conf
+      - source: grlx://monitoring/agent.conf
+      - user: root
+      - group: root
+      - mode: "600"
+      - requisites:
+        - require: deploy config
+{{- end }}
+  set hostname banner:
+    file.content:
+      - name: /etc/motd
+      - text: "Managed by grlx - {{ hostname }}"
