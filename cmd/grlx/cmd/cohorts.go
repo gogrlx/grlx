@@ -55,6 +55,54 @@ var cmdCohortsList = &cobra.Command{
 	},
 }
 
+var cmdCohortsShow = &cobra.Command{
+	Use:   "show <name>",
+	Short: "Show the full definition of a cohort",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		name := args[0]
+		detail, err := client.GetCohort(name)
+		if err != nil {
+			color.Red("Error: %v", err)
+			return
+		}
+
+		switch outputMode {
+		case "json":
+			jw, _ := json.MarshalIndent(detail, "", "  ")
+			fmt.Println(string(jw))
+		default:
+			fmt.Printf("Cohort: %s\n", detail.Name)
+			fmt.Printf("  Type: %s\n", detail.Type)
+
+			switch detail.Type {
+			case "static":
+				fmt.Printf("  Configured members: %d\n", len(detail.Members))
+				for _, m := range detail.Members {
+					fmt.Printf("    - %s\n", m)
+				}
+			case "dynamic":
+				if detail.Match != nil {
+					fmt.Printf("  Match: %s = %s\n", detail.Match.PropName, detail.Match.PropValue)
+				}
+			case "compound":
+				if detail.Compound != nil {
+					fmt.Printf("  Operator: %s\n", detail.Compound.Operator)
+					fmt.Printf("  Operands:\n")
+					for _, op := range detail.Compound.Operands {
+						fmt.Printf("    - %s\n", op)
+					}
+				}
+			}
+
+			fmt.Printf("  Resolved members: %d\n", detail.Count)
+			for _, id := range detail.Resolved {
+				fmt.Printf("    - %s\n", id)
+			}
+		}
+	},
+}
+
 var cmdCohortsResolve = &cobra.Command{
 	Use:   "resolve <name>",
 	Short: "Resolve a cohort to its member sprout IDs",
@@ -86,6 +134,7 @@ var cmdCohortsResolve = &cobra.Command{
 
 func init() {
 	cmdCohorts.AddCommand(cmdCohortsList)
+	cmdCohorts.AddCommand(cmdCohortsShow)
 	cmdCohorts.AddCommand(cmdCohortsResolve)
 	rootCmd.AddCommand(cmdCohorts)
 }

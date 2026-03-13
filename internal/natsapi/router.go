@@ -69,6 +69,7 @@ var routes = map[string]handler{
 
 	// Cohorts
 	"cohorts.list":    handleCohortsList,
+	"cohorts.get":     handleCohortsGet,
 	"cohorts.resolve": handleCohortsResolve,
 
 	// Auth
