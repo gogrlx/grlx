@@ -74,6 +74,9 @@ var routes = map[string]handler{
 	// Auth
 	"auth.whoami": handleAuthWhoAmI,
 	"auth.users":  handleAuthListUsers,
+
+	// Shell (interactive SSH-like sessions)
+	"shell.start": handleShellStart,
 }
 
 // Subscribe registers all NATS API handlers on the given connection.

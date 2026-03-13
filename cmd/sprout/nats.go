@@ -14,6 +14,7 @@ import (
 	"github.com/gogrlx/grlx/v2/internal/ingredients/cmd"
 	"github.com/gogrlx/grlx/v2/internal/ingredients/test"
 	"github.com/gogrlx/grlx/v2/internal/pki"
+	"github.com/gogrlx/grlx/v2/internal/shell"
 
 	nats "github.com/nats-io/nats.go"
 )
@@ -106,5 +107,14 @@ func natsInit(nc *nats.Conn) error {
 	if err != nil {
 		return err
 	}
+
+	// Interactive shell sessions.
+	_, err = nc.Subscribe("grlx.sprouts."+sproutID+".shell.start", func(m *nats.Msg) {
+		shell.HandleShellStart(nc, m)
+	})
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
