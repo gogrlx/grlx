@@ -1,6 +1,8 @@
 package rbac
 
 import (
+	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/gogrlx/grlx/v2/internal/props"
@@ -378,6 +380,147 @@ func TestMatchesPropValue(t *testing.T) {
 				t.Errorf("matchesPropValue(%q, %q) = %v, want %v", tt.actual, tt.expected, got, tt.want)
 			}
 		})
+	}
+}
+
+func TestRegisterSelfReference(t *testing.T) {
+	reg := NewRegistry()
+	err := reg.Register(&Cohort{
+		Name: "self", Type: CohortTypeCompound,
+		Compound: &CompoundExpr{Operator: OperatorAND, Operands: []string{"self", "other"}},
+	})
+	if err == nil {
+		t.Fatal("Register() expected self-reference error")
+	}
+	if !errors.Is(err, ErrSelfReference) {
+		t.Errorf("Register() error = %v, want ErrSelfReference", err)
+	}
+}
+
+func TestValidateReferences(t *testing.T) {
+	reg := NewRegistry()
+	_ = reg.Register(&Cohort{Name: "a", Type: CohortTypeStatic, Members: []string{"s1"}})
+	_ = reg.Register(&Cohort{
+		Name: "combo", Type: CohortTypeCompound,
+		Compound: &CompoundExpr{Operator: OperatorAND, Operands: []string{"a", "missing"}},
+	})
+
+	err := reg.ValidateReferences()
+	if err == nil {
+		t.Fatal("ValidateReferences() expected error for missing operand")
+	}
+	if !errors.Is(err, ErrCohortNotFound) {
+		t.Errorf("ValidateReferences() error = %v, want ErrCohortNotFound", err)
+	}
+}
+
+func TestValidateReferencesAllPresent(t *testing.T) {
+	reg := NewRegistry()
+	_ = reg.Register(&Cohort{Name: "a", Type: CohortTypeStatic, Members: []string{"s1"}})
+	_ = reg.Register(&Cohort{Name: "b", Type: CohortTypeStatic, Members: []string{"s2"}})
+	_ = reg.Register(&Cohort{
+		Name: "combo", Type: CohortTypeCompound,
+		Compound: &CompoundExpr{Operator: OperatorOR, Operands: []string{"a", "b"}},
+	})
+
+	err := reg.ValidateReferences()
+	if err != nil {
+		t.Fatalf("ValidateReferences() unexpected error: %v", err)
+	}
+}
+
+func TestValidateReferencesCircular(t *testing.T) {
+	reg := NewRegistry()
+	// Manually set up circular references (bypassing Register's self-ref check).
+	reg.cohorts["x"] = &Cohort{
+		Name: "x", Type: CohortTypeCompound,
+		Compound: &CompoundExpr{Operator: OperatorAND, Operands: []string{"y", "y"}},
+	}
+	reg.cohorts["y"] = &Cohort{
+		Name: "y", Type: CohortTypeCompound,
+		Compound: &CompoundExpr{Operator: OperatorAND, Operands: []string{"x", "x"}},
+	}
+
+	err := reg.ValidateReferences()
+	if err == nil {
+		t.Fatal("ValidateReferences() expected circular reference error")
+	}
+}
+
+func TestResolveMaxDepthExceeded(t *testing.T) {
+	reg := NewRegistry()
+	// Build a chain deeper than MaxNestingDepth.
+	_ = reg.Register(&Cohort{Name: "leaf", Type: CohortTypeStatic, Members: []string{"s1"}})
+	prev := "leaf"
+	// Need a second leaf for the 2-operand requirement.
+	_ = reg.Register(&Cohort{Name: "leaf2", Type: CohortTypeStatic, Members: []string{"s2"}})
+	for i := range MaxNestingDepth + 2 {
+		name := fmt.Sprintf("level-%d", i)
+		reg.cohorts[name] = &Cohort{
+			Name: name, Type: CohortTypeCompound,
+			Compound: &CompoundExpr{Operator: OperatorOR, Operands: []string{prev, "leaf2"}},
+		}
+		prev = name
+	}
+
+	_, err := reg.Resolve(prev, nil)
+	if err == nil {
+		t.Fatal("Resolve() expected max depth exceeded error")
+	}
+	if !errors.Is(err, ErrMaxDepthExceeded) {
+		t.Errorf("Resolve() error = %v, want ErrMaxDepthExceeded", err)
+	}
+}
+
+func TestResolveDeeplyNestedOK(t *testing.T) {
+	reg := NewRegistry()
+	_ = reg.Register(&Cohort{Name: "leaf", Type: CohortTypeStatic, Members: []string{"s1"}})
+	_ = reg.Register(&Cohort{Name: "leaf2", Type: CohortTypeStatic, Members: []string{"s2"}})
+	prev := "leaf"
+	// Build a chain at exactly MaxNestingDepth - should still work.
+	for i := range MaxNestingDepth - 1 {
+		name := fmt.Sprintf("deep-%d", i)
+		reg.cohorts[name] = &Cohort{
+			Name: name, Type: CohortTypeCompound,
+			Compound: &CompoundExpr{Operator: OperatorOR, Operands: []string{prev, "leaf2"}},
+		}
+		prev = name
+	}
+
+	result, err := reg.Resolve(prev, nil)
+	if err != nil {
+		t.Fatalf("Resolve() unexpected error: %v", err)
+	}
+	if !result["s1"] || !result["s2"] {
+		t.Errorf("Resolve() = %v, want s1 and s2", result)
+	}
+}
+
+func TestResolveSharedOperandNotCircular(t *testing.T) {
+	// Two compound cohorts sharing a common operand should not trigger circular ref.
+	reg := NewRegistry()
+	_ = reg.Register(&Cohort{Name: "shared", Type: CohortTypeStatic, Members: []string{"s1"}})
+	_ = reg.Register(&Cohort{Name: "a", Type: CohortTypeStatic, Members: []string{"s2"}})
+	_ = reg.Register(&Cohort{Name: "b", Type: CohortTypeStatic, Members: []string{"s3"}})
+	_ = reg.Register(&Cohort{
+		Name: "combo-a", Type: CohortTypeCompound,
+		Compound: &CompoundExpr{Operator: OperatorOR, Operands: []string{"shared", "a"}},
+	})
+	_ = reg.Register(&Cohort{
+		Name: "combo-b", Type: CohortTypeCompound,
+		Compound: &CompoundExpr{Operator: OperatorOR, Operands: []string{"shared", "b"}},
+	})
+	_ = reg.Register(&Cohort{
+		Name: "top", Type: CohortTypeCompound,
+		Compound: &CompoundExpr{Operator: OperatorOR, Operands: []string{"combo-a", "combo-b"}},
+	})
+
+	result, err := reg.Resolve("top", nil)
+	if err != nil {
+		t.Fatalf("Resolve() unexpected error: %v", err)
+	}
+	if len(result) != 3 {
+		t.Errorf("Resolve() returned %d, want 3 (s1, s2, s3)", len(result))
 	}
 }
 
