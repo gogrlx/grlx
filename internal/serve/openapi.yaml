@@ -1,0 +1,758 @@
+openapi: 3.1.0
+info:
+  title: grlx CLI API
+  description: |
+    Local HTTP API served by `grlx serve`. Proxies requests to the grlx
+    farmer over NATS and serves the embedded web UI.
+
+    This API is intended for local use only (default: localhost:7505).
+    All endpoints under `/api/v1/` are JSON-over-HTTP proxies to the
+    NATS-based farmer API.
+  version: 0.1.0
+  license:
+    name: Apache-2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0
+  contact:
+    name: grlx
+    url: https://github.com/gogrlx/grlx
+
+servers:
+  - url: http://localhost:7505
+    description: Default local grlx serve address
+
+paths:
+  /api/v1/health:
+    get:
+      operationId: getHealth
+      summary: Health check
+      description: Returns a simple health status indicating the CLI serve process is running.
+      tags:
+        - health
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+
+  /api/v1/version:
+    get:
+      operationId: getVersion
+      summary: CLI and farmer version info
+      description: Returns version information for both the CLI and the connected farmer.
+      tags:
+        - version
+      responses:
+        "200":
+          description: Version information
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CombinedVersion"
+
+  /api/v1/sprouts:
+    get:
+      operationId: listSprouts
+      summary: List all sprouts
+      description: Returns a list of all sprouts known to the farmer.
+      tags:
+        - sprouts
+      responses:
+        "200":
+          description: List of sprouts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NATSResponse"
+        "502":
+          $ref: "#/components/responses/NATSError"
+
+  /api/v1/sprouts/{id}:
+    get:
+      operationId: getSprout
+      summary: Get sprout details
+      description: Returns details for a specific sprout by ID.
+      tags:
+        - sprouts
+      parameters:
+        - $ref: "#/components/parameters/SproutID"
+      responses:
+        "200":
+          description: Sprout details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NATSResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "502":
+          $ref: "#/components/responses/NATSError"
+
+  /api/v1/jobs:
+    get:
+      operationId: listJobs
+      summary: List all jobs
+      description: Returns a list of all jobs tracked by the farmer.
+      tags:
+        - jobs
+      responses:
+        "200":
+          description: List of jobs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NATSResponse"
+        "502":
+          $ref: "#/components/responses/NATSError"
+
+  /api/v1/jobs/{jid}:
+    get:
+      operationId: getJob
+      summary: Get job details
+      description: Returns details for a specific job by JID.
+      tags:
+        - jobs
+      parameters:
+        - $ref: "#/components/parameters/JobID"
+      responses:
+        "200":
+          description: Job details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NATSResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "502":
+          $ref: "#/components/responses/NATSError"
+    delete:
+      operationId: cancelJob
+      summary: Cancel a job
+      description: Cancels a running job by JID.
+      tags:
+        - jobs
+      parameters:
+        - $ref: "#/components/parameters/JobID"
+      responses:
+        "200":
+          description: Job cancelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NATSResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "502":
+          $ref: "#/components/responses/NATSError"
+
+  /api/v1/jobs/sprout/{id}:
+    get:
+      operationId: getJobsForSprout
+      summary: List jobs for a sprout
+      description: Returns all jobs associated with a specific sprout.
+      tags:
+        - jobs
+      parameters:
+        - $ref: "#/components/parameters/SproutID"
+      responses:
+        "200":
+          description: Jobs for the sprout
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NATSResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "502":
+          $ref: "#/components/responses/NATSError"
+
+  /api/v1/cook:
+    post:
+      operationId: cook
+      summary: Start a cook operation
+      description: |
+        Triggers a recipe cook on one or more sprouts. The request body
+        specifies the recipe path, target sprouts/cohorts, and options.
+      tags:
+        - cook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CookRequest"
+      responses:
+        "200":
+          description: Cook initiated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NATSResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "502":
+          $ref: "#/components/responses/NATSError"
+
+  /api/v1/props:
+    get:
+      operationId: listProps
+      summary: List all sprout props
+      description: Returns prop summaries for all sprouts.
+      tags:
+        - props
+      responses:
+        "200":
+          description: Prop summaries
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NATSResponse"
+        "502":
+          $ref: "#/components/responses/NATSError"
+
+  /api/v1/props/{id}:
+    get:
+      operationId: getProps
+      summary: Get all props for a sprout
+      description: Returns all property key-value pairs for a specific sprout.
+      tags:
+        - props
+      parameters:
+        - $ref: "#/components/parameters/SproutID"
+      responses:
+        "200":
+          description: Sprout props
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NATSResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "502":
+          $ref: "#/components/responses/NATSError"
+
+  /api/v1/props/{id}/{key}:
+    get:
+      operationId: getPropKey
+      summary: Get a specific prop value
+      description: Returns the value of a single property key for a sprout.
+      tags:
+        - props
+      parameters:
+        - $ref: "#/components/parameters/SproutID"
+        - $ref: "#/components/parameters/PropKey"
+      responses:
+        "200":
+          description: Property value
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NATSResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "502":
+          $ref: "#/components/responses/NATSError"
+    put:
+      operationId: setPropKey
+      summary: Set a prop value
+      description: Sets or updates a single property key for a sprout.
+      tags:
+        - props
+      parameters:
+        - $ref: "#/components/parameters/SproutID"
+        - $ref: "#/components/parameters/PropKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              description: The value to set for this property key.
+      responses:
+        "200":
+          description: Property set
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NATSResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "502":
+          $ref: "#/components/responses/NATSError"
+    delete:
+      operationId: deletePropKey
+      summary: Delete a prop
+      description: Removes a single property key from a sprout.
+      tags:
+        - props
+      parameters:
+        - $ref: "#/components/parameters/SproutID"
+        - $ref: "#/components/parameters/PropKey"
+      responses:
+        "200":
+          description: Property deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NATSResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "502":
+          $ref: "#/components/responses/NATSError"
+
+  /api/v1/cohorts:
+    get:
+      operationId: listCohorts
+      summary: List all cohorts
+      description: Returns all cohort definitions.
+      tags:
+        - cohorts
+      responses:
+        "200":
+          description: List of cohorts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NATSResponse"
+        "502":
+          $ref: "#/components/responses/NATSError"
+
+  /api/v1/cohorts/resolve:
+    post:
+      operationId: resolveCohorts
+      summary: Resolve cohort membership
+      description: |
+        Resolves a cohort expression against current sprout state and returns
+        the list of matching sprout IDs.
+      tags:
+        - cohorts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CohortResolveRequest"
+      responses:
+        "200":
+          description: Resolved sprout list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NATSResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "502":
+          $ref: "#/components/responses/NATSError"
+
+  /api/v1/keys:
+    get:
+      operationId: listKeys
+      summary: List all sprout keys
+      description: Returns all sprout PKI keys grouped by status (accepted, pending, denied, etc.).
+      tags:
+        - keys
+      responses:
+        "200":
+          description: Key listing
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NATSResponse"
+        "502":
+          $ref: "#/components/responses/NATSError"
+
+  /api/v1/keys/{id}:
+    delete:
+      operationId: deleteKey
+      summary: Delete a sprout key
+      description: Permanently removes a sprout's key from the farmer PKI store.
+      tags:
+        - keys
+      parameters:
+        - $ref: "#/components/parameters/SproutID"
+      responses:
+        "200":
+          description: Key deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NATSResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "502":
+          $ref: "#/components/responses/NATSError"
+
+  /api/v1/keys/{id}/accept:
+    post:
+      operationId: acceptKey
+      summary: Accept a sprout key
+      description: Moves a pending sprout key to the accepted state.
+      tags:
+        - keys
+      parameters:
+        - $ref: "#/components/parameters/SproutID"
+      responses:
+        "200":
+          description: Key accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NATSResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "502":
+          $ref: "#/components/responses/NATSError"
+
+  /api/v1/keys/{id}/reject:
+    post:
+      operationId: rejectKey
+      summary: Reject a sprout key
+      description: Rejects a pending sprout key.
+      tags:
+        - keys
+      parameters:
+        - $ref: "#/components/parameters/SproutID"
+      responses:
+        "200":
+          description: Key rejected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NATSResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "502":
+          $ref: "#/components/responses/NATSError"
+
+  /api/v1/keys/{id}/deny:
+    post:
+      operationId: denyKey
+      summary: Deny a sprout key
+      description: Denies a sprout key, preventing future connections.
+      tags:
+        - keys
+      parameters:
+        - $ref: "#/components/parameters/SproutID"
+      responses:
+        "200":
+          description: Key denied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NATSResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "502":
+          $ref: "#/components/responses/NATSError"
+
+  /api/v1/keys/{id}/unaccept:
+    post:
+      operationId: unacceptKey
+      summary: Unaccept a sprout key
+      description: Moves an accepted sprout key back to pending state.
+      tags:
+        - keys
+      parameters:
+        - $ref: "#/components/parameters/SproutID"
+      responses:
+        "200":
+          description: Key unaccepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NATSResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "502":
+          $ref: "#/components/responses/NATSError"
+
+  /api/v1/auth/whoami:
+    get:
+      operationId: getWhoAmI
+      summary: Current user identity
+      description: Returns the identity of the currently authenticated CLI user.
+      tags:
+        - auth
+      responses:
+        "200":
+          description: Current user info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NATSResponse"
+        "502":
+          $ref: "#/components/responses/NATSError"
+
+  /api/v1/auth/users:
+    get:
+      operationId: listUsers
+      summary: List all users
+      description: Returns all registered users in the farmer's auth system.
+      tags:
+        - auth
+      responses:
+        "200":
+          description: User list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NATSResponse"
+        "502":
+          $ref: "#/components/responses/NATSError"
+
+  /api/v1/recipes:
+    get:
+      operationId: listRecipes
+      summary: List all recipes
+      description: |
+        Returns a list of all recipes available on the farmer.
+        (Added in PR #177, may not be present on all builds.)
+      tags:
+        - recipes
+      responses:
+        "200":
+          description: Recipe list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NATSResponse"
+        "502":
+          $ref: "#/components/responses/NATSError"
+
+  /api/v1/recipes/{path}:
+    get:
+      operationId: getRecipe
+      summary: Get a recipe by path
+      description: |
+        Returns the contents of a recipe file by its path.
+        Uses a wildcard path parameter to support nested paths (e.g., `base/webserver`).
+        (Added in PR #177, may not be present on all builds.)
+      tags:
+        - recipes
+      parameters:
+        - name: path
+          in: path
+          required: true
+          description: Recipe path (supports nested paths like `base/webserver`)
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Recipe contents
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NATSResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "502":
+          $ref: "#/components/responses/NATSError"
+
+  /api/v1/audit/dates:
+    get:
+      operationId: listAuditDates
+      summary: List available audit log dates
+      description: |
+        Returns the dates for which audit log entries exist.
+        (Added in PR #180, may not be present on all builds.)
+      tags:
+        - audit
+      responses:
+        "200":
+          description: Audit date list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NATSResponse"
+        "502":
+          $ref: "#/components/responses/NATSError"
+
+  /api/v1/audit:
+    get:
+      operationId: queryAuditLog
+      summary: Query audit log
+      description: |
+        Queries the audit log with optional filtering via query parameters.
+        (Added in PR #180, may not be present on all builds.)
+      tags:
+        - audit
+      parameters:
+        - name: date
+          in: query
+          description: Filter by date (YYYY-MM-DD)
+          schema:
+            type: string
+            format: date
+        - name: user
+          in: query
+          description: Filter by user
+          schema:
+            type: string
+        - name: action
+          in: query
+          description: Filter by action type
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Audit log entries
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NATSResponse"
+        "502":
+          $ref: "#/components/responses/NATSError"
+
+  /api/v1/openapi.yaml:
+    get:
+      operationId: getOpenAPISpec
+      summary: OpenAPI specification
+      description: Returns this OpenAPI specification document.
+      tags:
+        - meta
+      responses:
+        "200":
+          description: OpenAPI 3.1 YAML document
+          content:
+            application/x-yaml:
+              schema:
+                type: string
+
+components:
+  parameters:
+    SproutID:
+      name: id
+      in: path
+      required: true
+      description: Sprout identifier (NKey public key)
+      schema:
+        type: string
+
+    JobID:
+      name: jid
+      in: path
+      required: true
+      description: Job identifier
+      schema:
+        type: string
+
+    PropKey:
+      name: key
+      in: path
+      required: true
+      description: Property key name
+      schema:
+        type: string
+
+  schemas:
+    HealthResponse:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum:
+            - ok
+          example: ok
+
+    Version:
+      type: object
+      properties:
+        arch:
+          type: string
+          description: Build architecture
+          example: amd64
+        compiler:
+          type: string
+          description: Go compiler version
+          example: go1.24.1
+        git_commit:
+          type: string
+          description: Git commit hash
+          example: abc1234
+        tag:
+          type: string
+          description: Release tag
+          example: v0.3.0
+
+    CombinedVersion:
+      type: object
+      properties:
+        cli:
+          $ref: "#/components/schemas/Version"
+        farmer:
+          $ref: "#/components/schemas/Version"
+        error:
+          type: string
+          description: Error message if farmer version could not be retrieved
+
+    CookRequest:
+      type: object
+      description: |
+        Request body for triggering a cook operation. The exact structure
+        depends on the farmer implementation and may include fields like
+        target (sprout IDs or cohort expression), recipe path, and test mode flag.
+
+    CohortResolveRequest:
+      type: object
+      description: |
+        Cohort expression to resolve. May include cohort names, compound
+        expressions (AND/OR/EXCEPT), and target patterns.
+
+    NATSResponse:
+      description: |
+        Raw JSON response from the farmer via NATS proxy. The structure
+        varies by endpoint — refer to the farmer documentation for
+        response schemas specific to each NATS subject.
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: Error message
+          example: missing id parameter
+
+  responses:
+    BadRequest:
+      description: Bad request — missing or invalid parameters
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    NATSError:
+      description: NATS communication error — farmer unreachable or returned an error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+tags:
+  - name: health
+    description: Health check
+  - name: version
+    description: Version information
+  - name: sprouts
+    description: Sprout (managed node) management
+  - name: jobs
+    description: Job tracking and management
+  - name: cook
+    description: Recipe execution
+  - name: props
+    description: Sprout properties (key-value metadata)
+  - name: cohorts
+    description: Cohort (sprout group) management
+  - name: keys
+    description: PKI key management
+  - name: auth
+    description: Authentication and user management
+  - name: recipes
+    description: Recipe listing and retrieval
+  - name: audit
+    description: Audit log queries
+  - name: meta
+    description: API metadata

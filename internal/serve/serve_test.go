@@ -334,6 +334,42 @@ func TestMuxCookRoute(t *testing.T) {
 	}
 }
 
+func TestHandleOpenAPI(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/openapi.yaml", nil)
+	rec := httptest.NewRecorder()
+
+	HandleOpenAPI(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", rec.Code)
+	}
+	if ct := rec.Header().Get("Content-Type"); ct != "application/x-yaml" {
+		t.Fatalf("expected Content-Type application/x-yaml, got %q", ct)
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, "openapi: 3.1.0") {
+		t.Fatal("expected OpenAPI 3.1 spec in response body")
+	}
+	if !strings.Contains(body, "grlx CLI API") {
+		t.Fatal("expected API title in response body")
+	}
+}
+
+func TestHandleOpenAPIViaMux(t *testing.T) {
+	mux := NewMux()
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/openapi.yaml", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", rec.Code)
+	}
+	if !strings.Contains(rec.Body.String(), "openapi:") {
+		t.Fatal("expected openapi spec from mux route")
+	}
+}
+
 func TestMuxCohortsResolveRoute(t *testing.T) {
 	mux := NewMux()
 
