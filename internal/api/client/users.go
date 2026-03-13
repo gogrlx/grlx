@@ -20,6 +20,19 @@ func WhoAmI() (apitypes.UserInfo, error) {
 	return info, nil
 }
 
+// ExplainAccess retrieves a permission summary for the authenticated user.
+func ExplainAccess() (apitypes.ExplainResponse, error) {
+	var result apitypes.ExplainResponse
+	resp, err := NatsRequest("auth.explain", nil)
+	if err != nil {
+		return result, err
+	}
+	if err := json.Unmarshal(resp, &result); err != nil {
+		return result, fmt.Errorf("explain: %w", err)
+	}
+	return result, nil
+}
+
 // ListUsers retrieves all configured users and role definitions.
 func ListUsers() (apitypes.UsersListResponse, error) {
 	var result apitypes.UsersListResponse

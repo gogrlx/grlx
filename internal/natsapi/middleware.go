@@ -39,15 +39,17 @@ var natsActionMap = map[string]rbac.Action{
 	"pki.delete":   rbac.ActionPKI,
 
 	// Auth
-	"auth.whoami": rbac.ActionUserRead,
-	"auth.users":  rbac.ActionAdmin,
+	"auth.whoami":  rbac.ActionUserRead,
+	"auth.users":   rbac.ActionAdmin,
+	"auth.explain": rbac.ActionUserRead,
 }
 
 // publicMethods are accessible without a token.
 // version is informational; auth.whoami handles its own auth logic.
 var publicMethods = map[string]bool{
-	"version":     true,
-	"auth.whoami": true,
+	"version":      true,
+	"auth.whoami":  true,
+	"auth.explain": true,
 }
 
 // NATSMethodAction returns the RBAC action required for a NATS API method.

@@ -72,8 +72,9 @@ var routes = map[string]handler{
 	"cohorts.resolve": handleCohortsResolve,
 
 	// Auth
-	"auth.whoami": handleAuthWhoAmI,
-	"auth.users":  handleAuthListUsers,
+	"auth.whoami":  handleAuthWhoAmI,
+	"auth.users":   handleAuthListUsers,
+	"auth.explain": handleAuthExplain,
 }
 
 // Subscribe registers all NATS API handlers on the given connection.
