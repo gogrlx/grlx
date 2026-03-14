@@ -1,11 +1,17 @@
 package rbac
 
 import (
+	"errors"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/taigrr/jety"
 )
+
+// ErrDuplicatePubkey is returned when the same pubkey appears under
+// multiple roles in the users/pubkeys config sections.
+var ErrDuplicatePubkey = errors.New("duplicate pubkey assignment")
 
 // RoleStore holds all custom role definitions loaded from config.
 type RoleStore struct {
@@ -216,6 +222,52 @@ func LoadUsersFromConfig() *UserRoleMap {
 	}
 
 	return m
+}
+
+// ValidateUserUniqueness checks the users and pubkeys config sections for
+// pubkeys that appear under more than one role. Returns an error listing
+// every duplicate pubkey and the roles it was assigned to. This catches
+// misconfigurations that would silently overwrite role assignments.
+func ValidateUserUniqueness() error {
+	// Collect all pubkey → []role mappings from both config sections.
+	seen := make(map[string][]string) // pubkey → list of role names
+
+	usersMap := jety.GetStringMap("users")
+	for roleName, v := range usersMap {
+		keys := parseStringSlice(v)
+		for _, k := range keys {
+			seen[k] = append(seen[k], "users."+roleName)
+		}
+	}
+
+	pubkeysMap := jety.GetStringMap("pubkeys")
+	for roleName, v := range pubkeysMap {
+		keys := parseStringSlice(v)
+		for _, k := range keys {
+			seen[k] = append(seen[k], "pubkeys."+roleName)
+		}
+	}
+
+	// Find duplicates.
+	var dupes []string
+	for pubkey, roles := range seen {
+		if len(roles) > 1 {
+			sort.Strings(roles)
+			// Truncate long pubkeys for readability.
+			display := pubkey
+			if len(display) > 16 {
+				display = display[:16] + "..."
+			}
+			dupes = append(dupes, fmt.Sprintf("  %s → [%s]", display, strings.Join(roles, ", ")))
+		}
+	}
+	if len(dupes) == 0 {
+		return nil
+	}
+
+	sort.Strings(dupes)
+	return fmt.Errorf("%w: the following pubkeys are assigned to multiple roles:\n%s",
+		ErrDuplicatePubkey, strings.Join(dupes, "\n"))
 }
 
 // LoadCohortsFromConfig reads the "cohorts" section from the farmer config
