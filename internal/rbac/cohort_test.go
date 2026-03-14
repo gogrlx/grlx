@@ -381,6 +381,118 @@ func TestMatchesPropValue(t *testing.T) {
 	}
 }
 
+func TestRefreshSingleCohort(t *testing.T) {
+	// Set up props for test sprouts.
+	setProp := props.SetPropFunc("refresh-s1")
+	_ = setProp("env", "prod")
+	setProp = props.SetPropFunc("refresh-s2")
+	_ = setProp("env", "prod")
+	setProp = props.SetPropFunc("refresh-s3")
+	_ = setProp("env", "staging")
+
+	reg := NewRegistry()
+	_ = reg.Register(&Cohort{
+		Name: "prod-hosts", Type: CohortTypeDynamic,
+		Match: &DynamicMatch{PropName: "env", PropValue: "prod"},
+	})
+
+	allSprouts := []string{"refresh-s1", "refresh-s2", "refresh-s3"}
+	result, err := reg.Refresh("prod-hosts", allSprouts)
+	if err != nil {
+		t.Fatalf("Refresh() error: %v", err)
+	}
+	if result.Name != "prod-hosts" {
+		t.Errorf("Refresh() name = %q, want %q", result.Name, "prod-hosts")
+	}
+	if len(result.Members) != 2 {
+		t.Fatalf("Refresh() returned %d members, want 2", len(result.Members))
+	}
+	if result.LastRefreshed.IsZero() {
+		t.Error("Refresh() LastRefreshed is zero")
+	}
+
+	// Verify cache was populated.
+	cached, ok := reg.GetCachedMembership("prod-hosts")
+	if !ok {
+		t.Fatal("GetCachedMembership() returned false after refresh")
+	}
+	if len(cached.Members) != 2 {
+		t.Errorf("cached members = %d, want 2", len(cached.Members))
+	}
+}
+
+func TestRefreshAllCohorts(t *testing.T) {
+	setProp := props.SetPropFunc("rall-s1")
+	_ = setProp("os", "linux")
+	setProp = props.SetPropFunc("rall-s2")
+	_ = setProp("os", "windows")
+
+	reg := NewRegistry()
+	_ = reg.Register(&Cohort{
+		Name: "static-group", Type: CohortTypeStatic,
+		Members: []string{"rall-s1", "rall-s2"},
+	})
+	_ = reg.Register(&Cohort{
+		Name: "linux-only", Type: CohortTypeDynamic,
+		Match: &DynamicMatch{PropName: "os", PropValue: "linux"},
+	})
+
+	allSprouts := []string{"rall-s1", "rall-s2"}
+	results, err := reg.RefreshAll(allSprouts)
+	if err != nil {
+		t.Fatalf("RefreshAll() error: %v", err)
+	}
+	if len(results) != 2 {
+		t.Fatalf("RefreshAll() returned %d results, want 2", len(results))
+	}
+
+	// Check both cohorts were cached.
+	for _, name := range []string{"static-group", "linux-only"} {
+		_, ok := reg.GetCachedMembership(name)
+		if !ok {
+			t.Errorf("GetCachedMembership(%q) returned false after RefreshAll", name)
+		}
+	}
+}
+
+func TestRefreshNotFound(t *testing.T) {
+	reg := NewRegistry()
+	_, err := reg.Refresh("nonexistent", nil)
+	if err == nil {
+		t.Fatal("Refresh() expected error for nonexistent cohort")
+	}
+}
+
+func TestRefreshInvalidatesCacheOnRegister(t *testing.T) {
+	reg := NewRegistry()
+	_ = reg.Register(&Cohort{
+		Name: "group", Type: CohortTypeStatic,
+		Members: []string{"s1"},
+	})
+
+	// Refresh to populate cache.
+	_, err := reg.Refresh("group", nil)
+	if err != nil {
+		t.Fatalf("Refresh() error: %v", err)
+	}
+
+	_, ok := reg.GetCachedMembership("group")
+	if !ok {
+		t.Fatal("cache should exist after refresh")
+	}
+
+	// Re-register with different members — cache should be invalidated.
+	_ = reg.Register(&Cohort{
+		Name: "group", Type: CohortTypeStatic,
+		Members: []string{"s1", "s2"},
+	})
+
+	_, ok = reg.GetCachedMembership("group")
+	if ok {
+		t.Error("cache should be invalidated after re-register")
+	}
+}
+
 func TestResolveMultiOperandAND(t *testing.T) {
 	reg := NewRegistry()
 	_ = reg.Register(&Cohort{Name: "a", Type: CohortTypeStatic, Members: []string{"s1", "s2", "s3"}})

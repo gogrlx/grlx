@@ -6,7 +6,10 @@ package rbac
 import (
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/gogrlx/grlx/v2/internal/props"
 )
@@ -107,14 +110,32 @@ func validateOperator(op Operator) error {
 	}
 }
 
+// CachedMembership holds the resolved members and last-refreshed time for a cohort.
+type CachedMembership struct {
+	Members       []string  `json:"members"`
+	LastRefreshed time.Time `json:"lastRefreshed"`
+}
+
+// RefreshResult describes the outcome of refreshing a single cohort.
+type RefreshResult struct {
+	Name          string    `json:"name"`
+	Members       []string  `json:"members"`
+	LastRefreshed time.Time `json:"lastRefreshed"`
+}
+
 // Registry holds named cohorts and resolves membership queries.
 type Registry struct {
+	mu      sync.RWMutex
 	cohorts map[string]*Cohort
+	cache   map[string]*CachedMembership
 }
 
 // NewRegistry creates an empty cohort registry.
 func NewRegistry() *Registry {
-	return &Registry{cohorts: make(map[string]*Cohort)}
+	return &Registry{
+		cohorts: make(map[string]*Cohort),
+		cache:   make(map[string]*CachedMembership),
+	}
 }
 
 // Register adds a cohort to the registry, replacing any existing cohort
@@ -123,12 +144,18 @@ func (r *Registry) Register(c *Cohort) error {
 	if err := c.Validate(); err != nil {
 		return err
 	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	r.cohorts[c.Name] = c
+	// Invalidate cache for this cohort since definition changed.
+	delete(r.cache, c.Name)
 	return nil
 }
 
 // Get returns a cohort by name.
 func (r *Registry) Get(name string) (*Cohort, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
 	c, ok := r.cohorts[name]
 	if !ok {
 		return nil, fmt.Errorf("%w: %q", ErrCohortNotFound, name)
@@ -138,11 +165,80 @@ func (r *Registry) Get(name string) (*Cohort, error) {
 
 // List returns the names of all registered cohorts.
 func (r *Registry) List() []string {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
 	names := make([]string, 0, len(r.cohorts))
 	for name := range r.cohorts {
 		names = append(names, name)
 	}
 	return names
+}
+
+// GetCachedMembership returns the cached membership for a cohort, if available.
+func (r *Registry) GetCachedMembership(name string) (*CachedMembership, bool) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	cm, ok := r.cache[name]
+	return cm, ok
+}
+
+// Refresh re-evaluates a named cohort against the current set of sprout IDs
+// and caches the resolved membership with a timestamp. Returns the refresh result.
+func (r *Registry) Refresh(name string, allSproutIDs []string) (*RefreshResult, error) {
+	r.mu.RLock()
+	_, ok := r.cohorts[name]
+	r.mu.RUnlock()
+	if !ok {
+		return nil, fmt.Errorf("%w: %q", ErrCohortNotFound, name)
+	}
+
+	// Resolve without holding the lock (Resolve only reads cohorts map).
+	members, err := r.Resolve(name, allSproutIDs)
+	if err != nil {
+		return nil, fmt.Errorf("refreshing cohort %q: %w", name, err)
+	}
+
+	memberList := make([]string, 0, len(members))
+	for id := range members {
+		memberList = append(memberList, id)
+	}
+	sort.Strings(memberList)
+
+	now := time.Now().UTC()
+	r.mu.Lock()
+	r.cache[name] = &CachedMembership{
+		Members:       memberList,
+		LastRefreshed: now,
+	}
+	r.mu.Unlock()
+
+	return &RefreshResult{
+		Name:          name,
+		Members:       memberList,
+		LastRefreshed: now,
+	}, nil
+}
+
+// RefreshAll re-evaluates all registered cohorts and caches their membership.
+func (r *Registry) RefreshAll(allSproutIDs []string) ([]RefreshResult, error) {
+	names := r.List()
+	sort.Strings(names)
+
+	results := make([]RefreshResult, 0, len(names))
+	var firstErr error
+
+	for _, name := range names {
+		result, err := r.Refresh(name, allSproutIDs)
+		if err != nil {
+			if firstErr == nil {
+				firstErr = err
+			}
+			continue
+		}
+		results = append(results, *result)
+	}
+
+	return results, firstErr
 }
 
 // Resolve evaluates a named cohort and returns the set of sprout IDs

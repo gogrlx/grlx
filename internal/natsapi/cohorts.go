@@ -3,6 +3,7 @@ package natsapi
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 
 	"github.com/gogrlx/grlx/v2/internal/pki"
 	"github.com/gogrlx/grlx/v2/internal/rbac"
@@ -80,4 +81,53 @@ func handleCohortsResolve(params json.RawMessage) (any, error) {
 		"name":    p.Name,
 		"sprouts": sprouts,
 	}, nil
+}
+
+// CohortRefreshParams is the request for refreshing cohort membership.
+// If Name is empty, all cohorts are refreshed.
+type CohortRefreshParams struct {
+	Name string `json:"name,omitempty"`
+}
+
+// CohortRefreshResponse is the response for a cohort refresh operation.
+type CohortRefreshResponse struct {
+	Refreshed []rbac.RefreshResult `json:"refreshed"`
+}
+
+func handleCohortsRefresh(params json.RawMessage) (any, error) {
+	if cohortRegistry == nil {
+		return nil, fmt.Errorf("no cohort registry configured")
+	}
+
+	var p CohortRefreshParams
+	if len(params) > 0 {
+		if err := json.Unmarshal(params, &p); err != nil {
+			return nil, err
+		}
+	}
+
+	allKeys := pki.ListNKeysByType()
+	allSproutIDs := make([]string, 0, len(allKeys.Accepted.Sprouts))
+	for _, km := range allKeys.Accepted.Sprouts {
+		allSproutIDs = append(allSproutIDs, km.SproutID)
+	}
+	sort.Strings(allSproutIDs)
+
+	if p.Name != "" {
+		// Refresh a single cohort.
+		result, err := cohortRegistry.Refresh(p.Name, allSproutIDs)
+		if err != nil {
+			return nil, err
+		}
+		return CohortRefreshResponse{
+			Refreshed: []rbac.RefreshResult{*result},
+		}, nil
+	}
+
+	// Refresh all cohorts.
+	results, err := cohortRegistry.RefreshAll(allSproutIDs)
+	if err != nil {
+		return nil, err
+	}
+	return CohortRefreshResponse{Refreshed: results}, nil
 }

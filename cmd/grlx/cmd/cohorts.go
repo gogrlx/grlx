@@ -84,8 +84,58 @@ var cmdCohortsResolve = &cobra.Command{
 	},
 }
 
+var cmdCohortsRefresh = &cobra.Command{
+	Use:   "refresh [name]",
+	Short: "Refresh cached cohort membership against current sprouts",
+	Long: `Recalculate dynamic cohort membership by re-evaluating property
+matches against currently connected sprouts. If a cohort name is
+provided, only that cohort is refreshed. Otherwise, all cohorts
+are refreshed.`,
+	Args: cobra.MaximumNArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		var params map[string]string
+		if len(args) == 1 {
+			params = map[string]string{"name": args[0]}
+		}
+
+		resp, err := client.NatsRequest("cohorts.refresh", params)
+		if err != nil {
+			log.Fatalf("Failed to refresh cohorts: %v", err)
+		}
+
+		var result struct {
+			Refreshed []struct {
+				Name          string   `json:"name"`
+				Members       []string `json:"members"`
+				LastRefreshed string   `json:"lastRefreshed"`
+			} `json:"refreshed"`
+		}
+		if err := json.Unmarshal(resp, &result); err != nil {
+			log.Fatalf("Failed to decode response: %v", err)
+		}
+
+		switch outputMode {
+		case "json":
+			jw, _ := json.Marshal(result)
+			fmt.Println(string(jw))
+		default:
+			if len(result.Refreshed) == 0 {
+				fmt.Println("No cohorts to refresh.")
+				return
+			}
+			for _, r := range result.Refreshed {
+				fmt.Printf("%-20s  %d sprout(s)  refreshed %s\n", r.Name, len(r.Members), r.LastRefreshed)
+				for _, m := range r.Members {
+					fmt.Printf("  %s\n", m)
+				}
+			}
+		}
+	},
+}
+
 func init() {
 	cmdCohorts.AddCommand(cmdCohortsList)
 	cmdCohorts.AddCommand(cmdCohortsResolve)
+	cmdCohorts.AddCommand(cmdCohortsRefresh)
 	rootCmd.AddCommand(cmdCohorts)
 }
