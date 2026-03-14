@@ -37,7 +37,7 @@ func Auth(inner http.Handler, name string) http.Handler {
 
 		// Development bypass — no auth required.
 		if auth.DangerouslyAllowRoot() {
-			log.Tracef("dangerously_allow_root: bypassing auth for %s", name)
+			log.Warnf("dangerously_allow_root: bypassing auth for %s %s", r.Method, name)
 			inner.ServeHTTP(w, r)
 			return
 		}

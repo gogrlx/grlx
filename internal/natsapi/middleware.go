@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 
 	intauth "github.com/gogrlx/grlx/v2/internal/auth"
+	log "github.com/gogrlx/grlx/v2/internal/log"
 	"github.com/gogrlx/grlx/v2/internal/rbac"
 )
 
@@ -80,6 +81,7 @@ func authMiddleware(method string, next handler) handler {
 	return func(params json.RawMessage) (any, error) {
 		// dangerously_allow_root bypasses all auth checks.
 		if intauth.DangerouslyAllowRoot() {
+			log.Warnf("dangerously_allow_root: bypassing auth for NATS method %s", method)
 			return next(params)
 		}
 
