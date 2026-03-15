@@ -403,6 +403,53 @@ func TestHandleOpenAPIViaMux(t *testing.T) {
 	}
 }
 
+func TestHandleCohortGetProxyMissingName(t *testing.T) {
+	handler := HandleCohortGetProxy("cohorts.get")
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/cohorts/", nil)
+	rec := httptest.NewRecorder()
+
+	handler(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected status 400, got %d", rec.Code)
+	}
+
+	var body map[string]string
+	if err := json.NewDecoder(rec.Body).Decode(&body); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if body["error"] != "missing cohort name" {
+		t.Fatalf("expected 'missing cohort name' error, got %q", body["error"])
+	}
+}
+
+func TestMuxCohortGetRoute(t *testing.T) {
+	mux := NewMux()
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/cohorts/webservers", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	// No NATS connection, should get 502
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("cohort get: expected 502, got %d", rec.Code)
+	}
+}
+
+func TestMuxAuthExplainRoute(t *testing.T) {
+	mux := NewMux()
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/auth/explain", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	// No NATS connection, should get 502
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("auth explain: expected 502, got %d", rec.Code)
+	}
+}
+
 func TestMuxCohortsResolveRoute(t *testing.T) {
 	mux := NewMux()
 

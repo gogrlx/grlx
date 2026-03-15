@@ -344,6 +344,34 @@ paths:
         "502":
           $ref: "#/components/responses/NATSError"
 
+  /api/v1/cohorts/{name}:
+    get:
+      operationId: getCohort
+      summary: Get cohort details
+      description: |
+        Returns the full definition and resolved membership of a named cohort,
+        including type, membership rules, and currently resolved sprout IDs.
+      tags:
+        - cohorts
+      parameters:
+        - name: name
+          in: path
+          required: true
+          description: Cohort name
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Cohort detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NATSResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "502":
+          $ref: "#/components/responses/NATSError"
+
   /api/v1/keys:
     get:
       operationId: listKeys
@@ -493,6 +521,26 @@ paths:
       responses:
         "200":
           description: User list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NATSResponse"
+        "502":
+          $ref: "#/components/responses/NATSError"
+
+  /api/v1/auth/explain:
+    get:
+      operationId: explainAuth
+      summary: Explain current user permissions
+      description: |
+        Returns the RBAC permissions breakdown for the currently authenticated
+        user, including role name, admin status, allowed actions, and any
+        policy warnings.
+      tags:
+        - auth
+      responses:
+        "200":
+          description: Permission explanation
           content:
             application/json:
               schema:

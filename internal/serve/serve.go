@@ -49,6 +49,7 @@ func NewMux() *http.ServeMux {
 
 	// Cohorts
 	mux.HandleFunc("GET /api/v1/cohorts", HandleNATSProxy("cohorts.list"))
+	mux.HandleFunc("GET /api/v1/cohorts/{name}", HandleCohortGetProxy("cohorts.get"))
 	mux.HandleFunc("POST /api/v1/cohorts/resolve", HandleNATSProxyWithBody("cohorts.resolve"))
 	mux.HandleFunc("POST /api/v1/cohorts/refresh", HandleNATSProxyWithBody("cohorts.refresh"))
 
@@ -63,6 +64,7 @@ func NewMux() *http.ServeMux {
 	// Auth
 	mux.HandleFunc("GET /api/v1/auth/whoami", HandleNATSProxy("auth.whoami"))
 	mux.HandleFunc("GET /api/v1/auth/users", HandleNATSProxy("auth.users"))
+	mux.HandleFunc("GET /api/v1/auth/explain", HandleNATSProxy("auth.explain"))
 
 	// OpenAPI spec
 	mux.HandleFunc("GET /api/v1/openapi.yaml", HandleOpenAPI)
@@ -332,6 +334,28 @@ func HandlePropsSetProxy(method string) http.HandlerFunc {
 		}
 
 		params := map[string]string{"sprout_id": id, "name": key, "value": value}
+		result, err := client.NatsRequest(method, params)
+		if err != nil {
+			WriteJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(result)
+	}
+}
+
+// HandleCohortGetProxy returns a handler that forwards a cohort get request
+// to a NATS subject. It maps the path parameter {name} to the "name" field
+// expected by the cohorts.get handler.
+func HandleCohortGetProxy(method string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		name := r.PathValue("name")
+		if name == "" {
+			WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "missing cohort name"})
+			return
+		}
+		params := map[string]string{"name": name}
 		result, err := client.NatsRequest(method, params)
 		if err != nil {
 			WriteJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})
