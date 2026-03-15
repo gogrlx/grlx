@@ -21,6 +21,7 @@ var natsActionMap = map[string]rbac.Action{
 	"props.getall":    rbac.ActionView,
 	"props.get":       rbac.ActionView,
 	"cohorts.list":    rbac.ActionView,
+	"cohorts.get":     rbac.ActionView,
 	"cohorts.resolve": rbac.ActionView,
 	"cohorts.refresh": rbac.ActionView,
 
