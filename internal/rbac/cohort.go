@@ -38,12 +38,18 @@ const (
 	OperatorEXCEPT Operator = "EXCEPT"
 )
 
+// MaxNestingDepth limits how deep compound cohort resolution can recurse.
+// This prevents runaway resolution in deeply nested configurations.
+const MaxNestingDepth = 16
+
 var (
 	ErrCohortNotFound    = errors.New("cohort not found")
 	ErrCircularReference = errors.New("circular cohort reference detected")
+	ErrMaxDepthExceeded  = errors.New("maximum cohort nesting depth exceeded")
 	ErrInvalidCohort     = errors.New("invalid cohort definition")
 	ErrInvalidOperator   = errors.New("invalid compound operator")
 	ErrMissingOperands   = errors.New("compound cohort requires at least two operands")
+	ErrSelfReference     = errors.New("cohort references itself")
 )
 
 // DynamicMatch describes a property-based membership rule.
@@ -139,10 +145,18 @@ func NewRegistry() *Registry {
 }
 
 // Register adds a cohort to the registry, replacing any existing cohort
-// with the same name. It validates the cohort before registration.
+// with the same name. It validates the cohort before registration and
+// checks for direct self-references.
 func (r *Registry) Register(c *Cohort) error {
 	if err := c.Validate(); err != nil {
 		return err
+	}
+	if c.Type == CohortTypeCompound {
+		for _, op := range c.Compound.Operands {
+			if op == c.Name {
+				return fmt.Errorf("%w: cohort %q lists itself as an operand", ErrSelfReference, c.Name)
+			}
+		}
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -150,6 +164,65 @@ func (r *Registry) Register(c *Cohort) error {
 	// Invalidate cache for this cohort since definition changed.
 	delete(r.cache, c.Name)
 	return nil
+}
+
+// ValidateReferences checks that all compound cohort operands reference
+// cohorts that exist in the registry, and that no reference chains exceed
+// MaxNestingDepth. Call after all cohorts are registered.
+func (r *Registry) ValidateReferences() error {
+	for name, c := range r.cohorts {
+		if c.Type != CohortTypeCompound {
+			continue
+		}
+		for _, op := range c.Compound.Operands {
+			if _, ok := r.cohorts[op]; !ok {
+				return fmt.Errorf("%w: cohort %q references unknown operand %q", ErrCohortNotFound, name, op)
+			}
+		}
+	}
+	// Check depth of every compound cohort.
+	for name, c := range r.cohorts {
+		if c.Type != CohortTypeCompound {
+			continue
+		}
+		depth, err := r.computeDepth(name, make(map[string]bool))
+		if err != nil {
+			return err
+		}
+		if depth > MaxNestingDepth {
+			return fmt.Errorf("%w: cohort %q has depth %d", ErrMaxDepthExceeded, name, depth)
+		}
+	}
+	return nil
+}
+
+// computeDepth returns the maximum nesting depth for a cohort.
+// Static and dynamic cohorts have depth 0. Compound cohorts have
+// 1 + max(operand depths).
+func (r *Registry) computeDepth(name string, visited map[string]bool) (int, error) {
+	if visited[name] {
+		return 0, fmt.Errorf("%w: %q", ErrCircularReference, name)
+	}
+	c, ok := r.cohorts[name]
+	if !ok {
+		return 0, fmt.Errorf("%w: %q", ErrCohortNotFound, name)
+	}
+	if c.Type != CohortTypeCompound {
+		return 0, nil
+	}
+	visited[name] = true
+	maxChild := 0
+	for _, op := range c.Compound.Operands {
+		d, err := r.computeDepth(op, visited)
+		if err != nil {
+			return 0, err
+		}
+		if d > maxChild {
+			maxChild = d
+		}
+	}
+	delete(visited, name)
+	return 1 + maxChild, nil
 }
 
 // Get returns a cohort by name.
@@ -243,13 +316,17 @@ func (r *Registry) RefreshAll(allSproutIDs []string) ([]RefreshResult, error) {
 
 // Resolve evaluates a named cohort and returns the set of sprout IDs
 // that belong to it. allSproutIDs must contain every known sprout ID
-// (needed to evaluate dynamic cohorts). It detects circular references.
+// (needed to evaluate dynamic cohorts). It detects circular references
+// and enforces MaxNestingDepth.
 func (r *Registry) Resolve(name string, allSproutIDs []string) (map[string]bool, error) {
 	visited := make(map[string]bool)
-	return r.resolve(name, allSproutIDs, visited)
+	return r.resolve(name, allSproutIDs, visited, 0)
 }
 
-func (r *Registry) resolve(name string, allSproutIDs []string, visited map[string]bool) (map[string]bool, error) {
+func (r *Registry) resolve(name string, allSproutIDs []string, visited map[string]bool, depth int) (map[string]bool, error) {
+	if depth > MaxNestingDepth {
+		return nil, fmt.Errorf("%w: resolving %q at depth %d", ErrMaxDepthExceeded, name, depth)
+	}
 	if visited[name] {
 		return nil, fmt.Errorf("%w: %q", ErrCircularReference, name)
 	}
@@ -266,7 +343,7 @@ func (r *Registry) resolve(name string, allSproutIDs []string, visited map[strin
 	case CohortTypeDynamic:
 		return resolveDynamic(c, allSproutIDs), nil
 	case CohortTypeCompound:
-		return r.resolveCompound(c, allSproutIDs, visited)
+		return r.resolveCompound(c, allSproutIDs, visited, depth)
 	default:
 		return nil, fmt.Errorf("%w: unknown type %q", ErrInvalidCohort, c.Type)
 	}
@@ -310,7 +387,7 @@ func matchesPropValue(actual, expected string) bool {
 	return actual == expected
 }
 
-func (r *Registry) resolveCompound(c *Cohort, allSproutIDs []string, visited map[string]bool) (map[string]bool, error) {
+func (r *Registry) resolveCompound(c *Cohort, allSproutIDs []string, visited map[string]bool, depth int) (map[string]bool, error) {
 	if len(c.Compound.Operands) < 2 {
 		return nil, fmt.Errorf("%w: cohort %q", ErrMissingOperands, c.Name)
 	}
@@ -318,13 +395,13 @@ func (r *Registry) resolveCompound(c *Cohort, allSproutIDs []string, visited map
 	// Resolve first operand.
 	// Copy visited map for each operand to allow shared references (but
 	// still detect direct cycles through our own name).
-	result, err := r.resolve(c.Compound.Operands[0], allSproutIDs, copyVisited(visited))
+	result, err := r.resolve(c.Compound.Operands[0], allSproutIDs, copyVisited(visited), depth+1)
 	if err != nil {
 		return nil, fmt.Errorf("resolving operand %q of cohort %q: %w", c.Compound.Operands[0], c.Name, err)
 	}
 
 	for _, operandName := range c.Compound.Operands[1:] {
-		operandSet, err := r.resolve(operandName, allSproutIDs, copyVisited(visited))
+		operandSet, err := r.resolve(operandName, allSproutIDs, copyVisited(visited), depth+1)
 		if err != nil {
 			return nil, fmt.Errorf("resolving operand %q of cohort %q: %w", operandName, c.Name, err)
 		}
