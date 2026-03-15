@@ -25,6 +25,7 @@ var natsActionMap = map[string]rbac.Action{
 	// Write: scoped
 	"cook":         rbac.ActionCook,
 	"cmd.run":      rbac.ActionCmd,
+	"shell.start":  rbac.ActionShell,
 	"test.ping":    rbac.ActionTest,
 	"props.set":    rbac.ActionProps,
 	"props.delete": rbac.ActionProps,

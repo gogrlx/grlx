@@ -25,6 +25,7 @@ const (
 	ActionView     Action = "view"      // read sprouts, jobs, props, cohorts, logs
 	ActionCook     Action = "cook"      // apply recipes
 	ActionCmd      Action = "cmd"       // run arbitrary commands
+	ActionShell    Action = "shell"     // interactive shell sessions
 	ActionTest     Action = "test"      // test ping
 	ActionProps    Action = "props"     // read/write props
 	ActionJobAdmin Action = "job_admin" // cancel jobs
@@ -38,7 +39,7 @@ const (
 func AllActions() []Action {
 	return []Action{
 		ActionAdmin,
-		ActionView, ActionCook, ActionCmd, ActionTest,
+		ActionView, ActionCook, ActionCmd, ActionShell, ActionTest,
 		ActionProps, ActionJobAdmin,
 		ActionPKI, ActionUserRead,
 	}
@@ -103,6 +104,7 @@ var routeActions = map[string]Action{
 	"TestPing":      ActionTest,
 	"Cook":          ActionCook,
 	"CmdRun":        ActionCmd,
+	"ShellStart":    ActionShell,
 	"ResolveCohort": ActionView,
 	"SetProp":       ActionProps,
 	"DeleteProp":    ActionProps,
