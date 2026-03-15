@@ -40,6 +40,8 @@ var readOnlyActions = map[string]bool{
 	"auth.whoami":    true,
 	"auth.users":     true,
 	"pki.list":       true,
+	"recipes.list":   true,
+	"recipes.get":    true,
 }
 
 // IsReadOnly returns true if the action is read-only.

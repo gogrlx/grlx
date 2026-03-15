@@ -78,6 +78,10 @@ var routes = map[string]handler{
 
 	// Shell (interactive SSH-like sessions)
 	"shell.start": handleShellStart,
+
+	// Recipes
+	"recipes.list": handleRecipesList,
+	"recipes.get":  handleRecipesGet,
 }
 
 // Subscribe registers all NATS API handlers on the given connection.

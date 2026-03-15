@@ -66,6 +66,10 @@ func NewMux() *http.ServeMux {
 	// OpenAPI spec
 	mux.HandleFunc("GET /api/v1/openapi.yaml", HandleOpenAPI)
 
+	// Recipes
+	mux.HandleFunc("GET /api/v1/recipes", HandleNATSProxy("recipes.list"))
+	mux.HandleFunc("GET /api/v1/recipes/{id...}", HandleRecipeGetProxy("recipes.get"))
+
 	// Serve embedded web UI (SPA with index.html fallback)
 	mux.Handle("GET /", UIHandler())
 
@@ -282,6 +286,28 @@ func HandlePropsSetProxy(method string) http.HandlerFunc {
 		}
 
 		params := map[string]string{"sprout_id": id, "name": key, "value": value}
+		result, err := client.NatsRequest(method, params)
+		if err != nil {
+			WriteJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(result)
+	}
+}
+
+// HandleRecipeGetProxy returns a handler that forwards a recipe get request
+// to a NATS subject. It uses a wildcard path parameter because recipe names
+// contain dots (e.g., "webserver.nginx").
+func HandleRecipeGetProxy(method string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		name := r.PathValue("id")
+		if name == "" {
+			WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "missing recipe name"})
+			return
+		}
+		params := map[string]string{"name": name}
 		result, err := client.NatsRequest(method, params)
 		if err != nil {
 			WriteJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})
