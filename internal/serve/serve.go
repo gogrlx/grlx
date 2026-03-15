@@ -64,6 +64,9 @@ func NewMux() *http.ServeMux {
 	mux.HandleFunc("GET /api/v1/auth/whoami", HandleNATSProxy("auth.whoami"))
 	mux.HandleFunc("GET /api/v1/auth/users", HandleNATSProxy("auth.users"))
 
+	// OpenAPI spec
+	mux.HandleFunc("GET /api/v1/openapi.yaml", HandleOpenAPI)
+
 	// Serve embedded web UI (SPA with index.html fallback)
 	mux.Handle("GET /", UIHandler())
 
