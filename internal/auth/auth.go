@@ -29,9 +29,17 @@ var (
 
 // LoadPolicy reads roles, users, and cohorts from the farmer config.
 // It must be called during farmer startup before serving requests.
+// Returns an error if the config contains duplicate pubkey assignments
+// (same pubkey under multiple roles).
 func LoadPolicy() error {
 	policyMu.Lock()
 	defer policyMu.Unlock()
+
+	// Validate pubkey uniqueness before loading — reject configs where
+	// the same key appears under multiple roles.
+	if err := rbac.ValidateUserUniqueness(); err != nil {
+		return err
+	}
 
 	var err error
 	roleStore, err = rbac.LoadRolesFromConfig()

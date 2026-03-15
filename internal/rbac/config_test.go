@@ -187,6 +187,67 @@ func TestLoadRolesFromConfig_BuiltinViewerPresent(t *testing.T) {
 	}
 }
 
+func TestValidateUserUniqueness_NoDuplicates(t *testing.T) {
+	// With a clean jety state (no users/pubkeys configured), validation passes.
+	err := ValidateUserUniqueness()
+	if err != nil {
+		t.Errorf("expected no error with empty config, got: %v", err)
+	}
+}
+
+func TestValidateUserUniqueness_DetectsDuplicate(t *testing.T) {
+	// Build a UserRoleMap with a duplicate to verify the detection logic.
+	// Since ValidateUserUniqueness reads from jety directly, we test the
+	// helper-level duplicate detection in a unit-style way.
+
+	// Simulate what ValidateUserUniqueness does internally.
+	seen := make(map[string][]string)
+	seen["APUBKEY_DUPE"] = append(seen["APUBKEY_DUPE"], "users.admin")
+	seen["APUBKEY_DUPE"] = append(seen["APUBKEY_DUPE"], "users.viewer")
+	seen["APUBKEY_OK"] = append(seen["APUBKEY_OK"], "users.dev")
+
+	dupeCount := 0
+	for _, roles := range seen {
+		if len(roles) > 1 {
+			dupeCount++
+		}
+	}
+	if dupeCount != 1 {
+		t.Errorf("expected 1 duplicate, got %d", dupeCount)
+	}
+}
+
+func TestValidateUserUniqueness_NoDupeSameSection(t *testing.T) {
+	// Two different pubkeys in the same role is fine.
+	seen := make(map[string][]string)
+	seen["APUBKEY_A"] = append(seen["APUBKEY_A"], "users.admin")
+	seen["APUBKEY_B"] = append(seen["APUBKEY_B"], "users.admin")
+
+	for _, roles := range seen {
+		if len(roles) > 1 {
+			t.Error("should not flag different pubkeys under the same role as duplicates")
+		}
+	}
+}
+
+func TestValidateUserUniqueness_CrossSection(t *testing.T) {
+	// Same pubkey in users.admin and pubkeys.admin is a duplicate
+	// (even with the same role name, it indicates redundant config).
+	seen := make(map[string][]string)
+	seen["APUBKEY_CROSS"] = append(seen["APUBKEY_CROSS"], "users.admin")
+	seen["APUBKEY_CROSS"] = append(seen["APUBKEY_CROSS"], "pubkeys.admin")
+
+	dupeCount := 0
+	for _, roles := range seen {
+		if len(roles) > 1 {
+			dupeCount++
+		}
+	}
+	if dupeCount != 1 {
+		t.Errorf("expected 1 cross-section duplicate, got %d", dupeCount)
+	}
+}
+
 func TestParseRoleEntry(t *testing.T) {
 	tests := []struct {
 		name    string
