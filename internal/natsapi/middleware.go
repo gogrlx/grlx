@@ -48,6 +48,10 @@ var natsActionMap = map[string]rbac.Action{
 	// Recipes (read-only)
 	"recipes.list": rbac.ActionView,
 	"recipes.get":  rbac.ActionView,
+
+	// Audit
+	"audit.dates": rbac.ActionAdmin,
+	"audit.query": rbac.ActionAdmin,
 }
 
 // publicMethods are accessible without a token.

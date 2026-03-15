@@ -82,6 +82,10 @@ var routes = map[string]handler{
 	// Recipes
 	"recipes.list": handleRecipesList,
 	"recipes.get":  handleRecipesGet,
+
+	// Audit
+	"audit.dates": handleAuditList,
+	"audit.query": handleAuditQuery,
 }
 
 // Subscribe registers all NATS API handlers on the given connection.
