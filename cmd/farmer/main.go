@@ -55,6 +55,7 @@ func main() {
 	loadCohortRegistry()
 	createConfigRoot()
 	initAuditLogger()
+	loadAuthPolicy()
 	pki.SetupPKIFarmer()
 	certs.GenCert()
 	certs.GenNKey(true)
@@ -85,6 +86,20 @@ func initAuditLogger() {
 	audit.SetGlobal(logger)
 	audit.SetIdentityResolver(auth.WhoAmI)
 	log.Infof("Audit logging enabled: %s", auditDir)
+}
+
+func loadAuthPolicy() {
+	if auth.DangerouslyAllowRoot() {
+		log.Warn("WARNING: dangerously_allow_root is enabled — ALL auth checks are bypassed. Do not use in production!")
+	}
+
+	if err := auth.LoadPolicy(); err != nil {
+		log.Errorf("Failed to load auth policy: %v", err)
+	} else {
+		roles := auth.ListRoles()
+		users := auth.ListAllUsers()
+		log.Infof("Auth policy loaded: %d role(s), %d user(s)", len(roles), len(users))
+	}
 }
 
 func loadCohortRegistry() {
@@ -187,6 +202,7 @@ func handleSIGHUP() {
 		props.ClearStaticProps()
 		props.LoadStaticProps(config.StaticProps())
 		loadCohortRegistry()
+		loadAuthPolicy()
 		StartAPIServer()
 		log.Info("Servers reloaded successfully")
 	}
