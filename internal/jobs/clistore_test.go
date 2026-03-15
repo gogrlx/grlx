@@ -191,7 +191,7 @@ func TestCLIStore_ListJobs(t *testing.T) {
 	}
 
 	// List all.
-	all, err := store.ListJobs(0, "")
+	all, err := store.ListJobs(0, "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -200,7 +200,7 @@ func TestCLIStore_ListJobs(t *testing.T) {
 	}
 
 	// Filter by user.
-	userA, err := store.ListJobs(0, "USER_A")
+	userA, err := store.ListJobs(0, "USER_A", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -208,7 +208,7 @@ func TestCLIStore_ListJobs(t *testing.T) {
 		t.Errorf("expected 2 jobs for USER_A, got %d", len(userA))
 	}
 
-	userB, err := store.ListJobs(0, "USER_B")
+	userB, err := store.ListJobs(0, "USER_B", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -217,12 +217,47 @@ func TestCLIStore_ListJobs(t *testing.T) {
 	}
 
 	// Test limit.
-	limited, err := store.ListJobs(1, "")
+	limited, err := store.ListJobs(1, "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(limited) != 1 {
 		t.Errorf("expected 1 job with limit, got %d", len(limited))
+	}
+
+	// Filter by sprout.
+	sprout1, err := store.ListJobs(0, "", "sprout-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(sprout1) != 2 {
+		t.Errorf("expected 2 jobs for sprout-1, got %d", len(sprout1))
+	}
+
+	sprout2, err := store.ListJobs(0, "", "sprout-2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(sprout2) != 1 {
+		t.Errorf("expected 1 job for sprout-2, got %d", len(sprout2))
+	}
+
+	// Filter by both user and sprout.
+	userASprout1, err := store.ListJobs(0, "USER_A", "sprout-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(userASprout1) != 1 {
+		t.Errorf("expected 1 job for USER_A on sprout-1, got %d", len(userASprout1))
+	}
+
+	// Non-existent sprout returns empty.
+	none, err := store.ListJobs(0, "", "sprout-nonexistent")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(none) != 0 {
+		t.Errorf("expected 0 jobs for nonexistent sprout, got %d", len(none))
 	}
 }
 

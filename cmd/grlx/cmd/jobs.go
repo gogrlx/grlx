@@ -34,7 +34,8 @@ var cmdJobsList = &cobra.Command{
 	Short: "List recent jobs, optionally filtered by sprout",
 	Long: `List recent jobs. By default queries the farmer.
 Use --local to list jobs from local CLI-side storage.
-Use --user to filter local jobs by the current user's key (requires --local).`,
+Use --user to filter local jobs by the current user's key (requires --local).
+When using --local, an optional sproutID argument filters jobs for that sprout.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		var summaries []jobs.JobSummary
 		var err error
@@ -88,10 +89,12 @@ func listLocalJobs(args []string) ([]jobs.JobSummary, error) {
 		userKey = key
 	}
 
-	// TODO: sprout filtering for local store can be added later.
-	_ = args
+	var sproutFilter string
+	if len(args) > 0 {
+		sproutFilter = args[0]
+	}
 
-	return store.ListJobs(jobsLimit, userKey)
+	return store.ListJobs(jobsLimit, userKey, sproutFilter)
 }
 
 var cmdJobsShow = &cobra.Command{

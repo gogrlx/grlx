@@ -187,8 +187,9 @@ func (s *CLIStore) GetJob(jid string) (*JobSummary, *CLIJobMeta, error) {
 
 // ListJobs returns all locally stored job summaries, sorted by start time
 // (most recent first). If userKey is non-empty, only jobs initiated by
-// that user are returned.
-func (s *CLIStore) ListJobs(limit int, userKey string) ([]JobSummary, error) {
+// that user are returned. If sproutFilter is non-empty, only jobs for
+// that sprout are returned.
+func (s *CLIStore) ListJobs(limit int, userKey string, sproutFilter string) ([]JobSummary, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -199,6 +200,9 @@ func (s *CLIStore) ListJobs(limit int, userKey string) ([]JobSummary, error) {
 
 	var allSummaries []JobSummary
 	for _, sproutID := range sprouts {
+		if sproutFilter != "" && sproutID != sproutFilter {
+			continue
+		}
 		sproutDir := filepath.Join(s.logDir, sproutID)
 		entries, readErr := os.ReadDir(sproutDir)
 		if readErr != nil {
