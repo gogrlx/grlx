@@ -33,17 +33,16 @@ func NewMux() *http.ServeMux {
 
 	// Jobs
 	mux.HandleFunc("GET /api/v1/jobs", HandleNATSProxy("jobs.list"))
-	mux.HandleFunc("GET /api/v1/jobs/{jid}", HandleNATSProxyWithID("jobs.get"))
-	mux.HandleFunc("GET /api/v1/jobs/sprout/{id}", HandleNATSProxyWithID("jobs.forsprout"))
-	mux.HandleFunc("DELETE /api/v1/jobs/{jid}", HandleNATSProxyWithID("jobs.cancel"))
+	mux.HandleFunc("GET /api/v1/jobs/{jid}", HandleJobProxy("jobs.get"))
+	mux.HandleFunc("GET /api/v1/jobs/sprout/{id}", HandleJobsForSproutProxy("jobs.forsprout"))
+	mux.HandleFunc("DELETE /api/v1/jobs/{jid}", HandleJobProxy("jobs.cancel"))
 
 	// Cook
 	mux.HandleFunc("POST /api/v1/cook", HandleNATSProxyWithBody("cook"))
 
 	// Props
-	mux.HandleFunc("GET /api/v1/props", HandleNATSProxy("props.list"))
-	mux.HandleFunc("GET /api/v1/props/{id}", HandleNATSProxyWithID("props.get"))
-	mux.HandleFunc("GET /api/v1/props/{id}/{key}", HandlePropsKeyProxy("props.getkey"))
+	mux.HandleFunc("GET /api/v1/props/{id}", HandlePropsAllProxy("props.getall"))
+	mux.HandleFunc("GET /api/v1/props/{id}/{key}", HandlePropsKeyProxy("props.get"))
 	mux.HandleFunc("PUT /api/v1/props/{id}/{key}", HandlePropsSetProxy("props.set"))
 	mux.HandleFunc("DELETE /api/v1/props/{id}/{key}", HandlePropsKeyProxy("props.delete"))
 
@@ -159,8 +158,73 @@ func HandleNATSProxyWithBody(method string) http.HandlerFunc {
 	}
 }
 
+// HandleJobProxy returns a handler that forwards a job request to a NATS
+// subject with the JID from the path.
+func HandleJobProxy(method string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		jid := r.PathValue("jid")
+		if jid == "" {
+			WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "missing jid parameter"})
+			return
+		}
+		params := map[string]string{"jid": jid}
+		result, err := client.NatsRequest(method, params)
+		if err != nil {
+			WriteJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(result)
+	}
+}
+
+// HandleJobsForSproutProxy returns a handler that lists jobs for a specific
+// sprout, mapping the path {id} to the sprout_id field expected by the NATS
+// handler.
+func HandleJobsForSproutProxy(method string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+		if id == "" {
+			WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "missing sprout id parameter"})
+			return
+		}
+		params := map[string]string{"sprout_id": id}
+		result, err := client.NatsRequest(method, params)
+		if err != nil {
+			WriteJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(result)
+	}
+}
+
+// HandlePropsAllProxy returns a handler that gets all properties for a sprout,
+// mapping the path {id} to the sprout_id field expected by the NATS handler.
+func HandlePropsAllProxy(method string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+		if id == "" {
+			WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "missing sprout id parameter"})
+			return
+		}
+		params := map[string]string{"sprout_id": id}
+		result, err := client.NatsRequest(method, params)
+		if err != nil {
+			WriteJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(result)
+	}
+}
+
 // HandlePropsKeyProxy returns a handler that forwards a props request keyed
-// by both sprout ID and property key to a NATS subject.
+// by both sprout ID and property key to a NATS subject. Maps path parameters
+// to the sprout_id and name fields expected by the NATS handler.
 func HandlePropsKeyProxy(method string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("id")
@@ -169,7 +233,7 @@ func HandlePropsKeyProxy(method string) http.HandlerFunc {
 			WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "missing id or key parameter"})
 			return
 		}
-		params := map[string]string{"id": id, "key": key}
+		params := map[string]string{"sprout_id": id, "name": key}
 		result, err := client.NatsRequest(method, params)
 		if err != nil {
 			WriteJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})
@@ -183,6 +247,8 @@ func HandlePropsKeyProxy(method string) http.HandlerFunc {
 
 // HandlePropsSetProxy returns a handler that forwards a props set request
 // with the sprout ID, key, and the request body value to a NATS subject.
+// Maps path parameters to sprout_id and name fields expected by the NATS
+// handler. Accepts body as either {"value": "..."} or a bare JSON string.
 func HandlePropsSetProxy(method string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("id")
@@ -199,15 +265,23 @@ func HandlePropsSetProxy(method string) http.HandlerFunc {
 		}
 		defer r.Body.Close()
 
-		var value any
+		var value string
 		if len(body) > 0 {
-			if err := json.Unmarshal(body, &value); err != nil {
-				WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid JSON body"})
-				return
+			// Try to parse as {"value": "..."} first (web UI format).
+			var wrapper struct {
+				Value string `json:"value"`
+			}
+			if err := json.Unmarshal(body, &wrapper); err == nil && wrapper.Value != "" {
+				value = wrapper.Value
+			} else {
+				// Fall back to bare JSON string or raw text.
+				if err := json.Unmarshal(body, &value); err != nil {
+					value = string(body)
+				}
 			}
 		}
 
-		params := map[string]any{"id": id, "key": key, "value": value}
+		params := map[string]string{"sprout_id": id, "name": key, "value": value}
 		result, err := client.NatsRequest(method, params)
 		if err != nil {
 			WriteJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})

@@ -199,7 +199,7 @@ func TestHandleNATSProxyWithBodyEmptyBody(t *testing.T) {
 }
 
 func TestHandlePropsKeyProxyMissingParams(t *testing.T) {
-	handler := HandlePropsKeyProxy("props.getkey")
+	handler := HandlePropsKeyProxy("props.get")
 
 	// Missing both id and key (handler expects path values from mux)
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/props//", nil)
@@ -213,18 +213,11 @@ func TestHandlePropsKeyProxyMissingParams(t *testing.T) {
 }
 
 func TestHandlePropsKeyProxyNoConnection(t *testing.T) {
-	// Use the mux to get proper path values
 	mux := NewMux()
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/props/sprout-1/hostname", nil)
+	// DELETE only exists for the key variant
+	req := httptest.NewRequest(http.MethodDelete, "/api/v1/props/sprout-1/hostname", nil)
 	rec := httptest.NewRecorder()
-
-	mux.ServeHTTP(rec, req)
-
-	// The existing GET /api/v1/props/{id} route will match before {id}/{key},
-	// so use DELETE which only exists for the key variant
-	req = httptest.NewRequest(http.MethodDelete, "/api/v1/props/sprout-1/hostname", nil)
-	rec = httptest.NewRecorder()
 
 	mux.ServeHTTP(rec, req)
 
@@ -233,16 +226,56 @@ func TestHandlePropsKeyProxyNoConnection(t *testing.T) {
 	}
 }
 
-func TestHandlePropsSetProxyInvalidJSON(t *testing.T) {
-	handler := HandlePropsSetProxy("props.set")
+func TestHandlePropsAllProxyMissingID(t *testing.T) {
+	handler := HandlePropsAllProxy("props.getall")
 
-	req := httptest.NewRequest(http.MethodPut, "/api/v1/props/sprout-1/key", strings.NewReader("not json"))
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/props/", nil)
 	rec := httptest.NewRecorder()
 
 	handler(rec, req)
 
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("expected status 400, got %d", rec.Code)
+	}
+}
+
+func TestHandleJobProxyMissingJID(t *testing.T) {
+	handler := HandleJobProxy("jobs.get")
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/jobs/", nil)
+	rec := httptest.NewRecorder()
+
+	handler(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected status 400, got %d", rec.Code)
+	}
+}
+
+func TestHandleJobsForSproutProxyMissingID(t *testing.T) {
+	handler := HandleJobsForSproutProxy("jobs.forsprout")
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/jobs/sprout/", nil)
+	rec := httptest.NewRecorder()
+
+	handler(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected status 400, got %d", rec.Code)
+	}
+}
+
+func TestHandlePropsSetProxyNoConnection(t *testing.T) {
+	mux := NewMux()
+
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/props/sprout-1/hostname", strings.NewReader(`"my-host"`))
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	// Should reach NATS and get 502 (no connection)
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("expected status 502, got %d", rec.Code)
 	}
 }
 
