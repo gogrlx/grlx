@@ -8,10 +8,16 @@ import (
 	"strings"
 
 	"github.com/fatih/color"
+	"golang.org/x/term"
 
 	apitypes "github.com/gogrlx/grlx/v2/internal/api/types"
 	"github.com/gogrlx/grlx/v2/internal/pki"
 )
+
+// IsInteractive reports whether stdin is connected to a terminal.
+func IsInteractive() bool {
+	return term.IsTerminal(int(os.Stdin.Fd()))
+}
 
 func UserChoice(first string, second string, options ...string) (string, error) {
 	if len(first) == 0 || len(second) == 0 {
@@ -30,7 +36,7 @@ func UserChoice(first string, second string, options ...string) (string, error) 
 	reader := bufio.NewReader(os.Stdin)
 	input, err := reader.ReadString('\n')
 	if err != nil {
-		panic(err)
+		return "", fmt.Errorf("reading user input: %w", err)
 	}
 	input = strings.TrimSuffix(input, "\n")
 	switch strings.ToLower(input) {
@@ -64,7 +70,7 @@ func UserChoiceWithDefault(def string, second string, options ...string) (string
 	reader := bufio.NewReader(os.Stdin)
 	input, err := reader.ReadString('\n')
 	if err != nil {
-		panic(err)
+		return "", fmt.Errorf("reading user input: %w", err)
 	}
 	input = strings.TrimSuffix(input, "\n")
 	switch strings.ToLower(input) {
@@ -92,7 +98,7 @@ func UserConfirm(first string, second string) (bool, error) {
 	reader := bufio.NewReader(os.Stdin)
 	input, err := reader.ReadString('\n')
 	if err != nil {
-		panic(err)
+		return false, fmt.Errorf("reading user input: %w", err)
 	}
 	input = strings.TrimSuffix(input, "\n")
 	switch strings.ToLower(input) {
@@ -114,7 +120,7 @@ func UserConfirmWithDefault(def bool) (bool, error) {
 	reader := bufio.NewReader(os.Stdin)
 	input, err := reader.ReadString('\n')
 	if err != nil {
-		panic(err)
+		return def, fmt.Errorf("reading user input: %w", err)
 	}
 	input = strings.TrimSuffix(input, "\n")
 	switch strings.ToLower(input) {
