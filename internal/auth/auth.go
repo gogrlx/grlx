@@ -7,6 +7,7 @@ import (
 	"github.com/nats-io/nkeys"
 	"github.com/taigrr/jety"
 
+	"github.com/gogrlx/grlx/v2/internal/log"
 	"github.com/gogrlx/grlx/v2/internal/rbac"
 )
 
@@ -31,6 +32,7 @@ var (
 // It must be called during farmer startup before serving requests.
 // Returns an error if the config contains duplicate pubkey assignments
 // (same pubkey under multiple roles).
+// It validates the policy and logs warnings for misconfigurations.
 func LoadPolicy() error {
 	policyMu.Lock()
 	defer policyMu.Unlock()
@@ -70,7 +72,31 @@ func LoadPolicy() error {
 		}
 	}
 
+	// Validate the assembled policy and log warnings.
+	policy := currentPolicyLocked()
+	warnings := rbac.ValidatePolicy(policy)
+	for _, w := range warnings {
+		log.Warnf("rbac policy: [%s] %s", w.Kind, w.Message)
+	}
+
 	return nil
+}
+
+// currentPolicyLocked returns a Policy snapshot. Must be called with
+// policyMu held (at least read).
+func currentPolicyLocked() *rbac.Policy {
+	return &rbac.Policy{
+		Roles:   roleStore,
+		Users:   userRoleMap,
+		Cohorts: cohortReg,
+	}
+}
+
+// CurrentPolicy returns the current RBAC policy for inspection.
+func CurrentPolicy() *rbac.Policy {
+	policyMu.RLock()
+	defer policyMu.RUnlock()
+	return currentPolicyLocked()
 }
 
 // SetPolicy sets the policy stores directly (for testing).

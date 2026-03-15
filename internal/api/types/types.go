@@ -81,6 +81,21 @@ type UsersListResponse struct {
 	Roles []RoleInfo        `json:"roles"`
 }
 
+// ExplainResponse describes what the authenticated user can do.
+type ExplainResponse struct {
+	Pubkey   string               `json:"pubkey"`
+	RoleName string               `json:"role"`
+	IsAdmin  bool                 `json:"isAdmin"`
+	Actions  []ActionExplain      `json:"actions"`
+	Warnings []rbac.PolicyWarning `json:"warnings,omitempty"`
+}
+
+// ActionExplain describes a single permitted action.
+type ActionExplain struct {
+	Action rbac.Action `json:"action"`
+	Scope  string      `json:"scope"`
+}
+
 var (
 	ErrAPIRouteNotFound = errors.New("API Route not found")
 	ErrInvalidUserInput = errors.New("invalid user input was received")

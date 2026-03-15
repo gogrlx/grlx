@@ -74,8 +74,9 @@ var routes = map[string]handler{
 	"cohorts.refresh": handleCohortsRefresh,
 
 	// Auth
-	"auth.whoami": handleAuthWhoAmI,
-	"auth.users":  handleAuthListUsers,
+	"auth.whoami":  handleAuthWhoAmI,
+	"auth.users":   handleAuthListUsers,
+	"auth.explain": handleAuthExplain,
 
 	// Shell (interactive SSH-like sessions)
 	"shell.start": handleShellStart,

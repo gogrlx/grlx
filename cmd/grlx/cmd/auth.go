@@ -28,6 +28,7 @@ func init() {
 	authCmd.AddCommand(authWhoAmICmd)
 	authCmd.AddCommand(authUsersCmd)
 	authCmd.AddCommand(authRolesCmd)
+	authCmd.AddCommand(authExplainCmd)
 	rootCmd.AddCommand(authCmd)
 }
 
@@ -137,6 +138,51 @@ var authRolesCmd = &cobra.Command{
 					} else {
 						fmt.Printf("  - %s → %s\n", rule.Action, rule.Scope)
 					}
+				}
+			}
+		}
+	},
+}
+
+var authExplainCmd = &cobra.Command{
+	Use:   "explain",
+	Short: "Show what the current user is allowed to do",
+	Long:  "Displays a permission summary including actions, scopes, and any policy warnings for the authenticated user.",
+	Args:  cobra.NoArgs,
+	Run: func(cmd *cobra.Command, _ []string) {
+		result, err := client.ExplainAccess()
+		switch outputMode {
+		case "json":
+			jw, _ := json.Marshal(result)
+			fmt.Println(string(jw))
+			if err != nil {
+				os.Exit(1)
+			}
+		case "":
+			fallthrough
+		case "text":
+			if err != nil {
+				log.Println("Error: " + err.Error())
+				os.Exit(1)
+			}
+			fmt.Printf("Pubkey: %s\nRole:   %s\n", result.Pubkey, result.RoleName)
+			if result.IsAdmin {
+				fmt.Println("Admin:  yes (all actions permitted)")
+			}
+			if len(result.Actions) > 0 {
+				fmt.Println("\nPermissions:")
+				for _, a := range result.Actions {
+					if a.Scope == "" || a.Scope == "*" {
+						fmt.Printf("  %s (all)\n", a.Action)
+					} else {
+						fmt.Printf("  %s → %s\n", a.Action, a.Scope)
+					}
+				}
+			}
+			if len(result.Warnings) > 0 {
+				fmt.Println("\nWarnings:")
+				for _, w := range result.Warnings {
+					fmt.Printf("  [%s] %s\n", w.Kind, w.Message)
 				}
 			}
 		}
