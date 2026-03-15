@@ -61,7 +61,7 @@ func init() {
 		}
 	}
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.config/grlx/grlx)")
-	noFailForCert := false
+	noFailForCert := !util.IsInteractive()
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
 		case "version", "help", "auth", "init":
@@ -75,10 +75,14 @@ func init() {
 		skipTLS = os.Args[1] == "init"
 	}
 	if !pki.RootCACached("grlx") && !skipTLS {
-		fmt.Print("The TLS certificate for this farmer is unknown. Would you like to download and trust it? ")
-		shouldDownload, err := util.UserConfirmWithDefault(true)
-		for err != nil {
+		shouldDownload := true
+		if util.IsInteractive() {
+			fmt.Print("The TLS certificate for this farmer is unknown. Would you like to download and trust it? ")
+			var err error
 			shouldDownload, err = util.UserConfirmWithDefault(true)
+			for err != nil {
+				shouldDownload, err = util.UserConfirmWithDefault(true)
+			}
 		}
 		if !shouldDownload && !noFailForCert {
 			fmt.Println("No certificate, exiting!")
