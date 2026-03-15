@@ -50,6 +50,7 @@ func NewMux() *http.ServeMux {
 	// Cohorts
 	mux.HandleFunc("GET /api/v1/cohorts", HandleNATSProxy("cohorts.list"))
 	mux.HandleFunc("POST /api/v1/cohorts/resolve", HandleNATSProxyWithBody("cohorts.resolve"))
+	mux.HandleFunc("POST /api/v1/cohorts/refresh", HandleNATSProxyWithBody("cohorts.refresh"))
 
 	// Keys (PKI)
 	mux.HandleFunc("GET /api/v1/keys", HandleNATSProxy("pki.list"))

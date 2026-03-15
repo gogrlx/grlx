@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"sort"
 
 	"github.com/gogrlx/grlx/v2/internal/pki"
 	"github.com/gogrlx/grlx/v2/internal/rbac"
@@ -112,4 +113,63 @@ func ResolveCohort(w http.ResponseWriter, r *http.Request) {
 		Name:    req.Name,
 		Sprouts: sprouts,
 	})
+}
+
+// CohortRefreshRequest is the request body for POST /cohorts/refresh.
+type CohortRefreshRequest struct {
+	Name string `json:"name,omitempty"`
+}
+
+// CohortRefreshResponse is the response for POST /cohorts/refresh.
+type CohortRefreshResponse struct {
+	Refreshed []rbac.RefreshResult `json:"refreshed"`
+}
+
+// RefreshCohorts re-evaluates cohort membership against current sprouts.
+// If a name is provided in the body, only that cohort is refreshed.
+// Otherwise all cohorts are refreshed.
+func RefreshCohorts(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	if cohortRegistry == nil {
+		http.Error(w, `{"error":"no cohort registry configured"}`, http.StatusServiceUnavailable)
+		return
+	}
+
+	var req CohortRefreshRequest
+	if r.Body != nil {
+		json.NewDecoder(r.Body).Decode(&req)
+	}
+
+	allKeys := pki.ListNKeysByType()
+	allSproutIDs := make([]string, 0, len(allKeys.Accepted.Sprouts))
+	for _, km := range allKeys.Accepted.Sprouts {
+		allSproutIDs = append(allSproutIDs, km.SproutID)
+	}
+	sort.Strings(allSproutIDs)
+
+	if req.Name != "" {
+		result, err := cohortRegistry.Refresh(req.Name, allSproutIDs)
+		if err != nil {
+			status := http.StatusInternalServerError
+			if errors.Is(err, rbac.ErrCohortNotFound) {
+				status = http.StatusNotFound
+			}
+			w.WriteHeader(status)
+			json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+			return
+		}
+		json.NewEncoder(w).Encode(CohortRefreshResponse{
+			Refreshed: []rbac.RefreshResult{*result},
+		})
+		return
+	}
+
+	results, err := cohortRegistry.RefreshAll(allSproutIDs)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		return
+	}
+	json.NewEncoder(w).Encode(CohortRefreshResponse{Refreshed: results})
 }
