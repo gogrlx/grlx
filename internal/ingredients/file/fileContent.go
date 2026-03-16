@@ -1,9 +1,11 @@
 package file
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -12,289 +14,265 @@ import (
 )
 
 func (f File) content(ctx context.Context, test bool) (cook.Result, error) {
-	// TODO
-	// "text": "[]string",
-	// "makedirs": "bool", "source": "string",
-	// "source_hash": "string", "template": "bool",
-	// "sources": "[]string", "source_hashes": "[]string",
+	// Params: "name", "text", "makedirs", "source", "source_hash",
+	// "template", "sources", "source_hashes", "skip_verify"
 	var notes []fmt.Stringer
-	name := ""
-	makedirs := false
-	source := ""
-	sourceHash := ""
-	text := []string{}
-	template := false
-	sources := []string{}
-	sourceHashes := []string{}
-	skipVerify := false
-	foundSource := false
-	_, _, _, _ = template, sources, sourceHashes, foundSource
-	var ok bool
-	err := f.validate()
+
+	name, ok := f.params["name"].(string)
+	if !ok || name == "" {
+		return cook.Result{
+			Succeeded: false, Failed: true,
+			Changed: false, Notes: notes,
+		}, ingredients.ErrMissingName
+	}
+	name = filepath.Clean(name)
+	if name == "/" {
+		return cook.Result{
+			Succeeded: false, Failed: true,
+			Changed: false, Notes: notes,
+		}, ErrModifyRoot
+	}
+
+	makedirs, _ := f.params["makedirs"].(bool)
+	skipVerify, _ := f.params["skip_verify"].(bool)
+
+	// Ensure parent directory exists.
+	dir := filepath.Dir(name)
+	if _, statErr := os.Stat(dir); os.IsNotExist(statErr) {
+		if !makedirs {
+			return cook.Result{
+				Succeeded: false, Failed: true,
+				Changed: false, Notes: []fmt.Stringer{
+					cook.Snprintf("parent directory `%s` does not exist and makedirs is false", dir),
+				},
+			}, ErrPathNotFound
+		}
+		if test {
+			notes = append(notes, cook.Snprintf("directory `%s` would be created", dir))
+		} else {
+			if err := os.MkdirAll(dir, 0o755); err != nil {
+				return cook.Result{
+					Succeeded: false, Failed: true,
+					Changed: false, Notes: notes,
+				}, err
+			}
+			notes = append(notes, cook.Snprintf("created directory `%s`", dir))
+		}
+	}
+
+	// Gather desired content from text, source, and sources params.
+	var desired bytes.Buffer
+
+	// Collect text content.
+	if text, ok := f.params["text"].(string); ok && text != "" {
+		desired.WriteString(text)
+		if text[len(text)-1] != '\n' {
+			desired.WriteByte('\n')
+		}
+	} else if texti, ok := f.params["text"].([]interface{}); ok {
+		for _, v := range texti {
+			desired.WriteString(fmt.Sprintf("%v\n", v))
+		}
+	}
+
+	// Collect content from single source.
+	sourceNotes, err := f.gatherSource(ctx, &desired, name, skipVerify)
+	notes = append(notes, sourceNotes...)
 	if err != nil {
 		return cook.Result{
 			Succeeded: false, Failed: true,
 			Changed: false, Notes: notes,
 		}, err
 	}
-	{
-		name, ok = f.params["name"].(string)
-		if !ok {
-			return cook.Result{
-				Succeeded: false, Failed: true,
-			}, ingredients.ErrMissingName
-		}
-		name = filepath.Clean(name)
-		if name == "" {
-			return cook.Result{
-				Succeeded: false, Failed: true,
-			}, ingredients.ErrMissingName
-		}
-		if name == "/" {
-			return cook.Result{
-				Succeeded: false, Failed: true,
-			}, ErrModifyRoot
-		}
+
+	// Collect content from multiple sources.
+	sourcesNotes, err := f.gatherSources(ctx, &desired, skipVerify)
+	notes = append(notes, sourcesNotes...)
+	if err != nil {
+		return cook.Result{
+			Succeeded: false, Failed: true,
+			Changed: false, Notes: notes,
+		}, err
 	}
-	{
-		makedirs, _ = f.params["makedirs"].(bool)
-		dir := filepath.Dir(name)
-		_, statErr := os.Stat(dir)
-		if os.IsNotExist(statErr) && makedirs {
-			err := os.MkdirAll(dir, 0o755)
-			if err != nil {
-				return cook.Result{
-					Succeeded: false, Failed: true,
-					Changed: false, Notes: notes,
-				}, err
-			}
-			notes = append(notes, cook.Snprintf("created directory %s", dir))
-		} else if statErr != nil {
+
+	desiredBytes := desired.Bytes()
+
+	// Check if file already has the desired content (idempotency).
+	existing, readErr := os.ReadFile(name)
+	if readErr == nil {
+		if bytes.Equal(existing, desiredBytes) {
 			return cook.Result{
-				Succeeded: false, Failed: true,
+				Succeeded: true, Failed: false,
 				Changed: false, Notes: notes,
-			}, statErr
+			}, nil
 		}
-	}
-	{
-		skipVerify, _ = f.params["skip_verify"].(bool)
-		if skipVerify {
-			_, statErr := os.Stat(name)
-			if statErr == nil {
-				return cook.Result{
-					Succeeded: false, Failed: true,
-					Changed: len(notes) != 0, Notes: notes,
-				}, nil
-			} else if !os.IsNotExist(statErr) {
-				return cook.Result{
-					Succeeded: false, Failed: true,
-					Changed: len(notes) != 0, Notes: notes,
-				}, statErr
-			}
-		}
-	}
-	{
-		source, _ = f.params["source"].(string)
-		sourceHash, _ = f.params["source_hash"].(string)
-		if source != "" && sourceHash == "" && !skipVerify {
-			return cook.Result{
-				Succeeded: false, Failed: true, Notes: notes,
-			}, ErrMissingHash
-		} else if source != "" {
-			cachedName := fmt.Sprintf("%s-source", f.id)
-			file, err := f.Parse(cachedName, "cached", map[string]interface{}{
-				"source": source, "hash": sourceHash,
-				"skip_verify": skipVerify, "name": cachedName,
-			})
-			if err != nil {
-				notes = append(notes, cook.Snprintf("failed to cache source %s", source))
-				return cook.Result{
-					Succeeded: false, Failed: true,
-					Changed: false, Notes: notes,
-				}, err
-			}
-			cacheRes, err := file.Apply(ctx)
-			// Append the cache apply to the notes and append the rest
-			notes = append(notes, cacheRes.Notes...)
-			if err != nil || !cacheRes.Succeeded {
-				return cook.Result{
-					Succeeded: false, Failed: true,
-					Changed: false, Notes: notes,
-				}, errors.Join(err, ErrCacheFailure)
-			}
-			foundSource = true
-		}
-	}
-	{
-		if texts, ok := f.params["text"].(string); ok && texts != "" {
-			text = []string{texts}
-		} else if texti, ok := f.params["text"].([]interface{}); ok {
-			for _, v := range texti {
-				// need to make sure it's a string and not yaml parsing as an int
-				text = append(text, fmt.Sprintf("%v", v))
-			}
-		}
-	}
-	{
-		var srces []interface{}
-		var srcHashes []interface{}
-		var ok bool
-		if srces, ok = f.params["sources"].([]interface{}); ok && len(srces) > 0 {
-			if srcHashes, ok = f.params["source_hashes"].([]interface{}); ok {
-				foundSource = true
-				if skipVerify {
-					// skip_verify with sources but no hashes - nothing to verify
-				} else if len(srces) != len(srcHashes) {
-					notes = append(notes, cook.SimpleNote("sources and source_hashes must be the same length"))
-					return cook.Result{
-						Succeeded: false, Failed: true,
-						Changed: len(notes) != 1, Notes: notes,
-					}, ErrMissingHash
-				}
-			}
-		}
-		for i, src := range srces {
-			if !foundSource {
-				break
-			}
-			var file cook.RecipeCooker
-			var err error
-			if srcStr, ok := src.(string); ok && srcStr != "" {
-				cachedName := fmt.Sprintf("%s-source-%d", f.id, i)
-				if !skipVerify {
-					if srcHash, ok := srcHashes[i].(string); ok && srcHash != "" {
-						cachedName = srcHash
-					} else {
-						notes = append(notes, cook.Snprintf("missing source_hash for source %s", srcStr))
-						return cook.Result{
-							Succeeded: false, Failed: true,
-							Changed: false, Notes: notes,
-						}, ErrMissingHash
-					}
-				}
-				file, err = f.Parse(cachedName, "cached", map[string]interface{}{
-					"source":      srcStr,
-					"skip_verify": skipVerify, "name": cachedName,
-				})
-				if err != nil {
-					notes = append(notes, cook.Snprintf("failed to cache source %s", srcStr))
-					return cook.Result{
-						Succeeded: false, Failed: true,
-						Changed: false, Notes: notes,
-					}, err
-				}
-			} else {
-				notes = append(notes, cook.Snprintf("invalid source %v", src))
-				return cook.Result{
-					Succeeded: false, Failed: true,
-					Changed: false, Notes: notes,
-				}, ErrMissingSource
-			}
-			cacheRes, err := file.Apply(ctx)
-			// Append the cache apply to the notes and append the rest
-			notes = append(notes, cacheRes.Notes...)
-			if err != nil || !cacheRes.Succeeded {
-				notes = append(notes, cook.Snprintf("failed to cache source %s", src))
-				return cook.Result{
-					Succeeded: false, Failed: true,
-					Changed: false, Notes: notes,
-				}, errors.Join(err, ErrCacheFailure)
-			}
-			sourceDest, err := file.(File).dest()
-			if err != nil {
-				f, err := os.Open(sourceDest)
-				if err != nil {
-					notes = append(notes, cook.Snprintf("failed to open cached source %s", sourceDest))
-					return cook.Result{
-						Succeeded: false, Failed: true,
-						Changed: false, Notes: notes,
-					}, err
-				}
-				defer f.Close()
-				//			io.Copy(&content, f)
-			}
-
-		}
-		sourceDest := ""
-		if src, ok := f.params["source"].(string); ok && src != "" {
-			if srcHash, ok := f.params["source_hash"].(string); ok && srcHash != "" {
-				srcFile, err := f.Parse(f.id+"-source", "cached", map[string]interface{}{
-					"source": src, "hash": srcHash,
-					"name": name + "-source",
-				})
-				if err != nil {
-					notes = append(notes, cook.Snprintf("failed to cache source %s", src))
-					return cook.Result{
-						Succeeded: false, Failed: true,
-						Changed: false, Notes: notes,
-					}, err
-				}
-				cacheRes, err := srcFile.Apply(ctx)
-				// Append the cache apply to the notes and append the rest
-				notes = append(notes, cacheRes.Notes...)
-				if err != nil || !cacheRes.Succeeded {
-					notes = append(notes, cook.Snprintf("failed to cache source %s", src))
-					return cook.Result{
-						Succeeded: false, Failed: true,
-						Changed: false, Notes: notes,
-					}, errors.Join(err, ErrCacheFailure)
-				}
-				sourceDest, err = srcFile.(File).dest()
-				if err != nil {
-					notes = append(notes, cook.Snprintf("failed to get cached source destination: %v", err))
-					return cook.Result{Succeeded: false, Failed: true, Changed: false, Notes: notes}, err
-				}
-			} else if skipVerify, ok := f.params["skip_verify"].(bool); ok && skipVerify {
-				srcFile, err := f.Parse(f.id+"-source", "cached", map[string]interface{}{
-					"source":      src,
-					"skip_verify": skipVerify, "name": name + "-source",
-				})
-				if err != nil {
-					notes = append(notes, cook.Snprintf("failed to cache source %s", srcFile))
-					return cook.Result{
-						Succeeded: false, Failed: true,
-						Changed: false, Notes: notes,
-					}, err
-				}
-				cacheRes, err := srcFile.Apply(ctx)
-				// Append the cache apply to the notes and append the rest
-				notes = append(notes, cacheRes.Notes...)
-				if err != nil || !cacheRes.Succeeded {
-					notes = append(notes, cook.Snprintf("failed to cache source %s", srcFile))
-					return cook.Result{
-						Succeeded: false, Failed: true,
-						Changed: false, Notes: notes,
-					}, errors.Join(err, ErrCacheFailure)
-				}
-				sourceDest, err = srcFile.(File).dest()
-				if err != nil {
-					notes = append(notes, cook.Snprintf("failed to get cached source destination: %v", err))
-					return cook.Result{Succeeded: false, Failed: true, Changed: false, Notes: notes}, err
-				}
-			} else {
-				return cook.Result{
-					Succeeded: false, Failed: true, Notes: notes,
-				}, ErrMissingHash
-			}
-		}
-		if sourceDest != "" {
-			f, err := os.Open(sourceDest)
-			if err != nil {
-				notes = append(notes, cook.Snprintf("failed to open cached source %s", sourceDest))
-				return cook.Result{
-					Succeeded: false, Failed: true,
-					Changed: false, Notes: notes,
-				}, err
-			}
-			defer f.Close()
-			// io.Copy(&content, f)
-		}
+	} else if !os.IsNotExist(readErr) {
+		return cook.Result{
+			Succeeded: false, Failed: true,
+			Changed: false, Notes: notes,
+		}, fmt.Errorf("failed to read existing file %s: %w", name, readErr)
 	}
 
-	// TODO: text and sources processing is incomplete
-	_ = text
+	// In test mode, report what would change.
+	if test {
+		if os.IsNotExist(readErr) {
+			notes = append(notes, cook.Snprintf("file `%s` would be created with specified content", name))
+		} else {
+			notes = append(notes, cook.Snprintf("file `%s` content would be updated", name))
+		}
+		return cook.Result{
+			Succeeded: true, Failed: false,
+			Changed: true, Notes: notes,
+		}, nil
+	}
+
+	// Write the content to the file.
+	if writeErr := os.WriteFile(name, desiredBytes, 0o644); writeErr != nil {
+		return cook.Result{
+			Succeeded: false, Failed: true,
+			Changed: false, Notes: notes,
+		}, fmt.Errorf("failed to write content to %s: %w", name, writeErr)
+	}
+
+	if os.IsNotExist(readErr) {
+		notes = append(notes, cook.Snprintf("created `%s` with specified content", name))
+	} else {
+		notes = append(notes, cook.Snprintf("updated content of `%s`", name))
+	}
+
 	return cook.Result{
-		Succeeded: false, Failed: true,
-		Changed: len(notes) > 0, Notes: notes,
+		Succeeded: true, Failed: false,
+		Changed: true, Notes: notes,
 	}, nil
+}
+
+// gatherSource collects content from a single "source"/"source_hash" param pair.
+func (f File) gatherSource(ctx context.Context, buf *bytes.Buffer, name string, skipVerify bool) ([]fmt.Stringer, error) {
+	var notes []fmt.Stringer
+
+	source, _ := f.params["source"].(string)
+	if source == "" {
+		return notes, nil
+	}
+
+	sourceHash, _ := f.params["source_hash"].(string)
+	if sourceHash == "" && !skipVerify {
+		return notes, ErrMissingHash
+	}
+
+	cacheParams := map[string]interface{}{
+		"source":      source,
+		"skip_verify": skipVerify,
+		"name":        name + "-source",
+	}
+	if sourceHash != "" {
+		cacheParams["hash"] = sourceHash
+	}
+
+	srcFile, err := f.Parse(f.id+"-source", "cached", cacheParams)
+	if err != nil {
+		notes = append(notes, cook.Snprintf("failed to parse source %s", source))
+		return notes, err
+	}
+
+	cacheRes, err := srcFile.Apply(ctx)
+	notes = append(notes, cacheRes.Notes...)
+	if err != nil || !cacheRes.Succeeded {
+		notes = append(notes, cook.Snprintf("failed to cache source %s", source))
+		return notes, errors.Join(err, ErrCacheFailure)
+	}
+
+	sourceDest, err := srcFile.(*File).dest()
+	if err != nil {
+		notes = append(notes, cook.Snprintf("failed to get cached source destination: %v", err))
+		return notes, err
+	}
+
+	cached, err := os.Open(sourceDest)
+	if err != nil {
+		notes = append(notes, cook.Snprintf("failed to open cached source %s", sourceDest))
+		return notes, err
+	}
+	defer cached.Close()
+
+	if _, cpErr := io.Copy(buf, cached); cpErr != nil {
+		notes = append(notes, cook.Snprintf("failed to read source: %v", cpErr))
+		return notes, cpErr
+	}
+
+	return notes, nil
+}
+
+// gatherSources collects content from multiple "sources"/"source_hashes" param pairs.
+func (f File) gatherSources(ctx context.Context, buf *bytes.Buffer, skipVerify bool) ([]fmt.Stringer, error) {
+	var notes []fmt.Stringer
+
+	srces, ok := f.params["sources"].([]interface{})
+	if !ok || len(srces) == 0 {
+		return notes, nil
+	}
+
+	var srcHashes []interface{}
+	if !skipVerify {
+		srcHashes, ok = f.params["source_hashes"].([]interface{})
+		if !ok || len(srcHashes) != len(srces) {
+			notes = append(notes, cook.SimpleNote("sources and source_hashes must be the same length"))
+			return notes, ErrMissingHash
+		}
+	}
+
+	for i, src := range srces {
+		srcStr, ok := src.(string)
+		if !ok || srcStr == "" {
+			notes = append(notes, cook.Snprintf("invalid source at index %d", i))
+			return notes, ErrMissingSource
+		}
+
+		cacheParams := map[string]interface{}{
+			"source":      srcStr,
+			"skip_verify": skipVerify,
+			"name":        fmt.Sprintf("%s-source-%d", f.id, i),
+		}
+		if !skipVerify {
+			hash, ok := srcHashes[i].(string)
+			if !ok || hash == "" {
+				notes = append(notes, cook.Snprintf("missing source_hash for source %s", srcStr))
+				return notes, ErrMissingHash
+			}
+			cacheParams["hash"] = hash
+		}
+
+		file, err := f.Parse(fmt.Sprintf("%s-source-%d", f.id, i), "cached", cacheParams)
+		if err != nil {
+			notes = append(notes, cook.Snprintf("failed to parse source %s", srcStr))
+			return notes, err
+		}
+
+		cacheRes, err := file.Apply(ctx)
+		notes = append(notes, cacheRes.Notes...)
+		if err != nil || !cacheRes.Succeeded {
+			notes = append(notes, cook.Snprintf("failed to cache source %s", srcStr))
+			return notes, errors.Join(err, ErrCacheFailure)
+		}
+
+		sourceDest, err := file.(*File).dest()
+		if err != nil {
+			notes = append(notes, cook.Snprintf("failed to get destination for cached source: %v", err))
+			return notes, err
+		}
+
+		cached, err := os.Open(sourceDest)
+		if err != nil {
+			notes = append(notes, cook.Snprintf("failed to open cached source %s", sourceDest))
+			return notes, err
+		}
+		defer cached.Close()
+
+		if _, cpErr := io.Copy(buf, cached); cpErr != nil {
+			notes = append(notes, cook.Snprintf("failed to read source: %v", cpErr))
+			return notes, cpErr
+		}
+	}
+
+	return notes, nil
 }
