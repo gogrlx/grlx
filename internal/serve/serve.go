@@ -77,6 +77,10 @@ func NewMux() *http.ServeMux {
 	mux.HandleFunc("GET /api/v1/audit/dates", HandleNATSProxy("audit.dates"))
 	mux.HandleFunc("GET /api/v1/audit", HandleNATSProxyWithQuery("audit.query"))
 
+	// Log streaming (WebSocket + REST)
+	mux.HandleFunc("GET /api/v1/logs/stream", HandleLogStream)
+	mux.HandleFunc("GET /api/v1/logs", HandleRecentLogs)
+
 	// Serve embedded web UI (SPA with index.html fallback)
 	mux.Handle("GET /", UIHandler())
 

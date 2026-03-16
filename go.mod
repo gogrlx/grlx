@@ -15,6 +15,7 @@ require (
 	github.com/fatih/color v1.18.0
 	github.com/gogrlx/snack v0.3.0
 	github.com/google/uuid v1.6.0
+	github.com/gorilla/websocket v1.5.3
 	github.com/nats-io/nats-server/v2 v2.12.5
 	github.com/nats-io/nats.go v1.49.0
 	github.com/nats-io/nkeys v0.4.15

@@ -651,6 +651,87 @@ paths:
         "502":
           $ref: "#/components/responses/NATSError"
 
+  /api/v1/logs:
+    get:
+      operationId: getRecentLogs
+      summary: Get recent log entries
+      description: |
+        Returns recent log entries from the in-memory buffer, optionally
+        filtered by level and source. Entries are ordered chronologically.
+      tags:
+        - logs
+      parameters:
+        - name: level
+          in: query
+          description: Minimum log level filter
+          schema:
+            type: string
+            enum:
+              - debug
+              - info
+              - warn
+              - error
+        - name: source
+          in: query
+          description: Filter by log source type
+          schema:
+            type: string
+            enum:
+              - farmer
+              - sprout
+        - name: limit
+          in: query
+          description: Maximum number of entries to return (default 100)
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: Recent log entries
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  logs:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/LogEntry"
+
+  /api/v1/logs/stream:
+    get:
+      operationId: streamLogs
+      summary: Stream log entries via WebSocket
+      description: |
+        Upgrades the connection to a WebSocket and streams log entries
+        as newline-delimited JSON messages. Supports optional level and
+        source query parameter filters. The server sends periodic ping
+        frames to keep the connection alive.
+      tags:
+        - logs
+      parameters:
+        - name: level
+          in: query
+          description: Minimum log level filter
+          schema:
+            type: string
+            enum:
+              - debug
+              - info
+              - warn
+              - error
+        - name: source
+          in: query
+          description: Filter by log source type
+          schema:
+            type: string
+            enum:
+              - farmer
+              - sprout
+      responses:
+        "101":
+          description: WebSocket upgrade successful
+
   /api/v1/openapi.yaml:
     get:
       operationId: getOpenAPISpec
@@ -748,6 +829,41 @@ components:
         Cohort expression to resolve. May include cohort names, compound
         expressions (AND/OR/EXCEPT), and target patterns.
 
+    LogEntry:
+      type: object
+      required:
+        - timestamp
+        - level
+        - source
+        - message
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp
+          example: "2026-03-15T07:30:00Z"
+        level:
+          type: string
+          enum:
+            - debug
+            - info
+            - warn
+            - error
+          description: Log severity level
+        source:
+          type: string
+          enum:
+            - farmer
+            - sprout
+          description: Origin of the log entry
+        sourceId:
+          type: string
+          description: Identifier of the source (e.g. sprout NKey)
+          example: SPROUT_ABC123
+        message:
+          type: string
+          description: Human-readable log message
+
     NATSResponse:
       description: |
         Raw JSON response from the farmer via NATS proxy. The structure
@@ -802,5 +918,7 @@ tags:
     description: Recipe listing and retrieval
   - name: audit
     description: Audit log queries
+  - name: logs
+    description: Log streaming and retrieval
   - name: meta
     description: API metadata
