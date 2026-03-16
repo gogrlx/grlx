@@ -1,0 +1,27 @@
+{
+  "name": "grlx — Configuration Management",
+  "short_name": "grlx",
+  "description": "Web dashboard for grlx fleet configuration management. Monitor sprouts, run recipes, and manage your infrastructure.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#2d6a9f",
+  "theme_color": "#2d6a9f",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
