@@ -372,6 +372,35 @@ paths:
         "502":
           $ref: "#/components/responses/NATSError"
 
+  /api/v1/cohorts/refresh:
+    post:
+      operationId: refreshCohorts
+      summary: Refresh cohort membership cache
+      description: |
+        Re-evaluates cohort membership against current sprout state and
+        updates the cached membership. If a cohort name is provided in the
+        request body, only that cohort is refreshed. Otherwise all cohorts
+        are refreshed.
+      tags:
+        - cohorts
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CohortRefreshRequest"
+      responses:
+        "200":
+          description: Refresh results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NATSResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "502":
+          $ref: "#/components/responses/NATSError"
+
   /api/v1/keys:
     get:
       operationId: listKeys
@@ -828,6 +857,18 @@ components:
       description: |
         Cohort expression to resolve. May include cohort names, compound
         expressions (AND/OR/EXCEPT), and target patterns.
+
+    CohortRefreshRequest:
+      type: object
+      description: |
+        Optional request body for cohort refresh. If a name is provided,
+        only that cohort's membership cache is refreshed. If omitted or
+        empty, all cohorts are refreshed.
+      properties:
+        name:
+          type: string
+          description: Name of a specific cohort to refresh
+          example: web-servers
 
     LogEntry:
       type: object

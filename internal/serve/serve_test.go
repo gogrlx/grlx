@@ -462,3 +462,150 @@ func TestMuxCohortsResolveRoute(t *testing.T) {
 		t.Fatalf("cohorts resolve: expected 502, got %d", rec.Code)
 	}
 }
+
+func TestMuxCohortsRefreshRoute(t *testing.T) {
+	mux := NewMux()
+
+	// Refresh all cohorts (empty body)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/cohorts/refresh", strings.NewReader(""))
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("cohorts refresh (all): expected 502, got %d", rec.Code)
+	}
+
+	// Refresh a single cohort
+	req = httptest.NewRequest(http.MethodPost, "/api/v1/cohorts/refresh", strings.NewReader(`{"name":"web"}`))
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("cohorts refresh (single): expected 502, got %d", rec.Code)
+	}
+}
+
+func TestMuxCohortsListRoute(t *testing.T) {
+	mux := NewMux()
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/cohorts", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("cohorts list: expected 502, got %d", rec.Code)
+	}
+}
+
+func TestMuxRecipesRoutes(t *testing.T) {
+	mux := NewMux()
+
+	// List recipes
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/recipes", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("recipes list: expected 502, got %d", rec.Code)
+	}
+
+	// Get a recipe by name
+	req = httptest.NewRequest(http.MethodGet, "/api/v1/recipes/base/webserver", nil)
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("recipes get: expected 502, got %d", rec.Code)
+	}
+}
+
+func TestMuxAuditRoutes(t *testing.T) {
+	mux := NewMux()
+
+	// List audit dates
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/audit/dates", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("audit dates: expected 502, got %d", rec.Code)
+	}
+
+	// Query audit log
+	req = httptest.NewRequest(http.MethodGet, "/api/v1/audit?date=2025-01-01&action=cook", nil)
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("audit query: expected 502, got %d", rec.Code)
+	}
+}
+
+func TestHandleNATSProxyWithQueryParams(t *testing.T) {
+	handler := HandleNATSProxyWithQuery("audit.query")
+
+	// With query parameters
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/audit?date=2025-03-15&action=cook&pubkey=ABC&limit=10&failed_only=true", nil)
+	rec := httptest.NewRecorder()
+
+	handler(rec, req)
+
+	// No NATS connection, should get 502
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("expected status 502, got %d", rec.Code)
+	}
+}
+
+func TestHandleNATSProxyWithIDMissingParam(t *testing.T) {
+	handler := HandleNATSProxyWithID("sprouts.get")
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/sprouts/", nil)
+	rec := httptest.NewRecorder()
+
+	handler(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected status 400, got %d", rec.Code)
+	}
+}
+
+func TestHandleRecipeGetProxyMissingName(t *testing.T) {
+	handler := HandleRecipeGetProxy("recipes.get")
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/recipes/", nil)
+	rec := httptest.NewRecorder()
+
+	handler(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected status 400, got %d", rec.Code)
+	}
+}
+
+func TestHandlePropsSetProxyFormats(t *testing.T) {
+	mux := NewMux()
+
+	// JSON wrapper format: {"value": "my-host"}
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/props/sprout-1/hostname", strings.NewReader(`{"value":"my-host"}`))
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("props set wrapper: expected 502, got %d", rec.Code)
+	}
+
+	// Bare JSON string format: "my-host"
+	req = httptest.NewRequest(http.MethodPut, "/api/v1/props/sprout-1/hostname", strings.NewReader(`"my-host"`))
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("props set bare: expected 502, got %d", rec.Code)
+	}
+
+	// Raw text format: my-host
+	req = httptest.NewRequest(http.MethodPut, "/api/v1/props/sprout-1/hostname", strings.NewReader(`my-host`))
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("props set raw: expected 502, got %d", rec.Code)
+	}
+}
