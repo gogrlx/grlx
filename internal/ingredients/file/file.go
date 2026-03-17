@@ -21,7 +21,6 @@ type File struct {
 	params map[string]interface{}
 }
 
-// TODO error check, set id, properly parse
 func (f File) Parse(id, method string, params map[string]interface{}) (cook.RecipeCooker, error) {
 	if params == nil {
 		params = make(map[string]interface{})
@@ -183,7 +182,6 @@ func (f File) Apply(ctx context.Context) (cook.Result, error) {
 
 func (f File) PropertiesForMethod(method string) (map[string]string, error) {
 	switch f.method {
-	// TODO use ingredients.MethodPropsSet for remaining methods
 	case "absent":
 		return ingredients.MethodPropsSet{
 			ingredients.MethodProps{Key: "name", Type: "string", IsReq: true, Description: "the name/path of the file to delete"},
@@ -209,7 +207,7 @@ func (f File) PropertiesForMethod(method string) (map[string]string, error) {
 	case "contains":
 		return ingredients.MethodPropsSet{
 			ingredients.MethodProps{Key: "name", Type: "string", IsReq: true},
-			ingredients.MethodProps{Key: "source", Type: "string", IsReq: true},
+			ingredients.MethodProps{Key: "source", Type: "string", IsReq: false},
 			ingredients.MethodProps{Key: "source_hash", Type: "string", IsReq: false},
 			ingredients.MethodProps{Key: "source_hashes", Type: "[]string", IsReq: false},
 			ingredients.MethodProps{Key: "sources", Type: "[]string", IsReq: false},
@@ -248,7 +246,7 @@ func (f File) PropertiesForMethod(method string) (map[string]string, error) {
 			ingredients.MethodProps{Key: "template", Type: "bool", IsReq: false},
 			ingredients.MethodProps{Key: "makedirs", Type: "bool", IsReq: false},
 			ingredients.MethodProps{Key: "dir_mode", Type: "string", IsReq: false},
-			ingredients.MethodProps{Key: "sources", Type: "[]string", IsReq: true},
+			ingredients.MethodProps{Key: "sources", Type: "[]string", IsReq: false},
 			ingredients.MethodProps{Key: "source_hashes", Type: "[]string", IsReq: false},
 		}.ToMap(), nil
 	case "missing":

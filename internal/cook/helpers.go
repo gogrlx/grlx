@@ -337,7 +337,6 @@ func includesFromMap(recipe map[string]interface{}) ([]RecipeName, error) {
 }
 
 func validateRecipeTree(recipes []*Step) ([]*Step, error) {
-	// TODO pick up here...
 	_, err := ValidateTrees(recipes)
 	return recipes, err
 }

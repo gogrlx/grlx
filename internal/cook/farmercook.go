@@ -10,6 +10,9 @@ import (
 	"text/template"
 	"time"
 
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
+
 	"github.com/gogrlx/grlx/v2/internal/log"
 	"github.com/google/uuid"
 	"gopkg.in/yaml.v3"
@@ -22,8 +25,47 @@ func populateFuncMap(sproutID string) template.FuncMap {
 	v := template.FuncMap{}
 	v["props"] = props.GetStringPropFunc(sproutID)
 	v["hostname"] = props.GetHostnameFunc(sproutID)
-	// TODO: implement secrets and other template functions
-	//	v["secrets"] = secrets.GetSecretFunc(sproutID)
+
+	// Environment variable access.
+	v["env"] = os.Getenv
+
+	// String manipulation helpers.
+	v["join"] = strings.Join
+	v["split"] = strings.Split
+	v["replace"] = strings.ReplaceAll
+	v["contains"] = strings.Contains
+	v["hasPrefix"] = strings.HasPrefix
+	v["hasSuffix"] = strings.HasSuffix
+	v["trimSpace"] = strings.TrimSpace
+	v["upper"] = strings.ToUpper
+	v["lower"] = strings.ToLower
+	v["title"] = cases.Title(language.English, cases.Compact).String
+
+	// Path helpers.
+	v["base"] = filepath.Base
+	v["dir"] = filepath.Dir
+	v["ext"] = filepath.Ext
+	v["cleanPath"] = filepath.Clean
+
+	// Default value: returns fallback if value is empty.
+	v["default"] = func(fallback, value string) string {
+		if value == "" {
+			return fallback
+		}
+		return value
+	}
+
+	// Conditional: ternary-style helper for templates.
+	v["ternary"] = func(trueVal, falseVal string, cond bool) string {
+		if cond {
+			return trueVal
+		}
+		return falseVal
+	}
+
+	// Sprout ID accessor for recipes that need to reference the target sprout.
+	v["sproutID"] = func() string { return sproutID }
+
 	return v
 }
 
