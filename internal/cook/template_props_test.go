@@ -342,3 +342,129 @@ func TestRenderRecipeTemplateUndefinedFunction(t *testing.T) {
 		t.Error("expected error for undefined template function, got nil")
 	}
 }
+
+func TestTemplateFuncEnv(t *testing.T) {
+	t.Setenv("GRLX_TEST_VAR", "hello_world")
+
+	recipe := []byte(`value: {{ env "GRLX_TEST_VAR" }}`)
+	out, err := renderRecipeTemplate("test-sprout", "env-test", recipe)
+	if err != nil {
+		t.Fatalf("renderRecipeTemplate error: %v", err)
+	}
+	if !strings.Contains(string(out), "hello_world") {
+		t.Fatalf("expected 'hello_world' in output, got: %s", out)
+	}
+}
+
+func TestTemplateFuncStringHelpers(t *testing.T) {
+	tests := []struct {
+		name     string
+		template string
+		expected string
+	}{
+		{"join", `{{ join (split "a,b,c" ",") "-" }}`, "a-b-c"},
+		{"upper", `{{ upper "hello" }}`, "HELLO"},
+		{"lower", `{{ lower "HELLO" }}`, "hello"},
+		{"trimSpace", `{{ trimSpace "  hi  " }}`, "hi"},
+		{"hasPrefix", `{{ hasPrefix "hello" "hel" }}`, "true"},
+		{"hasSuffix", `{{ hasSuffix "hello" "llo" }}`, "true"},
+		{"contains", `{{ contains "hello world" "world" }}`, "true"},
+		{"replace", `{{ replace "foo-bar" "-" "_" }}`, "foo_bar"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out, err := renderRecipeTemplate("test-sprout", tt.name, []byte(tt.template))
+			if err != nil {
+				t.Fatalf("render error: %v", err)
+			}
+			if strings.TrimSpace(string(out)) != tt.expected {
+				t.Fatalf("expected %q, got %q", tt.expected, strings.TrimSpace(string(out)))
+			}
+		})
+	}
+}
+
+func TestTemplateFuncPathHelpers(t *testing.T) {
+	tests := []struct {
+		name     string
+		template string
+		expected string
+	}{
+		{"base", `{{ base "/etc/app/config.yml" }}`, "config.yml"},
+		{"dir", `{{ dir "/etc/app/config.yml" }}`, "/etc/app"},
+		{"ext", `{{ ext "/etc/app/config.yml" }}`, ".yml"},
+		{"cleanPath", `{{ cleanPath "/etc/../etc/app/./config.yml" }}`, "/etc/app/config.yml"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out, err := renderRecipeTemplate("test-sprout", tt.name, []byte(tt.template))
+			if err != nil {
+				t.Fatalf("render error: %v", err)
+			}
+			if strings.TrimSpace(string(out)) != tt.expected {
+				t.Fatalf("expected %q, got %q", tt.expected, strings.TrimSpace(string(out)))
+			}
+		})
+	}
+}
+
+func TestTemplateFuncDefault(t *testing.T) {
+	t.Setenv("GRLX_EMPTY", "")
+	t.Setenv("GRLX_SET", "custom")
+
+	tests := []struct {
+		name     string
+		template string
+		expected string
+	}{
+		{"empty uses default", `{{ default "fallback" (env "GRLX_EMPTY") }}`, "fallback"},
+		{"set uses value", `{{ default "fallback" (env "GRLX_SET") }}`, "custom"},
+		{"unset uses default", `{{ default "fallback" (env "GRLX_UNSET_VAR_XYZ") }}`, "fallback"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out, err := renderRecipeTemplate("test-sprout", tt.name, []byte(tt.template))
+			if err != nil {
+				t.Fatalf("render error: %v", err)
+			}
+			if strings.TrimSpace(string(out)) != tt.expected {
+				t.Fatalf("expected %q, got %q", tt.expected, strings.TrimSpace(string(out)))
+			}
+		})
+	}
+}
+
+func TestTemplateFuncSproutID(t *testing.T) {
+	out, err := renderRecipeTemplate("my-sprout-123", "sprout-test", []byte(`id: {{ sproutID }}`))
+	if err != nil {
+		t.Fatalf("render error: %v", err)
+	}
+	if !strings.Contains(string(out), "my-sprout-123") {
+		t.Fatalf("expected sproutID in output, got: %s", out)
+	}
+}
+
+func TestTemplateFuncTernary(t *testing.T) {
+	tests := []struct {
+		name     string
+		template string
+		expected string
+	}{
+		{"true", `{{ ternary "yes" "no" true }}`, "yes"},
+		{"false", `{{ ternary "yes" "no" false }}`, "no"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out, err := renderRecipeTemplate("test-sprout", tt.name, []byte(tt.template))
+			if err != nil {
+				t.Fatalf("render error: %v", err)
+			}
+			if strings.TrimSpace(string(out)) != tt.expected {
+				t.Fatalf("expected %q, got %q", tt.expected, strings.TrimSpace(string(out)))
+			}
+		})
+	}
+}
