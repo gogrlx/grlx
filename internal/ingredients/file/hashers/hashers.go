@@ -14,7 +14,6 @@ import (
 	"sync"
 )
 
-// TODO add Close() call
 type HashFunc func(io.ReadCloser, string) (string, bool, error)
 
 var (
