@@ -10,6 +10,9 @@ import (
 	"text/template"
 	"time"
 
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
+
 	"github.com/gogrlx/grlx/v2/internal/log"
 	"github.com/google/uuid"
 	"gopkg.in/yaml.v3"
@@ -36,7 +39,7 @@ func populateFuncMap(sproutID string) template.FuncMap {
 	v["trimSpace"] = strings.TrimSpace
 	v["upper"] = strings.ToUpper
 	v["lower"] = strings.ToLower
-	v["title"] = strings.Title //nolint:staticcheck // acceptable for template use
+	v["title"] = cases.Title(language.English, cases.Compact).String
 
 	// Path helpers.
 	v["base"] = filepath.Base
