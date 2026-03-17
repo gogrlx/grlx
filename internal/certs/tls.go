@@ -11,6 +11,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"fmt"
 	"math/big"
 	"net"
 	"os"
@@ -233,6 +234,55 @@ func GenCert() {
 	log.Debug("wrote key.pem")
 }
 
-// TODO: add TLS cert rotation
-func RotateTLSCerts() {
+// RotateTLSCerts checks the server certificate's expiration and regenerates
+// it (signed by the existing CA) if it expires within the given threshold.
+// The CA certificate is not rotated — only the leaf server cert and key.
+// Returns true if the certificate was rotated.
+func RotateTLSCerts(threshold time.Duration) (bool, error) {
+	certBytes, err := os.ReadFile(config.CertFile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			// No cert exists — generate fresh.
+			GenCert()
+			return true, nil
+		}
+		return false, fmt.Errorf("failed to read cert file: %w", err)
+	}
+
+	block, _ := pem.Decode(certBytes)
+	if block == nil {
+		// Corrupt PEM — regenerate.
+		log.Warn("TLS certificate PEM is corrupt, regenerating")
+		return forceRegenCert()
+	}
+
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		log.Warnf("Failed to parse TLS certificate: %v, regenerating", err)
+		return forceRegenCert()
+	}
+
+	remaining := time.Until(cert.NotAfter)
+	if remaining > threshold {
+		log.Tracef("TLS certificate valid for %s, rotation threshold is %s — no rotation needed",
+			remaining.Round(time.Minute), threshold.Round(time.Minute))
+		return false, nil
+	}
+
+	log.Infof("TLS certificate expires in %s (threshold %s), rotating",
+		remaining.Round(time.Minute), threshold.Round(time.Minute))
+	return forceRegenCert()
+}
+
+// forceRegenCert removes the existing server cert and key, then regenerates them.
+func forceRegenCert() (bool, error) {
+	// Remove existing cert and key so GenCert will regenerate.
+	if err := os.Remove(config.CertFile); err != nil && !os.IsNotExist(err) {
+		return false, fmt.Errorf("failed to remove old cert: %w", err)
+	}
+	if err := os.Remove(config.KeyFile); err != nil && !os.IsNotExist(err) {
+		return false, fmt.Errorf("failed to remove old key: %w", err)
+	}
+	GenCert()
+	return true, nil
 }

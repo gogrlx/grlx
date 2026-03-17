@@ -461,3 +461,126 @@ func TestGetPubNKeyMissing(t *testing.T) {
 		t.Fatal("GetPubNKey should fail when key file doesn't exist")
 	}
 }
+
+func TestRotateTLSCertsNoRotationNeeded(t *testing.T) {
+	setupTLSConfigDir(t)
+	config.CertificateValidTime = 24 * time.Hour
+
+	GenCert()
+
+	origCert, err := os.ReadFile(config.CertFile)
+	if err != nil {
+		t.Fatalf("failed to read cert: %v", err)
+	}
+
+	// Threshold is 23 hours — cert valid for 24h, so no rotation needed.
+	rotated, err := RotateTLSCerts(23 * time.Hour)
+	if err != nil {
+		t.Fatalf("RotateTLSCerts error: %v", err)
+	}
+	if rotated {
+		t.Fatal("expected no rotation when cert is still valid")
+	}
+
+	newCert, err := os.ReadFile(config.CertFile)
+	if err != nil {
+		t.Fatalf("failed to read cert after rotation check: %v", err)
+	}
+	if string(origCert) != string(newCert) {
+		t.Fatal("cert should not have changed")
+	}
+}
+
+func TestRotateTLSCertsRotationNeeded(t *testing.T) {
+	setupTLSConfigDir(t)
+	// Create a cert that's only valid for 1 hour.
+	config.CertificateValidTime = 1 * time.Hour
+
+	GenCert()
+
+	origCert, err := os.ReadFile(config.CertFile)
+	if err != nil {
+		t.Fatalf("failed to read cert: %v", err)
+	}
+
+	// Reset validity for the new cert.
+	config.CertificateValidTime = 24 * time.Hour
+
+	// Threshold is 2 hours — cert expires in 1h, so rotation IS needed.
+	rotated, err := RotateTLSCerts(2 * time.Hour)
+	if err != nil {
+		t.Fatalf("RotateTLSCerts error: %v", err)
+	}
+	if !rotated {
+		t.Fatal("expected rotation when cert is about to expire")
+	}
+
+	newCert, err := os.ReadFile(config.CertFile)
+	if err != nil {
+		t.Fatalf("failed to read cert after rotation: %v", err)
+	}
+	if string(origCert) == string(newCert) {
+		t.Fatal("cert should have changed after rotation")
+	}
+
+	// Verify new cert is valid for 24h.
+	block, _ := pem.Decode(newCert)
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		t.Fatalf("failed to parse new cert: %v", err)
+	}
+	remaining := time.Until(cert.NotAfter)
+	if remaining < 23*time.Hour {
+		t.Fatalf("new cert should be valid for ~24h, got %v", remaining)
+	}
+}
+
+func TestRotateTLSCertsMissingCert(t *testing.T) {
+	setupTLSConfigDir(t)
+	config.CertificateValidTime = 24 * time.Hour
+
+	// No cert exists — should generate one.
+	rotated, err := RotateTLSCerts(1 * time.Hour)
+	if err != nil {
+		t.Fatalf("RotateTLSCerts error: %v", err)
+	}
+	if !rotated {
+		t.Fatal("expected rotation when cert doesn't exist")
+	}
+
+	// Verify cert was created.
+	if _, err := os.Stat(config.CertFile); err != nil {
+		t.Fatalf("cert file should exist after rotation: %v", err)
+	}
+}
+
+func TestRotateTLSCertsCorruptPEM(t *testing.T) {
+	setupTLSConfigDir(t)
+	config.CertificateValidTime = 24 * time.Hour
+
+	// Generate CA first (GenCert needs it).
+	genCACert()
+
+	// Write garbage to cert file.
+	if err := os.WriteFile(config.CertFile, []byte("not a pem"), 0o644); err != nil {
+		t.Fatalf("failed to write corrupt cert: %v", err)
+	}
+
+	rotated, err := RotateTLSCerts(1 * time.Hour)
+	if err != nil {
+		t.Fatalf("RotateTLSCerts error: %v", err)
+	}
+	if !rotated {
+		t.Fatal("expected rotation when cert PEM is corrupt")
+	}
+
+	// Verify valid cert was generated.
+	certBytes, err := os.ReadFile(config.CertFile)
+	if err != nil {
+		t.Fatalf("failed to read cert: %v", err)
+	}
+	block, _ := pem.Decode(certBytes)
+	if block == nil {
+		t.Fatal("new cert should be valid PEM")
+	}
+}
