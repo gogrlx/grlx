@@ -21,7 +21,6 @@ type File struct {
 	params map[string]interface{}
 }
 
-// TODO error check, set id, properly parse
 func (f File) Parse(id, method string, params map[string]interface{}) (cook.RecipeCooker, error) {
 	if params == nil {
 		params = make(map[string]interface{})
@@ -183,7 +182,6 @@ func (f File) Apply(ctx context.Context) (cook.Result, error) {
 
 func (f File) PropertiesForMethod(method string) (map[string]string, error) {
 	switch f.method {
-	// TODO use ingredients.MethodPropsSet for remaining methods
 	case "absent":
 		return ingredients.MethodPropsSet{
 			ingredients.MethodProps{Key: "name", Type: "string", IsReq: true, Description: "the name/path of the file to delete"},

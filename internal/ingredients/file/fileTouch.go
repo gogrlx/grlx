@@ -15,7 +15,6 @@ import (
 )
 
 func (f File) touch(ctx context.Context, test bool) (cook.Result, error) {
-	// TODO
 	name, ok := f.params["name"].(string)
 	if !ok {
 		return cook.Result{
