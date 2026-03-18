@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 
+	intauth "github.com/gogrlx/grlx/v2/internal/auth"
 	"github.com/gogrlx/grlx/v2/internal/jobs"
+	"github.com/gogrlx/grlx/v2/internal/rbac"
 )
 
 var jobStore *jobs.Store
@@ -74,6 +76,22 @@ func handleJobsCancel(params json.RawMessage) (any, error) {
 	summary, err := jobStore.FindJob(p.JID)
 	if err != nil {
 		return nil, err
+	}
+
+	// Scope check: verify the user can cancel jobs on this sprout.
+	// The middleware checks action-level (job_admin), but we need to
+	// verify scope against the job's sprout_id which is only known
+	// after looking up the job.
+	if !intauth.DangerouslyAllowRoot() {
+		var tp tokenParams
+		if len(params) > 0 {
+			json.Unmarshal(params, &tp)
+		}
+		if tp.Token != "" && summary.SproutID != "" {
+			if err := checkScopedAccess(tp.Token, rbac.ActionJobAdmin, []string{summary.SproutID}); err != nil {
+				return nil, rbac.ErrAccessDenied
+			}
+		}
 	}
 
 	if summary.Status != jobs.JobRunning && summary.Status != jobs.JobPending {

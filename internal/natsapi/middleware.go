@@ -80,8 +80,9 @@ type tokenParams struct {
 
 // authMiddleware wraps a handler with permission enforcement.
 // It extracts the token from params, resolves the user's role, and
-// checks whether the role permits the required action. Unauthorized
-// requests are rejected before the handler runs.
+// checks whether the role permits the required action. For methods
+// that target specific sprouts, it also performs scope-level checks
+// using the role's cohort/sprout scope rules.
 //
 // Public methods (version, auth.whoami) bypass the check entirely.
 func authMiddleware(method string, next handler) handler {
@@ -90,6 +91,7 @@ func authMiddleware(method string, next handler) handler {
 	}
 
 	requiredAction := NATSMethodAction(method)
+	extractor := scopeExtractors[method]
 
 	return func(params json.RawMessage) (any, error) {
 		// dangerously_allow_root bypasses all auth checks.
@@ -110,6 +112,19 @@ func authMiddleware(method string, next handler) handler {
 		// Check route-level access (does this role have the required action?).
 		if !intauth.TokenHasAction(tp.Token, requiredAction) {
 			return nil, rbac.ErrAccessDenied
+		}
+
+		// Check scope-level access if this method targets specific sprouts.
+		if extractor != nil {
+			sproutIDs, err := extractor(params)
+			if err != nil {
+				// Extraction errors are not auth failures — let the
+				// handler validate params and return a proper error.
+				return next(params)
+			}
+			if err := checkScopedAccess(tp.Token, requiredAction, sproutIDs); err != nil {
+				return nil, rbac.ErrAccessDenied
+			}
 		}
 
 		return next(params)
