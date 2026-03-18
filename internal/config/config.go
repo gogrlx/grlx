@@ -24,6 +24,7 @@ var (
 	APIIdleTimeout       time.Duration
 	APIReadTimeout       time.Duration
 	APIWriteTimeout      time.Duration
+	AuditLevel           string
 	AuditLogDir          string
 	CacheDir             string
 	CertFile             string
@@ -144,6 +145,7 @@ func LoadConfig(binary string) {
 			jety.SetDefault("farmerpki", "/etc/grlx/pki/farmer/")
 			jety.SetDefault("keyfile", "/etc/grlx/pki/farmer/tls-key.pem")
 			jety.SetDefault("auditlogdir", "/var/log/grlx/audit")
+			jety.SetDefault("auditlevel", "write")
 			jety.SetDefault("joblogdir", "/var/cache/grlx/farmer/jobs")
 			jety.SetDefault("joblogttl", 30*24*time.Hour) // 30 days default
 			jety.SetDefault("propsdir", "/var/cache/grlx/farmer/props")
@@ -245,6 +247,7 @@ func LoadConfig(binary string) {
 	APIIdleTimeout = jety.GetDuration("apiidletimeout")
 	APIReadTimeout = jety.GetDuration("apireadtimeout")
 	APIWriteTimeout = jety.GetDuration("apiwritetimeout")
+	AuditLevel = jety.GetString("auditlevel")
 	AuditLogDir = jety.GetString("auditlogdir")
 	CacheDir = jety.GetString("cachedir")
 	CertFile = jety.GetString("certfile")

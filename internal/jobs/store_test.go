@@ -458,3 +458,136 @@ func TestListSprouts_NonexistentDir(t *testing.T) {
 		t.Errorf("expected nil sprouts, got %v", sprouts)
 	}
 }
+
+func writeJobMeta(t *testing.T, dir, sproutID, jid, invokedBy string) {
+	t.Helper()
+	sproutDir := filepath.Join(dir, sproutID)
+	if err := os.MkdirAll(sproutDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	meta := JobMeta{
+		JID:       jid,
+		InvokedBy: invokedBy,
+		CreatedAt: time.Now().UTC(),
+	}
+	data, err := json.Marshal(meta)
+	if err != nil {
+		t.Fatal(err)
+	}
+	metaFile := filepath.Join(sproutDir, fmt.Sprintf("%s.meta.json", jid))
+	if err := os.WriteFile(metaFile, data, 0o640); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestGetJob_WithInvokedBy(t *testing.T) {
+	dir := t.TempDir()
+	store := NewStoreWithDir(dir)
+	now := time.Now()
+
+	steps := []cook.StepCompletion{
+		makeStep("step-1", cook.StepCompleted, now, time.Second),
+	}
+	writeJobFile(t, dir, "web-1", "job-meta-1", steps)
+	writeJobMeta(t, dir, "web-1", "job-meta-1", "UPUBKEY_ALICE")
+
+	summary, err := store.GetJob("web-1", "job-meta-1")
+	if err != nil {
+		t.Fatalf("GetJob: %v", err)
+	}
+	if summary.InvokedBy != "UPUBKEY_ALICE" {
+		t.Errorf("InvokedBy = %q, want UPUBKEY_ALICE", summary.InvokedBy)
+	}
+}
+
+func TestGetJob_WithoutMeta(t *testing.T) {
+	dir := t.TempDir()
+	store := NewStoreWithDir(dir)
+	now := time.Now()
+
+	steps := []cook.StepCompletion{
+		makeStep("step-1", cook.StepCompleted, now, time.Second),
+	}
+	writeJobFile(t, dir, "web-1", "job-no-meta", steps)
+
+	summary, err := store.GetJob("web-1", "job-no-meta")
+	if err != nil {
+		t.Fatalf("GetJob: %v", err)
+	}
+	if summary.InvokedBy != "" {
+		t.Errorf("InvokedBy = %q, want empty", summary.InvokedBy)
+	}
+}
+
+func TestFindJob_WithInvokedBy(t *testing.T) {
+	dir := t.TempDir()
+	store := NewStoreWithDir(dir)
+	now := time.Now()
+
+	steps := []cook.StepCompletion{
+		makeStep("step-1", cook.StepCompleted, now, time.Second),
+	}
+	writeJobFile(t, dir, "db-1", "job-find-meta", steps)
+	writeJobMeta(t, dir, "db-1", "job-find-meta", "UPUBKEY_BOB")
+
+	summary, err := store.FindJob("job-find-meta")
+	if err != nil {
+		t.Fatalf("FindJob: %v", err)
+	}
+	if summary.InvokedBy != "UPUBKEY_BOB" {
+		t.Errorf("InvokedBy = %q, want UPUBKEY_BOB", summary.InvokedBy)
+	}
+}
+
+func TestListJobsForSprout_WithInvokedBy(t *testing.T) {
+	dir := t.TempDir()
+	store := NewStoreWithDir(dir)
+	now := time.Now()
+
+	steps := []cook.StepCompletion{
+		makeStep("step-1", cook.StepCompleted, now, time.Second),
+	}
+	writeJobFile(t, dir, "app-1", "job-list-1", steps)
+	writeJobMeta(t, dir, "app-1", "job-list-1", "UPUBKEY_CAROL")
+	writeJobFile(t, dir, "app-1", "job-list-2", steps)
+	// No meta for job-list-2
+
+	summaries, err := store.ListJobsForSprout("app-1")
+	if err != nil {
+		t.Fatalf("ListJobsForSprout: %v", err)
+	}
+	if len(summaries) != 2 {
+		t.Fatalf("expected 2 summaries, got %d", len(summaries))
+	}
+
+	foundMeta := false
+	foundNoMeta := false
+	for _, s := range summaries {
+		if s.JID == "job-list-1" && s.InvokedBy == "UPUBKEY_CAROL" {
+			foundMeta = true
+		}
+		if s.JID == "job-list-2" && s.InvokedBy == "" {
+			foundNoMeta = true
+		}
+	}
+	if !foundMeta {
+		t.Error("job-list-1 should have InvokedBy=UPUBKEY_CAROL")
+	}
+	if !foundNoMeta {
+		t.Error("job-list-2 should have empty InvokedBy")
+	}
+}
+
+func TestReadJobMeta_MalformedJSON(t *testing.T) {
+	dir := t.TempDir()
+	sproutDir := filepath.Join(dir, "sprout-bad")
+	os.MkdirAll(sproutDir, 0o700)
+
+	metaFile := filepath.Join(sproutDir, "bad-job.meta.json")
+	os.WriteFile(metaFile, []byte("not json"), 0o640)
+
+	got := readJobMeta(sproutDir, "bad-job")
+	if got != "" {
+		t.Errorf("readJobMeta = %q, want empty for malformed JSON", got)
+	}
+}

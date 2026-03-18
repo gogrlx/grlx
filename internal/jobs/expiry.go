@@ -63,6 +63,10 @@ func (s *Store) reap(ttl time.Duration) {
 				} else {
 					removed++
 				}
+				// Remove companion metadata file if it exists.
+				jid := strings.TrimSuffix(entry.Name(), ".jsonl")
+				metaFile := filepath.Join(sproutDir, jid+".meta.json")
+				os.Remove(metaFile) // ignore error — file may not exist
 			}
 		}
 		// Remove empty sprout directories.

@@ -91,6 +91,19 @@ func logJobCreation(msg *nats.Msg) {
 		return
 	}
 
+	// Write job metadata with invoker info for audit attribution.
+	if envelope.InvokedBy != "" {
+		metaFile := filepath.Join(sproutDir, fmt.Sprintf("%s.meta.json", envelope.JobID))
+		meta := JobMeta{
+			JID:       envelope.JobID,
+			InvokedBy: envelope.InvokedBy,
+			CreatedAt: time.Now().UTC(),
+		}
+		if metaData, mErr := json.Marshal(meta); mErr == nil {
+			os.WriteFile(metaFile, metaData, 0o640)
+		}
+	}
+
 	// Write a "not started" step for each step in the envelope so the job
 	// shows up with the correct total count right away.
 	f, err := os.Create(jobFile)

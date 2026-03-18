@@ -9,6 +9,7 @@ import (
 	"time"
 
 	apitypes "github.com/gogrlx/grlx/v2/internal/api/types"
+	"github.com/gogrlx/grlx/v2/internal/auth"
 	"github.com/gogrlx/grlx/v2/internal/cook"
 	log "github.com/gogrlx/grlx/v2/internal/log"
 	"github.com/gogrlx/grlx/v2/internal/pki"
@@ -39,6 +40,18 @@ func handleCook(params json.RawMessage) (any, error) {
 
 	if natsConn == nil {
 		return nil, fmt.Errorf("NATS connection not available")
+	}
+
+	// Resolve the invoker's identity for job attribution.
+	var invokerPubkey string
+	var tp tokenParams
+	if len(params) > 0 {
+		json.Unmarshal(params, &tp)
+	}
+	if tp.Token != "" {
+		if pk, _, resolveErr := auth.WhoAmI(tp.Token); resolveErr == nil {
+			invokerPubkey = pk
+		}
 	}
 
 	jid := cook.GenerateJobID()
@@ -75,7 +88,7 @@ func handleCook(params json.RawMessage) (any, error) {
 		for _, target := range ta.Target {
 			go func(t pki.KeyManager) {
 				defer wg.Done()
-				err := cook.SendCookEvent(t.SproutID, command.Recipe, jid, command.Test)
+				err := cook.SendCookEvent(t.SproutID, command.Recipe, jid, command.Test, cook.WithInvoker(invokerPubkey))
 				if err != nil {
 					mu.Lock()
 					errs[t.SproutID] = err

@@ -48,9 +48,10 @@ type (
 		PropertiesForMethod(method string) (map[string]string, error)
 	}
 	RecipeEnvelope struct {
-		JobID string
-		Steps []Step
-		Test  bool
+		JobID     string
+		Steps     []Step
+		Test      bool
+		InvokedBy string `json:"invoked_by,omitempty"`
 	}
 	Ack struct {
 		Acknowledged bool

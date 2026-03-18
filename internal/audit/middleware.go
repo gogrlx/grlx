@@ -5,10 +5,34 @@ import (
 	"sync"
 )
 
+// Level controls which actions are recorded in the audit log.
+type Level string
+
+const (
+	// LevelAll logs every API action (read and write).
+	LevelAll Level = "all"
+	// LevelWrite logs only mutating (write) actions. This is the default.
+	LevelWrite Level = "write"
+	// LevelOff disables audit logging entirely.
+	LevelOff Level = "off"
+)
+
+// ParseLevel converts a string to an audit Level. Unknown values
+// default to LevelWrite for backward compatibility.
+func ParseLevel(s string) Level {
+	switch Level(s) {
+	case LevelAll, LevelWrite, LevelOff:
+		return Level(s)
+	default:
+		return LevelWrite
+	}
+}
+
 // global logger, set during farmer startup.
 var (
 	globalMu     sync.RWMutex
 	globalLogger *Logger
+	globalLevel  Level = LevelWrite
 )
 
 // SetGlobal sets the global audit logger used by the middleware.
@@ -16,6 +40,20 @@ func SetGlobal(l *Logger) {
 	globalMu.Lock()
 	defer globalMu.Unlock()
 	globalLogger = l
+}
+
+// SetLevel sets the global audit level.
+func SetLevel(level Level) {
+	globalMu.Lock()
+	defer globalMu.Unlock()
+	globalLevel = level
+}
+
+// GetLevel returns the current audit level.
+func GetLevel() Level {
+	globalMu.RLock()
+	defer globalMu.RUnlock()
+	return globalLevel
 }
 
 // Global returns the global audit logger, or nil if not configured.
@@ -50,6 +88,20 @@ var readOnlyActions = map[string]bool{
 // IsReadOnly returns true if the action is read-only.
 func IsReadOnly(action string) bool {
 	return readOnlyActions[action]
+}
+
+// ShouldLog returns true if the given action should be recorded at
+// the current audit level.
+func ShouldLog(action string) bool {
+	level := GetLevel()
+	switch level {
+	case LevelOff:
+		return false
+	case LevelAll:
+		return true
+	default: // LevelWrite
+		return !IsReadOnly(action)
+	}
 }
 
 // LogAction is a convenience function that logs an action using the
