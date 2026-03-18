@@ -104,9 +104,8 @@ func Subscribe(nc *nats.Conn) error {
 		_, err := nc.Subscribe(subject, func(msg *nats.Msg) {
 			result, err := handler(msg.Data)
 
-			// Audit log: record all write actions; skip read-only unless
-			// audit logging level is raised in a future config option.
-			if !audit.IsReadOnly(action) {
+			// Audit log: record actions based on configured audit level.
+			if audit.ShouldLog(action) {
 				if auditErr := audit.LogAction(action, msg.Data, result, err); auditErr != nil {
 					log.Errorf("natsapi: audit log failed for %s: %v", action, auditErr)
 				}

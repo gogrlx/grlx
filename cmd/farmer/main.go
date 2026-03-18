@@ -85,7 +85,9 @@ func initAuditLogger() {
 	}
 	audit.SetGlobal(logger)
 	audit.SetIdentityResolver(auth.WhoAmI)
-	log.Infof("Audit logging enabled: %s", auditDir)
+	level := audit.ParseLevel(config.AuditLevel)
+	audit.SetLevel(level)
+	log.Infof("Audit logging enabled: %s (level: %s)", auditDir, level)
 }
 
 func loadAuthPolicy() {

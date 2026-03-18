@@ -188,6 +188,70 @@ func TestLogActionNoGlobal(t *testing.T) {
 	}
 }
 
+func TestParseLevel(t *testing.T) {
+	tests := []struct {
+		input string
+		want  Level
+	}{
+		{"all", LevelAll},
+		{"write", LevelWrite},
+		{"off", LevelOff},
+		{"", LevelWrite},
+		{"invalid", LevelWrite},
+		{"ALL", LevelWrite}, // case-sensitive
+	}
+
+	for _, tt := range tests {
+		got := ParseLevel(tt.input)
+		if got != tt.want {
+			t.Errorf("ParseLevel(%q) = %q, want %q", tt.input, got, tt.want)
+		}
+	}
+}
+
+func TestShouldLog(t *testing.T) {
+	tests := []struct {
+		level  Level
+		action string
+		want   bool
+	}{
+		{LevelAll, "cook", true},
+		{LevelAll, "version", true},
+		{LevelAll, "sprouts.list", true},
+		{LevelWrite, "cook", true},
+		{LevelWrite, "pki.accept", true},
+		{LevelWrite, "version", false},
+		{LevelWrite, "sprouts.list", false},
+		{LevelOff, "cook", false},
+		{LevelOff, "version", false},
+	}
+
+	for _, tt := range tests {
+		SetLevel(tt.level)
+		got := ShouldLog(tt.action)
+		if got != tt.want {
+			t.Errorf("ShouldLog(%q) at level %q = %v, want %v",
+				tt.action, tt.level, got, tt.want)
+		}
+	}
+
+	// Restore default
+	SetLevel(LevelWrite)
+}
+
+func TestSetAndGetLevel(t *testing.T) {
+	SetLevel(LevelAll)
+	if got := GetLevel(); got != LevelAll {
+		t.Errorf("GetLevel() = %q, want %q", got, LevelAll)
+	}
+	SetLevel(LevelOff)
+	if got := GetLevel(); got != LevelOff {
+		t.Errorf("GetLevel() = %q, want %q", got, LevelOff)
+	}
+	// Restore
+	SetLevel(LevelWrite)
+}
+
 func TestLogActionReadOnlySkipped(t *testing.T) {
 	dir := t.TempDir()
 	logger, err := NewLogger(dir)

@@ -89,6 +89,7 @@ type JobSummary struct {
 	Failed    int                   `json:"failed"`
 	Skipped   int                   `json:"skipped"`
 	Total     int                   `json:"total"`
+	InvokedBy string                `json:"invoked_by,omitempty"`
 }
 
 // Store provides methods for retrieving job data from the flat-file store.
@@ -116,7 +117,8 @@ func (s *Store) GetJob(sproutID, jid string) (*JobSummary, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	jobFile := filepath.Join(s.logDir, sproutID, fmt.Sprintf("%s.jsonl", jid))
+	sproutDir := filepath.Join(s.logDir, sproutID)
+	jobFile := filepath.Join(sproutDir, fmt.Sprintf("%s.jsonl", jid))
 	steps, err := readJobFile(jobFile)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -125,7 +127,9 @@ func (s *Store) GetJob(sproutID, jid string) (*JobSummary, error) {
 		return nil, fmt.Errorf("reading job file: %w", err)
 	}
 
-	return buildSummary(jid, sproutID, steps), nil
+	summary := buildSummary(jid, sproutID, steps)
+	summary.InvokedBy = readJobMeta(sproutDir, jid)
+	return summary, nil
 }
 
 // FindJob searches all sprouts for a job with the given JID.
@@ -139,12 +143,15 @@ func (s *Store) FindJob(jid string) (*JobSummary, error) {
 	}
 
 	for _, sproutID := range sprouts {
-		jobFile := filepath.Join(s.logDir, sproutID, fmt.Sprintf("%s.jsonl", jid))
+		sproutDir := filepath.Join(s.logDir, sproutID)
+		jobFile := filepath.Join(sproutDir, fmt.Sprintf("%s.jsonl", jid))
 		steps, readErr := readJobFile(jobFile)
 		if readErr != nil {
 			continue
 		}
-		return buildSummary(jid, sproutID, steps), nil
+		summary := buildSummary(jid, sproutID, steps)
+		summary.InvokedBy = readJobMeta(sproutDir, jid)
+		return summary, nil
 	}
 
 	return nil, ErrJobNotFound
@@ -176,7 +183,9 @@ func (s *Store) ListJobsForSprout(sproutID string) ([]JobSummary, error) {
 		if readErr != nil {
 			continue
 		}
-		summaries = append(summaries, *buildSummary(jid, sproutID, steps))
+		s := buildSummary(jid, sproutID, steps)
+		s.InvokedBy = readJobMeta(sproutDir, jid)
+		summaries = append(summaries, *s)
 	}
 
 	sort.Slice(summaries, func(i, j int) bool {
@@ -214,7 +223,9 @@ func (s *Store) ListAllJobs(limit int) ([]JobSummary, error) {
 			if fileErr != nil {
 				continue
 			}
-			allSummaries = append(allSummaries, *buildSummary(jid, sproutID, steps))
+			sm := buildSummary(jid, sproutID, steps)
+			sm.InvokedBy = readJobMeta(sproutDir, jid)
+			allSummaries = append(allSummaries, *sm)
 		}
 	}
 
@@ -304,6 +315,21 @@ func readJobFile(path string) ([]cook.StepCompletion, error) {
 		steps = append(steps, step)
 	}
 	return steps, nil
+}
+
+// readJobMeta reads the optional .meta.json file for a job.
+// Returns empty string if the file is missing or unreadable.
+func readJobMeta(dir, jid string) string {
+	metaFile := filepath.Join(dir, fmt.Sprintf("%s.meta.json", jid))
+	data, err := os.ReadFile(metaFile)
+	if err != nil {
+		return ""
+	}
+	var meta JobMeta
+	if json.Unmarshal(data, &meta) != nil {
+		return ""
+	}
+	return meta.InvokedBy
 }
 
 // buildSummary aggregates step completions into a JobSummary.

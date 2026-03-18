@@ -21,6 +21,20 @@ import (
 	"github.com/gogrlx/grlx/v2/internal/props"
 )
 
+// CookOption configures optional parameters for SendCookEvent.
+type CookOption func(*cookOptions)
+
+type cookOptions struct {
+	invokedBy string
+}
+
+// WithInvoker sets the pubkey of the user who initiated the cook.
+func WithInvoker(pubkey string) CookOption {
+	return func(o *cookOptions) {
+		o.invokedBy = pubkey
+	}
+}
+
 func populateFuncMap(sproutID string) template.FuncMap {
 	v := template.FuncMap{}
 	v["props"] = props.GetStringPropFunc(sproutID)
@@ -69,7 +83,7 @@ func populateFuncMap(sproutID string) template.FuncMap {
 	return v
 }
 
-func SendCookEvent(sproutID string, recipeID RecipeName, JID string, test bool) error {
+func SendCookEvent(sproutID string, recipeID RecipeName, JID string, test bool, opts ...CookOption) error {
 	basepath := getBasePath()
 	includes, err := collectAllIncludes(sproutID, basepath, recipeID)
 	if err != nil {
@@ -129,10 +143,15 @@ func SendCookEvent(sproutID string, recipeID RecipeName, JID string, test bool) 
 	for _, step := range tree {
 		validSteps = append(validSteps, *step)
 	}
+	var co cookOptions
+	for _, opt := range opts {
+		opt(&co)
+	}
 	rEnvelope := RecipeEnvelope{
-		JobID: JID,
-		Steps: validSteps,
-		Test:  test,
+		JobID:     JID,
+		Steps:     validSteps,
+		Test:      test,
+		InvokedBy: co.invokedBy,
 	}
 	b, _ := json.Marshal(rEnvelope)
 	log.Noticef("cooking sprout %s: %s", sproutID, JID)
