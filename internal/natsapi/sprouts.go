@@ -6,7 +6,9 @@ import (
 	"time"
 
 	apitypes "github.com/gogrlx/grlx/v2/internal/api/types"
+	intauth "github.com/gogrlx/grlx/v2/internal/auth"
 	"github.com/gogrlx/grlx/v2/internal/pki"
+	"github.com/gogrlx/grlx/v2/internal/rbac"
 )
 
 const sproutPingTimeout = 3 * time.Second
@@ -19,7 +21,7 @@ type SproutInfo struct {
 	NKey      string `json:"nkey,omitempty"`
 }
 
-func handleSproutsList(_ json.RawMessage) (any, error) {
+func handleSproutsList(params json.RawMessage) (any, error) {
 	allKeys := pki.ListNKeysByType()
 	var sprouts []SproutInfo
 
@@ -59,6 +61,36 @@ func handleSproutsList(_ json.RawMessage) (any, error) {
 	if sprouts == nil {
 		sprouts = []SproutInfo{}
 	}
+
+	// Scope filtering: if the user has scoped view access, filter the
+	// sprout list to only include sprouts they can see.
+	if !intauth.DangerouslyAllowRoot() {
+		var tp tokenParams
+		if len(params) > 0 {
+			json.Unmarshal(params, &tp)
+		}
+		if tp.Token != "" {
+			allIDs := make([]string, len(sprouts))
+			for i, s := range sprouts {
+				allIDs[i] = s.ID
+			}
+			allowed := filterSproutsByScope(tp.Token, rbac.ActionView, allIDs)
+			if allowed != nil {
+				allowedSet := make(map[string]bool, len(allowed))
+				for _, id := range allowed {
+					allowedSet[id] = true
+				}
+				filtered := make([]SproutInfo, 0, len(allowed))
+				for _, s := range sprouts {
+					if allowedSet[s.ID] {
+						filtered = append(filtered, s)
+					}
+				}
+				sprouts = filtered
+			}
+		}
+	}
+
 	return map[string][]SproutInfo{"sprouts": sprouts}, nil
 }
 
