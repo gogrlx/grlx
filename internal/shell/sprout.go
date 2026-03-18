@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"sync"
+	"time"
 
 	"github.com/creack/pty"
 	"github.com/nats-io/nats.go"
@@ -18,13 +19,15 @@ import (
 
 // SproutSession manages a single interactive shell session on the sprout side.
 type SproutSession struct {
-	sessionID string
-	nc        *nats.Conn
-	ptmx      *os.File
-	cmd       *exec.Cmd
-	subs      []*nats.Subscription
-	done      chan struct{}
-	once      sync.Once
+	sessionID   string
+	nc          *nats.Conn
+	ptmx        *os.File
+	cmd         *exec.Cmd
+	subs        []*nats.Subscription
+	done        chan struct{}
+	once        sync.Once
+	idleTimeout time.Duration
+	idleResetCh chan struct{}
 }
 
 // HandleShellStart is the NATS handler for grlx.sprouts.<id>.shell.start.
@@ -68,16 +71,29 @@ func HandleShellStart(nc *nats.Conn, msg *nats.Msg) {
 
 	subjects := Subjects(req.SessionID)
 
+	var idleTimeout time.Duration
+	if req.IdleTimeoutSec > 0 {
+		idleTimeout = time.Duration(req.IdleTimeoutSec) * time.Second
+	}
+
 	session := &SproutSession{
-		sessionID: req.SessionID,
-		nc:        nc,
-		ptmx:      ptmx,
-		cmd:       cmd,
-		done:      make(chan struct{}),
+		sessionID:   req.SessionID,
+		nc:          nc,
+		ptmx:        ptmx,
+		cmd:         cmd,
+		done:        make(chan struct{}),
+		idleTimeout: idleTimeout,
+		idleResetCh: make(chan struct{}, 1),
+	}
+
+	// Start idle timeout watcher if configured.
+	if idleTimeout > 0 {
+		go session.idleWatcher(subjects.DoneSubject)
 	}
 
 	// Subscribe to input from CLI → write to PTY stdin.
 	inputSub, err := nc.Subscribe(subjects.InputSubject, func(m *nats.Msg) {
+		session.resetIdle()
 		if _, writeErr := ptmx.Write(m.Data); writeErr != nil {
 			log.Errorf("shell %s: write to pty failed: %v", req.SessionID, writeErr)
 			session.Close(-1, writeErr.Error())
@@ -120,6 +136,50 @@ func HandleShellStart(nc *nats.Conn, msg *nats.Msg) {
 	respData, _ := json.Marshal(subjects)
 	msg.Respond(respData)
 	log.Debugf("shell: started session %s (shell=%s)", req.SessionID, shellCmd)
+}
+
+// resetIdle resets the idle timeout timer. Called on every input message.
+func (s *SproutSession) resetIdle() {
+	if s.idleTimeout == 0 {
+		return
+	}
+	select {
+	case s.idleResetCh <- struct{}{}:
+	default:
+		// Channel already has a pending reset signal.
+	}
+}
+
+// idleWatcher monitors for idle timeout and closes the session if no
+// input is received within the configured duration.
+func (s *SproutSession) idleWatcher(doneSubject string) {
+	timer := time.NewTimer(s.idleTimeout)
+	defer timer.Stop()
+
+	for {
+		select {
+		case <-timer.C:
+			log.Infof("shell %s: idle timeout (%v), closing session", s.sessionID, s.idleTimeout)
+			s.Close(-1, "idle timeout")
+			done := DoneMessage{
+				ExitCode: -1,
+				Error:    "idle timeout",
+			}
+			data, _ := json.Marshal(done)
+			s.nc.Publish(doneSubject, data)
+			return
+		case <-s.idleResetCh:
+			if !timer.Stop() {
+				select {
+				case <-timer.C:
+				default:
+				}
+			}
+			timer.Reset(s.idleTimeout)
+		case <-s.done:
+			return
+		}
+	}
 }
 
 // readLoop reads from the PTY and publishes output to NATS.

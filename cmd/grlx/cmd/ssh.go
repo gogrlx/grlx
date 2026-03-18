@@ -19,8 +19,9 @@ import (
 )
 
 var (
-	sshShell  string
-	sshCohort string
+	sshShell       string
+	sshCohort      string
+	sshIdleTimeout int
 )
 
 var sshCmd = &cobra.Command{
@@ -43,6 +44,7 @@ Press Ctrl-D or type 'exit' to end the session.`,
 func init() {
 	sshCmd.Flags().StringVar(&sshShell, "shell", "", "shell to use on the sprout (default: /bin/sh)")
 	sshCmd.Flags().StringVarP(&sshCohort, "cohort", "C", "", "cohort name — resolve to sprouts and pick one")
+	sshCmd.Flags().IntVar(&sshIdleTimeout, "idle-timeout", 0, "idle timeout in seconds (0 = no timeout)")
 	rootCmd.AddCommand(sshCmd)
 }
 
@@ -100,10 +102,11 @@ func connectSSH(sproutID string) error {
 
 	// Request a shell session from the farmer.
 	req := shell.CLIStartRequest{
-		SproutID: sproutID,
-		Cols:     cols,
-		Rows:     rows,
-		Shell:    sshShell,
+		SproutID:       sproutID,
+		Cols:           cols,
+		Rows:           rows,
+		Shell:          sshShell,
+		IdleTimeoutSec: sshIdleTimeout,
 	}
 
 	resp, err := client.NatsRequest("shell.start", req)
