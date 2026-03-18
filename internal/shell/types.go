@@ -5,13 +5,18 @@ package shell
 
 import "fmt"
 
+// DefaultIdleTimeout is the default duration before an idle shell session
+// is terminated. Zero means no timeout.
+const DefaultIdleTimeout = 0
+
 // StartRequest is sent from the CLI (via the farmer) to a sprout to
 // begin an interactive shell session.
 type StartRequest struct {
-	SessionID string `json:"session_id"`
-	Cols      int    `json:"cols"`
-	Rows      int    `json:"rows"`
-	Shell     string `json:"shell,omitempty"` // default: /bin/sh
+	SessionID      string `json:"session_id"`
+	Cols           int    `json:"cols"`
+	Rows           int    `json:"rows"`
+	Shell          string `json:"shell,omitempty"`            // default: /bin/sh
+	IdleTimeoutSec int    `json:"idle_timeout_sec,omitempty"` // 0 = no timeout
 }
 
 // StartResponse is returned to the CLI after the sprout successfully
@@ -39,10 +44,11 @@ type DoneMessage struct {
 
 // CLIStartRequest is what the CLI sends to the farmer's grlx.api.shell.start.
 type CLIStartRequest struct {
-	SproutID string `json:"sprout_id"`
-	Cols     int    `json:"cols"`
-	Rows     int    `json:"rows"`
-	Shell    string `json:"shell,omitempty"`
+	SproutID       string `json:"sprout_id"`
+	Cols           int    `json:"cols"`
+	Rows           int    `json:"rows"`
+	Shell          string `json:"shell,omitempty"`
+	IdleTimeoutSec int    `json:"idle_timeout_sec,omitempty"` // 0 = no timeout
 }
 
 // SubjectPrefix returns the NATS subject prefix for a session.

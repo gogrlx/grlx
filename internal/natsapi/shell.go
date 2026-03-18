@@ -36,10 +36,11 @@ func handleShellStart(params json.RawMessage) (any, error) {
 
 	// Forward the start request to the sprout.
 	startReq := shell.StartRequest{
-		SessionID: sessionID,
-		Cols:      req.Cols,
-		Rows:      req.Rows,
-		Shell:     req.Shell,
+		SessionID:      sessionID,
+		Cols:           req.Cols,
+		Rows:           req.Rows,
+		Shell:          req.Shell,
+		IdleTimeoutSec: req.IdleTimeoutSec,
 	}
 	data, _ := json.Marshal(startReq)
 	topic := "grlx.sprouts." + req.SproutID + ".shell.start"
