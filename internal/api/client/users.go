@@ -45,3 +45,44 @@ func ListUsers() (apitypes.UsersListResponse, error) {
 	}
 	return result, nil
 }
+
+// AddUser adds a pubkey→role mapping on the farmer.
+func AddUser(pubkey, roleName string) (apitypes.UserMutateResponse, error) {
+	var result apitypes.UserMutateResponse
+	params := apitypes.UserAddRequest{
+		Pubkey:   pubkey,
+		RoleName: roleName,
+	}
+	data, err := json.Marshal(params)
+	if err != nil {
+		return result, fmt.Errorf("add user: %w", err)
+	}
+	resp, err := NatsRequest("auth.users.add", data)
+	if err != nil {
+		return result, err
+	}
+	if err := json.Unmarshal(resp, &result); err != nil {
+		return result, fmt.Errorf("add user: %w", err)
+	}
+	return result, nil
+}
+
+// RemoveUser removes a pubkey mapping on the farmer.
+func RemoveUser(pubkey string) (apitypes.UserMutateResponse, error) {
+	var result apitypes.UserMutateResponse
+	params := apitypes.UserRemoveRequest{
+		Pubkey: pubkey,
+	}
+	data, err := json.Marshal(params)
+	if err != nil {
+		return result, fmt.Errorf("remove user: %w", err)
+	}
+	resp, err := NatsRequest("auth.users.remove", data)
+	if err != nil {
+		return result, err
+	}
+	if err := json.Unmarshal(resp, &result); err != nil {
+		return result, fmt.Errorf("remove user: %w", err)
+	}
+	return result, nil
+}

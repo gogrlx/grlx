@@ -43,9 +43,11 @@ var natsActionMap = map[string]rbac.Action{
 	"pki.delete":   rbac.ActionPKI,
 
 	// Auth
-	"auth.whoami":  rbac.ActionUserRead,
-	"auth.users":   rbac.ActionAdmin,
-	"auth.explain": rbac.ActionUserRead,
+	"auth.whoami":       rbac.ActionUserRead,
+	"auth.users":        rbac.ActionAdmin,
+	"auth.users.add":    rbac.ActionAdmin,
+	"auth.users.remove": rbac.ActionAdmin,
+	"auth.explain":      rbac.ActionUserRead,
 
 	// Recipes (read-only)
 	"recipes.list": rbac.ActionView,

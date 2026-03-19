@@ -96,6 +96,23 @@ type ActionExplain struct {
 	Scope  string      `json:"scope"`
 }
 
+// UserAddRequest is the payload for adding a user.
+type UserAddRequest struct {
+	Pubkey   string `json:"pubkey"`
+	RoleName string `json:"role"`
+}
+
+// UserRemoveRequest is the payload for removing a user.
+type UserRemoveRequest struct {
+	Pubkey string `json:"pubkey"`
+}
+
+// UserMutateResponse is returned after add/remove operations.
+type UserMutateResponse struct {
+	Success bool   `json:"success"`
+	Message string `json:"message,omitempty"`
+}
+
 var (
 	ErrAPIRouteNotFound = errors.New("API Route not found")
 	ErrInvalidUserInput = errors.New("invalid user input was received")
