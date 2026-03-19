@@ -7,24 +7,29 @@ import (
 	"github.com/gogrlx/grlx/v2/internal/config"
 )
 
-// NewRouter creates an http.ServeMux with HTTPS-only API routes.
-// PKI management and file serving are the only authenticated routes.
-// All command-and-control operations (sprouts, jobs, props, cohorts,
-// auth, and version) are handled exclusively over the NATS bus.
-// The /health endpoint is unauthenticated for load-balancer probes.
-func NewRouter(_ config.Version, certificate string) *http.ServeMux {
+// NewBootstrapRouter creates an http.ServeMux for the farmer's PKI bootstrap
+// server. This HTTPS server exists solely for initial sprout enrollment:
+// sprouts that have no NATS credentials yet use it to fetch the CA certificate
+// and register their NKey. Once a sprout is enrolled and connected to the NATS
+// bus, all further communication (commands, jobs, props, files, etc.) happens
+// exclusively over NATS.
+//
+// The file server endpoint is a legacy path kept for backward compatibility
+// with sprouts that have not yet upgraded to NATS-based file fetching.
+//
+// No health endpoint is exposed here — the CLI's local HTTP server
+// (internal/serve) provides /api/v1/health for monitoring and load balancers.
+func NewBootstrapRouter(certificate string) *http.ServeMux {
 	_ = certificate // reserved for future TLS configuration
 	mux := http.NewServeMux()
 
-	// Health check (unauthenticated, for load-balancer/monitoring probes)
-	mux.Handle("GET /health", Logger(http.HandlerFunc(handlers.GetHealth), "GetHealth"))
-
-	// Public bootstrap routes (no auth required)
+	// PKI bootstrap routes (no auth required — pre-enrollment sprouts use these)
 	mux.Handle("GET /auth/cert/", Logger(http.HandlerFunc(handlers.GetCertificate), "GetCertificate"))
 	mux.Handle("PUT /pki/putnkey", Logger(http.HandlerFunc(handlers.PutNKey), "PutNKey"))
 
-	// File server: serves files from the recipe directory.
-	// Sprouts fetch files using farmer:// URLs which resolve to this endpoint.
+	// Legacy file server: serves files from the recipe directory.
+	// New sprouts fetch files over NATS; this endpoint remains for
+	// backward compatibility with older sprout versions.
 	fileRoot := config.RecipeDir
 	fileServer := http.StripPrefix("/files/", http.FileServer(http.Dir(fileRoot)))
 	mux.Handle("GET /files/", Logger(Auth(fileServer, "FileServer"), "FileServer"))

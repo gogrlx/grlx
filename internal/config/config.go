@@ -31,29 +31,34 @@ var (
 	CertHosts            []string
 	CertificateValidTime time.Duration
 	ConfigRoot           string
-	FarmerAPIPort        string
-	FarmerBusURL         string
-	FarmerBusPort        string
-	FarmerInterface      string
-	FarmerOrganization   string
-	FarmerPKI            string
-	FarmerURL            string
-	GrlxRootCA           string
-	JobLogDir            string
-	JobLogTTL            time.Duration
-	PropsDir             string
-	KeyFile              string
-	LogLevel             log.Level
-	NKeyFarmerPrivFile   string
-	NKeyFarmerPubFile    string
-	NKeySproutPrivFile   string
-	NKeySproutPubFile    string
-	RecipeDir            string
-	RootCA               string
-	RootCAPriv           string
-	SproutID             string
-	SproutPKI            string
-	SproutRootCA         string
+	// FarmerAPIPort is the port for the PKI bootstrap HTTPS server.
+	// This server handles initial sprout enrollment only (certificate
+	// distribution and NKey registration). All post-enrollment communication
+	// happens over the NATS bus.
+	FarmerAPIPort string
+
+	FarmerBusURL       string
+	FarmerBusPort      string
+	FarmerInterface    string
+	FarmerOrganization string
+	FarmerPKI          string
+	FarmerURL          string
+	GrlxRootCA         string
+	JobLogDir          string
+	JobLogTTL          time.Duration
+	PropsDir           string
+	KeyFile            string
+	LogLevel           log.Level
+	NKeyFarmerPrivFile string
+	NKeyFarmerPubFile  string
+	NKeySproutPrivFile string
+	NKeySproutPubFile  string
+	RecipeDir          string
+	RootCA             string
+	RootCAPriv         string
+	SproutID           string
+	SproutPKI          string
+	SproutRootCA       string
 )
 
 // Binary represents the type of grlx binary being configured.
