@@ -31,7 +31,7 @@ var (
 	CertHosts            []string
 	CertificateValidTime time.Duration
 	ConfigRoot           string
-	// FarmerAPIPort is the port for the PKI bootstrap HTTPS server.
+	// FarmerAPIPort is the port for the farmer's HTTPS server.
 	// This server handles initial sprout enrollment only (certificate
 	// distribution and NKey registration). All post-enrollment communication
 	// happens over the NATS bus.

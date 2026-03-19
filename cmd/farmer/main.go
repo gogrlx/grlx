@@ -60,7 +60,7 @@ func main() {
 	certs.GenCert()
 	certs.GenNKey(true)
 	RunNATSServer()
-	StartPKIBootstrapServer()
+	StartAPIServer()
 	go ConnectFarmer()
 	go handleSIGHUP()
 	select {}
@@ -135,16 +135,16 @@ func createConfigRoot() {
 	}
 }
 
-// StartPKIBootstrapServer starts the HTTPS server used exclusively for
-// initial sprout enrollment (certificate distribution and NKey registration).
-// Once a sprout is enrolled and connected to the NATS bus, all further
-// communication happens over NATS — this server is not used again.
-func StartPKIBootstrapServer() {
+// StartAPIServer starts the farmer's HTTPS server. It handles PKI
+// bootstrap (certificate distribution and NKey registration), file
+// serving for recipe downloads (farmer:// scheme), and a health
+// endpoint for monitoring and automated tooling.
+func StartAPIServer() {
 	CertFile := config.CertFile
 	FarmerInterface := config.FarmerInterface
 	FarmerAPIPort := config.FarmerAPIPort
 	KeyFile := config.KeyFile
-	r := api.NewBootstrapRouter(CertFile)
+	r := api.NewRouter(CertFile)
 	srv := &http.Server{
 		Addr:         FarmerInterface + ":" + FarmerAPIPort,
 		WriteTimeout: config.APIWriteTimeout,
@@ -155,16 +155,16 @@ func StartPKIBootstrapServer() {
 	apiServer = srv
 	go func() {
 		if err := srv.ListenAndServeTLS(CertFile, KeyFile); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("PKI bootstrap server failed: %v", err)
+			log.Fatalf("API server failed: %v", err)
 		}
 	}()
 
-	log.Tracef("PKI bootstrap server started on %s\n", FarmerInterface+":"+FarmerAPIPort)
+	log.Tracef("API server started on %s\n", FarmerInterface+":"+FarmerAPIPort)
 }
 
-// handleSIGHUP listens for SIGHUP signals and reloads the PKI bootstrap
-// server and NATS server configuration. This allows certificate rotation
-// and configuration changes to take effect without a full restart.
+// handleSIGHUP listens for SIGHUP signals and reloads the API server
+// and NATS server configuration. This allows certificate rotation and
+// configuration changes to take effect without a full restart.
 func handleSIGHUP() {
 	sighup := make(chan os.Signal, 1)
 	signal.Notify(sighup, syscall.SIGHUP)
@@ -187,24 +187,24 @@ func handleSIGHUP() {
 			}
 		}
 
-		// Gracefully shut down the PKI bootstrap server and restart it
+		// Gracefully shut down the API server and restart it
 		// so it picks up any new TLS certificates
 		if apiServer != nil {
 			shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 			if err := apiServer.Shutdown(shutdownCtx); err != nil {
-				log.Errorf("Failed to gracefully shut down PKI bootstrap server: %v", err)
+				log.Errorf("Failed to gracefully shut down API server: %v", err)
 			}
 			cancel()
-			log.Info("PKI bootstrap server shut down, restarting...")
+			log.Info("API server shut down, restarting...")
 		}
 
-		// Reload config before restarting the PKI bootstrap server
+		// Reload config before restarting the API server
 		config.LoadConfig("farmer")
 		props.ClearStaticProps()
 		props.LoadStaticProps(config.StaticProps())
 		loadCohortRegistry()
 		loadAuthPolicy()
-		StartPKIBootstrapServer()
+		StartAPIServer()
 		log.Info("Servers reloaded successfully")
 	}
 }
