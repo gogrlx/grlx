@@ -54,6 +54,9 @@ var natsActionMap = map[string]rbac.Action{
 	// Audit
 	"audit.dates": rbac.ActionAdmin,
 	"audit.query": rbac.ActionAdmin,
+
+	// Files (recipe file serving)
+	"files.get": rbac.ActionView,
 }
 
 // publicMethods are accessible without a token.

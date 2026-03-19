@@ -88,6 +88,9 @@ var routes = map[string]handler{
 	// Audit
 	"audit.dates": handleAuditList,
 	"audit.query": handleAuditQuery,
+
+	// Files (recipe file serving over NATS)
+	"files.get": handleFilesGet,
 }
 
 // Subscribe registers all NATS API handlers on the given connection.
