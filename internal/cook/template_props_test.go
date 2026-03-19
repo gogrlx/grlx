@@ -468,3 +468,336 @@ func TestTemplateFuncTernary(t *testing.T) {
 		})
 	}
 }
+
+// --- Static props (farmer-side) integration tests ---
+
+func TestStaticPropsInTemplate(t *testing.T) {
+	// Reset props state.
+	props.ClearStaticProps()
+
+	// Load static props as a farmer would from config.
+	cfg := map[string]interface{}{
+		"static-template-sprout": map[string]interface{}{
+			"db_host": "db.internal.example.com",
+			"db_port": "5432",
+		},
+	}
+	props.LoadStaticProps(cfg)
+	t.Cleanup(props.ClearStaticProps)
+
+	recipe := []byte(`steps:
+  configure db:
+    file.managed:
+      - name: /etc/app/db.conf
+      - source: grlx://configs/db.conf
+      - context:
+          host: {{ props "db_host" }}
+          port: {{ props "db_port" }}
+`)
+
+	out, err := renderRecipeTemplate("static-template-sprout", "static-recipe", recipe)
+	if err != nil {
+		t.Fatalf("renderRecipeTemplate: %v", err)
+	}
+
+	rendered := string(out)
+	if !strings.Contains(rendered, "host: db.internal.example.com") {
+		t.Errorf("expected static prop db_host resolved, got:\n%s", rendered)
+	}
+	if !strings.Contains(rendered, "port: 5432") {
+		t.Errorf("expected static prop db_port resolved, got:\n%s", rendered)
+	}
+}
+
+func TestMixedStaticAndDynamicPropsInTemplate(t *testing.T) {
+	props.ClearStaticProps()
+
+	// Static prop from farmer config.
+	cfg := map[string]interface{}{
+		"mixed-sprout": map[string]interface{}{
+			"region": "us-east-1",
+		},
+	}
+	props.LoadStaticProps(cfg)
+	t.Cleanup(props.ClearStaticProps)
+
+	// Dynamic prop set at runtime (e.g. from sprout facts).
+	if err := props.SetProp("mixed-sprout", "instance_id", "i-abc123"); err != nil {
+		t.Fatalf("SetProp: %v", err)
+	}
+
+	recipe := []byte(`steps:
+  tag instance:
+    cmd.run:
+      - name: "cloud tag --region={{ props "region" }} --id={{ props "instance_id" }}"
+`)
+
+	out, err := renderRecipeTemplate("mixed-sprout", "mixed-recipe", recipe)
+	if err != nil {
+		t.Fatalf("renderRecipeTemplate: %v", err)
+	}
+
+	rendered := string(out)
+	if !strings.Contains(rendered, "--region=us-east-1") {
+		t.Errorf("expected static prop 'region' resolved, got:\n%s", rendered)
+	}
+	if !strings.Contains(rendered, "--id=i-abc123") {
+		t.Errorf("expected dynamic prop 'instance_id' resolved, got:\n%s", rendered)
+	}
+}
+
+func TestDynamicPropOverridesStaticInTemplate(t *testing.T) {
+	props.ClearStaticProps()
+
+	// Static prop.
+	cfg := map[string]interface{}{
+		"override-sprout": map[string]interface{}{
+			"log_level": "info",
+		},
+	}
+	props.LoadStaticProps(cfg)
+	t.Cleanup(props.ClearStaticProps)
+
+	// Dynamic prop with the same key should override.
+	if err := props.SetProp("override-sprout", "log_level", "debug"); err != nil {
+		t.Fatalf("SetProp: %v", err)
+	}
+
+	recipe := []byte(`level: {{ props "log_level" }}`)
+	out, err := renderRecipeTemplate("override-sprout", "override-recipe", recipe)
+	if err != nil {
+		t.Fatalf("renderRecipeTemplate: %v", err)
+	}
+
+	rendered := strings.TrimSpace(string(out))
+	if rendered != "level: debug" {
+		t.Errorf("expected dynamic prop to override static, got: %s", rendered)
+	}
+}
+
+func TestMultiSproutIsolation(t *testing.T) {
+	props.ClearStaticProps()
+
+	cfg := map[string]interface{}{
+		"sprout-a": map[string]interface{}{
+			"role": "webserver",
+		},
+		"sprout-b": map[string]interface{}{
+			"role": "database",
+		},
+	}
+	props.LoadStaticProps(cfg)
+	t.Cleanup(props.ClearStaticProps)
+
+	recipe := []byte(`role: {{ props "role" }}`)
+
+	outA, err := renderRecipeTemplate("sprout-a", "iso-a", recipe)
+	if err != nil {
+		t.Fatalf("render sprout-a: %v", err)
+	}
+	outB, err := renderRecipeTemplate("sprout-b", "iso-b", recipe)
+	if err != nil {
+		t.Fatalf("render sprout-b: %v", err)
+	}
+
+	if strings.TrimSpace(string(outA)) != "role: webserver" {
+		t.Errorf("sprout-a expected 'role: webserver', got %q", strings.TrimSpace(string(outA)))
+	}
+	if strings.TrimSpace(string(outB)) != "role: database" {
+		t.Errorf("sprout-b expected 'role: database', got %q", strings.TrimSpace(string(outB)))
+	}
+}
+
+func TestStaticPropsEndToEndPipeline(t *testing.T) {
+	props.ClearStaticProps()
+
+	// Simulate farmer config with static props for a sprout.
+	cfg := map[string]interface{}{
+		"e2e-static-sprout": map[string]interface{}{
+			"app_port":    "8080",
+			"app_user":    "webapp",
+			"config_path": "/etc/myapp/config.yml",
+		},
+	}
+	props.LoadStaticProps(cfg)
+	t.Cleanup(props.ClearStaticProps)
+
+	recipe := []byte(`steps:
+  deploy config:
+    file.managed:
+      - name: {{ props "config_path" }}
+      - source: grlx://app/config.yml
+      - user: {{ props "app_user" }}
+      - mode: "644"
+  start service:
+    cmd.run:
+      - name: "systemctl start myapp"
+      - requisites:
+        - require: deploy config
+`)
+
+	// Step 1: Render.
+	rendered, err := renderRecipeTemplate("e2e-static-sprout", "e2e-static", recipe)
+	if err != nil {
+		t.Fatalf("renderRecipeTemplate: %v", err)
+	}
+
+	// Step 2: Unmarshal.
+	recipeMap, err := unmarshalRecipe(rendered)
+	if err != nil {
+		t.Fatalf("unmarshalRecipe: %v", err)
+	}
+
+	// Step 3: Extract steps.
+	stepsMap, err := stepsFromMap(recipeMap)
+	if err != nil {
+		t.Fatalf("stepsFromMap: %v", err)
+	}
+	if len(stepsMap) != 2 {
+		t.Fatalf("expected 2 steps, got %d", len(stepsMap))
+	}
+
+	// Step 4: Convert to Step structs.
+	steps, err := makeRecipeSteps(stepsMap)
+	if err != nil {
+		t.Fatalf("makeRecipeSteps: %v", err)
+	}
+	if len(steps) != 2 {
+		t.Fatalf("expected 2 steps, got %d", len(steps))
+	}
+
+	// Verify static props resolved in step properties.
+	var deployStep *Step
+	var serviceStep *Step
+	for _, s := range steps {
+		switch s.ID {
+		case "deploy config":
+			deployStep = s
+		case "start service":
+			serviceStep = s
+		}
+	}
+
+	if deployStep == nil {
+		t.Fatal("deploy config step not found")
+	}
+	if name, ok := deployStep.Properties["name"]; !ok || name != "/etc/myapp/config.yml" {
+		t.Errorf("expected name '/etc/myapp/config.yml', got %v", deployStep.Properties["name"])
+	}
+	if user, ok := deployStep.Properties["user"]; !ok || user != "webapp" {
+		t.Errorf("expected user 'webapp', got %v", deployStep.Properties["user"])
+	}
+	if deployStep.Ingredient != "file" {
+		t.Errorf("expected ingredient 'file', got %q", deployStep.Ingredient)
+	}
+	if deployStep.Method != "managed" {
+		t.Errorf("expected method 'managed', got %q", deployStep.Method)
+	}
+
+	if serviceStep == nil {
+		t.Fatal("start service step not found")
+	}
+	if len(serviceStep.Requisites) != 1 {
+		t.Fatalf("expected 1 requisite on service step, got %d", len(serviceStep.Requisites))
+	}
+	if serviceStep.Requisites[0].Condition != Require {
+		t.Errorf("expected requisite type 'require', got %q", serviceStep.Requisites[0].Condition)
+	}
+}
+
+func TestStaticPropsClearedBetweenReloads(t *testing.T) {
+	props.ClearStaticProps()
+
+	// First load.
+	cfg1 := map[string]interface{}{
+		"reload-sprout": map[string]interface{}{
+			"version": "1.0",
+		},
+	}
+	props.LoadStaticProps(cfg1)
+
+	recipe := []byte(`v: {{ props "version" }}`)
+	out, err := renderRecipeTemplate("reload-sprout", "reload-1", recipe)
+	if err != nil {
+		t.Fatalf("render: %v", err)
+	}
+	if strings.TrimSpace(string(out)) != "v: 1.0" {
+		t.Fatalf("expected 'v: 1.0', got %q", strings.TrimSpace(string(out)))
+	}
+
+	// Simulate config reload: clear then load new.
+	props.ClearStaticProps()
+	cfg2 := map[string]interface{}{
+		"reload-sprout": map[string]interface{}{
+			"version": "2.0",
+		},
+	}
+	props.LoadStaticProps(cfg2)
+	t.Cleanup(props.ClearStaticProps)
+
+	out, err = renderRecipeTemplate("reload-sprout", "reload-2", recipe)
+	if err != nil {
+		t.Fatalf("render after reload: %v", err)
+	}
+	if strings.TrimSpace(string(out)) != "v: 2.0" {
+		t.Errorf("expected 'v: 2.0' after reload, got %q", strings.TrimSpace(string(out)))
+	}
+}
+
+func TestStaticPropsNestedTemplateExpressions(t *testing.T) {
+	props.ClearStaticProps()
+
+	cfg := map[string]interface{}{
+		"nested-sprout": map[string]interface{}{
+			"app_name": "myapp",
+			"app_env":  "production",
+		},
+	}
+	props.LoadStaticProps(cfg)
+	t.Cleanup(props.ClearStaticProps)
+
+	// Use static props combined with template functions.
+	recipe := []byte(`steps:
+  deploy:
+    cmd.run:
+      - name: "deploy {{ upper (props "app_name") }} to {{ props "app_env" }}"
+`)
+
+	out, err := renderRecipeTemplate("nested-sprout", "nested-recipe", recipe)
+	if err != nil {
+		t.Fatalf("renderRecipeTemplate: %v", err)
+	}
+
+	rendered := string(out)
+	if !strings.Contains(rendered, "deploy MYAPP to production") {
+		t.Errorf("expected composed template expression, got:\n%s", rendered)
+	}
+}
+
+func TestStaticPropsWithDefaultFallback(t *testing.T) {
+	props.ClearStaticProps()
+
+	cfg := map[string]interface{}{
+		"default-sprout": map[string]interface{}{
+			"port": "9090",
+		},
+	}
+	props.LoadStaticProps(cfg)
+	t.Cleanup(props.ClearStaticProps)
+
+	recipe := []byte(`port: {{ default "8080" (props "port") }}
+host: {{ default "localhost" (props "missing_host") }}`)
+
+	out, err := renderRecipeTemplate("default-sprout", "default-recipe", recipe)
+	if err != nil {
+		t.Fatalf("render: %v", err)
+	}
+
+	rendered := string(out)
+	if !strings.Contains(rendered, "port: 9090") {
+		t.Errorf("expected static prop to take precedence over default, got:\n%s", rendered)
+	}
+	if !strings.Contains(rendered, "host: localhost") {
+		t.Errorf("expected default fallback for missing prop, got:\n%s", rendered)
+	}
+}
