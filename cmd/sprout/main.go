@@ -13,6 +13,7 @@ import (
 	"github.com/gogrlx/grlx/v2/internal/cook"
 	"github.com/gogrlx/grlx/v2/internal/ingredients"
 	"github.com/gogrlx/grlx/v2/internal/ingredients/cmd"
+	"github.com/gogrlx/grlx/v2/internal/ingredients/file/farmer"
 	"github.com/gogrlx/grlx/v2/internal/ingredients/test"
 	"github.com/gogrlx/grlx/v2/internal/pki"
 
@@ -126,6 +127,7 @@ func ConnectSprout() {
 	test.RegisterNatsConn(nc)
 	cmd.RegisterNatsConn(nc)
 	cook.RegisterNatsConn(nc)
+	farmer.RegisterNatsConn(nc)
 	err = natsInit(nc)
 	if err != nil {
 		log.Panicf("Error with natsInit: %v", err)
