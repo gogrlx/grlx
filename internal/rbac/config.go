@@ -165,6 +165,13 @@ func (m *UserRoleMap) Set(pubkey, roleName string) {
 	m.pubkeyToRole[pubkey] = roleName
 }
 
+// Delete removes a pubkey from the map. Returns true if the key existed.
+func (m *UserRoleMap) Delete(pubkey string) bool {
+	_, existed := m.pubkeyToRole[pubkey]
+	delete(m.pubkeyToRole, pubkey)
+	return existed
+}
+
 // RoleName returns the role name for a pubkey, or empty string if not found.
 func (m *UserRoleMap) RoleName(pubkey string) string {
 	return m.pubkeyToRole[pubkey]

@@ -2,6 +2,7 @@ package auth
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/nats-io/nkeys"
@@ -17,6 +18,8 @@ var (
 	ErrNoPrivkey     = errors.New("no private key found in config")
 	ErrPrivkeyExists = errors.New("private key already exists in config")
 	ErrNoPubkeys     = errors.New("no pubkeys found in config")
+	ErrUserExists    = errors.New("pubkey is already assigned to a role")
+	ErrUserNotFound  = errors.New("pubkey is not assigned to any role")
 )
 
 // policyState holds the loaded RBAC policy. It is populated by LoadPolicy
@@ -429,6 +432,116 @@ func GetRole(name string) (*rbac.Role, error) {
 		return nil, rbac.ErrUnknownRole
 	}
 	return roleStore.Get(name)
+}
+
+// AddUser adds a pubkey→role mapping to the config and reloads the policy.
+// It writes to the "users" config section (new format).
+func AddUser(pubkey, roleName string) error {
+	policyMu.Lock()
+	defer policyMu.Unlock()
+
+	// Validate the pubkey looks like an nkey.
+	if !nkeys.IsValidPublicAccountKey(pubkey) {
+		return ErrInvalidPubkey
+	}
+
+	// Check that the role exists.
+	if roleStore != nil {
+		if _, err := roleStore.Get(roleName); err != nil {
+			return err
+		}
+	}
+
+	// Check the user isn't already assigned.
+	if userRoleMap != nil && userRoleMap.RoleName(pubkey) != "" {
+		return ErrUserExists
+	}
+
+	// Read existing users section, add the new pubkey, and write back.
+	usersMap := jety.GetStringMap("users")
+	if usersMap == nil {
+		usersMap = make(map[string]interface{})
+	}
+	existing := extractStringSlice(usersMap[roleName])
+	existing = append(existing, pubkey)
+	usersMap[roleName] = existing
+	jety.Set("users", usersMap)
+	if err := jety.WriteConfig(); err != nil {
+		return fmt.Errorf("writing config: %w", err)
+	}
+
+	// Update in-memory state.
+	if userRoleMap != nil {
+		userRoleMap.Set(pubkey, roleName)
+	}
+
+	return nil
+}
+
+// RemoveUser removes a pubkey from the config and reloads the policy.
+func RemoveUser(pubkey string) error {
+	policyMu.Lock()
+	defer policyMu.Unlock()
+
+	// Find which role this pubkey belongs to.
+	found := false
+	var foundRole string
+	if userRoleMap != nil {
+		foundRole = userRoleMap.RoleName(pubkey)
+		if foundRole != "" {
+			found = true
+		}
+	}
+	if !found {
+		return ErrUserNotFound
+	}
+
+	// Remove from the "users" config section.
+	usersMap := jety.GetStringMap("users")
+	if usersMap != nil {
+		for roleName, v := range usersMap {
+			keys := extractStringSlice(v)
+			filtered := make([]string, 0, len(keys))
+			for _, k := range keys {
+				if k != pubkey {
+					filtered = append(filtered, k)
+				}
+			}
+			if len(filtered) != len(keys) {
+				usersMap[roleName] = filtered
+			}
+		}
+		jety.Set("users", usersMap)
+	}
+
+	// Also check legacy "pubkeys" section.
+	pubkeysMap := jety.GetStringMap("pubkeys")
+	if pubkeysMap != nil {
+		for roleName, v := range pubkeysMap {
+			keys := extractStringSlice(v)
+			filtered := make([]string, 0, len(keys))
+			for _, k := range keys {
+				if k != pubkey {
+					filtered = append(filtered, k)
+				}
+			}
+			if len(filtered) != len(keys) {
+				pubkeysMap[roleName] = filtered
+			}
+		}
+		jety.Set("pubkeys", pubkeysMap)
+	}
+
+	if err := jety.WriteConfig(); err != nil {
+		return fmt.Errorf("writing config: %w", err)
+	}
+
+	// Update in-memory state.
+	if userRoleMap != nil {
+		userRoleMap.Delete(pubkey)
+	}
+
+	return nil
 }
 
 func GetPubkeysByRole(role string) ([]string, error) {

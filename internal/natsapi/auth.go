@@ -83,6 +83,63 @@ func handleAuthExplain(params json.RawMessage) (any, error) {
 	return resp, nil
 }
 
+// UserAddParams holds the params for adding a user.
+type UserAddParams struct {
+	Token    string `json:"token"`
+	Pubkey   string `json:"pubkey"`
+	RoleName string `json:"role"`
+}
+
+// UserRemoveParams holds the params for removing a user.
+type UserRemoveParams struct {
+	Token  string `json:"token"`
+	Pubkey string `json:"pubkey"`
+}
+
+func handleAuthAddUser(params json.RawMessage) (any, error) {
+	var p UserAddParams
+	if len(params) > 0 {
+		if err := json.Unmarshal(params, &p); err != nil {
+			return nil, fmt.Errorf("invalid params: %w", err)
+		}
+	}
+
+	if p.Pubkey == "" || p.RoleName == "" {
+		return nil, fmt.Errorf("pubkey and role are required")
+	}
+
+	if err := intauth.AddUser(p.Pubkey, p.RoleName); err != nil {
+		return nil, err
+	}
+
+	return apitypes.UserMutateResponse{
+		Success: true,
+		Message: fmt.Sprintf("user %s added with role %s", p.Pubkey, p.RoleName),
+	}, nil
+}
+
+func handleAuthRemoveUser(params json.RawMessage) (any, error) {
+	var p UserRemoveParams
+	if len(params) > 0 {
+		if err := json.Unmarshal(params, &p); err != nil {
+			return nil, fmt.Errorf("invalid params: %w", err)
+		}
+	}
+
+	if p.Pubkey == "" {
+		return nil, fmt.Errorf("pubkey is required")
+	}
+
+	if err := intauth.RemoveUser(p.Pubkey); err != nil {
+		return nil, err
+	}
+
+	return apitypes.UserMutateResponse{
+		Success: true,
+		Message: fmt.Sprintf("user %s removed", p.Pubkey),
+	}, nil
+}
+
 func handleAuthListUsers(_ json.RawMessage) (any, error) {
 	users := intauth.ListAllUsers()
 
