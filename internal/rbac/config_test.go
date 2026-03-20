@@ -142,23 +142,96 @@ func TestBuiltinViewerRoleRouteAccess(t *testing.T) {
 	}
 }
 
-func TestLoadRolesFromConfig_BuiltinViewerPresent(t *testing.T) {
-	// LoadRolesFromConfig reads from jety, which we can't easily mock here
-	// without side effects. Instead, test that NewRoleStore + BuiltinViewerRole
-	// works correctly as a unit.
-	store := NewRoleStore()
-	builtin := BuiltinViewerRole()
-	if err := store.Register(builtin); err != nil {
-		t.Fatalf("failed to register built-in viewer: %v", err)
+func TestBuiltinOperatorRole(t *testing.T) {
+	op := BuiltinOperatorRole()
+
+	if op.Name != "operator" {
+		t.Fatalf("expected name 'operator', got %q", op.Name)
+	}
+	if err := op.Validate(); err != nil {
+		t.Fatalf("built-in operator role failed validation: %v", err)
 	}
 
-	// Verify it's there
+	// Operator should have these actions
+	wantActions := []Action{
+		ActionView, ActionCook, ActionCmd, ActionShell,
+		ActionTest, ActionProps, ActionJobAdmin, ActionUserRead,
+	}
+	for _, action := range wantActions {
+		if !op.HasAction(action) {
+			t.Errorf("operator role should have action %q", action)
+		}
+	}
+
+	// Operator should NOT have these actions
+	denyActions := []Action{ActionAdmin, ActionPKI}
+	for _, action := range denyActions {
+		if op.HasAction(action) {
+			t.Errorf("operator role should not have action %q", action)
+		}
+	}
+}
+
+func TestBuiltinOperatorRoleRouteAccess(t *testing.T) {
+	op := BuiltinOperatorRole()
+
+	// Routes that should be accessible
+	allowedRoutes := []string{
+		"GetVersion", "ListSprouts", "GetSprout",
+		"ListJobs", "GetJob", "ListJobsForSprout",
+		"GetAllProps", "GetProp", "ListCohorts",
+		"Cook", "CmdRun", "ShellStart", "TestPing",
+		"SetProp", "DeleteProp", "CancelJob",
+		"WhoAmI", "ResolveCohort",
+	}
+	for _, route := range allowedRoutes {
+		if !op.HasRouteAccess(route) {
+			t.Errorf("operator should have access to %q", route)
+		}
+	}
+
+	// Routes that should be denied
+	deniedRoutes := []string{
+		"AcceptID", "RejectID", "DenyID", "DeleteID",
+		"UnacceptID", "ListUsers",
+	}
+	for _, route := range deniedRoutes {
+		if op.HasRouteAccess(route) {
+			t.Errorf("operator should not have access to %q", route)
+		}
+	}
+}
+
+func TestLoadRolesFromConfig_BuiltinsPresent(t *testing.T) {
+	// LoadRolesFromConfig reads from jety, which we can't easily mock here
+	// without side effects. Instead, test that NewRoleStore + built-in roles
+	// work correctly as a unit.
+	store := NewRoleStore()
+
+	// Register both built-ins
+	builtins := []*Role{BuiltinViewerRole(), BuiltinOperatorRole()}
+	for _, b := range builtins {
+		if err := store.Register(b); err != nil {
+			t.Fatalf("failed to register built-in %s: %v", b.Name, err)
+		}
+	}
+
+	// Verify viewer is there
 	viewer, err := store.Get("viewer")
 	if err != nil {
 		t.Fatalf("expected viewer role to be registered: %v", err)
 	}
 	if viewer.Name != "viewer" {
 		t.Errorf("expected name 'viewer', got %q", viewer.Name)
+	}
+
+	// Verify operator is there
+	operator, err := store.Get("operator")
+	if err != nil {
+		t.Fatalf("expected operator role to be registered: %v", err)
+	}
+	if operator.Name != "operator" {
+		t.Errorf("expected name 'operator', got %q", operator.Name)
 	}
 
 	// Override with custom viewer
@@ -184,6 +257,30 @@ func TestLoadRolesFromConfig_BuiltinViewerPresent(t *testing.T) {
 	// First rule should be scoped, not wildcard
 	if viewer.Rules[0].Scope != "cohort:monitoring" {
 		t.Errorf("expected cohort:monitoring scope, got %q", viewer.Rules[0].Scope)
+	}
+
+	// Override with custom operator
+	customOperator := &Role{
+		Name: "operator",
+		Rules: []Rule{
+			{Action: ActionView, Scope: "*"},
+			{Action: ActionCook, Scope: "cohort:staging"},
+		},
+	}
+	if err := store.Register(customOperator); err != nil {
+		t.Fatalf("failed to register custom operator: %v", err)
+	}
+
+	// Custom should replace built-in
+	operator, err = store.Get("operator")
+	if err != nil {
+		t.Fatalf("operator missing after override: %v", err)
+	}
+	if len(operator.Rules) != 2 {
+		t.Fatalf("expected 2 rules from custom operator, got %d", len(operator.Rules))
+	}
+	if operator.HasAction(ActionCmd) {
+		t.Error("custom operator should not have ActionCmd (it was overridden)")
 	}
 }
 

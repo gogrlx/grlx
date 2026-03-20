@@ -65,6 +65,26 @@ func BuiltinViewerRole() *Role {
 	}
 }
 
+// BuiltinOperatorRole returns the built-in "operator" role with
+// operational permissions. Operators can view everything and perform
+// scoped write operations (cook, cmd, test, props, job_admin, shell)
+// but cannot manage PKI keys or user accounts.
+func BuiltinOperatorRole() *Role {
+	return &Role{
+		Name: "operator",
+		Rules: []Rule{
+			{Action: ActionView, Scope: "*"},
+			{Action: ActionCook, Scope: "*"},
+			{Action: ActionCmd, Scope: "*"},
+			{Action: ActionShell, Scope: "*"},
+			{Action: ActionTest, Scope: "*"},
+			{Action: ActionProps, Scope: "*"},
+			{Action: ActionJobAdmin, Scope: "*"},
+			{Action: ActionUserRead, Scope: "*"},
+		},
+	}
+}
+
 // LoadRolesFromConfig reads the "roles" section from the farmer config
 // and returns a populated RoleStore. Returns an empty store if the
 // section is missing.
@@ -93,7 +113,7 @@ func LoadRolesFromConfig() (*RoleStore, error) {
 
 	// Register built-in roles first. Config-defined roles with the same
 	// name will override these below.
-	builtins := []*Role{BuiltinViewerRole()}
+	builtins := []*Role{BuiltinViewerRole(), BuiltinOperatorRole()}
 	for _, b := range builtins {
 		_ = store.Register(b) // built-ins are always valid
 	}
