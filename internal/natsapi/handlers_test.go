@@ -155,6 +155,78 @@ func TestHandleJobsListWithLimit(t *testing.T) {
 	}
 }
 
+func writeTestJobMeta(t *testing.T, dir, sproutID, jid, invokedBy string) {
+	t.Helper()
+	sproutDir := filepath.Join(dir, sproutID)
+	metaFile := filepath.Join(sproutDir, jid+".meta.json")
+	meta := jobs.JobMeta{
+		JID:       jid,
+		InvokedBy: invokedBy,
+		CreatedAt: time.Now().UTC(),
+	}
+	data, _ := json.Marshal(meta)
+	if err := os.WriteFile(metaFile, data, 0o644); err != nil {
+		t.Fatalf("writing job meta: %v", err)
+	}
+}
+
+func TestHandleJobsListFilterByUser(t *testing.T) {
+	dir, cleanup := setupJobStore(t)
+	defer cleanup()
+
+	steps := []cook.StepCompletion{
+		{ID: "s1", CompletionStatus: cook.StepCompleted, Started: time.Now()},
+	}
+
+	// Create jobs with different invokers.
+	writeTestJob(t, dir, "sprout-a", "jid-alice", steps)
+	writeTestJobMeta(t, dir, "sprout-a", "jid-alice", "UALICE000")
+
+	writeTestJob(t, dir, "sprout-a", "jid-bob", steps)
+	writeTestJobMeta(t, dir, "sprout-a", "jid-bob", "UBOB00000")
+
+	writeTestJob(t, dir, "sprout-b", "jid-alice2", steps)
+	writeTestJobMeta(t, dir, "sprout-b", "jid-alice2", "UALICE000")
+
+	// Filter by Alice — should get 2 jobs.
+	params := json.RawMessage(`{"user":"UALICE000"}`)
+	result, err := handleJobsList(params)
+	if err != nil {
+		t.Fatalf("handleJobsList: %v", err)
+	}
+	summaries := result.([]jobs.JobSummary)
+	if len(summaries) != 2 {
+		t.Errorf("expected 2 jobs for UALICE000, got %d", len(summaries))
+	}
+	for _, s := range summaries {
+		if s.InvokedBy != "UALICE000" {
+			t.Errorf("expected InvokedBy=UALICE000, got %q", s.InvokedBy)
+		}
+	}
+
+	// Filter by Bob — should get 1 job.
+	params = json.RawMessage(`{"user":"UBOB00000"}`)
+	result, err = handleJobsList(params)
+	if err != nil {
+		t.Fatalf("handleJobsList: %v", err)
+	}
+	summaries = result.([]jobs.JobSummary)
+	if len(summaries) != 1 {
+		t.Errorf("expected 1 job for UBOB00000, got %d", len(summaries))
+	}
+
+	// Filter by unknown user — should get 0 jobs.
+	params = json.RawMessage(`{"user":"UNOBODY00"}`)
+	result, err = handleJobsList(params)
+	if err != nil {
+		t.Fatalf("handleJobsList: %v", err)
+	}
+	summaries = result.([]jobs.JobSummary)
+	if len(summaries) != 0 {
+		t.Errorf("expected 0 jobs for unknown user, got %d", len(summaries))
+	}
+}
+
 func TestHandleJobsGetMissing(t *testing.T) {
 	_, cleanup := setupJobStore(t)
 	defer cleanup()

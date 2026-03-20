@@ -34,7 +34,7 @@ var cmdJobsList = &cobra.Command{
 	Short: "List recent jobs, optionally filtered by sprout",
 	Long: `List recent jobs. By default queries the farmer.
 Use --local to list jobs from local CLI-side storage.
-Use --user to filter local jobs by the current user's key (requires --local).
+Use --user to filter jobs by the invoking user's pubkey (use 'me' for current user).
 When using --local, an optional sproutID argument filters jobs for that sprout.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		var summaries []jobs.JobSummary
@@ -43,10 +43,18 @@ When using --local, an optional sproutID argument filters jobs for that sprout.`
 		if jobsLocal {
 			summaries, err = listLocalJobs(args)
 		} else {
+			userFilter := jobsUser
+			if userFilter == "me" {
+				key, keyErr := auth.GetPubkey()
+				if keyErr != nil {
+					log.Fatal(keyErr)
+				}
+				userFilter = key
+			}
 			if len(args) > 0 {
 				summaries, err = client.ListJobsForSprout(args[0])
 			} else {
-				summaries, err = client.ListJobs(jobsLimit)
+				summaries, err = client.ListJobs(jobsLimit, userFilter)
 			}
 		}
 		if err != nil {
@@ -262,10 +270,24 @@ var cmdJobsCancel = &cobra.Command{
 }
 
 func printJobsTable(summaries []jobs.JobSummary) {
-	// Header
-	fmt.Printf("%-20s  %-24s  %-10s  %5s  %5s  %5s  %s\n",
-		"JID", "SPROUT", "STATUS", "OK", "FAIL", "SKIP", "STARTED")
-	fmt.Println(strings.Repeat("-", 100))
+	// Check whether any job has invoker info to decide column visibility.
+	hasInvoker := false
+	for _, s := range summaries {
+		if s.InvokedBy != "" {
+			hasInvoker = true
+			break
+		}
+	}
+
+	if hasInvoker {
+		fmt.Printf("%-20s  %-24s  %-10s  %-12s  %5s  %5s  %5s  %s\n",
+			"JID", "SPROUT", "STATUS", "USER", "OK", "FAIL", "SKIP", "STARTED")
+		fmt.Println(strings.Repeat("-", 115))
+	} else {
+		fmt.Printf("%-20s  %-24s  %-10s  %5s  %5s  %5s  %s\n",
+			"JID", "SPROUT", "STATUS", "OK", "FAIL", "SKIP", "STARTED")
+		fmt.Println(strings.Repeat("-", 100))
+	}
 
 	for _, s := range summaries {
 		statusStr := formatStatus(s.Status)
@@ -273,15 +295,28 @@ func printJobsTable(summaries []jobs.JobSummary) {
 		if !s.StartedAt.IsZero() {
 			started = s.StartedAt.Format(time.RFC3339)
 		}
-		fmt.Printf("%-20s  %-24s  %-10s  %5d  %5d  %5d  %s\n",
-			truncate(s.JID, 20),
-			truncate(s.SproutID, 24),
-			statusStr,
-			s.Succeeded,
-			s.Failed,
-			s.Skipped,
-			started,
-		)
+		if hasInvoker {
+			fmt.Printf("%-20s  %-24s  %-10s  %-12s  %5d  %5d  %5d  %s\n",
+				truncate(s.JID, 20),
+				truncate(s.SproutID, 24),
+				statusStr,
+				truncate(s.InvokedBy, 12),
+				s.Succeeded,
+				s.Failed,
+				s.Skipped,
+				started,
+			)
+		} else {
+			fmt.Printf("%-20s  %-24s  %-10s  %5d  %5d  %5d  %s\n",
+				truncate(s.JID, 20),
+				truncate(s.SproutID, 24),
+				statusStr,
+				s.Succeeded,
+				s.Failed,
+				s.Skipped,
+				started,
+			)
+		}
 	}
 }
 
@@ -289,6 +324,9 @@ func printJobDetail(s *jobs.JobSummary) {
 	fmt.Printf("Job:     %s\n", s.JID)
 	fmt.Printf("Sprout:  %s\n", s.SproutID)
 	fmt.Printf("Status:  %s\n", formatStatus(s.Status))
+	if s.InvokedBy != "" {
+		fmt.Printf("User:    %s\n", s.InvokedBy)
+	}
 	if !s.StartedAt.IsZero() {
 		fmt.Printf("Started: %s\n", s.StartedAt.Format(time.RFC3339))
 	}
@@ -367,7 +405,7 @@ func truncate(s string, max int) string {
 func init() {
 	cmdJobsList.Flags().IntVar(&jobsLimit, "limit", 50, "Maximum number of jobs to return")
 	cmdJobsList.Flags().BoolVar(&jobsLocal, "local", false, "List jobs from local CLI-side storage instead of the farmer")
-	cmdJobsList.Flags().StringVar(&jobsUser, "user", "", "Filter local jobs by user key (use 'me' for current user)")
+	cmdJobsList.Flags().StringVar(&jobsUser, "user", "", "Filter jobs by invoking user's pubkey (use 'me' for current user)")
 	cmdJobsShow.Flags().BoolVar(&jobsLocal, "local", false, "Show job from local CLI-side storage instead of the farmer")
 	cmdJobsWatch.Flags().IntVar(&watchTimeout, "timeout", 120, "Watch timeout in seconds")
 	cmdJobs.AddCommand(cmdJobsList)

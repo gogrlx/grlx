@@ -70,6 +70,8 @@ func ConnectNats() error {
 // NatsRequest sends a request to a NATS API method and returns the result.
 // The method is appended to "grlx.api." to form the subject.
 // params is marshaled to JSON; pass nil for no params.
+// The local user's auth token is automatically injected into the JSON
+// payload so the farmer can attribute the request to the invoking user.
 func NatsRequest(method string, params any) (json.RawMessage, error) {
 	if NatsConn == nil {
 		return nil, fmt.Errorf("NATS connection not established")
@@ -86,6 +88,10 @@ func NatsRequest(method string, params any) (json.RawMessage, error) {
 		}
 	}
 
+	// Inject the auth token into the JSON payload so the farmer can
+	// identify the invoking user for attribution and RBAC checks.
+	data = injectToken(data)
+
 	msg, err := NatsConn.Request(subject, data, NatsRequestTimeout)
 	if err != nil {
 		return nil, fmt.Errorf("NATS request to %s failed: %w", subject, err)
@@ -101,4 +107,36 @@ func NatsRequest(method string, params any) (json.RawMessage, error) {
 	}
 
 	return resp.Result, nil
+}
+
+// injectToken merges a "token" field into the JSON payload. If the
+// payload is nil or empty, it creates a new JSON object with just
+// the token. If the token cannot be generated, the payload is
+// returned unchanged (the request will proceed unauthenticated).
+func injectToken(data []byte) []byte {
+	token, err := auth.NewToken()
+	if err != nil {
+		return data
+	}
+	tokenJSON, err := json.Marshal(token)
+	if err != nil {
+		return data
+	}
+
+	if len(data) == 0 {
+		return []byte(fmt.Sprintf(`{"token":%s}`, tokenJSON))
+	}
+
+	// Inject token into existing JSON object by replacing the opening
+	// brace with an opening brace + token field. This avoids
+	// unmarshaling/remarshaling the entire payload.
+	trimmed := data
+	for len(trimmed) > 0 && trimmed[0] == ' ' {
+		trimmed = trimmed[1:]
+	}
+	if len(trimmed) > 0 && trimmed[0] == '{' {
+		return append([]byte(fmt.Sprintf(`{"token":%s,`, tokenJSON)), trimmed[1:]...)
+	}
+
+	return data
 }

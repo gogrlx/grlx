@@ -17,7 +17,7 @@ func TestListJobs_Success(t *testing.T) {
 	}
 	mockHandler(t, NatsConn, "grlx.api.jobs.list", want)
 
-	got, err := ListJobs(10)
+	got, err := ListJobs(10, "")
 	if err != nil {
 		t.Fatalf("ListJobs: %v", err)
 	}
@@ -38,7 +38,7 @@ func TestListJobs_Empty(t *testing.T) {
 
 	mockHandler(t, NatsConn, "grlx.api.jobs.list", []jobs.JobSummary{})
 
-	got, err := ListJobs(10)
+	got, err := ListJobs(10, "")
 	if err != nil {
 		t.Fatalf("ListJobs: %v", err)
 	}
@@ -53,7 +53,7 @@ func TestListJobs_Error(t *testing.T) {
 
 	mockErrorHandler(t, NatsConn, "grlx.api.jobs.list", "database error")
 
-	_, err := ListJobs(10)
+	_, err := ListJobs(10, "")
 	if err == nil {
 		t.Fatal("expected error")
 	}
