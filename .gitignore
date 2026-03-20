@@ -9,6 +9,7 @@ local/
 .crush/
 
 dist/
+!internal/serve/dist/
 cmd/farmer/farmer
 cmd/grlx/grlx
 cmd/sprout/sprout
