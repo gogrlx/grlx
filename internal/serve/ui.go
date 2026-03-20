@@ -1,6 +1,6 @@
 package serve
 
-//go:generate bash -c "cd ../../grlx-web-ui && bun install --frozen-lockfile && bun run build:static && rm -rf ../internal/serve/dist && cp -r dist ../internal/serve/dist"
+//go:generate bash -c "cd ../../../grlx-web-ui && bun install --frozen-lockfile && bun run build:static && rm -rf ../grlx/internal/serve/dist && cp -r dist ../grlx/internal/serve/dist"
 
 import (
 	"embed"
