@@ -8,8 +8,12 @@ import (
 )
 
 // ListJobs retrieves all recent jobs from the farmer, up to limit.
-func ListJobs(limit int) ([]jobs.JobSummary, error) {
-	params := map[string]int{"limit": limit}
+// If user is non-empty, only jobs invoked by that pubkey are returned.
+func ListJobs(limit int, user string) ([]jobs.JobSummary, error) {
+	params := map[string]interface{}{"limit": limit}
+	if user != "" {
+		params["user"] = user
+	}
 	resp, err := NatsRequest("jobs.list", params)
 	if err != nil {
 		return nil, err

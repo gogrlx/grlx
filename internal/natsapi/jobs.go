@@ -17,7 +17,8 @@ func init() {
 
 // JobsListParams holds optional parameters for listing jobs.
 type JobsListParams struct {
-	Limit int `json:"limit,omitempty"`
+	Limit int    `json:"limit,omitempty"`
+	User  string `json:"user,omitempty"` // filter by invoking user pubkey
 }
 
 // JobsGetParams identifies a job by JID.
@@ -78,6 +79,17 @@ func handleJobsList(params json.RawMessage) (any, error) {
 				summaries = filtered
 			}
 		}
+	}
+
+	// Filter by invoking user if requested.
+	if p.User != "" {
+		filtered := make([]jobs.JobSummary, 0, len(summaries))
+		for _, s := range summaries {
+			if s.InvokedBy == p.User {
+				filtered = append(filtered, s)
+			}
+		}
+		summaries = filtered
 	}
 
 	return summaries, nil
