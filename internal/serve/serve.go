@@ -65,6 +65,14 @@ func NewMux() *http.ServeMux {
 	mux.HandleFunc("GET /api/v1/auth/whoami", HandleNATSProxy("auth.whoami"))
 	mux.HandleFunc("GET /api/v1/auth/users", HandleNATSProxy("auth.users"))
 	mux.HandleFunc("GET /api/v1/auth/explain", HandleNATSProxy("auth.explain"))
+	mux.HandleFunc("POST /api/v1/auth/users", HandleNATSProxyWithBody("auth.users.add"))
+	mux.HandleFunc("DELETE /api/v1/auth/users/{pubkey}", HandleUserRemoveProxy("auth.users.remove"))
+
+	// Cmd (ad-hoc command execution)
+	mux.HandleFunc("POST /api/v1/cmd", HandleNATSProxyWithBody("cmd.run"))
+
+	// Test (ping sprouts)
+	mux.HandleFunc("POST /api/v1/test/ping", HandleNATSProxyWithBody("test.ping"))
 
 	// OpenAPI spec
 	mux.HandleFunc("GET /api/v1/openapi.yaml", HandleOpenAPI)
@@ -382,6 +390,28 @@ func HandleRecipeGetProxy(method string) http.HandlerFunc {
 			return
 		}
 		params := map[string]string{"name": name}
+		result, err := client.NatsRequest(method, params)
+		if err != nil {
+			WriteJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(result)
+	}
+}
+
+// HandleUserRemoveProxy returns a handler that forwards a user removal request
+// to a NATS subject. It maps the path parameter {pubkey} to the "pubkey" field
+// expected by the auth.users.remove handler.
+func HandleUserRemoveProxy(method string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		pubkey := r.PathValue("pubkey")
+		if pubkey == "" {
+			WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "missing pubkey parameter"})
+			return
+		}
+		params := map[string]string{"pubkey": pubkey}
 		result, err := client.NatsRequest(method, params)
 		if err != nil {
 			WriteJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})

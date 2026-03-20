@@ -557,6 +557,135 @@ paths:
         "502":
           $ref: "#/components/responses/NATSError"
 
+    post:
+      operationId: addUser
+      summary: Add a user
+      description: |
+        Register a new user with the given public key and role.
+        Requires admin permissions.
+      tags:
+        - auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - pubkey
+                - role
+              properties:
+                pubkey:
+                  type: string
+                  description: The user's public key
+                role:
+                  type: string
+                  description: Role to assign (e.g. admin, operator, viewer)
+      responses:
+        "200":
+          description: User added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NATSResponse"
+        "502":
+          $ref: "#/components/responses/NATSError"
+
+  /api/v1/auth/users/{pubkey}:
+    delete:
+      operationId: removeUser
+      summary: Remove a user
+      description: |
+        Remove a registered user by public key.
+        Requires admin permissions.
+      tags:
+        - auth
+      parameters:
+        - name: pubkey
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The public key of the user to remove
+      responses:
+        "200":
+          description: User removed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NATSResponse"
+        "400":
+          description: Missing pubkey parameter
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          $ref: "#/components/responses/NATSError"
+
+  /api/v1/cmd:
+    post:
+      operationId: runCommand
+      summary: Run ad-hoc command on sprouts
+      description: |
+        Execute a command on one or more targeted sprouts.
+        The request body follows the TargetedAction format with
+        a CmdRun action payload.
+      tags:
+        - cmd
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TargetedAction"
+      responses:
+        "200":
+          description: Command results per sprout
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NATSResponse"
+        "400":
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          $ref: "#/components/responses/NATSError"
+
+  /api/v1/test/ping:
+    post:
+      operationId: pingTest
+      summary: Ping sprouts
+      description: |
+        Send a test ping to one or more targeted sprouts and collect
+        their responses. Useful for checking sprout connectivity.
+      tags:
+        - test
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TargetedAction"
+      responses:
+        "200":
+          description: Ping results per sprout
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NATSResponse"
+        "400":
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          $ref: "#/components/responses/NATSError"
+
   /api/v1/auth/explain:
     get:
       operationId: explainAuth
@@ -905,6 +1034,28 @@ components:
           type: string
           description: Human-readable log message
 
+    TargetedAction:
+      type: object
+      description: |
+        A targeted action request. Contains a list of sprout targets and
+        an action payload. Used by cmd.run and test.ping endpoints.
+      required:
+        - target
+        - action
+      properties:
+        target:
+          type: array
+          items:
+            type: object
+            properties:
+              sprout_id:
+                type: string
+                description: Sprout NKey public key
+          description: List of sprouts to target
+        action:
+          type: object
+          description: Action-specific payload (varies by endpoint)
+
     NATSResponse:
       description: |
         Raw JSON response from the farmer via NATS proxy. The structure
@@ -961,5 +1112,9 @@ tags:
     description: Audit log queries
   - name: logs
     description: Log streaming and retrieval
+  - name: cmd
+    description: Ad-hoc command execution
+  - name: test
+    description: Sprout connectivity testing
   - name: meta
     description: API metadata
