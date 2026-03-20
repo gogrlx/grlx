@@ -119,6 +119,76 @@ func TestAuthMiddleware_InvalidToken(t *testing.T) {
 	}
 }
 
+func TestViewerRoleNATSAccess(t *testing.T) {
+	viewer := rbac.BuiltinViewerRole()
+
+	// Read-only NATS methods the viewer should access
+	allowedMethods := []string{
+		"version", "sprouts.list", "sprouts.get",
+		"jobs.list", "jobs.get", "jobs.forsprout",
+		"props.getall", "props.get",
+		"cohorts.list", "cohorts.get", "cohorts.resolve", "cohorts.refresh",
+		"auth.whoami", "auth.explain",
+		"recipes.list", "recipes.get",
+	}
+	for _, method := range allowedMethods {
+		action := NATSMethodAction(method)
+		if !viewer.HasAction(action) {
+			t.Errorf("viewer should be able to call %q (requires %q)", method, action)
+		}
+	}
+
+	// Write NATS methods the viewer should be denied
+	deniedMethods := []string{
+		"cook", "cmd.run", "shell.start", "test.ping",
+		"props.set", "props.delete",
+		"jobs.cancel",
+		"pki.list", "pki.accept", "pki.reject", "pki.deny", "pki.unaccept", "pki.delete",
+		"auth.users", "auth.users.add", "auth.users.remove",
+		"audit.dates", "audit.query",
+	}
+	for _, method := range deniedMethods {
+		action := NATSMethodAction(method)
+		if viewer.HasAction(action) {
+			t.Errorf("viewer should NOT be able to call %q (requires %q)", method, action)
+		}
+	}
+}
+
+func TestOperatorRoleNATSAccess(t *testing.T) {
+	op := rbac.BuiltinOperatorRole()
+
+	// Methods the operator should access
+	allowedMethods := []string{
+		"version", "sprouts.list", "sprouts.get",
+		"jobs.list", "jobs.get", "jobs.forsprout", "jobs.cancel",
+		"props.getall", "props.get", "props.set", "props.delete",
+		"cohorts.list", "cohorts.get", "cohorts.resolve", "cohorts.refresh",
+		"cook", "cmd.run", "shell.start", "test.ping",
+		"auth.whoami", "auth.explain",
+		"recipes.list", "recipes.get",
+	}
+	for _, method := range allowedMethods {
+		action := NATSMethodAction(method)
+		if !op.HasAction(action) {
+			t.Errorf("operator should be able to call %q (requires %q)", method, action)
+		}
+	}
+
+	// Methods the operator should be denied (PKI + user management + audit)
+	deniedMethods := []string{
+		"pki.list", "pki.accept", "pki.reject", "pki.deny", "pki.unaccept", "pki.delete",
+		"auth.users", "auth.users.add", "auth.users.remove",
+		"audit.dates", "audit.query",
+	}
+	for _, method := range deniedMethods {
+		action := NATSMethodAction(method)
+		if op.HasAction(action) {
+			t.Errorf("operator should NOT be able to call %q (requires %q)", method, action)
+		}
+	}
+}
+
 func TestAllRoutesHaveActionMapping(t *testing.T) {
 	// Every route in the router should have an entry in natsActionMap.
 	for method := range routes {

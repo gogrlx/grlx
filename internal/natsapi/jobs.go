@@ -46,6 +46,40 @@ func handleJobsList(params json.RawMessage) (any, error) {
 	if summaries == nil {
 		summaries = []jobs.JobSummary{}
 	}
+
+	// Scope filtering: if the user has scoped view access, filter the
+	// job list to only include jobs for sprouts they can view.
+	if !intauth.DangerouslyAllowRoot() {
+		var tp tokenParams
+		if len(params) > 0 {
+			json.Unmarshal(params, &tp)
+		}
+		if tp.Token != "" {
+			sproutIDs := make([]string, 0, len(summaries))
+			seen := make(map[string]bool)
+			for _, s := range summaries {
+				if s.SproutID != "" && !seen[s.SproutID] {
+					sproutIDs = append(sproutIDs, s.SproutID)
+					seen[s.SproutID] = true
+				}
+			}
+			allowed := filterSproutsByScope(tp.Token, rbac.ActionView, sproutIDs)
+			if allowed != nil {
+				allowedSet := make(map[string]bool, len(allowed))
+				for _, id := range allowed {
+					allowedSet[id] = true
+				}
+				filtered := make([]jobs.JobSummary, 0, len(summaries))
+				for _, s := range summaries {
+					if s.SproutID == "" || allowedSet[s.SproutID] {
+						filtered = append(filtered, s)
+					}
+				}
+				summaries = filtered
+			}
+		}
+	}
+
 	return summaries, nil
 }
 
