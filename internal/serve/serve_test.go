@@ -582,6 +582,78 @@ func TestHandleRecipeGetProxyMissingName(t *testing.T) {
 	}
 }
 
+func TestMuxCmdRoute(t *testing.T) {
+	mux := NewMux()
+
+	body := `{"target":[{"sprout_id":"sprout-1"}],"action":{"command":"hostname"}}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/cmd", strings.NewReader(body))
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("cmd run: expected 502, got %d", rec.Code)
+	}
+}
+
+func TestMuxTestPingRoute(t *testing.T) {
+	mux := NewMux()
+
+	body := `{"target":[{"sprout_id":"sprout-1"}],"action":{}}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/test/ping", strings.NewReader(body))
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("test ping: expected 502, got %d", rec.Code)
+	}
+}
+
+func TestMuxAuthUserAddRoute(t *testing.T) {
+	mux := NewMux()
+
+	body := `{"pubkey":"NKEY_ABC123","role":"viewer"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/users", strings.NewReader(body))
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("auth add user: expected 502, got %d", rec.Code)
+	}
+}
+
+func TestMuxAuthUserRemoveRoute(t *testing.T) {
+	mux := NewMux()
+
+	req := httptest.NewRequest(http.MethodDelete, "/api/v1/auth/users/NKEY_ABC123", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("auth remove user: expected 502, got %d", rec.Code)
+	}
+}
+
+func TestHandleUserRemoveProxyMissingPubkey(t *testing.T) {
+	handler := HandleUserRemoveProxy("auth.users.remove")
+
+	req := httptest.NewRequest(http.MethodDelete, "/api/v1/auth/users/", nil)
+	rec := httptest.NewRecorder()
+
+	handler(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected status 400, got %d", rec.Code)
+	}
+
+	var body map[string]string
+	if err := json.NewDecoder(rec.Body).Decode(&body); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if body["error"] != "missing pubkey parameter" {
+		t.Fatalf("expected 'missing pubkey parameter' error, got %q", body["error"])
+	}
+}
+
 func TestHandlePropsSetProxyFormats(t *testing.T) {
 	mux := NewMux()
 
