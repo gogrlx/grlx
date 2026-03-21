@@ -8,7 +8,24 @@ info:
     This API is intended for local use only (default: localhost:7505).
     All endpoints under `/api/v1/` are JSON-over-HTTP proxies to the
     NATS-based farmer API.
-  version: 0.1.0
+
+    ## Response Envelope
+
+    Most endpoints that proxy through NATS return responses wrapped in
+    a standard envelope:
+
+    ```json
+    {"result": <data>}
+    ```
+
+    On error:
+
+    ```json
+    {"error": "message describing the problem"}
+    ```
+
+    The schemas below describe the `result` payload for each endpoint.
+  version: 0.2.0
   license:
     name: Apache-2.0
     url: https://www.apache.org/licenses/LICENSE-2.0
@@ -55,7 +72,10 @@ paths:
     get:
       operationId: listSprouts
       summary: List all sprouts
-      description: Returns a list of all sprouts known to the farmer.
+      description: |
+        Returns a list of all sprouts known to the farmer, including key
+        state and connectivity status. RBAC scope filtering is applied
+        when the user does not have global view access.
       tags:
         - sprouts
       responses:
@@ -64,7 +84,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/NATSResponse"
+                $ref: "#/components/schemas/NATSEnvelope"
+              examples:
+                success:
+                  value:
+                    result:
+                      sprouts:
+                        - id: web-01
+                          key_state: accepted
+                          connected: true
+                          nkey: SUAM...
+                        - id: db-01
+                          key_state: unaccepted
+                          connected: false
         "502":
           $ref: "#/components/responses/NATSError"
 
@@ -72,7 +104,7 @@ paths:
     get:
       operationId: getSprout
       summary: Get sprout details
-      description: Returns details for a specific sprout by ID.
+      description: Returns details for a specific sprout by ID, including key state, NKey, and connectivity.
       tags:
         - sprouts
       parameters:
@@ -83,7 +115,15 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/NATSResponse"
+                $ref: "#/components/schemas/NATSEnvelope"
+              examples:
+                success:
+                  value:
+                    result:
+                      id: web-01
+                      key_state: accepted
+                      connected: true
+                      nkey: SUAM...
         "400":
           $ref: "#/components/responses/BadRequest"
         "502":
@@ -93,7 +133,10 @@ paths:
     get:
       operationId: listJobs
       summary: List all jobs
-      description: Returns a list of all jobs tracked by the farmer.
+      description: |
+        Returns a list of all jobs tracked by the farmer. Supports optional
+        limit and user-based filtering. RBAC scope filtering restricts
+        results to sprouts the user can view.
       tags:
         - jobs
       responses:
@@ -102,7 +145,21 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/NATSResponse"
+                $ref: "#/components/schemas/NATSEnvelope"
+              examples:
+                success:
+                  value:
+                    result:
+                      - jid: "20260321-103000-abc123"
+                        sprout_id: web-01
+                        status: completed
+                        started_at: "2026-03-21T10:30:00Z"
+                        duration: 5000000000
+                        succeeded: 3
+                        failed: 0
+                        skipped: 0
+                        total: 3
+                        invoked_by: PUBKEY123
         "502":
           $ref: "#/components/responses/NATSError"
 
@@ -121,7 +178,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/NATSResponse"
+                $ref: "#/components/schemas/NATSEnvelope"
         "400":
           $ref: "#/components/responses/BadRequest"
         "502":
@@ -129,18 +186,28 @@ paths:
     delete:
       operationId: cancelJob
       summary: Cancel a job
-      description: Cancels a running job by JID.
+      description: |
+        Cancels a running or pending job by JID. Publishes a cancel request
+        to the target sprout over NATS. RBAC scope checking ensures the
+        caller has `job_admin` permission for the job's sprout.
       tags:
         - jobs
       parameters:
         - $ref: "#/components/parameters/JobID"
       responses:
         "200":
-          description: Job cancelled
+          description: Job cancel request published
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/NATSResponse"
+                $ref: "#/components/schemas/NATSEnvelope"
+              examples:
+                success:
+                  value:
+                    result:
+                      jid: "20260321-103000-abc123"
+                      sprout: web-01
+                      message: cancel request published
         "400":
           $ref: "#/components/responses/BadRequest"
         "502":
@@ -161,7 +228,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/NATSResponse"
+                $ref: "#/components/schemas/NATSEnvelope"
         "400":
           $ref: "#/components/responses/BadRequest"
         "502":
@@ -173,7 +240,9 @@ paths:
       summary: Start a cook operation
       description: |
         Triggers a recipe cook on one or more sprouts. The request body
-        specifies the recipe path, target sprouts/cohorts, and options.
+        contains a `TargetedAction` with a `CmdCook` action payload
+        specifying the recipe path, target sprouts/cohorts, and options
+        like test mode and timeout.
       tags:
         - cook
       requestBody:
@@ -181,33 +250,27 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CookRequest"
+              $ref: "#/components/schemas/TargetedAction"
+            examples:
+              cook:
+                value:
+                  target:
+                    - id: web-01
+                    - id: web-02
+                  action:
+                    recipe: base.webserver
+                    test: false
+                    async: false
+                    timeout: 300000000000
       responses:
         "200":
           description: Cook initiated
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/NATSResponse"
+                $ref: "#/components/schemas/NATSEnvelope"
         "400":
           $ref: "#/components/responses/BadRequest"
-        "502":
-          $ref: "#/components/responses/NATSError"
-
-  /api/v1/props:
-    get:
-      operationId: listProps
-      summary: List all sprout props
-      description: Returns prop summaries for all sprouts.
-      tags:
-        - props
-      responses:
-        "200":
-          description: Prop summaries
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/NATSResponse"
         "502":
           $ref: "#/components/responses/NATSError"
 
@@ -222,11 +285,18 @@ paths:
         - $ref: "#/components/parameters/SproutID"
       responses:
         "200":
-          description: Sprout props
+          description: Sprout props as key-value map
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/NATSResponse"
+                $ref: "#/components/schemas/NATSEnvelope"
+              examples:
+                success:
+                  value:
+                    result:
+                      os: linux
+                      role: webserver
+                      datacenter: us-east-1
         "400":
           $ref: "#/components/responses/BadRequest"
         "502":
@@ -248,7 +318,14 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/NATSResponse"
+                $ref: "#/components/schemas/NATSEnvelope"
+              examples:
+                success:
+                  value:
+                    result:
+                      sprout_id: web-01
+                      name: role
+                      value: webserver
         "400":
           $ref: "#/components/responses/BadRequest"
         "502":
@@ -268,13 +345,23 @@ paths:
           application/json:
             schema:
               description: The value to set for this property key.
+              type: object
+              properties:
+                value:
+                  type: string
+                  description: The property value to set
       responses:
         "200":
           description: Property set
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/NATSResponse"
+                $ref: "#/components/schemas/NATSEnvelope"
+              examples:
+                success:
+                  value:
+                    result:
+                      success: true
         "400":
           $ref: "#/components/responses/BadRequest"
         "502":
@@ -294,7 +381,12 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/NATSResponse"
+                $ref: "#/components/schemas/NATSEnvelope"
+              examples:
+                success:
+                  value:
+                    result:
+                      success: true
         "400":
           $ref: "#/components/responses/BadRequest"
         "502":
@@ -304,7 +396,7 @@ paths:
     get:
       operationId: listCohorts
       summary: List all cohorts
-      description: Returns all cohort definitions.
+      description: Returns all cohort definitions with name and type.
       tags:
         - cohorts
       responses:
@@ -313,7 +405,18 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/NATSResponse"
+                $ref: "#/components/schemas/NATSEnvelope"
+              examples:
+                success:
+                  value:
+                    result:
+                      cohorts:
+                        - name: web-servers
+                          type: static
+                        - name: us-east
+                          type: dynamic
+                        - name: production
+                          type: compound
         "502":
           $ref: "#/components/responses/NATSError"
 
@@ -338,7 +441,16 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/NATSResponse"
+                $ref: "#/components/schemas/NATSEnvelope"
+              examples:
+                success:
+                  value:
+                    result:
+                      name: web-servers
+                      sprouts:
+                        - web-01
+                        - web-02
+                        - web-03
         "400":
           $ref: "#/components/responses/BadRequest"
         "502":
@@ -366,7 +478,20 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/NATSResponse"
+                $ref: "#/components/schemas/NATSEnvelope"
+              examples:
+                success:
+                  value:
+                    result:
+                      name: web-servers
+                      type: static
+                      members:
+                        - web-01
+                        - web-02
+                      resolved:
+                        - web-01
+                        - web-02
+                      count: 2
         "400":
           $ref: "#/components/responses/BadRequest"
         "502":
@@ -395,7 +520,17 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/NATSResponse"
+                $ref: "#/components/schemas/NATSEnvelope"
+              examples:
+                success:
+                  value:
+                    result:
+                      refreshed:
+                        - name: web-servers
+                          members:
+                            - web-01
+                            - web-02
+                          lastRefreshed: "2026-03-21T10:00:00Z"
         "400":
           $ref: "#/components/responses/BadRequest"
         "502":
@@ -405,7 +540,7 @@ paths:
     get:
       operationId: listKeys
       summary: List all sprout keys
-      description: Returns all sprout PKI keys grouped by status (accepted, pending, denied, etc.).
+      description: Returns all sprout PKI keys grouped by status (accepted, unaccepted, denied, rejected).
       tags:
         - keys
       responses:
@@ -414,7 +549,22 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/NATSResponse"
+                $ref: "#/components/schemas/NATSEnvelope"
+              examples:
+                success:
+                  value:
+                    result:
+                      accepted:
+                        sprouts:
+                          - id: web-01
+                          - id: db-01
+                      unaccepted:
+                        sprouts:
+                          - id: new-sprout
+                      denied:
+                        sprouts: []
+                      rejected:
+                        sprouts: []
         "502":
           $ref: "#/components/responses/NATSError"
 
@@ -433,7 +583,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/NATSResponse"
+                $ref: "#/components/schemas/NATSEnvelope"
         "400":
           $ref: "#/components/responses/BadRequest"
         "502":
@@ -454,7 +604,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/NATSResponse"
+                $ref: "#/components/schemas/NATSEnvelope"
         "400":
           $ref: "#/components/responses/BadRequest"
         "502":
@@ -475,7 +625,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/NATSResponse"
+                $ref: "#/components/schemas/NATSEnvelope"
         "400":
           $ref: "#/components/responses/BadRequest"
         "502":
@@ -496,7 +646,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/NATSResponse"
+                $ref: "#/components/schemas/NATSEnvelope"
         "400":
           $ref: "#/components/responses/BadRequest"
         "502":
@@ -517,7 +667,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/NATSResponse"
+                $ref: "#/components/schemas/NATSEnvelope"
         "400":
           $ref: "#/components/responses/BadRequest"
         "502":
@@ -536,7 +686,47 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/NATSResponse"
+                $ref: "#/components/schemas/NATSEnvelope"
+              examples:
+                success:
+                  value:
+                    result:
+                      pubkey: PUBKEY123...
+                      role: admin
+        "502":
+          $ref: "#/components/responses/NATSError"
+
+  /api/v1/auth/explain:
+    get:
+      operationId: explainAuth
+      summary: Explain current user permissions
+      description: |
+        Returns the RBAC permissions breakdown for the currently authenticated
+        user, including role name, admin status, allowed actions, and any
+        policy warnings.
+      tags:
+        - auth
+      responses:
+        "200":
+          description: Permission explanation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NATSEnvelope"
+              examples:
+                success:
+                  value:
+                    result:
+                      pubkey: PUBKEY123...
+                      role: operator
+                      isAdmin: false
+                      actions:
+                        - action: view
+                          scope: "*"
+                        - action: cook
+                          scope: "cohort:web-servers"
+                        - action: cmd
+                          scope: "cohort:web-servers"
         "502":
           $ref: "#/components/responses/NATSError"
 
@@ -544,16 +734,36 @@ paths:
     get:
       operationId: listUsers
       summary: List all users
-      description: Returns all registered users in the farmer's auth system.
+      description: |
+        Returns all registered users in the farmer's auth system, along
+        with all defined role definitions and their permission rules.
       tags:
         - auth
       responses:
         "200":
-          description: User list
+          description: User list with role definitions
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/NATSResponse"
+                $ref: "#/components/schemas/NATSEnvelope"
+              examples:
+                success:
+                  value:
+                    result:
+                      users:
+                        PUBKEY123: admin
+                        PUBKEY456: operator
+                      roles:
+                        - name: admin
+                          rules:
+                            - action: admin
+                              scope: "*"
+                        - name: operator
+                          rules:
+                            - action: view
+                              scope: "*"
+                            - action: cook
+                              scope: "cohort:web-servers"
         "502":
           $ref: "#/components/responses/NATSError"
 
@@ -570,24 +780,20 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              required:
-                - pubkey
-                - role
-              properties:
-                pubkey:
-                  type: string
-                  description: The user's public key
-                role:
-                  type: string
-                  description: Role to assign (e.g. admin, operator, viewer)
+              $ref: "#/components/schemas/UserAddRequest"
       responses:
         "200":
           description: User added
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/NATSResponse"
+                $ref: "#/components/schemas/NATSEnvelope"
+              examples:
+                success:
+                  value:
+                    result:
+                      success: true
+                      message: user PUBKEY789 added with role viewer
         "502":
           $ref: "#/components/responses/NATSError"
 
@@ -613,7 +819,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/NATSResponse"
+                $ref: "#/components/schemas/NATSEnvelope"
+              examples:
+                success:
+                  value:
+                    result:
+                      success: true
+                      message: user PUBKEY789 removed
         "400":
           description: Missing pubkey parameter
           content:
@@ -629,8 +841,9 @@ paths:
       summary: Run ad-hoc command on sprouts
       description: |
         Execute a command on one or more targeted sprouts.
-        The request body follows the TargetedAction format with
-        a CmdRun action payload.
+        The request body is a `TargetedAction` with a `CmdRun` action
+        payload containing the command, arguments, working directory,
+        optional runas user, environment variables, and timeout.
       tags:
         - cmd
       requestBody:
@@ -639,13 +852,22 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/TargetedAction"
+            examples:
+              cmdRun:
+                value:
+                  target:
+                    - id: web-01
+                  action:
+                    command: uptime
+                    args: []
+                    timeout: 30000000000
       responses:
         "200":
           description: Command results per sprout
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/NATSResponse"
+                $ref: "#/components/schemas/NATSEnvelope"
         "400":
           description: Invalid request body
           content:
@@ -670,13 +892,21 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/TargetedAction"
+            examples:
+              ping:
+                value:
+                  target:
+                    - id: web-01
+                    - id: web-02
+                  action:
+                    ping: true
       responses:
         "200":
           description: Ping results per sprout
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/NATSResponse"
+                $ref: "#/components/schemas/NATSEnvelope"
         "400":
           description: Invalid request body
           content:
@@ -686,33 +916,13 @@ paths:
         "502":
           $ref: "#/components/responses/NATSError"
 
-  /api/v1/auth/explain:
-    get:
-      operationId: explainAuth
-      summary: Explain current user permissions
-      description: |
-        Returns the RBAC permissions breakdown for the currently authenticated
-        user, including role name, admin status, allowed actions, and any
-        policy warnings.
-      tags:
-        - auth
-      responses:
-        "200":
-          description: Permission explanation
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/NATSResponse"
-        "502":
-          $ref: "#/components/responses/NATSError"
-
   /api/v1/recipes:
     get:
       operationId: listRecipes
       summary: List all recipes
       description: |
-        Returns a list of all recipes available on the farmer.
-        (Added in PR #177, may not be present on all builds.)
+        Returns a list of all recipes available on the farmer, including
+        their dot-notation names, file paths, and sizes.
       tags:
         - recipes
       responses:
@@ -721,25 +931,36 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/NATSResponse"
+                $ref: "#/components/schemas/NATSEnvelope"
+              examples:
+                success:
+                  value:
+                    result:
+                      recipes:
+                        - name: base.webserver
+                          path: base/webserver.grlx
+                          size: 1234
+                        - name: monitoring.prometheus
+                          path: monitoring/prometheus.grlx
+                          size: 2048
         "502":
           $ref: "#/components/responses/NATSError"
 
-  /api/v1/recipes/{path}:
+  /api/v1/recipes/{id...}:
     get:
       operationId: getRecipe
       summary: Get a recipe by path
       description: |
-        Returns the contents of a recipe file by its path.
-        Uses a wildcard path parameter to support nested paths (e.g., `base/webserver`).
-        (Added in PR #177, may not be present on all builds.)
+        Returns the contents of a recipe file by its dot-notation name.
+        Uses a wildcard path parameter to support nested paths
+        (e.g., `base.webserver` or `base/webserver`).
       tags:
         - recipes
       parameters:
-        - name: path
+        - name: id
           in: path
           required: true
-          description: Recipe path (supports nested paths like `base/webserver`)
+          description: Recipe name in dot-notation (e.g., `base.webserver`) or path form
           schema:
             type: string
       responses:
@@ -748,7 +969,21 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/NATSResponse"
+                $ref: "#/components/schemas/NATSEnvelope"
+              examples:
+                success:
+                  value:
+                    result:
+                      name: base.webserver
+                      path: base/webserver.grlx
+                      content: |
+                        nginx:
+                          pkg.installed:
+                            - name: nginx
+                          service.running:
+                            - name: nginx
+                            - enable: true
+                      size: 1234
         "400":
           $ref: "#/components/responses/BadRequest"
         "502":
@@ -759,8 +994,8 @@ paths:
       operationId: listAuditDates
       summary: List available audit log dates
       description: |
-        Returns the dates for which audit log entries exist.
-        (Added in PR #180, may not be present on all builds.)
+        Returns the dates for which audit log entries exist, along with
+        entry counts and file sizes. Sorted most recent first.
       tags:
         - audit
       responses:
@@ -769,7 +1004,17 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/NATSResponse"
+                $ref: "#/components/schemas/NATSEnvelope"
+              examples:
+                success:
+                  value:
+                    result:
+                      - date: "2026-03-21"
+                        entry_count: 42
+                        size_bytes: 8192
+                      - date: "2026-03-20"
+                        entry_count: 28
+                        size_bytes: 5120
         "502":
           $ref: "#/components/responses/NATSError"
 
@@ -778,34 +1023,67 @@ paths:
       operationId: queryAuditLog
       summary: Query audit log
       description: |
-        Queries the audit log with optional filtering via query parameters.
-        (Added in PR #180, may not be present on all builds.)
+        Queries the audit log with optional filtering. Returns entries
+        sorted most recent first, capped by limit (default 100).
       tags:
         - audit
       parameters:
         - name: date
           in: query
-          description: Filter by date (YYYY-MM-DD)
+          description: Filter by date (YYYY-MM-DD). Defaults to today.
           schema:
             type: string
             format: date
         - name: user
           in: query
-          description: Filter by user
+          description: Filter by user pubkey (exact match)
           schema:
             type: string
         - name: action
           in: query
-          description: Filter by action type
+          description: Filter by action type (exact match)
           schema:
             type: string
+        - name: limit
+          in: query
+          description: Maximum entries to return (default 100)
+          schema:
+            type: integer
+            minimum: 1
+        - name: failed_only
+          in: query
+          description: Return only failed entries
+          schema:
+            type: boolean
       responses:
         "200":
           description: Audit log entries
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/NATSResponse"
+                $ref: "#/components/schemas/NATSEnvelope"
+              examples:
+                success:
+                  value:
+                    result:
+                      date: "2026-03-21"
+                      entries:
+                        - timestamp: "2026-03-21T10:30:00Z"
+                          pubkey: PUBKEY123
+                          role: admin
+                          action: cook
+                          targets:
+                            - web-01
+                          success: true
+                        - timestamp: "2026-03-21T10:25:00Z"
+                          pubkey: PUBKEY456
+                          role: operator
+                          action: cmd.run
+                          targets:
+                            - db-01
+                          success: false
+                          error: "access denied"
+                      total: 2
         "502":
           $ref: "#/components/responses/NATSError"
 
@@ -911,7 +1189,7 @@ components:
       name: id
       in: path
       required: true
-      description: Sprout identifier (NKey public key)
+      description: Sprout identifier
       schema:
         type: string
 
@@ -974,18 +1252,214 @@ components:
           type: string
           description: Error message if farmer version could not be retrieved
 
-    CookRequest:
+    SproutInfo:
       type: object
-      description: |
-        Request body for triggering a cook operation. The exact structure
-        depends on the farmer implementation and may include fields like
-        target (sprout IDs or cohort expression), recipe path, and test mode flag.
+      description: A sprout with its key state and connectivity status.
+      required:
+        - id
+        - key_state
+        - connected
+      properties:
+        id:
+          type: string
+          description: Sprout identifier
+          example: web-01
+        key_state:
+          type: string
+          description: PKI key state
+          enum:
+            - accepted
+            - unaccepted
+            - denied
+            - rejected
+            - unknown
+          example: accepted
+        connected:
+          type: boolean
+          description: Whether the sprout responds to ping
+          example: true
+        nkey:
+          type: string
+          description: NKey public key (when available)
+
+    JobSummary:
+      type: object
+      description: Overview of a job's execution.
+      required:
+        - jid
+        - sprout_id
+        - status
+        - started_at
+      properties:
+        jid:
+          type: string
+          description: Job identifier
+          example: "20260321-103000-abc123"
+        sprout_id:
+          type: string
+          description: Target sprout ID
+          example: web-01
+        status:
+          type: string
+          description: Current job status
+          enum:
+            - pending
+            - running
+            - completed
+            - failed
+            - partial
+          example: completed
+        steps:
+          type: array
+          description: Step-by-step completion details
+          items:
+            $ref: "#/components/schemas/StepCompletion"
+        started_at:
+          type: string
+          format: date-time
+          description: When the job started
+        duration:
+          type: integer
+          description: Duration in nanoseconds
+        succeeded:
+          type: integer
+          description: Number of successful steps
+        failed:
+          type: integer
+          description: Number of failed steps
+        skipped:
+          type: integer
+          description: Number of skipped steps
+        total:
+          type: integer
+          description: Total number of steps
+        invoked_by:
+          type: string
+          description: Public key of the user who invoked the job
+
+    StepCompletion:
+      type: object
+      description: Completion status of a single recipe step.
+      properties:
+        id:
+          type: string
+          description: Step identifier
+        completion_status:
+          type: string
+          description: Step outcome
+        changes_made:
+          type: boolean
+          description: Whether the step made changes to the system
+        changes:
+          type: array
+          items:
+            type: string
+          description: List of changes made
+        started:
+          type: string
+          format: date-time
+          description: When the step started
+        duration:
+          type: integer
+          description: Step duration in nanoseconds
+
+    CohortSummary:
+      type: object
+      description: Basic info about a named cohort.
+      required:
+        - name
+        - type
+      properties:
+        name:
+          type: string
+          description: Cohort name
+          example: web-servers
+        type:
+          $ref: "#/components/schemas/CohortType"
+
+    CohortDetail:
+      type: object
+      description: Full definition of a cohort including resolved membership.
+      required:
+        - name
+        - type
+        - resolved
+        - count
+      properties:
+        name:
+          type: string
+          description: Cohort name
+        type:
+          $ref: "#/components/schemas/CohortType"
+        members:
+          type: array
+          items:
+            type: string
+          description: Explicit member list (static cohorts)
+        match:
+          $ref: "#/components/schemas/DynamicMatch"
+        compound:
+          $ref: "#/components/schemas/CompoundExpr"
+        resolved:
+          type: array
+          items:
+            type: string
+          description: Currently resolved sprout IDs
+        count:
+          type: integer
+          description: Number of resolved members
+
+    CohortType:
+      type: string
+      description: How a cohort's membership is determined.
+      enum:
+        - static
+        - dynamic
+        - compound
+
+    DynamicMatch:
+      type: object
+      description: Matches sprouts whose props satisfy a condition.
+      properties:
+        propName:
+          type: string
+          description: Property name to match against
+          example: role
+        propValue:
+          type: string
+          description: Required property value
+          example: webserver
+
+    CompoundExpr:
+      type: object
+      description: Boolean combination of named cohorts.
+      required:
+        - operator
+        - operands
+      properties:
+        operator:
+          type: string
+          description: Boolean operator
+          enum:
+            - AND
+            - OR
+            - EXCEPT
+        operands:
+          type: array
+          items:
+            type: string
+          description: Names of cohorts to combine
 
     CohortResolveRequest:
       type: object
-      description: |
-        Cohort expression to resolve. May include cohort names, compound
-        expressions (AND/OR/EXCEPT), and target patterns.
+      description: Request to resolve a cohort's membership.
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: Cohort name to resolve
+          example: web-servers
 
     CohortRefreshRequest:
       type: object
@@ -999,8 +1473,448 @@ components:
           description: Name of a specific cohort to refresh
           example: web-servers
 
+    CohortRefreshResponse:
+      type: object
+      description: Results of a cohort refresh operation.
+      required:
+        - refreshed
+      properties:
+        refreshed:
+          type: array
+          items:
+            $ref: "#/components/schemas/RefreshResult"
+
+    RefreshResult:
+      type: object
+      description: Result of refreshing a single cohort's membership.
+      required:
+        - name
+        - members
+        - lastRefreshed
+      properties:
+        name:
+          type: string
+          description: Cohort name
+        members:
+          type: array
+          items:
+            type: string
+          description: Resolved member sprout IDs
+        lastRefreshed:
+          type: string
+          format: date-time
+          description: When the membership was last evaluated
+
+    RecipeInfo:
+      type: object
+      description: A recipe file in the listing.
+      required:
+        - name
+        - path
+        - size
+      properties:
+        name:
+          type: string
+          description: Dot-notation recipe name
+          example: base.webserver
+        path:
+          type: string
+          description: Relative file path from recipe root
+          example: base/webserver.grlx
+        size:
+          type: integer
+          format: int64
+          description: File size in bytes
+
+    RecipeContent:
+      type: object
+      description: Full content of a recipe file.
+      required:
+        - name
+        - path
+        - content
+        - size
+      properties:
+        name:
+          type: string
+          description: Dot-notation recipe name
+        path:
+          type: string
+          description: Relative file path from recipe root
+        content:
+          type: string
+          description: Raw recipe file content
+        size:
+          type: integer
+          format: int64
+          description: File size in bytes
+
+    KeysByType:
+      type: object
+      description: Sprout keys grouped by PKI state.
+      properties:
+        accepted:
+          $ref: "#/components/schemas/KeySet"
+        unaccepted:
+          $ref: "#/components/schemas/KeySet"
+        denied:
+          $ref: "#/components/schemas/KeySet"
+        rejected:
+          $ref: "#/components/schemas/KeySet"
+
+    KeySet:
+      type: object
+      properties:
+        sprouts:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                description: Sprout identifier
+
+    UserInfo:
+      type: object
+      description: A user's identity and role.
+      required:
+        - pubkey
+        - role
+      properties:
+        pubkey:
+          type: string
+          description: User's public key
+        role:
+          type: string
+          description: Assigned role name
+
+    ExplainResponse:
+      type: object
+      description: RBAC permissions breakdown for a user.
+      required:
+        - pubkey
+        - role
+        - isAdmin
+        - actions
+      properties:
+        pubkey:
+          type: string
+          description: User's public key
+        role:
+          type: string
+          description: Assigned role name
+        isAdmin:
+          type: boolean
+          description: Whether the user has admin access
+        actions:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActionExplain"
+        warnings:
+          type: array
+          items:
+            $ref: "#/components/schemas/PolicyWarning"
+
+    ActionExplain:
+      type: object
+      description: A single permitted action.
+      required:
+        - action
+        - scope
+      properties:
+        action:
+          $ref: "#/components/schemas/RBACAction"
+        scope:
+          type: string
+          description: Scope expression (e.g., `*`, `cohort:web-servers`)
+          example: "*"
+
+    RBACAction:
+      type: string
+      description: RBAC action type.
+      enum:
+        - admin
+        - view
+        - cook
+        - cmd
+        - shell
+        - job_admin
+        - key_admin
+        - user_admin
+        - prop_admin
+
+    PolicyWarning:
+      type: object
+      description: A policy misconfiguration warning.
+      required:
+        - kind
+        - message
+      properties:
+        kind:
+          type: string
+          description: Warning category
+          example: orphan_role_ref
+        message:
+          type: string
+          description: Human-readable description
+
+    RoleInfo:
+      type: object
+      description: A role and its permission rules.
+      required:
+        - name
+        - rules
+      properties:
+        name:
+          type: string
+          description: Role name
+          example: operator
+        rules:
+          type: array
+          items:
+            $ref: "#/components/schemas/Rule"
+
+    Rule:
+      type: object
+      description: A single RBAC permission rule.
+      required:
+        - action
+      properties:
+        action:
+          $ref: "#/components/schemas/RBACAction"
+        scope:
+          type: string
+          description: Scope expression
+          example: "cohort:web-servers"
+
+    UsersListResponse:
+      type: object
+      description: All users and role definitions.
+      required:
+        - users
+        - roles
+      properties:
+        users:
+          type: object
+          additionalProperties:
+            type: string
+          description: Map of pubkey to role name
+        roles:
+          type: array
+          items:
+            $ref: "#/components/schemas/RoleInfo"
+
+    UserAddRequest:
+      type: object
+      description: Payload for adding a user.
+      required:
+        - pubkey
+        - role
+      properties:
+        pubkey:
+          type: string
+          description: The user's public key
+        role:
+          type: string
+          description: Role to assign (e.g., admin, operator, viewer)
+
+    UserMutateResponse:
+      type: object
+      description: Response after user add/remove operations.
+      required:
+        - success
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+          description: Human-readable result message
+
+    AuditEntry:
+      type: object
+      description: A single audit log record.
+      required:
+        - timestamp
+        - pubkey
+        - role
+        - action
+        - success
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: When the action occurred
+        pubkey:
+          type: string
+          description: User who performed the action
+        role:
+          type: string
+          description: User's role at time of action
+        action:
+          type: string
+          description: Action type (e.g., cook, cmd.run, pki.accept)
+        targets:
+          type: array
+          items:
+            type: string
+          description: Sprout IDs or other targets affected
+        params:
+          description: Action-specific parameters (raw JSON)
+        success:
+          type: boolean
+          description: Whether the action succeeded
+        error:
+          type: string
+          description: Error message if the action failed
+
+    AuditQueryResult:
+      type: object
+      description: Result of an audit log query.
+      required:
+        - date
+        - entries
+        - total
+      properties:
+        date:
+          type: string
+          description: Date queried (YYYY-MM-DD)
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/AuditEntry"
+        total:
+          type: integer
+          description: Total entries matching filters (before limit)
+
+    AuditDateSummary:
+      type: object
+      description: Summary of a single audit log date.
+      required:
+        - date
+        - entry_count
+        - size_bytes
+      properties:
+        date:
+          type: string
+          description: Date (YYYY-MM-DD)
+        entry_count:
+          type: integer
+          description: Number of entries for this date
+        size_bytes:
+          type: integer
+          format: int64
+          description: Log file size in bytes
+
+    TargetedAction:
+      type: object
+      description: |
+        A targeted action request containing a list of sprout targets and
+        an action payload. Used by cook, cmd.run, and test.ping endpoints.
+      required:
+        - target
+        - action
+      properties:
+        target:
+          type: array
+          items:
+            type: object
+            required:
+              - id
+            properties:
+              id:
+                type: string
+                description: Sprout identifier
+          description: List of sprouts to target
+        action:
+          description: |
+            Action-specific payload. For `cmd.run`, this is a CmdRun object.
+            For `cook`, this is a CmdCook object. For `test.ping`, this
+            is a PingPong object.
+
+    CmdRun:
+      type: object
+      description: |
+        Command execution parameters for ad-hoc command runs on sprouts.
+      properties:
+        command:
+          type: string
+          description: Command to execute
+          example: uptime
+        args:
+          type: array
+          items:
+            type: string
+          description: Command arguments
+        path:
+          type: string
+          description: PATH override for command lookup
+        cwd:
+          type: string
+          description: Working directory
+        runas:
+          type: string
+          description: Execute as this user
+        env:
+          type: object
+          additionalProperties:
+            type: string
+          description: Environment variables
+        timeout:
+          type: integer
+          description: Timeout in nanoseconds
+        stdout:
+          type: string
+          description: Standard output (in response)
+        stderr:
+          type: string
+          description: Standard error (in response)
+        duration:
+          type: integer
+          description: Execution duration in nanoseconds (in response)
+        errcode:
+          type: integer
+          description: Exit code (in response)
+
+    CmdCook:
+      type: object
+      description: Cook operation parameters.
+      properties:
+        recipe:
+          type: string
+          description: Recipe name in dot-notation
+          example: base.webserver
+        test:
+          type: boolean
+          description: Run in test (dry-run) mode
+          default: false
+        async:
+          type: boolean
+          description: Run asynchronously
+          default: false
+        env:
+          type: string
+          description: Environment name
+        timeout:
+          type: integer
+          description: Timeout in nanoseconds
+        jid:
+          type: string
+          description: Job ID (in response)
+
+    PingPong:
+      type: object
+      description: Ping/pong connectivity test.
+      properties:
+        ping:
+          type: boolean
+          description: Set to true in request
+        pong:
+          type: boolean
+          description: Set to true in response if sprout is alive
+
     LogEntry:
       type: object
+      description: A single log entry from the in-memory buffer.
       required:
         - timestamp
         - level
@@ -1011,7 +1925,7 @@ components:
           type: string
           format: date-time
           description: ISO 8601 timestamp
-          example: "2026-03-15T07:30:00Z"
+          example: "2026-03-21T07:30:00Z"
         level:
           type: string
           enum:
@@ -1028,39 +1942,24 @@ components:
           description: Origin of the log entry
         sourceId:
           type: string
-          description: Identifier of the source (e.g. sprout NKey)
-          example: SPROUT_ABC123
+          description: Identifier of the source (e.g., sprout ID)
+          example: web-01
         message:
           type: string
           description: Human-readable log message
 
-    TargetedAction:
+    NATSEnvelope:
       type: object
       description: |
-        A targeted action request. Contains a list of sprout targets and
-        an action payload. Used by cmd.run and test.ping endpoints.
-      required:
-        - target
-        - action
+        Standard NATS proxy response envelope. On success, `result`
+        contains the response data. On error, `error` contains a
+        message string.
       properties:
-        target:
-          type: array
-          items:
-            type: object
-            properties:
-              sprout_id:
-                type: string
-                description: Sprout NKey public key
-          description: List of sprouts to target
-        action:
-          type: object
-          description: Action-specific payload (varies by endpoint)
-
-    NATSResponse:
-      description: |
-        Raw JSON response from the farmer via NATS proxy. The structure
-        varies by endpoint — refer to the farmer documentation for
-        response schemas specific to each NATS subject.
+        result:
+          description: Response data (structure varies by endpoint — see endpoint examples)
+        error:
+          type: string
+          description: Error message (present only on failure)
 
     ErrorResponse:
       type: object
