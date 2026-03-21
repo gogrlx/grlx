@@ -126,6 +126,94 @@ func TestResolveCohortInvalidBody(t *testing.T) {
 	}
 }
 
+func TestSetCohortRegistry(t *testing.T) {
+	r := rbac.NewRegistry()
+	SetCohortRegistry(r)
+	defer func() { cohortRegistry = nil }()
+
+	if cohortRegistry != r {
+		t.Error("expected cohortRegistry to be set")
+	}
+}
+
+func TestRefreshCohorts_NilRegistry(t *testing.T) {
+	cohortRegistry = nil
+
+	req := httptest.NewRequest(http.MethodPost, "/cohorts/refresh", nil)
+	w := httptest.NewRecorder()
+	RefreshCohorts(w, req)
+
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("expected 503, got %d", w.Code)
+	}
+}
+
+func TestRefreshCohorts_All(t *testing.T) {
+	tmpDir := setupTestPKI(t)
+	addTestSprout(t, tmpDir, "accepted", "web-1", "UKEY1")
+	addTestSprout(t, tmpDir, "accepted", "web-2", "UKEY2")
+
+	registry := rbac.NewRegistry()
+	registry.Register(&rbac.Cohort{
+		Name:    "webservers",
+		Type:    rbac.CohortTypeStatic,
+		Members: []string{"web-1", "web-2"},
+	})
+	cohortRegistry = registry
+	defer func() { cohortRegistry = nil }()
+
+	req := httptest.NewRequest(http.MethodPost, "/cohorts/refresh", nil)
+	w := httptest.NewRecorder()
+	RefreshCohorts(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp CohortRefreshResponse
+	json.NewDecoder(w.Body).Decode(&resp)
+	if len(resp.Refreshed) != 1 {
+		t.Fatalf("expected 1 refresh result, got %d", len(resp.Refreshed))
+	}
+}
+
+func TestRefreshCohorts_ByName(t *testing.T) {
+	tmpDir := setupTestPKI(t)
+	addTestSprout(t, tmpDir, "accepted", "db-1", "UKEY3")
+
+	registry := rbac.NewRegistry()
+	registry.Register(&rbac.Cohort{
+		Name:    "databases",
+		Type:    rbac.CohortTypeStatic,
+		Members: []string{"db-1"},
+	})
+	cohortRegistry = registry
+	defer func() { cohortRegistry = nil }()
+
+	body, _ := json.Marshal(CohortRefreshRequest{Name: "databases"})
+	req := httptest.NewRequest(http.MethodPost, "/cohorts/refresh", bytes.NewBuffer(body))
+	w := httptest.NewRecorder()
+	RefreshCohorts(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestRefreshCohorts_NotFound(t *testing.T) {
+	cohortRegistry = rbac.NewRegistry()
+	defer func() { cohortRegistry = nil }()
+
+	body, _ := json.Marshal(CohortRefreshRequest{Name: "nonexistent"})
+	req := httptest.NewRequest(http.MethodPost, "/cohorts/refresh", bytes.NewBuffer(body))
+	w := httptest.NewRecorder()
+	RefreshCohorts(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d", w.Code)
+	}
+}
+
 func TestResolveCohortStatic(t *testing.T) {
 	registry := rbac.NewRegistry()
 	registry.Register(&rbac.Cohort{
