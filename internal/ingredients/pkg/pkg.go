@@ -204,7 +204,8 @@ func (p Pkg) Test(ctx context.Context) (cook.Result, error) {
 }
 
 // getManager returns the system's default package manager.
-func getManager() (snack.Manager, error) {
+// It is a variable so tests can substitute a mock implementation.
+var getManager = func() (snack.Manager, error) {
 	return detect.Default()
 }
 
