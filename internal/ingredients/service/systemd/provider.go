@@ -12,12 +12,35 @@ import (
 	"github.com/gogrlx/grlx/v2/internal/ingredients/service"
 )
 
+// Function variables for systemctl operations — replaceable in tests.
+// Functions from systemctl.go have variadic args, helpers.go functions don't.
+var (
+	sysStart   = systemctl.Start
+	sysStop    = systemctl.Stop
+	sysRestart = systemctl.Restart
+	sysReload  = systemctl.Reload
+	sysEnable  = systemctl.Enable
+	sysDisable = systemctl.Disable
+	sysMask    = systemctl.Mask
+	sysUnmask  = systemctl.Unmask
+	sysStatus  = systemctl.Status
+
+	// These come from helpers.go — no variadic args.
+	sysIsEnabled = systemctl.IsEnabled
+	sysIsMasked  = systemctl.IsMasked
+	sysIsRunning = systemctl.IsRunning
+)
+
 type SystemdService struct {
 	id       string
 	name     string
 	method   string
 	userMode bool
 	props    map[string]interface{}
+}
+
+func (s SystemdService) opts() systemctl.Options {
+	return systemctl.Options{UserMode: s.userMode}
 }
 
 func (s SystemdService) Properties() (map[string]interface{}, error) {
@@ -29,11 +52,11 @@ func init() {
 }
 
 func (s SystemdService) Disable(ctx context.Context) error {
-	return systemctl.Disable(ctx, s.name, systemctl.Options{UserMode: s.userMode})
+	return sysDisable(ctx, s.name, s.opts())
 }
 
 func (s SystemdService) Enable(ctx context.Context) error {
-	return systemctl.Enable(ctx, s.name, systemctl.Options{UserMode: s.userMode})
+	return sysEnable(ctx, s.name, s.opts())
 }
 
 func (s SystemdService) Parse(id, method string, properties map[string]interface{}) (service.ServiceProvider, error) {
@@ -58,31 +81,31 @@ func (s SystemdService) Parse(id, method string, properties map[string]interface
 }
 
 func (s SystemdService) Unmask(ctx context.Context) error {
-	return systemctl.Unmask(ctx, s.name, systemctl.Options{UserMode: s.userMode})
+	return sysUnmask(ctx, s.name, s.opts())
 }
 
 func (s SystemdService) Mask(ctx context.Context) error {
-	return systemctl.Mask(ctx, s.name, systemctl.Options{UserMode: s.userMode})
+	return sysMask(ctx, s.name, s.opts())
 }
 
 func (s SystemdService) Restart(ctx context.Context) error {
-	return systemctl.Restart(ctx, s.name, systemctl.Options{UserMode: s.userMode})
+	return sysRestart(ctx, s.name, s.opts())
 }
 
 func (s SystemdService) Reload(ctx context.Context) error {
-	return systemctl.Reload(ctx, s.name, systemctl.Options{UserMode: s.userMode})
+	return sysReload(ctx, s.name, s.opts())
 }
 
 func (s SystemdService) Stop(ctx context.Context) error {
-	return systemctl.Stop(ctx, s.name, systemctl.Options{UserMode: s.userMode})
+	return sysStop(ctx, s.name, s.opts())
 }
 
 func (s SystemdService) Start(ctx context.Context) error {
-	return systemctl.Start(ctx, s.name, systemctl.Options{UserMode: s.userMode})
+	return sysStart(ctx, s.name, s.opts())
 }
 
 func (s SystemdService) Status(ctx context.Context) (string, error) {
-	return systemctl.Status(ctx, s.name, systemctl.Options{UserMode: s.userMode})
+	return sysStatus(ctx, s.name, s.opts())
 }
 
 func (s SystemdService) InitName() string {
@@ -97,13 +120,13 @@ func (s SystemdService) IsInit() bool {
 }
 
 func (s SystemdService) IsEnabled(ctx context.Context) (bool, error) {
-	return systemctl.IsEnabled(ctx, s.name, systemctl.Options{UserMode: s.userMode})
+	return sysIsEnabled(ctx, s.name, s.opts())
 }
 
 func (s SystemdService) IsMasked(ctx context.Context) (bool, error) {
-	return systemctl.IsMasked(ctx, s.name, systemctl.Options{UserMode: s.userMode})
+	return sysIsMasked(ctx, s.name, s.opts())
 }
 
 func (s SystemdService) IsRunning(ctx context.Context) (bool, error) {
-	return systemctl.IsRunning(ctx, s.name, systemctl.Options{UserMode: s.userMode})
+	return sysIsRunning(ctx, s.name, s.opts())
 }
