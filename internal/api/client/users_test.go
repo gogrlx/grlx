@@ -125,3 +125,68 @@ func TestListUsers_Error(t *testing.T) {
 		t.Fatal("expected error")
 	}
 }
+
+func TestAddUser_Success(t *testing.T) {
+	cleanup := startTestNATS(t)
+	defer cleanup()
+
+	want := apitypes.UserMutateResponse{
+		Success: true,
+		Message: "user added",
+	}
+	mockHandler(t, NatsConn, "grlx.api.auth.users.add", want)
+
+	got, err := AddUser("NKEY_NEW", "operator")
+	if err != nil {
+		t.Fatalf("AddUser: %v", err)
+	}
+	if !got.Success {
+		t.Fatal("expected success=true")
+	}
+	if got.Message != "user added" {
+		t.Fatalf("expected message 'user added', got %q", got.Message)
+	}
+}
+
+func TestAddUser_Error(t *testing.T) {
+	cleanup := startTestNATS(t)
+	defer cleanup()
+
+	mockErrorHandler(t, NatsConn, "grlx.api.auth.users.add", "role not found")
+
+	_, err := AddUser("NKEY_BAD", "nonexistent")
+	if err == nil {
+		t.Fatal("expected error")
+	}
+}
+
+func TestRemoveUser_Success(t *testing.T) {
+	cleanup := startTestNATS(t)
+	defer cleanup()
+
+	want := apitypes.UserMutateResponse{
+		Success: true,
+		Message: "user removed",
+	}
+	mockHandler(t, NatsConn, "grlx.api.auth.users.remove", want)
+
+	got, err := RemoveUser("NKEY_OLD")
+	if err != nil {
+		t.Fatalf("RemoveUser: %v", err)
+	}
+	if !got.Success {
+		t.Fatal("expected success=true")
+	}
+}
+
+func TestRemoveUser_Error(t *testing.T) {
+	cleanup := startTestNATS(t)
+	defer cleanup()
+
+	mockErrorHandler(t, NatsConn, "grlx.api.auth.users.remove", "user not found")
+
+	_, err := RemoveUser("NKEY_MISSING")
+	if err == nil {
+		t.Fatal("expected error")
+	}
+}

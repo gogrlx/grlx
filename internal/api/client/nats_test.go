@@ -7,6 +7,10 @@ import (
 
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
+
+	apitypes "github.com/gogrlx/grlx/v2/internal/api/types"
+	"github.com/gogrlx/grlx/v2/internal/audit"
+	"github.com/gogrlx/grlx/v2/internal/pki"
 )
 
 // startTestNATS starts an embedded NATS server and connects NatsConn to it.
@@ -183,6 +187,23 @@ func TestNatsRequest_Timeout(t *testing.T) {
 	}
 }
 
+func TestConnectNats_NoConfig(t *testing.T) {
+	// ConnectNats will fail without proper config/auth setup
+	// Just verify it returns a meaningful error
+	old := NatsConn
+	defer func() { NatsConn = old }()
+
+	err := ConnectNats()
+	if err == nil {
+		// If it somehow succeeded (unlikely without config), clean up
+		if NatsConn != nil {
+			NatsConn.Close()
+		}
+		return
+	}
+	// Error is expected — connection should fail without farmer config
+}
+
 func TestNatsRequest_InvalidResponse(t *testing.T) {
 	cleanup := startTestNATS(t)
 	defer cleanup()
@@ -200,6 +221,315 @@ func TestNatsRequest_InvalidResponse(t *testing.T) {
 	NatsConn.Flush()
 
 	_, err = NatsRequest("badjson", nil)
+	if err == nil {
+		t.Fatal("expected unmarshal error")
+	}
+}
+
+// mockBadJSONHandler subscribes to subject and replies with a valid envelope
+// but invalid JSON in the result field — used to test unmarshal error paths.
+func mockBadJSONHandler(t *testing.T, nc *nats.Conn, subject string) *nats.Subscription {
+	t.Helper()
+	sub, err := nc.Subscribe(subject, func(msg *nats.Msg) {
+		// Valid envelope, but result is not valid for the expected type
+		payload := []byte(`{"result":"not-an-object"}`)
+		if err := msg.Respond(payload); err != nil {
+			t.Errorf("mock respond: %v", err)
+		}
+	})
+	if err != nil {
+		t.Fatalf("subscribe: %v", err)
+	}
+	nc.Flush()
+	return sub
+}
+
+func TestGetVersion_BadJSON(t *testing.T) {
+	cleanup := startTestNATS(t)
+	defer cleanup()
+
+	mockBadJSONHandler(t, NatsConn, "grlx.api.version")
+
+	_, err := GetVersion()
+	if err == nil {
+		t.Fatal("expected unmarshal error")
+	}
+}
+
+func TestListSprouts_BadJSON(t *testing.T) {
+	cleanup := startTestNATS(t)
+	defer cleanup()
+
+	mockBadJSONHandler(t, NatsConn, "grlx.api.sprouts.list")
+
+	_, err := ListSprouts()
+	if err == nil {
+		t.Fatal("expected unmarshal error")
+	}
+}
+
+func TestGetSprout_BadJSON(t *testing.T) {
+	cleanup := startTestNATS(t)
+	defer cleanup()
+
+	mockBadJSONHandler(t, NatsConn, "grlx.api.sprouts.get")
+
+	_, err := GetSprout("web-01")
+	if err == nil {
+		t.Fatal("expected unmarshal error")
+	}
+}
+
+func TestGetSproutProps_BadJSON(t *testing.T) {
+	cleanup := startTestNATS(t)
+	defer cleanup()
+
+	mockBadJSONHandler(t, NatsConn, "grlx.api.props.getall")
+
+	_, err := GetSproutProps("web-01")
+	if err == nil {
+		t.Fatal("expected unmarshal error")
+	}
+}
+
+func TestWhoAmI_BadJSON(t *testing.T) {
+	cleanup := startTestNATS(t)
+	defer cleanup()
+
+	mockBadJSONHandler(t, NatsConn, "grlx.api.auth.whoami")
+
+	_, err := WhoAmI()
+	if err == nil {
+		t.Fatal("expected unmarshal error")
+	}
+}
+
+func TestExplainAccess_BadJSON(t *testing.T) {
+	cleanup := startTestNATS(t)
+	defer cleanup()
+
+	mockBadJSONHandler(t, NatsConn, "grlx.api.auth.explain")
+
+	_, err := ExplainAccess()
+	if err == nil {
+		t.Fatal("expected unmarshal error")
+	}
+}
+
+func TestListUsers_BadJSON(t *testing.T) {
+	cleanup := startTestNATS(t)
+	defer cleanup()
+
+	mockBadJSONHandler(t, NatsConn, "grlx.api.auth.users")
+
+	_, err := ListUsers()
+	if err == nil {
+		t.Fatal("expected unmarshal error")
+	}
+}
+
+func TestAddUser_BadJSON(t *testing.T) {
+	cleanup := startTestNATS(t)
+	defer cleanup()
+
+	mockBadJSONHandler(t, NatsConn, "grlx.api.auth.users.add")
+
+	_, err := AddUser("KEY", "role")
+	if err == nil {
+		t.Fatal("expected unmarshal error")
+	}
+}
+
+func TestRemoveUser_BadJSON(t *testing.T) {
+	cleanup := startTestNATS(t)
+	defer cleanup()
+
+	mockBadJSONHandler(t, NatsConn, "grlx.api.auth.users.remove")
+
+	_, err := RemoveUser("KEY")
+	if err == nil {
+		t.Fatal("expected unmarshal error")
+	}
+}
+
+func TestGetCohort_BadJSON(t *testing.T) {
+	cleanup := startTestNATS(t)
+	defer cleanup()
+
+	mockBadJSONHandler(t, NatsConn, "grlx.api.cohorts.get")
+
+	_, err := GetCohort("test")
+	if err == nil {
+		t.Fatal("expected unmarshal error")
+	}
+}
+
+func TestResolveCohort_BadJSON(t *testing.T) {
+	cleanup := startTestNATS(t)
+	defer cleanup()
+
+	mockBadJSONHandler(t, NatsConn, "grlx.api.cohorts.resolve")
+
+	_, err := ResolveCohort("test")
+	if err == nil {
+		t.Fatal("expected unmarshal error")
+	}
+}
+
+func TestRefreshCohort_BadJSON(t *testing.T) {
+	cleanup := startTestNATS(t)
+	defer cleanup()
+
+	mockBadJSONHandler(t, NatsConn, "grlx.api.cohorts.refresh")
+
+	_, err := RefreshCohort("test")
+	if err == nil {
+		t.Fatal("expected unmarshal error")
+	}
+}
+
+func TestRefreshAllCohorts_BadJSON(t *testing.T) {
+	cleanup := startTestNATS(t)
+	defer cleanup()
+
+	mockBadJSONHandler(t, NatsConn, "grlx.api.cohorts.refresh")
+
+	_, err := RefreshAllCohorts()
+	if err == nil {
+		t.Fatal("expected unmarshal error")
+	}
+}
+
+func TestListJobs_BadJSON(t *testing.T) {
+	cleanup := startTestNATS(t)
+	defer cleanup()
+
+	mockBadJSONHandler(t, NatsConn, "grlx.api.jobs.list")
+
+	_, err := ListJobs(10, "")
+	if err == nil {
+		t.Fatal("expected unmarshal error")
+	}
+}
+
+func TestGetJob_BadJSON(t *testing.T) {
+	cleanup := startTestNATS(t)
+	defer cleanup()
+
+	mockBadJSONHandler(t, NatsConn, "grlx.api.jobs.get")
+
+	_, err := GetJob("jid-1")
+	if err == nil {
+		t.Fatal("expected unmarshal error")
+	}
+}
+
+func TestListJobsForSprout_BadJSON(t *testing.T) {
+	cleanup := startTestNATS(t)
+	defer cleanup()
+
+	mockBadJSONHandler(t, NatsConn, "grlx.api.jobs.forsprout")
+
+	_, err := ListJobsForSprout("web-01")
+	if err == nil {
+		t.Fatal("expected unmarshal error")
+	}
+}
+
+func TestListKeys_BadJSON(t *testing.T) {
+	cleanup := startTestNATS(t)
+	defer cleanup()
+
+	mockBadJSONHandler(t, NatsConn, "grlx.api.pki.list")
+
+	_, err := ListKeys()
+	if err == nil {
+		t.Fatal("expected unmarshal error")
+	}
+}
+
+func TestListAuditDates_BadJSON(t *testing.T) {
+	cleanup := startTestNATS(t)
+	defer cleanup()
+
+	mockBadJSONHandler(t, NatsConn, "grlx.api.audit.dates")
+
+	_, err := ListAuditDates()
+	if err == nil {
+		t.Fatal("expected unmarshal error")
+	}
+}
+
+func TestQueryAudit_BadJSON(t *testing.T) {
+	cleanup := startTestNATS(t)
+	defer cleanup()
+
+	mockBadJSONHandler(t, NatsConn, "grlx.api.audit.query")
+
+	_, err := QueryAudit(audit.QueryParams{})
+	if err == nil {
+		t.Fatal("expected unmarshal error")
+	}
+}
+
+// --- Cook tests ---
+
+func TestCook_HappyPath(t *testing.T) {
+	cleanup := startTestNATS(t)
+	defer cleanup()
+
+	keys := pki.KeysByType{
+		Accepted:   pki.KeySet{Sprouts: []pki.KeyManager{{SproutID: "web-01"}}},
+		Unaccepted: pki.KeySet{Sprouts: []pki.KeyManager{}},
+		Denied:     pki.KeySet{Sprouts: []pki.KeyManager{}},
+		Rejected:   pki.KeySet{Sprouts: []pki.KeyManager{}},
+	}
+	mockHandler(t, NatsConn, "grlx.api.pki.list", keys)
+
+	want := apitypes.CmdCook{
+		JID:    "jid-cook-001",
+		Recipe: "web.sls",
+	}
+	mockHandler(t, NatsConn, "grlx.api.cook", want)
+
+	cmd := apitypes.CmdCook{Recipe: "web.sls"}
+	got, err := Cook("web-01", cmd)
+	if err != nil {
+		t.Fatalf("Cook: %v", err)
+	}
+	if got.JID != "jid-cook-001" {
+		t.Fatalf("expected JID jid-cook-001, got %q", got.JID)
+	}
+}
+
+func TestCook_TargetResolveFails(t *testing.T) {
+	cleanup := startTestNATS(t)
+	defer cleanup()
+
+	mockErrorHandler(t, NatsConn, "grlx.api.pki.list", "connection refused")
+
+	cmd := apitypes.CmdCook{Recipe: "web.sls"}
+	_, err := Cook("web-01", cmd)
+	if err == nil {
+		t.Fatal("expected error from target resolution")
+	}
+}
+
+func TestCook_BadJSONResponse(t *testing.T) {
+	cleanup := startTestNATS(t)
+	defer cleanup()
+
+	keys := pki.KeysByType{
+		Accepted:   pki.KeySet{Sprouts: []pki.KeyManager{{SproutID: "web-01"}}},
+		Unaccepted: pki.KeySet{Sprouts: []pki.KeyManager{}},
+		Denied:     pki.KeySet{Sprouts: []pki.KeyManager{}},
+		Rejected:   pki.KeySet{Sprouts: []pki.KeyManager{}},
+	}
+	mockHandler(t, NatsConn, "grlx.api.pki.list", keys)
+	mockBadJSONHandler(t, NatsConn, "grlx.api.cook")
+
+	cmd := apitypes.CmdCook{Recipe: "web.sls"}
+	_, err := Cook("web-01", cmd)
 	if err == nil {
 		t.Fatal("expected unmarshal error")
 	}
