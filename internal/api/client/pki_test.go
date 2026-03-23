@@ -349,5 +349,3 @@ func dummyCmdCook() apitypes.CmdCook {
 		Test:   true,
 	}
 }
-
-
