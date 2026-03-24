@@ -167,3 +167,126 @@ func TestView_SelectedMarker(t *testing.T) {
 		t.Fatal("view should contain selected marker ▸")
 	}
 }
+
+func TestCancel_CtrlC(t *testing.T) {
+	m := Model{
+		Cohort:  "web",
+		Sprouts: []string{"a", "b"},
+	}
+
+	result, cmd := m.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
+	final := result.(Model)
+	if !final.Cancelled {
+		t.Fatal("expected cancelled after ctrl+c")
+	}
+	if cmd == nil {
+		t.Fatal("expected quit command after ctrl+c")
+	}
+}
+
+func TestEnterSelects(t *testing.T) {
+	m := Model{
+		Cohort:  "web",
+		Sprouts: []string{"alpha", "beta"},
+		Cursor:  1,
+	}
+
+	result, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	final := result.(Model)
+	if final.Cancelled {
+		t.Fatal("enter should not cancel")
+	}
+	if final.Selected() != "beta" {
+		t.Fatalf("expected 'beta' selected, got %q", final.Selected())
+	}
+	if cmd == nil {
+		t.Fatal("expected quit command after enter")
+	}
+}
+
+func TestSelected_CursorOutOfRange(t *testing.T) {
+	m := Model{
+		Sprouts: []string{"only"},
+		Cursor:  5, // beyond range
+	}
+	if got := m.Selected(); got != "" {
+		t.Fatalf("expected empty for out-of-range cursor, got %q", got)
+	}
+}
+
+func TestView_EmptySprouts(t *testing.T) {
+	m := Model{
+		Cohort:  "empty-cohort",
+		Sprouts: []string{},
+		Cursor:  0,
+	}
+
+	view := m.View()
+	if !strings.Contains(view, "empty-cohort") {
+		t.Fatal("view should contain cohort name even with no sprouts")
+	}
+	if !strings.Contains(view, "0 sprouts") {
+		t.Fatal("view should show '0 sprouts' count")
+	}
+}
+
+func TestUnknownKey(t *testing.T) {
+	m := Model{
+		Cohort:  "web",
+		Sprouts: []string{"a", "b"},
+		Cursor:  0,
+	}
+
+	result, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("x")})
+	final := result.(Model)
+
+	// Unknown key should not change state
+	if final.Cursor != 0 {
+		t.Errorf("expected cursor 0, got %d", final.Cursor)
+	}
+	if final.Cancelled {
+		t.Error("should not be cancelled")
+	}
+	if cmd != nil {
+		t.Error("expected nil cmd for unknown key")
+	}
+}
+
+func TestNavigateMixed(t *testing.T) {
+	m := Model{
+		Cohort:  "web",
+		Sprouts: []string{"a", "b", "c", "d"},
+		Cursor:  0,
+	}
+
+	// Navigate down with arrow, up with k
+	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyDown})
+	m = result.(Model)
+	result, _ = m.Update(tea.KeyMsg{Type: tea.KeyDown})
+	m = result.(Model)
+	if m.Cursor != 2 {
+		t.Fatalf("expected cursor 2, got %d", m.Cursor)
+	}
+
+	result, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("k")})
+	m = result.(Model)
+	if m.Cursor != 1 {
+		t.Fatalf("expected cursor 1, got %d", m.Cursor)
+	}
+}
+
+func TestView_HelpText(t *testing.T) {
+	m := Model{
+		Cohort:  "web",
+		Sprouts: []string{"a"},
+		Cursor:  0,
+	}
+
+	view := m.View()
+	if !strings.Contains(view, "enter") {
+		t.Fatal("view should contain help text with 'enter'")
+	}
+	if !strings.Contains(view, "cancel") {
+		t.Fatal("view should contain help text with 'cancel'")
+	}
+}

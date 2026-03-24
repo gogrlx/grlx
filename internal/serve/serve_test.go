@@ -681,3 +681,206 @@ func TestHandlePropsSetProxyFormats(t *testing.T) {
 		t.Fatalf("props set raw: expected 502, got %d", rec.Code)
 	}
 }
+
+func TestHandlePropsSetProxyMissingParams(t *testing.T) {
+	handler := HandlePropsSetProxy("props.set")
+
+	// Missing both id and key
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/props//", strings.NewReader(`"value"`))
+	rec := httptest.NewRecorder()
+
+	handler(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 for missing params, got %d", rec.Code)
+	}
+}
+
+func TestHandlePropsSetProxyEmptyBody(t *testing.T) {
+	mux := NewMux()
+
+	// Empty body — should still reach NATS (value will be empty string)
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/props/sprout-1/hostname", strings.NewReader(""))
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("expected 502 for empty body (NATS unreachable), got %d", rec.Code)
+	}
+}
+
+func TestMuxSproutsListRoute(t *testing.T) {
+	mux := NewMux()
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/sprouts", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("sprouts list: expected 502, got %d", rec.Code)
+	}
+}
+
+func TestMuxSproutsGetRoute(t *testing.T) {
+	mux := NewMux()
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/sprouts/sprout-alpha", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("sprouts get: expected 502, got %d", rec.Code)
+	}
+}
+
+func TestMuxJobsListRoute(t *testing.T) {
+	mux := NewMux()
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/jobs", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("jobs list: expected 502, got %d", rec.Code)
+	}
+}
+
+func TestMuxJobsGetRoute(t *testing.T) {
+	mux := NewMux()
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/jobs/jid-001", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("jobs get: expected 502, got %d", rec.Code)
+	}
+}
+
+func TestMuxPropsGetAllRoute(t *testing.T) {
+	mux := NewMux()
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/props/sprout-1", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("props getall: expected 502, got %d", rec.Code)
+	}
+}
+
+func TestMuxPropsGetKeyRoute(t *testing.T) {
+	mux := NewMux()
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/props/sprout-1/hostname", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("props get key: expected 502, got %d", rec.Code)
+	}
+}
+
+func TestMuxKeysRejectRoute(t *testing.T) {
+	mux := NewMux()
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/keys/sprout-1/reject", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("keys reject: expected 502, got %d", rec.Code)
+	}
+}
+
+func TestMuxKeysDenyRoute(t *testing.T) {
+	mux := NewMux()
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/keys/sprout-1/deny", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("keys deny: expected 502, got %d", rec.Code)
+	}
+}
+
+func TestMuxKeysUnacceptRoute(t *testing.T) {
+	mux := NewMux()
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/keys/sprout-1/unaccept", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("keys unaccept: expected 502, got %d", rec.Code)
+	}
+}
+
+func TestMuxLogStreamRoute(t *testing.T) {
+	mux := NewMux()
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/logs/stream", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	// WebSocket upgrade will fail on a plain HTTP request, which is expected.
+	// We just verify the route is registered and doesn't 404.
+	if rec.Code == http.StatusNotFound {
+		t.Fatal("logs/stream route should be registered")
+	}
+}
+
+func TestMuxLogsRoute(t *testing.T) {
+	mux := NewMux()
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/logs", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	// HandleRecentLogs uses getHub() which initializes the singleton.
+	// It should return 200 with an empty logs array.
+	if rec.Code != http.StatusOK {
+		t.Fatalf("logs: expected 200, got %d", rec.Code)
+	}
+}
+
+func TestHandleNATSProxyWithQueryNoParams(t *testing.T) {
+	handler := HandleNATSProxyWithQuery("audit.query")
+
+	// No query parameters at all
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/audit", nil)
+	rec := httptest.NewRecorder()
+
+	handler(rec, req)
+
+	// With no NATS connection, should get 502
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("expected status 502, got %d", rec.Code)
+	}
+}
+
+func TestHandleNATSProxyWithQueryInvalidLimit(t *testing.T) {
+	handler := HandleNATSProxyWithQuery("audit.query")
+
+	// Invalid limit (not a number) — should be ignored gracefully
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/audit?limit=abc", nil)
+	rec := httptest.NewRecorder()
+
+	handler(rec, req)
+
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("expected status 502, got %d", rec.Code)
+	}
+}
+
+func TestWriteJSONMarshalError(t *testing.T) {
+	rec := httptest.NewRecorder()
+	// Pass something that can't be marshaled (channel type).
+	// json.Encoder will return an error, but WriteJSON should handle it gracefully.
+	WriteJSON(rec, http.StatusOK, make(chan int))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status 200 even with marshal error, got %d", rec.Code)
+	}
+}
