@@ -1,7 +1,11 @@
 package rbac
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
+
+	"github.com/taigrr/jety"
 )
 
 func TestRoleStoreRegisterAndGet(t *testing.T) {
@@ -394,6 +398,664 @@ func TestParseRoleEntry(t *testing.T) {
 			}
 			if !tt.wantErr && role.Name != "test-role" {
 				t.Errorf("expected name 'test-role', got %q", role.Name)
+			}
+		})
+	}
+}
+
+// --- jety-based integration tests for config loading ---
+
+// setupJetyForRBACTest clears jety state for rbac-related keys.
+func setupJetyForRBACTest(t *testing.T) {
+	t.Helper()
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.toml")
+	if err := os.WriteFile(path, []byte("# test config\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	jety.SetConfigType("toml")
+	jety.SetConfigFile(path)
+	jety.Set("roles", nil)
+	jety.Set("users", nil)
+	jety.Set("pubkeys", nil)
+	jety.Set("cohorts", nil)
+}
+
+func clearJetyRBACKeys(t *testing.T) {
+	t.Helper()
+	jety.Set("roles", nil)
+	jety.Set("users", nil)
+	jety.Set("pubkeys", nil)
+	jety.Set("cohorts", nil)
+}
+
+func TestLoadRolesFromConfig_Empty(t *testing.T) {
+	setupJetyForRBACTest(t)
+	defer clearJetyRBACKeys(t)
+
+	store, err := LoadRolesFromConfig()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Built-in viewer and operator should be present even with empty config.
+	viewer, err := store.Get("viewer")
+	if err != nil {
+		t.Fatalf("expected built-in viewer: %v", err)
+	}
+	if !viewer.HasAction(ActionView) {
+		t.Error("viewer should have ActionView")
+	}
+
+	operator, err := store.Get("operator")
+	if err != nil {
+		t.Fatalf("expected built-in operator: %v", err)
+	}
+	if !operator.HasAction(ActionCook) {
+		t.Error("operator should have ActionCook")
+	}
+}
+
+func TestLoadRolesFromConfig_CustomRoles(t *testing.T) {
+	setupJetyForRBACTest(t)
+	defer clearJetyRBACKeys(t)
+
+	jety.Set("roles", map[string]any{
+		"sre-team": []any{
+			map[string]any{"action": "admin"},
+		},
+		"dev-team": []any{
+			map[string]any{"action": "view", "scope": "*"},
+			map[string]any{"action": "cook", "scope": "cohort:staging"},
+		},
+	})
+
+	store, err := LoadRolesFromConfig()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	sre, err := store.Get("sre-team")
+	if err != nil {
+		t.Fatalf("expected sre-team role: %v", err)
+	}
+	if !sre.HasAction(ActionAdmin) {
+		t.Error("sre-team should have admin action")
+	}
+
+	dev, err := store.Get("dev-team")
+	if err != nil {
+		t.Fatalf("expected dev-team role: %v", err)
+	}
+	if len(dev.Rules) != 2 {
+		t.Errorf("expected 2 rules for dev-team, got %d", len(dev.Rules))
+	}
+}
+
+func TestLoadRolesFromConfig_InvalidAction(t *testing.T) {
+	setupJetyForRBACTest(t)
+	defer clearJetyRBACKeys(t)
+
+	jety.Set("roles", map[string]any{
+		"bad-role": []any{
+			map[string]any{"action": "nonexistent"},
+		},
+	})
+
+	_, err := LoadRolesFromConfig()
+	if err == nil {
+		t.Error("expected error for invalid action in role config")
+	}
+}
+
+func TestLoadRolesFromConfig_OverrideBuiltin(t *testing.T) {
+	setupJetyForRBACTest(t)
+	defer clearJetyRBACKeys(t)
+
+	// Override built-in viewer with restricted scope.
+	jety.Set("roles", map[string]any{
+		"viewer": []any{
+			map[string]any{"action": "view", "scope": "cohort:monitoring"},
+		},
+	})
+
+	store, err := LoadRolesFromConfig()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	viewer, err := store.Get("viewer")
+	if err != nil {
+		t.Fatalf("expected viewer role: %v", err)
+	}
+	if len(viewer.Rules) != 1 {
+		t.Fatalf("expected 1 rule from override, got %d", len(viewer.Rules))
+	}
+	if viewer.Rules[0].Scope != "cohort:monitoring" {
+		t.Errorf("expected scoped override, got %q", viewer.Rules[0].Scope)
+	}
+}
+
+func TestLoadUsersFromConfig_NewFormat(t *testing.T) {
+	setupJetyForRBACTest(t)
+	defer clearJetyRBACKeys(t)
+
+	jety.Set("users", map[string]any{
+		"admin": []any{"PUBKEY_ADMIN_1", "PUBKEY_ADMIN_2"},
+		"dev":   []any{"PUBKEY_DEV_1"},
+	})
+
+	m := LoadUsersFromConfig()
+	if m.RoleName("PUBKEY_ADMIN_1") != "admin" {
+		t.Errorf("expected admin, got %q", m.RoleName("PUBKEY_ADMIN_1"))
+	}
+	if m.RoleName("PUBKEY_ADMIN_2") != "admin" {
+		t.Errorf("expected admin, got %q", m.RoleName("PUBKEY_ADMIN_2"))
+	}
+	if m.RoleName("PUBKEY_DEV_1") != "dev" {
+		t.Errorf("expected dev, got %q", m.RoleName("PUBKEY_DEV_1"))
+	}
+	if m.RoleName("UNKNOWN") != "" {
+		t.Errorf("expected empty for unknown key, got %q", m.RoleName("UNKNOWN"))
+	}
+}
+
+func TestLoadUsersFromConfig_LegacyFormat(t *testing.T) {
+	setupJetyForRBACTest(t)
+	defer clearJetyRBACKeys(t)
+
+	jety.Set("pubkeys", map[string]any{
+		"admin": []any{"LEGACY_KEY_1"},
+	})
+
+	m := LoadUsersFromConfig()
+	if m.RoleName("LEGACY_KEY_1") != "admin" {
+		t.Errorf("expected admin from legacy format, got %q", m.RoleName("LEGACY_KEY_1"))
+	}
+}
+
+func TestLoadUsersFromConfig_NewOverridesLegacy(t *testing.T) {
+	setupJetyForRBACTest(t)
+	defer clearJetyRBACKeys(t)
+
+	// Same key appears in both — new format wins.
+	jety.Set("users", map[string]any{
+		"operator": []any{"SHARED_KEY"},
+	})
+	jety.Set("pubkeys", map[string]any{
+		"admin": []any{"SHARED_KEY"},
+	})
+
+	m := LoadUsersFromConfig()
+	// users section is processed first; legacy should NOT override.
+	if m.RoleName("SHARED_KEY") != "operator" {
+		t.Errorf("expected operator (new format wins), got %q", m.RoleName("SHARED_KEY"))
+	}
+}
+
+func TestLoadUsersFromConfig_Empty(t *testing.T) {
+	setupJetyForRBACTest(t)
+	defer clearJetyRBACKeys(t)
+
+	m := LoadUsersFromConfig()
+	if len(m.All()) != 0 {
+		t.Errorf("expected empty map, got %d entries", len(m.All()))
+	}
+}
+
+func TestUserRoleMapDelete(t *testing.T) {
+	m := NewUserRoleMap()
+	m.Set("KEY1", "admin")
+	m.Set("KEY2", "viewer")
+
+	// Delete existing key.
+	existed := m.Delete("KEY1")
+	if !existed {
+		t.Error("expected true for deleting existing key")
+	}
+	if m.RoleName("KEY1") != "" {
+		t.Error("KEY1 should be removed after Delete")
+	}
+
+	// Delete non-existent key.
+	existed = m.Delete("NONEXISTENT")
+	if existed {
+		t.Error("expected false for deleting non-existent key")
+	}
+
+	// KEY2 should still be there.
+	if m.RoleName("KEY2") != "viewer" {
+		t.Error("KEY2 should still exist")
+	}
+}
+
+func TestValidateUserUniqueness_WithJety(t *testing.T) {
+	setupJetyForRBACTest(t)
+	defer clearJetyRBACKeys(t)
+
+	// No duplicates.
+	jety.Set("users", map[string]any{
+		"admin": []any{"KEY_A"},
+		"dev":   []any{"KEY_B"},
+	})
+
+	err := ValidateUserUniqueness()
+	if err != nil {
+		t.Errorf("expected no error for unique keys, got: %v", err)
+	}
+}
+
+func TestValidateUserUniqueness_WithJetyDuplicate(t *testing.T) {
+	setupJetyForRBACTest(t)
+	defer clearJetyRBACKeys(t)
+
+	// Same key in two roles.
+	jety.Set("users", map[string]any{
+		"admin":  []any{"DUPE_KEY"},
+		"viewer": []any{"DUPE_KEY"},
+	})
+
+	err := ValidateUserUniqueness()
+	if err == nil {
+		t.Error("expected error for duplicate pubkey across roles")
+	}
+}
+
+func TestValidateUserUniqueness_CrossSectionJety(t *testing.T) {
+	setupJetyForRBACTest(t)
+	defer clearJetyRBACKeys(t)
+
+	jety.Set("users", map[string]any{
+		"admin": []any{"CROSS_KEY"},
+	})
+	jety.Set("pubkeys", map[string]any{
+		"viewer": []any{"CROSS_KEY"},
+	})
+
+	err := ValidateUserUniqueness()
+	if err == nil {
+		t.Error("expected error for cross-section duplicate")
+	}
+}
+
+func TestLoadCohortsFromConfig_Empty(t *testing.T) {
+	setupJetyForRBACTest(t)
+	defer clearJetyRBACKeys(t)
+
+	reg, err := LoadCohortsFromConfig()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	// Should return an empty registry, no error.
+	if len(reg.List()) != 0 {
+		t.Errorf("expected empty registry, got %d cohorts", len(reg.List()))
+	}
+}
+
+func TestLoadCohortsFromConfig_Static(t *testing.T) {
+	setupJetyForRBACTest(t)
+	defer clearJetyRBACKeys(t)
+
+	jety.Set("cohorts", map[string]any{
+		"web": map[string]any{
+			"type":    "static",
+			"members": []any{"web-1", "web-2", "web-3"},
+		},
+	})
+
+	reg, err := LoadCohortsFromConfig()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	cohort, err := reg.Get("web")
+	if err != nil {
+		t.Fatalf("expected web cohort: %v", err)
+	}
+	if cohort.Type != CohortTypeStatic {
+		t.Errorf("expected static type, got %q", cohort.Type)
+	}
+	if len(cohort.Members) != 3 {
+		t.Errorf("expected 3 members, got %d", len(cohort.Members))
+	}
+}
+
+func TestLoadCohortsFromConfig_Dynamic(t *testing.T) {
+	setupJetyForRBACTest(t)
+	defer clearJetyRBACKeys(t)
+
+	jety.Set("cohorts", map[string]any{
+		"linux": map[string]any{
+			"type": "dynamic",
+			"match": map[string]any{
+				"prop_name":  "os",
+				"prop_value": "linux",
+			},
+		},
+	})
+
+	reg, err := LoadCohortsFromConfig()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	cohort, err := reg.Get("linux")
+	if err != nil {
+		t.Fatalf("expected linux cohort: %v", err)
+	}
+	if cohort.Type != CohortTypeDynamic {
+		t.Errorf("expected dynamic type, got %q", cohort.Type)
+	}
+	if cohort.Match.PropName != "os" {
+		t.Errorf("expected prop_name 'os', got %q", cohort.Match.PropName)
+	}
+	if cohort.Match.PropValue != "linux" {
+		t.Errorf("expected prop_value 'linux', got %q", cohort.Match.PropValue)
+	}
+}
+
+func TestLoadCohortsFromConfig_Compound(t *testing.T) {
+	setupJetyForRBACTest(t)
+	defer clearJetyRBACKeys(t)
+
+	jety.Set("cohorts", map[string]any{
+		"web": map[string]any{
+			"type":    "static",
+			"members": []any{"web-1", "web-2"},
+		},
+		"db": map[string]any{
+			"type":    "static",
+			"members": []any{"db-1"},
+		},
+		"all-services": map[string]any{
+			"type": "compound",
+			"compound": map[string]any{
+				"operator": "OR",
+				"operands": []any{"web", "db"},
+			},
+		},
+	})
+
+	reg, err := LoadCohortsFromConfig()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	cohort, err := reg.Get("all-services")
+	if err != nil {
+		t.Fatalf("expected all-services cohort: %v", err)
+	}
+	if cohort.Type != CohortTypeCompound {
+		t.Errorf("expected compound type, got %q", cohort.Type)
+	}
+	if cohort.Compound.Operator != OperatorOR {
+		t.Errorf("expected OR operator, got %q", cohort.Compound.Operator)
+	}
+	if len(cohort.Compound.Operands) != 2 {
+		t.Errorf("expected 2 operands, got %d", len(cohort.Compound.Operands))
+	}
+}
+
+func TestLoadCohortsFromConfig_InvalidType(t *testing.T) {
+	setupJetyForRBACTest(t)
+	defer clearJetyRBACKeys(t)
+
+	jety.Set("cohorts", map[string]any{
+		"bad": map[string]any{
+			"type": "magical",
+		},
+	})
+
+	_, err := LoadCohortsFromConfig()
+	if err == nil {
+		t.Error("expected error for invalid cohort type")
+	}
+}
+
+// --- parseCohortEntry tests ---
+
+func TestParseCohortEntry_Static(t *testing.T) {
+	raw := map[string]any{
+		"type":    "static",
+		"members": []any{"s1", "s2"},
+	}
+
+	c, err := parseCohortEntry("test", raw)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if c.Name != "test" {
+		t.Errorf("expected name 'test', got %q", c.Name)
+	}
+	if c.Type != CohortTypeStatic {
+		t.Errorf("expected static, got %q", c.Type)
+	}
+	if len(c.Members) != 2 {
+		t.Errorf("expected 2 members, got %d", len(c.Members))
+	}
+}
+
+func TestParseCohortEntry_NotAMap(t *testing.T) {
+	_, err := parseCohortEntry("bad", "not a map")
+	if err == nil {
+		t.Error("expected error for non-map value")
+	}
+}
+
+func TestParseCohortEntry_DynamicMissingPropName(t *testing.T) {
+	raw := map[string]any{
+		"type": "dynamic",
+		"match": map[string]any{
+			"prop_value": "linux",
+		},
+	}
+
+	_, err := parseCohortEntry("bad", raw)
+	if err == nil {
+		t.Error("expected error for dynamic cohort without prop_name")
+	}
+}
+
+func TestParseCohortEntry_DynamicMatchNil(t *testing.T) {
+	raw := map[string]any{
+		"type":  "dynamic",
+		"match": nil,
+	}
+
+	_, err := parseCohortEntry("bad", raw)
+	if err == nil {
+		t.Error("expected error for nil match")
+	}
+}
+
+func TestParseCohortEntry_DynamicMatchNotMap(t *testing.T) {
+	raw := map[string]any{
+		"type":  "dynamic",
+		"match": "not a map",
+	}
+
+	_, err := parseCohortEntry("bad", raw)
+	if err == nil {
+		t.Error("expected error for non-map match")
+	}
+}
+
+func TestParseCohortEntry_CompoundNil(t *testing.T) {
+	raw := map[string]any{
+		"type":     "compound",
+		"compound": nil,
+	}
+
+	_, err := parseCohortEntry("bad", raw)
+	if err == nil {
+		t.Error("expected error for nil compound")
+	}
+}
+
+func TestParseCohortEntry_CompoundNotMap(t *testing.T) {
+	raw := map[string]any{
+		"type":     "compound",
+		"compound": "not a map",
+	}
+
+	_, err := parseCohortEntry("bad", raw)
+	if err == nil {
+		t.Error("expected error for non-map compound")
+	}
+}
+
+func TestParseCohortEntry_CompoundInvalidOperator(t *testing.T) {
+	raw := map[string]any{
+		"type": "compound",
+		"compound": map[string]any{
+			"operator": "XOR",
+			"operands": []any{"a", "b"},
+		},
+	}
+
+	_, err := parseCohortEntry("bad", raw)
+	if err == nil {
+		t.Error("expected error for invalid operator")
+	}
+}
+
+func TestParseCohortEntry_CompoundTooFewOperands(t *testing.T) {
+	raw := map[string]any{
+		"type": "compound",
+		"compound": map[string]any{
+			"operator": "AND",
+			"operands": []any{"a"},
+		},
+	}
+
+	_, err := parseCohortEntry("bad", raw)
+	if err == nil {
+		t.Error("expected error for fewer than 2 operands")
+	}
+}
+
+// --- parseStringSlice tests ---
+
+func TestParseStringSlice(t *testing.T) {
+	tests := []struct {
+		name  string
+		input any
+		want  int
+	}{
+		{"nil", nil, 0},
+		{"[]any strings", []any{"a", "b", "c"}, 3},
+		{"[]any mixed", []any{"a", 42, "c"}, 2},
+		{"[]string", []string{"x", "y"}, 2},
+		{"unsupported type", 42, 0},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := parseStringSlice(tt.input)
+			if len(got) != tt.want {
+				t.Errorf("parseStringSlice() = %d items, want %d", len(got), tt.want)
+			}
+		})
+	}
+}
+
+// --- parseDynamicMatch tests ---
+
+func TestParseDynamicMatch(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   any
+		wantErr bool
+	}{
+		{
+			"valid",
+			map[string]any{"prop_name": "os", "prop_value": "linux"},
+			false,
+		},
+		{
+			"nil",
+			nil,
+			true,
+		},
+		{
+			"not a map",
+			"string",
+			true,
+		},
+		{
+			"missing prop_name",
+			map[string]any{"prop_value": "linux"},
+			true,
+		},
+		{
+			"empty prop_name",
+			map[string]any{"prop_name": "", "prop_value": "linux"},
+			true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := parseDynamicMatch(tt.input)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("parseDynamicMatch() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+// --- parseCompoundExpr tests ---
+
+func TestParseCompoundExpr(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   any
+		wantErr bool
+	}{
+		{
+			"valid AND",
+			map[string]any{"operator": "AND", "operands": []any{"a", "b"}},
+			false,
+		},
+		{
+			"valid OR",
+			map[string]any{"operator": "OR", "operands": []any{"a", "b", "c"}},
+			false,
+		},
+		{
+			"valid EXCEPT",
+			map[string]any{"operator": "EXCEPT", "operands": []any{"all", "bad"}},
+			false,
+		},
+		{
+			"nil",
+			nil,
+			true,
+		},
+		{
+			"not a map",
+			[]any{"a"},
+			true,
+		},
+		{
+			"invalid operator",
+			map[string]any{"operator": "NAND", "operands": []any{"a", "b"}},
+			true,
+		},
+		{
+			"too few operands",
+			map[string]any{"operator": "AND", "operands": []any{"a"}},
+			true,
+		},
+		{
+			"no operands",
+			map[string]any{"operator": "AND"},
+			true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := parseCompoundExpr(tt.input)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("parseCompoundExpr() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
