@@ -125,3 +125,130 @@ func TestListUsers_Error(t *testing.T) {
 		t.Fatal("expected error")
 	}
 }
+
+func TestAddUser_Success(t *testing.T) {
+	cleanup := startTestNATS(t)
+	defer cleanup()
+
+	want := apitypes.UserMutateResponse{
+		Success: true,
+		Message: "user added",
+	}
+	mockHandler(t, NatsConn, "grlx.api.auth.users.add", want)
+
+	got, err := AddUser("NKEY_NEW", "operator")
+	if err != nil {
+		t.Fatalf("AddUser: %v", err)
+	}
+	if !got.Success {
+		t.Fatal("expected success=true")
+	}
+	if got.Message != "user added" {
+		t.Fatalf("expected message 'user added', got %q", got.Message)
+	}
+}
+
+func TestAddUser_Error(t *testing.T) {
+	cleanup := startTestNATS(t)
+	defer cleanup()
+
+	mockErrorHandler(t, NatsConn, "grlx.api.auth.users.add", "role not found")
+
+	_, err := AddUser("NKEY_NEW", "nonexistent-role")
+	if err == nil {
+		t.Fatal("expected error")
+	}
+}
+
+func TestAddUser_BadJSON(t *testing.T) {
+	cleanup := startTestNATS(t)
+	defer cleanup()
+
+	mockBadJSONHandler(t, NatsConn, "grlx.api.auth.users.add")
+
+	_, err := AddUser("NKEY_NEW", "admin")
+	if err == nil {
+		t.Fatal("expected unmarshal error")
+	}
+}
+
+func TestRemoveUser_Success(t *testing.T) {
+	cleanup := startTestNATS(t)
+	defer cleanup()
+
+	want := apitypes.UserMutateResponse{
+		Success: true,
+		Message: "user removed",
+	}
+	mockHandler(t, NatsConn, "grlx.api.auth.users.remove", want)
+
+	got, err := RemoveUser("NKEY_OLD")
+	if err != nil {
+		t.Fatalf("RemoveUser: %v", err)
+	}
+	if !got.Success {
+		t.Fatal("expected success=true")
+	}
+}
+
+func TestRemoveUser_Error(t *testing.T) {
+	cleanup := startTestNATS(t)
+	defer cleanup()
+
+	mockErrorHandler(t, NatsConn, "grlx.api.auth.users.remove", "user not found")
+
+	_, err := RemoveUser("NKEY_MISSING")
+	if err == nil {
+		t.Fatal("expected error")
+	}
+}
+
+func TestRemoveUser_BadJSON(t *testing.T) {
+	cleanup := startTestNATS(t)
+	defer cleanup()
+
+	mockBadJSONHandler(t, NatsConn, "grlx.api.auth.users.remove")
+
+	_, err := RemoveUser("NKEY_OLD")
+	if err == nil {
+		t.Fatal("expected unmarshal error")
+	}
+}
+
+// --- Unmarshal error paths for WhoAmI, ExplainAccess, ListUsers ---
+
+func TestWhoAmI_BadJSON(t *testing.T) {
+	cleanup := startTestNATS(t)
+	defer cleanup()
+
+	mockBadJSONHandler(t, NatsConn, "grlx.api.auth.whoami")
+
+	_, err := WhoAmI()
+	if err == nil {
+		t.Fatal("expected unmarshal error")
+	}
+}
+
+func TestExplainAccess_BadJSON(t *testing.T) {
+	cleanup := startTestNATS(t)
+	defer cleanup()
+
+	mockBadJSONHandler(t, NatsConn, "grlx.api.auth.explain")
+
+	_, err := ExplainAccess()
+	if err == nil {
+		t.Fatal("expected unmarshal error")
+	}
+}
+
+func TestListUsers_BadJSON(t *testing.T) {
+	cleanup := startTestNATS(t)
+	defer cleanup()
+
+	mockBadJSONHandler(t, NatsConn, "grlx.api.auth.users")
+
+	_, err := ListUsers()
+	if err == nil {
+		t.Fatal("expected unmarshal error")
+	}
+}
