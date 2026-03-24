@@ -1,0 +1,365 @@
+# SPDX-License-Identifier: MPL-2.0
+
+# Copyright (C) 2023-2025 Aleksa Sarai <cyphar@cyphar.com>
+# Copyright (C) 2023-2025 SUSE LLC
+#
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+name: ci
+
+on:
+  push:
+    tags:
+      - "v*"
+    branches:
+      - main
+      - "v*"
+  pull_request:
+  schedule:
+    - cron: "30 10 * * 0"
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      # We need libpathrs so that golangci-lint can typecheck
+      # "cyphar.com/go-pathrs" (the package needs to be buildable).
+      - uses: dtolnay/rust-toolchain@stable
+      - name: find latest libpathrs release
+        uses: actions/github-script@v8
+        id: libpathrs-release-tarball
+        with:
+          result-encoding: string
+          script: |-
+            const latest_release = await github.rest.repos.getLatestRelease({
+              owner: "cyphar",
+              repo: "libpathrs",
+            });
+            console.log(latest_release);
+            return latest_release.data.tarball_url;
+      - name: install libpathrs
+        run: |-
+          mkdir -p /tmp/libpathrs
+          cd /tmp/libpathrs
+
+          wget -O latest.tar.gz "${{ steps.libpathrs-release-tarball.outputs.result }}"
+          tar xvf latest.tar.gz
+
+          cd *libpathrs-*/
+          make release
+          sudo ./install.sh --libdir=/usr/lib
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: stable
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.6
+
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        go-version:
+          - "1.18"
+          - "1.19"
+          - "1.20"
+          - "1.21"
+          - "1.22"
+          - "1.23"
+          # TODO: add 1.24 here once Go 1.26 is out.
+          - oldstable
+          - stable
+        go-arch:
+          - amd64
+        os:
+          - windows-latest
+          - ubuntu-latest
+          - macos-latest
+        include:
+          - go-version: stable
+            go-arch: "386"
+            os: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version: ${{ matrix.go-version }}
+          check-latest: true
+      - name: set GOARCH
+        run: echo "GOARCH=${{ matrix.go-arch }}" >>"$GITHUB_ENV"
+      - name: go build check
+        run: go build ./...
+      - name: go test build check
+        run: go test -run none ./...
+
+  windows:
+    strategy:
+      fail-fast: false
+      matrix:
+        go-version:
+          - "1.18"
+          - "1.20"
+          - "1.21"
+          - "oldstable"
+          - "stable"
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version: ${{ matrix.go-version }}
+          check-latest: true
+      - name: mkdir gocoverdir
+        # We can only use -test.gocoverdir for Go >= 1.20.
+        if: ${{ matrix.go-version != '1.18' && matrix.go-version != '1.19' }}
+        run: |
+          # mktemp --tmpdir -d gocoverdir.XXXXXXXX
+          function New-TemporaryDirectory {
+            param (
+              [string] $Prefix
+            )
+            $parent = [System.IO.Path]::GetTempPath()
+            do {
+              [string] $guid = [System.Guid]::NewGuid()
+              $item = New-Item -Path "$parent" -Name "$Prefix.$guid" -ItemType "directory" -ErrorAction SilentlyContinue
+            } while (-not "$item")
+            return $item.FullName
+          }
+          $GOCOVERDIR = (New-TemporaryDirectory -Prefix "gocoverdir")
+          echo "GOCOVERDIR=$GOCOVERDIR" >>"$env:GITHUB_ENV"
+      - name: unit tests
+        run: |
+          if (Test-Path 'env:GOCOVERDIR') {
+            go test -v -cover -coverpkg=./... ./... -args '-test.gocoverdir' "$env:GOCOVERDIR"
+          } else {
+            go test -v -cover -coverpkg=./... -coverprofile codecov-coverage.txt ./...
+          }
+      - name: upload coverage artefact
+        # We can only use -test.gocoverdir for Go >= 1.20.
+        if: ${{ matrix.go-version != '1.18' && matrix.go-version != '1.19' }}
+        uses: actions/upload-artifact@v5
+        with:
+          name: coverage-${{ runner.os }}-${{ github.job }}-${{ strategy.job-index }}
+          path: ${{ env.GOCOVERDIR }}
+      - name: collate coverage data for codecov
+        if: ${{ env.GOCOVERDIR != '' }}
+        run: go tool covdata textfmt -i "$env:GOCOVERDIR" -o "codecov-coverage.txt"
+      - name: upload coverage to codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          slug: cyphar/filepath-securejoin
+
+  unix:
+    strategy:
+      fail-fast: false
+      matrix:
+        go-version:
+          - "1.18"
+          - "1.20"
+          - "1.21"
+          - "oldstable"
+          - "stable"
+        os:
+          - ubuntu-latest
+          - macos-latest
+        include:
+          # Make sure we test with a slightly older kernel (sadly we can't use
+          # really old images like Ubuntu 18.04). Ubuntu 22.04 uses Linux 6.8.
+          - go-version: "oldstable"
+            os: ubuntu-22.04
+          - go-version: "stable"
+            os: ubuntu-22.04
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version: ${{ matrix.go-version }}
+          check-latest: true
+      - name: mkdir gocoverdir
+        # We can only use -test.gocoverdir for Go >= 1.20.
+        if: ${{ matrix.go-version != '1.18' && matrix.go-version != '1.19' }}
+        run: |
+          GOCOVERDIR="$(mktemp --tmpdir -d gocoverdir.XXXXXXXX)"
+          echo "GOCOVERDIR=$GOCOVERDIR" >>"$GITHUB_ENV"
+      - name: go test
+        run: |-
+          if [ -n "${GOCOVERDIR:-}" ]; then
+            go test -v -timeout=30m -cover -coverpkg=./... ./... -args -test.gocoverdir="$GOCOVERDIR"
+          else
+            go test -v -timeout=30m -cover -coverpkg=./... -coverprofile codecov-coverage.txt ./...
+          fi
+      - name: sudo go test
+        run: |-
+          if [ -n "${GOCOVERDIR:-}" ]; then
+            sudo go test -v -timeout=30m -cover -coverpkg=./... ./... -args -test.gocoverdir="$GOCOVERDIR"
+          else
+            sudo go test -v -timeout=30m -cover -coverpkg=./... -coverprofile codecov-coverage-sudo.txt ./...
+          fi
+      - name: upload coverage artefact
+        # We can only use -test.gocoverdir for Go >= 1.20.
+        if: ${{ matrix.go-version != '1.18' && matrix.go-version != '1.19' }}
+        uses: actions/upload-artifact@v5
+        with:
+          name: coverage-${{ runner.os }}-${{ github.job }}-${{ strategy.job-index }}
+          path: ${{ env.GOCOVERDIR }}
+      - name: collate coverage data
+        if: ${{ env.GOCOVERDIR != '' }}
+        run: go tool covdata textfmt -i "$GOCOVERDIR" -o "codecov-coverage.txt"
+      - name: upload coverage to codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          slug: cyphar/filepath-securejoin
+
+  libpathrs:
+    strategy:
+      fail-fast: false
+      matrix:
+        go-version:
+          - "1.18"
+          - "oldstable"
+          - "stable"
+        os:
+          - ubuntu-22.04
+          - ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: dtolnay/rust-toolchain@stable
+      - name: find latest libpathrs release
+        uses: actions/github-script@v8
+        id: libpathrs-release-tarball
+        with:
+          result-encoding: string
+          script: |-
+            const latest_release = await github.rest.repos.getLatestRelease({
+              owner: "cyphar",
+              repo: "libpathrs",
+            });
+            console.log(latest_release);
+            return latest_release.data.tarball_url;
+      - name: install libpathrs
+        run: |-
+          mkdir -p /tmp/libpathrs
+          cd /tmp/libpathrs
+
+          wget -O latest.tar.gz "${{ steps.libpathrs-release-tarball.outputs.result }}"
+          tar xvf latest.tar.gz
+
+          cd *libpathrs-*/
+          make release
+          sudo ./install.sh --libdir=/usr/lib
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: ${{ matrix.go-version }}
+          check-latest: true
+      - name: mkdir gocoverdir
+        # We can only use -test.gocoverdir for Go >= 1.20.
+        if: ${{ matrix.go-version != '1.18' && matrix.go-version != '1.19' }}
+        run: |
+          GOCOVERDIR="$(mktemp --tmpdir -d gocoverdir.XXXXXXXX)"
+          echo "GOCOVERDIR=$GOCOVERDIR" >>"$GITHUB_ENV"
+      - name: go test
+        run: |-
+          pkgs=("./pathrs-lite" "./pathrs-lite/procfs")
+          if [ -n "${GOCOVERDIR:-}" ]; then
+            go test -v -timeout=30m -cover -coverpkg=./... "${pkgs[@]}" -args -test.gocoverdir="$GOCOVERDIR"
+          else
+            go test -v -timeout=30m -cover -coverpkg=./... -coverprofile codecov-coverage.txt "${pkgs[@]}"
+          fi
+      - name: sudo go test
+        run: |-
+          pkgs=("./pathrs-lite" "./pathrs-lite/procfs")
+          if [ -n "${GOCOVERDIR:-}" ]; then
+            sudo go test -v -timeout=30m -cover -coverpkg=./... "${pkgs[@]}" -args -test.gocoverdir="$GOCOVERDIR"
+          else
+            sudo go test -v -timeout=30m -cover -coverpkg=./... -coverprofile codecov-coverage-sudo.txt "${pkgs[@]}"
+          fi
+      - name: upload coverage artefact
+        # We can only use -test.gocoverdir for Go >= 1.20.
+        if: ${{ matrix.go-version != '1.18' && matrix.go-version != '1.19' }}
+        uses: actions/upload-artifact@v5
+        with:
+          name: coverage-${{ runner.os }}-${{ github.job }}-${{ strategy.job-index }}
+          path: ${{ env.GOCOVERDIR }}
+      - name: collate coverage data
+        if: ${{ env.GOCOVERDIR != '' }}
+        run: go tool covdata textfmt -i "$GOCOVERDIR" -o "codecov-coverage.txt"
+      - name: upload coverage to codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          slug: cyphar/filepath-securejoin
+
+  coverage:
+    runs-on: ubuntu-latest
+    needs:
+      - windows
+      - unix
+      - libpathrs
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version: "stable"
+          check-latest: true
+      - name: download all coverage
+        uses: actions/download-artifact@v6
+        with:
+          path: coverage
+      - name: generate coverage list
+        run: |
+          find coverage/
+          GOCOVERDIRS="$(printf '%s,' coverage/* | sed 's|,$||')"
+          echo "GOCOVERDIRS=$GOCOVERDIRS" >>"$GITHUB_ENV"
+          FULLCOVERAGE_FILE="$(mktemp --tmpdir fullcoverage.XXXXXXXX)"
+          echo "FULLCOVERAGE_FILE=$FULLCOVERAGE_FILE" >>"$GITHUB_ENV"
+      - name: compute coverage
+        run: go tool covdata percent -i "$GOCOVERDIRS"
+      - name: compute func coverage
+        run: go tool covdata func -i "$GOCOVERDIRS" | sort -k 3gr
+      - name: merge coverage
+        run: |
+          go tool covdata textfmt -i "$GOCOVERDIRS" -o "$FULLCOVERAGE_FILE"
+          go tool cover -html="$FULLCOVERAGE_FILE" -o "$FULLCOVERAGE_FILE.html"
+      - name: upload merged coverage
+        uses: actions/upload-artifact@v5
+        with:
+          name: fullcoverage-${{ github.job }}
+          path: ${{ env.FULLCOVERAGE_FILE }}
+      - name: upload coverage html
+        uses: actions/upload-artifact@v5
+        with:
+          name: fullcoverage-${{ github.job }}.html
+          path: ${{ env.FULLCOVERAGE_FILE }}.html
+
+  codespell:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: pip install codespell==v2.4.1
+      - run: codespell
+
+  complete:
+    runs-on: ubuntu-latest
+    needs:
+      - lint
+      - build
+      - windows
+      - unix
+      - libpathrs
+      - coverage
+      - codespell
+    steps:
+      - run: echo "all done"
