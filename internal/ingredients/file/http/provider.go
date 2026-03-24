@@ -19,6 +19,9 @@ type HTTPFile struct {
 	Props       map[string]interface{}
 }
 
+// Compile-time interface check.
+var _ file.FileProvider = HTTPFile{}
+
 func (hf HTTPFile) Download(ctx context.Context) error {
 	method := httpc.MethodGet
 	if hf.Props["method"] != nil {

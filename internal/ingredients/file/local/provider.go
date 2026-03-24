@@ -18,6 +18,9 @@ type LocalFile struct {
 	Props       map[string]interface{}
 }
 
+// Compile-time interface check.
+var _ file.FileProvider = LocalFile{}
+
 func (lf LocalFile) Download(ctx context.Context) error {
 	ok, err := lf.Verify(ctx)
 	// if verification failed because the file doesn't exist,

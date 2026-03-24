@@ -15,6 +15,9 @@ import (
 
 var ErrFileMethodUndefined = errors.New("file method undefined")
 
+// Compile-time interface check.
+var _ cook.RecipeCooker = File{}
+
 type File struct {
 	id     string
 	method string

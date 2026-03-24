@@ -14,6 +14,9 @@ type S3File struct {
 	Props       map[string]interface{}
 }
 
+// Compile-time interface check.
+var _ file.FileProvider = S3File{}
+
 func (sf S3File) Download(context.Context) error {
 	return nil
 }

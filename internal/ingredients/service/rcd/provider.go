@@ -21,6 +21,9 @@ type RCDService struct {
 	opts   rcd.Options
 }
 
+// Compile-time interface check.
+var _ service.ServiceProvider = RCDService{}
+
 func init() {
 	service.RegisterProvider(RCDService{})
 }

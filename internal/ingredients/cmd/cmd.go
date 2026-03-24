@@ -12,6 +12,9 @@ import (
 
 var ErrCmdMethodUndefined = errors.New("cmd method undefined")
 
+// Compile-time interface check.
+var _ cook.RecipeCooker = Cmd{}
+
 type Cmd struct {
 	id     string
 	method string

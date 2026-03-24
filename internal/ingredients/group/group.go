@@ -12,6 +12,9 @@ import (
 
 var ErrGroupMethodUndefined = errors.New("group method undefined")
 
+// Compile-time interface check.
+var _ cook.RecipeCooker = Group{}
+
 type Group struct {
 	id     string
 	method string

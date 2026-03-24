@@ -39,6 +39,9 @@ type SystemdService struct {
 	props    map[string]interface{}
 }
 
+// Compile-time interface check.
+var _ service.ServiceProvider = SystemdService{}
+
 func (s SystemdService) opts() systemctl.Options {
 	return systemctl.Options{UserMode: s.userMode}
 }

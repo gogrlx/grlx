@@ -41,6 +41,9 @@ type OpenRCService struct {
 	opts   openrc.Options
 }
 
+// Compile-time interface check.
+var _ service.ServiceProvider = OpenRCService{}
+
 func init() {
 	service.RegisterProvider(OpenRCService{})
 }

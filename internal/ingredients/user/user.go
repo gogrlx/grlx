@@ -12,6 +12,9 @@ import (
 
 var ErrUserMethodUndefined = errors.New("user method undefined")
 
+// Compile-time interface check.
+var _ cook.RecipeCooker = User{}
+
 type User struct {
 	id     string
 	method string

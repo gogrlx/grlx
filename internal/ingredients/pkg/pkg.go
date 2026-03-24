@@ -10,6 +10,9 @@ import (
 	"github.com/gogrlx/snack/detect"
 )
 
+// Compile-time interface check.
+var _ cook.RecipeCooker = Pkg{}
+
 // Pkg implements cook.RecipeCooker for package management operations.
 type Pkg struct {
 	id         string

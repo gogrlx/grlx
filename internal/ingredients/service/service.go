@@ -8,6 +8,9 @@ import (
 	"github.com/gogrlx/grlx/v2/internal/ingredients"
 )
 
+// Compile-time interface check.
+var _ cook.RecipeCooker = Service{}
+
 type Service struct {
 	id         string
 	name       string
