@@ -16,6 +16,20 @@ import (
 // which does not natively support service masking.
 var ErrMaskNotSupported = errors.New("openrc does not support mask/unmask")
 
+// Function variables for openrc operations — replaceable in tests.
+var (
+	orcStart     = openrc.Start
+	orcStop      = openrc.Stop
+	orcRestart   = openrc.Restart
+	orcReload    = openrc.Reload
+	orcStatus    = openrc.Status
+	orcIsActive  = openrc.IsActive
+	orcEnable    = openrc.Enable
+	orcDisable   = openrc.Disable
+	orcIsEnabled = openrc.IsEnabled
+	orcIsOpenRC  = openrc.IsOpenRC
+)
+
 // OpenRCService implements service.ServiceProvider for OpenRC init systems
 // (Alpine Linux, Gentoo, Artix, etc.), delegating to the
 // github.com/taigrr/openrc library.
@@ -65,43 +79,43 @@ func (s OpenRCService) InitName() string {
 }
 
 func (s OpenRCService) IsInit() bool {
-	return openrc.IsOpenRC()
+	return orcIsOpenRC()
 }
 
 func (s OpenRCService) Start(ctx context.Context) error {
-	return openrc.Start(ctx, s.name, s.opts)
+	return orcStart(ctx, s.name, s.opts)
 }
 
 func (s OpenRCService) Stop(ctx context.Context) error {
-	return openrc.Stop(ctx, s.name, s.opts)
+	return orcStop(ctx, s.name, s.opts)
 }
 
 func (s OpenRCService) Restart(ctx context.Context) error {
-	return openrc.Restart(ctx, s.name, s.opts)
+	return orcRestart(ctx, s.name, s.opts)
 }
 
 func (s OpenRCService) Reload(ctx context.Context) error {
-	return openrc.Reload(ctx, s.name, s.opts)
+	return orcReload(ctx, s.name, s.opts)
 }
 
 func (s OpenRCService) Status(ctx context.Context) (string, error) {
-	return openrc.Status(ctx, s.name, s.opts)
+	return orcStatus(ctx, s.name, s.opts)
 }
 
 func (s OpenRCService) IsRunning(ctx context.Context) (bool, error) {
-	return openrc.IsActive(ctx, s.name, s.opts)
+	return orcIsActive(ctx, s.name, s.opts)
 }
 
 func (s OpenRCService) Enable(ctx context.Context) error {
-	return openrc.Enable(ctx, s.name, s.opts)
+	return orcEnable(ctx, s.name, s.opts)
 }
 
 func (s OpenRCService) Disable(ctx context.Context) error {
-	return openrc.Disable(ctx, s.name, s.opts)
+	return orcDisable(ctx, s.name, s.opts)
 }
 
 func (s OpenRCService) IsEnabled(ctx context.Context) (bool, error) {
-	return openrc.IsEnabled(ctx, s.name, s.opts)
+	return orcIsEnabled(ctx, s.name, s.opts)
 }
 
 // Mask is not supported by OpenRC.

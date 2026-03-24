@@ -11,6 +11,18 @@ import (
 	"github.com/gogrlx/grlx/v2/internal/cook"
 )
 
+// Function variables for system operations — replaceable in tests.
+var (
+	execCommand = func(ctx context.Context, name string, args ...string) error {
+		return exec.CommandContext(ctx, name, args...).Run()
+	}
+	lookupGroup   = user.LookupGroup
+	groupExistsBy = func(name string) bool {
+		_, err := user.LookupGroup(name)
+		return err == nil
+	}
+)
+
 func (g Group) present(ctx context.Context, test bool) (cook.Result, error) {
 	var result cook.Result
 
@@ -24,23 +36,23 @@ func (g Group) present(ctx context.Context, test bool) (cook.Result, error) {
 	system := boolParam(g.params, "system", false)
 	members := stringSliceParam(g.params, "members")
 
-	existing, err := user.LookupGroup(groupName)
+	existing, err := lookupGroup(groupName)
 	if err != nil {
 		// Group does not exist — groupadd
 		args := buildGroupaddArgs(groupName, gid, system)
-		cmd := exec.CommandContext(ctx, "groupadd", args...)
+		cmdStr := fmt.Sprintf("groupadd %s", strings.Join(args, " "))
 		if test {
 			result.Succeeded = true
 			result.Changed = true
 			result.Notes = append(result.Notes,
-				cook.SimpleNote(fmt.Sprintf("would create group with command: %s", cmd.String())))
+				cook.SimpleNote(fmt.Sprintf("would create group with command: %s", cmdStr)))
 			if len(members) > 0 {
 				result.Notes = append(result.Notes,
 					cook.SimpleNote(fmt.Sprintf("would set members to: %s", strings.Join(members, ", "))))
 			}
 			return result, nil
 		}
-		if err := cmd.Run(); err != nil {
+		if err := execCommand(ctx, "groupadd", args...); err != nil {
 			result.Failed = true
 			result.Notes = append(result.Notes,
 				cook.SimpleNote(fmt.Sprintf("failed to create group: %s", err.Error())))
@@ -49,7 +61,7 @@ func (g Group) present(ctx context.Context, test bool) (cook.Result, error) {
 		result.Succeeded = true
 		result.Changed = true
 		result.Notes = append(result.Notes,
-			cook.SimpleNote(fmt.Sprintf("created group with command: %s", cmd.String())))
+			cook.SimpleNote(fmt.Sprintf("created group with command: %s", cmdStr)))
 
 		// Set members if specified
 		if len(members) > 0 {
@@ -75,15 +87,15 @@ func (g Group) present(ctx context.Context, test bool) (cook.Result, error) {
 
 	if len(changes) > 0 {
 		args := buildGroupmodArgs(groupName, gid)
-		cmd := exec.CommandContext(ctx, "groupmod", args...)
+		cmdStr := fmt.Sprintf("groupmod %s", strings.Join(args, " "))
 		if test {
 			result.Succeeded = true
 			result.Changed = true
 			result.Notes = append(result.Notes,
-				cook.SimpleNote(fmt.Sprintf("would modify group with command: %s", cmd.String())))
+				cook.SimpleNote(fmt.Sprintf("would modify group with command: %s", cmdStr)))
 			return result, nil
 		}
-		if err := cmd.Run(); err != nil {
+		if err := execCommand(ctx, "groupmod", args...); err != nil {
 			result.Failed = true
 			result.Notes = append(result.Notes,
 				cook.SimpleNote(fmt.Sprintf("failed to modify group: %s", err.Error())))
@@ -151,8 +163,7 @@ func buildGroupmodArgs(name, gid string) []string {
 
 // setGroupMembers uses gpasswd to set the exact member list for a group.
 func setGroupMembers(ctx context.Context, groupName string, members []string) error {
-	cmd := exec.CommandContext(ctx, "gpasswd", "-M", strings.Join(members, ","), groupName)
-	return cmd.Run()
+	return execCommand(ctx, "gpasswd", "-M", strings.Join(members, ","), groupName)
 }
 
 // stringParam extracts a string parameter from the params map.

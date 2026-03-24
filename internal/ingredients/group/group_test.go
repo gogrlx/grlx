@@ -2,7 +2,9 @@ package group
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"os/user"
 	"testing"
 	"time"
 
@@ -30,6 +32,84 @@ func compareResults(t *testing.T, result cook.Result, expected cook.Result) {
 			t.Errorf("expected note %d to be %q, got %q", i, expected.Notes[i].String(), note.String())
 		}
 	}
+}
+
+// stubState tracks calls to the stubbed exec/lookup functions.
+type stubState struct {
+	calls       []string
+	existGroups map[string]*user.Group // groups that "exist"
+	failCmds    map[string]error       // command name → error to return
+}
+
+func (ss *stubState) record(op string) { ss.calls = append(ss.calls, op) }
+
+// installStubs replaces execCommand, lookupGroup, and groupExistsBy with
+// test doubles. Restores originals on cleanup.
+func installStubs(t *testing.T) *stubState {
+	t.Helper()
+	ss := &stubState{
+		existGroups: map[string]*user.Group{
+			"root": {Name: "root", Gid: "0"},
+		},
+		failCmds: map[string]error{},
+	}
+
+	origExec := execCommand
+	origLookup := lookupGroup
+	origExists := groupExistsBy
+
+	execCommand = func(_ context.Context, name string, args ...string) error {
+		ss.record(name)
+		if err, ok := ss.failCmds[name]; ok {
+			return err
+		}
+		// Simulate side effects
+		switch name {
+		case "groupadd":
+			gName := args[len(args)-1]
+			gid := "1000" // default
+			for i, a := range args {
+				if a == "-g" && i+1 < len(args) {
+					gid = args[i+1]
+				}
+			}
+			ss.existGroups[gName] = &user.Group{Name: gName, Gid: gid}
+		case "groupdel":
+			gName := args[len(args)-1]
+			delete(ss.existGroups, gName)
+		case "groupmod":
+			gName := args[len(args)-1]
+			if g, ok := ss.existGroups[gName]; ok {
+				for i, a := range args {
+					if a == "-g" && i+1 < len(args) {
+						g.Gid = args[i+1]
+					}
+				}
+			}
+		case "gpasswd":
+			// no-op for tests
+		}
+		return nil
+	}
+
+	lookupGroup = func(name string) (*user.Group, error) {
+		if g, ok := ss.existGroups[name]; ok {
+			return g, nil
+		}
+		return nil, fmt.Errorf("group: unknown group %s", name)
+	}
+
+	groupExistsBy = func(name string) bool {
+		_, ok := ss.existGroups[name]
+		return ok
+	}
+
+	t.Cleanup(func() {
+		execCommand = origExec
+		lookupGroup = origLookup
+		groupExistsBy = origExists
+	})
+	return ss
 }
 
 func TestGroupParse(t *testing.T) {
@@ -224,7 +304,11 @@ func TestGroupProperties(t *testing.T) {
 	}
 }
 
+// --- exists ---
+
 func TestGroupExists(t *testing.T) {
+	ss := installStubs(t)
+
 	tests := []struct {
 		name     string
 		params   map[string]interface{}
@@ -262,6 +346,7 @@ func TestGroupExists(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			_ = ss
 			g := Group{
 				id:     "test-exists",
 				method: "exists",
@@ -277,7 +362,10 @@ func TestGroupExists(t *testing.T) {
 	}
 }
 
+// --- absent ---
+
 func TestGroupAbsentAlreadyAbsent(t *testing.T) {
+	installStubs(t)
 	g := Group{
 		id:     "test-absent",
 		method: "absent",
@@ -296,6 +384,7 @@ func TestGroupAbsentAlreadyAbsent(t *testing.T) {
 }
 
 func TestGroupAbsentInvalidName(t *testing.T) {
+	installStubs(t)
 	g := Group{
 		id:     "test-absent-invalid",
 		method: "absent",
@@ -311,6 +400,7 @@ func TestGroupAbsentInvalidName(t *testing.T) {
 }
 
 func TestGroupAbsentTestModeExistingGroup(t *testing.T) {
+	installStubs(t)
 	g := Group{
 		id:     "test-absent-test",
 		method: "absent",
@@ -334,7 +424,90 @@ func TestGroupAbsentTestModeExistingGroup(t *testing.T) {
 	}
 }
 
+func TestGroupAbsentApplySuccess(t *testing.T) {
+	ss := installStubs(t)
+	ss.existGroups["testgroup"] = &user.Group{Name: "testgroup", Gid: "5000"}
+
+	g := Group{
+		id:     "test-absent-apply",
+		method: "absent",
+		params: map[string]interface{}{"name": "testgroup"},
+	}
+	result, err := g.absent(context.Background(), false)
+	if err != nil {
+		t.Fatalf("absent() unexpected error: %v", err)
+	}
+	if !result.Succeeded || result.Failed {
+		t.Error("expected succeeded result")
+	}
+	if !result.Changed {
+		t.Error("expected changed=true")
+	}
+	if len(result.Notes) != 1 || result.Notes[0].String() != "group testgroup deleted" {
+		t.Errorf("unexpected notes: %v", result.Notes)
+	}
+	// Verify groupdel was called
+	found := false
+	for _, c := range ss.calls {
+		if c == "groupdel" {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("expected groupdel to be called")
+	}
+}
+
+func TestGroupAbsentApplyGroupdelFails(t *testing.T) {
+	ss := installStubs(t)
+	ss.existGroups["testgroup"] = &user.Group{Name: "testgroup", Gid: "5000"}
+	ss.failCmds["groupdel"] = errors.New("permission denied")
+
+	g := Group{
+		id:     "test-absent-fail",
+		method: "absent",
+		params: map[string]interface{}{"name": "testgroup"},
+	}
+	result, err := g.absent(context.Background(), false)
+	if err == nil {
+		t.Fatal("expected error from groupdel failure")
+	}
+	if result.Succeeded || !result.Failed {
+		t.Error("expected failed result")
+	}
+}
+
+func TestGroupAbsentApplyGroupStillExists(t *testing.T) {
+	ss := installStubs(t)
+	ss.existGroups["stubborn"] = &user.Group{Name: "stubborn", Gid: "9999"}
+
+	// Override execCommand to not actually delete the group
+	origExec := execCommand
+	execCommand = func(_ context.Context, name string, args ...string) error {
+		ss.record(name)
+		// Don't remove from existGroups — simulates groupdel success but group still exists
+		return nil
+	}
+	t.Cleanup(func() { execCommand = origExec })
+
+	g := Group{
+		id:     "test-absent-stubborn",
+		method: "absent",
+		params: map[string]interface{}{"name": "stubborn"},
+	}
+	result, err := g.absent(context.Background(), false)
+	if err == nil {
+		t.Fatal("expected error when group still exists after deletion")
+	}
+	if result.Succeeded || !result.Failed {
+		t.Error("expected failed result")
+	}
+}
+
+// --- present ---
+
 func TestGroupPresentExistingGroupNoChange(t *testing.T) {
+	installStubs(t)
 	g := Group{
 		id:     "test-present-existing",
 		method: "present",
@@ -359,11 +532,12 @@ func TestGroupPresentExistingGroupNoChange(t *testing.T) {
 }
 
 func TestGroupPresentTestModeNewGroup(t *testing.T) {
+	installStubs(t)
 	g := Group{
 		id:     "test-present-new",
 		method: "present",
 		params: map[string]interface{}{
-			"name": "grlx-test-nonexistent-group-abc123",
+			"name": "newgroup",
 			"gid":  "9999",
 		},
 	}
@@ -383,6 +557,7 @@ func TestGroupPresentTestModeNewGroup(t *testing.T) {
 }
 
 func TestGroupPresentTestModeExistingGroupGidChange(t *testing.T) {
+	installStubs(t)
 	g := Group{
 		id:     "test-present-mod",
 		method: "present",
@@ -404,11 +579,12 @@ func TestGroupPresentTestModeExistingGroupGidChange(t *testing.T) {
 }
 
 func TestGroupPresentTestModeNewGroupWithMembers(t *testing.T) {
+	installStubs(t)
 	g := Group{
 		id:     "test-present-members",
 		method: "present",
 		params: map[string]interface{}{
-			"name":    "grlx-test-nonexistent-group-abc123",
+			"name":    "newgroup",
 			"members": []interface{}{"alice", "bob"},
 		},
 	}
@@ -422,13 +598,13 @@ func TestGroupPresentTestModeNewGroupWithMembers(t *testing.T) {
 	if !result.Changed {
 		t.Error("expected changed=true")
 	}
-	// Should have notes about both creation and members
 	if len(result.Notes) < 2 {
 		t.Errorf("expected at least 2 notes (create + members), got %d", len(result.Notes))
 	}
 }
 
 func TestGroupPresentTestModeSystemGroup(t *testing.T) {
+	installStubs(t)
 	g := Group{
 		id:     "test-present-system",
 		method: "present",
@@ -450,6 +626,7 @@ func TestGroupPresentTestModeSystemGroup(t *testing.T) {
 }
 
 func TestGroupPresentInvalidName(t *testing.T) {
+	installStubs(t)
 	g := Group{
 		id:     "test-present-invalid",
 		method: "present",
@@ -464,14 +641,262 @@ func TestGroupPresentInvalidName(t *testing.T) {
 	}
 }
 
+func TestGroupPresentApplyCreateNewGroup(t *testing.T) {
+	ss := installStubs(t)
+	g := Group{
+		id:     "test-present-create",
+		method: "present",
+		params: map[string]interface{}{
+			"name": "newgroup",
+			"gid":  "5000",
+		},
+	}
+	result, err := g.present(context.Background(), false)
+	if err != nil {
+		t.Fatalf("present() unexpected error: %v", err)
+	}
+	if !result.Succeeded || result.Failed {
+		t.Error("expected succeeded result")
+	}
+	if !result.Changed {
+		t.Error("expected changed=true for new group")
+	}
+	// Verify groupadd was called
+	found := false
+	for _, c := range ss.calls {
+		if c == "groupadd" {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("expected groupadd to be called")
+	}
+	// Verify group now exists in stubs
+	if _, ok := ss.existGroups["newgroup"]; !ok {
+		t.Error("expected newgroup to exist after creation")
+	}
+}
+
+func TestGroupPresentApplyCreateGroupFails(t *testing.T) {
+	ss := installStubs(t)
+	ss.failCmds["groupadd"] = errors.New("groupadd failed")
+
+	g := Group{
+		id:     "test-present-create-fail",
+		method: "present",
+		params: map[string]interface{}{"name": "failgroup"},
+	}
+	result, err := g.present(context.Background(), false)
+	if err == nil {
+		t.Fatal("expected error from groupadd failure")
+	}
+	if result.Succeeded || !result.Failed {
+		t.Error("expected failed result")
+	}
+}
+
+func TestGroupPresentApplyCreateWithMembers(t *testing.T) {
+	ss := installStubs(t)
+	g := Group{
+		id:     "test-present-create-members",
+		method: "present",
+		params: map[string]interface{}{
+			"name":    "devteam",
+			"members": []interface{}{"alice", "bob"},
+		},
+	}
+	result, err := g.present(context.Background(), false)
+	if err != nil {
+		t.Fatalf("present() unexpected error: %v", err)
+	}
+	if !result.Succeeded || result.Failed {
+		t.Error("expected succeeded result")
+	}
+	if !result.Changed {
+		t.Error("expected changed=true")
+	}
+	// Verify both groupadd and gpasswd were called
+	gotGroupadd, gotGpasswd := false, false
+	for _, c := range ss.calls {
+		if c == "groupadd" {
+			gotGroupadd = true
+		}
+		if c == "gpasswd" {
+			gotGpasswd = true
+		}
+	}
+	if !gotGroupadd {
+		t.Error("expected groupadd to be called")
+	}
+	if !gotGpasswd {
+		t.Error("expected gpasswd to be called for members")
+	}
+}
+
+func TestGroupPresentApplyCreateWithMembersFails(t *testing.T) {
+	ss := installStubs(t)
+	ss.failCmds["gpasswd"] = errors.New("gpasswd failed")
+
+	g := Group{
+		id:     "test-present-members-fail",
+		method: "present",
+		params: map[string]interface{}{
+			"name":    "devteam",
+			"members": []interface{}{"alice"},
+		},
+	}
+	result, err := g.present(context.Background(), false)
+	if err == nil {
+		t.Fatal("expected error from gpasswd failure")
+	}
+	if result.Succeeded || !result.Failed {
+		t.Error("expected failed result")
+	}
+}
+
+func TestGroupPresentApplyModifyGid(t *testing.T) {
+	ss := installStubs(t)
+	// root group exists with gid=0, modify to gid=9999
+	g := Group{
+		id:     "test-present-modify-gid",
+		method: "present",
+		params: map[string]interface{}{
+			"name": "root",
+			"gid":  "9999",
+		},
+	}
+	result, err := g.present(context.Background(), false)
+	if err != nil {
+		t.Fatalf("present() unexpected error: %v", err)
+	}
+	if !result.Succeeded || result.Failed {
+		t.Error("expected succeeded result")
+	}
+	if !result.Changed {
+		t.Error("expected changed=true for GID modification")
+	}
+	// Verify groupmod was called
+	found := false
+	for _, c := range ss.calls {
+		if c == "groupmod" {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("expected groupmod to be called")
+	}
+	// Verify GID was updated
+	if ss.existGroups["root"].Gid != "9999" {
+		t.Errorf("expected root gid=9999, got %s", ss.existGroups["root"].Gid)
+	}
+}
+
+func TestGroupPresentApplyModifyGidFails(t *testing.T) {
+	ss := installStubs(t)
+	ss.failCmds["groupmod"] = errors.New("groupmod failed")
+
+	g := Group{
+		id:     "test-present-modify-fail",
+		method: "present",
+		params: map[string]interface{}{
+			"name": "root",
+			"gid":  "9999",
+		},
+	}
+	result, err := g.present(context.Background(), false)
+	if err == nil {
+		t.Fatal("expected error from groupmod failure")
+	}
+	if result.Succeeded || !result.Failed {
+		t.Error("expected failed result")
+	}
+}
+
+func TestGroupPresentApplyExistingGroupSetMembers(t *testing.T) {
+	ss := installStubs(t)
+	g := Group{
+		id:     "test-present-existing-members",
+		method: "present",
+		params: map[string]interface{}{
+			"name":    "root",
+			"members": []interface{}{"alice", "bob"},
+		},
+	}
+	result, err := g.present(context.Background(), false)
+	if err != nil {
+		t.Fatalf("present() unexpected error: %v", err)
+	}
+	if !result.Succeeded || result.Failed {
+		t.Error("expected succeeded result")
+	}
+	if !result.Changed {
+		t.Error("expected changed=true for member change")
+	}
+	gotGpasswd := false
+	for _, c := range ss.calls {
+		if c == "gpasswd" {
+			gotGpasswd = true
+		}
+	}
+	if !gotGpasswd {
+		t.Error("expected gpasswd to be called for members")
+	}
+}
+
+func TestGroupPresentApplyExistingGroupSetMembersFails(t *testing.T) {
+	ss := installStubs(t)
+	ss.failCmds["gpasswd"] = errors.New("gpasswd failed")
+
+	g := Group{
+		id:     "test-present-existing-members-fail",
+		method: "present",
+		params: map[string]interface{}{
+			"name":    "root",
+			"members": []interface{}{"alice"},
+		},
+	}
+	result, err := g.present(context.Background(), false)
+	if err == nil {
+		t.Fatal("expected error from gpasswd failure")
+	}
+	if result.Succeeded || !result.Failed {
+		t.Error("expected failed result")
+	}
+}
+
+func TestGroupPresentTestModeExistingGroupWithMembers(t *testing.T) {
+	installStubs(t)
+	g := Group{
+		id:     "test-present-test-members",
+		method: "present",
+		params: map[string]interface{}{
+			"name":    "root",
+			"members": []interface{}{"alice"},
+		},
+	}
+	result, err := g.present(context.Background(), true)
+	if err != nil {
+		t.Fatalf("present() test mode unexpected error: %v", err)
+	}
+	if !result.Succeeded || result.Failed {
+		t.Error("expected succeeded result in test mode")
+	}
+	if !result.Changed {
+		t.Error("expected changed=true for member change")
+	}
+}
+
+// --- Test/Apply dispatch ---
+
 func TestGroupTestDispatch(t *testing.T) {
+	installStubs(t)
 	tests := []struct {
 		method  string
 		params  map[string]interface{}
 		wantErr bool
 	}{
 		{method: "exists", params: map[string]interface{}{"name": "root"}},
-		{method: "absent", params: map[string]interface{}{"name": "grlx-test-nonexistent-group-abc123"}},
+		{method: "absent", params: map[string]interface{}{"name": "nonexistent"}},
 		{method: "present", params: map[string]interface{}{"name": "root"}},
 	}
 
@@ -487,6 +912,7 @@ func TestGroupTestDispatch(t *testing.T) {
 }
 
 func TestGroupTestDispatchUndefined(t *testing.T) {
+	installStubs(t)
 	g := Group{id: "test-undef", method: "nonexistent", params: map[string]interface{}{"name": "test"}}
 	result, err := g.Test(context.Background())
 	if err == nil {
@@ -497,7 +923,31 @@ func TestGroupTestDispatchUndefined(t *testing.T) {
 	}
 }
 
+func TestGroupApplyDispatch(t *testing.T) {
+	installStubs(t)
+	tests := []struct {
+		method  string
+		params  map[string]interface{}
+		wantErr bool
+	}{
+		{method: "exists", params: map[string]interface{}{"name": "root"}},
+		{method: "absent", params: map[string]interface{}{"name": "nonexistent"}},
+		{method: "present", params: map[string]interface{}{"name": "root"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.method, func(t *testing.T) {
+			g := Group{id: "test-apply", method: tt.method, params: tt.params}
+			_, err := g.Apply(context.Background())
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Apply() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
 func TestGroupApplyDispatchUndefined(t *testing.T) {
+	installStubs(t)
 	g := Group{id: "test-undef", method: "nonexistent", params: map[string]interface{}{"name": "test"}}
 	result, err := g.Apply(context.Background())
 	if err == nil {
@@ -508,7 +958,10 @@ func TestGroupApplyDispatchUndefined(t *testing.T) {
 	}
 }
 
+// --- Context cancellation ---
+
 func TestGroupExistsContextCancellation(t *testing.T) {
+	installStubs(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
 	defer cancel()
 	g := Group{id: "test-ctx", method: "exists", params: map[string]interface{}{"name": "root"}}
@@ -521,6 +974,8 @@ func TestGroupExistsContextCancellation(t *testing.T) {
 	}
 }
 
+// --- Parse validation ---
+
 func TestGroupParseValidation(t *testing.T) {
 	g := Group{}
 	_, err := g.Parse("id", "absent", map[string]interface{}{})
@@ -531,6 +986,8 @@ func TestGroupParseValidation(t *testing.T) {
 		t.Errorf("expected ErrMissingName, got %v", err)
 	}
 }
+
+// --- Helper functions ---
 
 func TestBuildGroupaddArgs(t *testing.T) {
 	args := buildGroupaddArgs("mygroup", "5000", true)
@@ -608,5 +1065,21 @@ func TestBoolParam(t *testing.T) {
 	}
 	if boolParam(params, "badtype", false) {
 		t.Error("expected default false for bad type")
+	}
+}
+
+func TestStringParam(t *testing.T) {
+	params := map[string]interface{}{
+		"gid":     "5000",
+		"badtype": 42,
+	}
+	if stringParam(params, "gid") != "5000" {
+		t.Errorf("expected '5000', got %q", stringParam(params, "gid"))
+	}
+	if stringParam(params, "missing") != "" {
+		t.Errorf("expected empty string for missing key")
+	}
+	if stringParam(params, "badtype") != "" {
+		t.Errorf("expected empty string for non-string value")
 	}
 }

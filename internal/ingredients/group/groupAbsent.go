@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os/exec"
 
 	"github.com/gogrlx/grlx/v2/internal/cook"
 )
@@ -18,7 +17,7 @@ func (g Group) absent(ctx context.Context, test bool) (cook.Result, error) {
 		return result, errors.New("invalid group; name must be a non-empty string")
 	}
 
-	if !groupExists(groupName) {
+	if !groupExistsBy(groupName) {
 		result.Succeeded = true
 		result.Notes = append(result.Notes,
 			cook.SimpleNote("group "+groupName+" already absent, nothing to do"))
@@ -33,15 +32,14 @@ func (g Group) absent(ctx context.Context, test bool) (cook.Result, error) {
 		return result, nil
 	}
 
-	cmd := exec.CommandContext(ctx, "groupdel", groupName)
-	if err := cmd.Run(); err != nil {
+	if err := execCommand(ctx, "groupdel", groupName); err != nil {
 		result.Failed = true
 		result.Notes = append(result.Notes,
 			cook.SimpleNote(fmt.Sprintf("failed to delete group %s: %s", groupName, err.Error())))
 		return result, err
 	}
 
-	if groupExists(groupName) {
+	if groupExistsBy(groupName) {
 		result.Failed = true
 		return result, errors.New("group " + groupName + " could not be deleted")
 	}
