@@ -3,7 +3,6 @@ package user
 import (
 	"context"
 	"errors"
-	"os/user"
 
 	"github.com/gogrlx/grlx/v2/internal/cook"
 )
@@ -30,6 +29,6 @@ func (u User) exists(ctx context.Context, test bool) (cook.Result, error) {
 }
 
 func userExists(name string) bool {
-	_, err := user.Lookup(name)
+	_, err := lookupUser(name)
 	return err == nil
 }

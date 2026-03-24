@@ -13,6 +13,12 @@ import (
 	"github.com/gogrlx/grlx/v2/internal/cook"
 )
 
+// execCommandContext is a test-overridable factory for exec.Cmd.
+var execCommandContext = exec.CommandContext
+
+// lookupUser is a test-overridable wrapper around user.Lookup.
+var lookupUser = user.Lookup
+
 // validHashPrefixes lists accepted crypt(3) hash algorithm prefixes.
 var validHashPrefixes = []string{
 	"$1$",  // MD5
@@ -88,11 +94,11 @@ func (u User) present(ctx context.Context, test bool) (cook.Result, error) {
 			strings.Join(validHashPrefixes, ", "))
 	}
 
-	existing, err := user.Lookup(userName)
+	existing, err := lookupUser(userName)
 	if err != nil {
 		// User does not exist — useradd
 		args := buildUseraddArgs(userName, uid, gid, shell, home, comment, passwordHash, groups, createHome, system)
-		cmd := exec.CommandContext(ctx, "useradd", args...)
+		cmd := execCommandContext(ctx, "useradd", args...)
 		if test {
 			result.Succeeded = true
 			result.Changed = true
@@ -123,7 +129,7 @@ func (u User) present(ctx context.Context, test bool) (cook.Result, error) {
 		return result, nil
 	}
 
-	cmd := exec.CommandContext(ctx, "usermod", args...)
+	cmd := execCommandContext(ctx, "usermod", args...)
 	if test {
 		result.Succeeded = true
 		result.Changed = true

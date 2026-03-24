@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os/exec"
 
 	"github.com/gogrlx/grlx/v2/internal/cook"
 )
@@ -39,7 +38,7 @@ func (u User) absent(ctx context.Context, test bool) (cook.Result, error) {
 		args = []string{"-r", userName}
 	}
 
-	cmd := exec.CommandContext(ctx, "userdel", args...)
+	cmd := execCommandContext(ctx, "userdel", args...)
 	if err := cmd.Run(); err != nil {
 		result.Failed = true
 		result.Notes = append(result.Notes,
