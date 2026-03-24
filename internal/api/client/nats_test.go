@@ -83,6 +83,27 @@ func mockErrorHandler(t *testing.T, nc *nats.Conn, subject, errMsg string) *nats
 	return sub
 }
 
+// mockBadJSONHandler subscribes to subject and replies with a result that is
+// not valid JSON for the expected type (forces an unmarshal error in callers).
+func mockBadJSONHandler(t *testing.T, nc *nats.Conn, subject string) *nats.Subscription {
+	t.Helper()
+	// Return a result that is valid natsResponse JSON but whose Result
+	// field contains a string instead of the expected object/array.
+	resp := natsResponse{Result: json.RawMessage(`"not an object"`)}
+
+	sub, err := nc.Subscribe(subject, func(msg *nats.Msg) {
+		payload, _ := json.Marshal(resp)
+		if err := msg.Respond(payload); err != nil {
+			t.Errorf("mock respond: %v", err)
+		}
+	})
+	if err != nil {
+		t.Fatalf("subscribe mock bad json handler: %v", err)
+	}
+	nc.Flush()
+	return sub
+}
+
 // --- NatsRequest tests ---
 
 func TestNatsRequest_NilConn(t *testing.T) {

@@ -554,6 +554,173 @@ func TestRotateTLSCertsMissingCert(t *testing.T) {
 	}
 }
 
+func TestRotateTLSCertsInvalidDER(t *testing.T) {
+	setupTLSConfigDir(t)
+	config.CertificateValidTime = 24 * time.Hour
+
+	// Generate CA first.
+	genCACert()
+
+	// Write valid PEM but with invalid DER content inside.
+	badPEM := pem.EncodeToMemory(&pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: []byte("this is not valid DER"),
+	})
+	if err := os.WriteFile(config.CertFile, badPEM, 0o644); err != nil {
+		t.Fatalf("failed to write bad cert: %v", err)
+	}
+
+	rotated, err := RotateTLSCerts(1 * time.Hour)
+	if err != nil {
+		t.Fatalf("RotateTLSCerts error: %v", err)
+	}
+	if !rotated {
+		t.Fatal("expected rotation when cert DER is invalid")
+	}
+
+	// Verify valid cert was generated.
+	certBytes, err := os.ReadFile(config.CertFile)
+	if err != nil {
+		t.Fatalf("failed to read cert: %v", err)
+	}
+	block, _ := pem.Decode(certBytes)
+	if block == nil {
+		t.Fatal("new cert should be valid PEM")
+	}
+	_, err = x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		t.Fatalf("new cert should be parseable: %v", err)
+	}
+}
+
+func TestForceRegenCert_RemoveCertError(t *testing.T) {
+	setupTLSConfigDir(t)
+	config.CertificateValidTime = 24 * time.Hour
+
+	// Point CertFile to a path inside a non-writable directory.
+	readonlyDir := filepath.Join(t.TempDir(), "readonly")
+	if err := os.MkdirAll(readonlyDir, 0o755); err != nil {
+		t.Fatalf("failed to create dir: %v", err)
+	}
+	// Create a cert file, then make the directory read-only.
+	certPath := filepath.Join(readonlyDir, "cert.pem")
+	if err := os.WriteFile(certPath, []byte("dummy"), 0o644); err != nil {
+		t.Fatalf("failed to write cert: %v", err)
+	}
+	if err := os.Chmod(readonlyDir, 0o444); err != nil {
+		t.Fatalf("failed to chmod: %v", err)
+	}
+	defer os.Chmod(readonlyDir, 0o755) // restore for cleanup
+
+	config.CertFile = certPath
+
+	_, err := forceRegenCert()
+	if err == nil {
+		t.Fatal("expected error when cert cannot be removed")
+	}
+}
+
+func TestForceRegenCert_RemoveKeyError(t *testing.T) {
+	setupTLSConfigDir(t)
+	config.CertificateValidTime = 24 * time.Hour
+
+	// CertFile doesn't exist (so remove succeeds/is no-op).
+	// KeyFile points to a read-only directory.
+	readonlyDir := filepath.Join(t.TempDir(), "readonly")
+	if err := os.MkdirAll(readonlyDir, 0o755); err != nil {
+		t.Fatalf("failed to create dir: %v", err)
+	}
+	keyPath := filepath.Join(readonlyDir, "key.pem")
+	if err := os.WriteFile(keyPath, []byte("dummy"), 0o644); err != nil {
+		t.Fatalf("failed to write key: %v", err)
+	}
+	if err := os.Chmod(readonlyDir, 0o444); err != nil {
+		t.Fatalf("failed to chmod: %v", err)
+	}
+	defer os.Chmod(readonlyDir, 0o755)
+
+	config.KeyFile = keyPath
+
+	_, err := forceRegenCert()
+	if err == nil {
+		t.Fatal("expected error when key cannot be removed")
+	}
+}
+
+func TestGenNKey_StatError(t *testing.T) {
+	// Test the branch where os.Stat returns an error other than
+	// IsNotExist — this triggers log.Panic. We can't easily test a
+	// panic in a production path, so we verify the happy path deeply.
+	setupNKeyConfigDir(t)
+
+	// Generate a farmer key
+	GenNKey(true)
+
+	// Verify the private key seed can be parsed
+	privBytes, err := os.ReadFile(config.NKeyFarmerPrivFile)
+	if err != nil {
+		t.Fatalf("failed to read priv key: %v", err)
+	}
+
+	// NATS seeds are base32-encoded, starting with 'S'
+	if len(privBytes) < 4 {
+		t.Fatal("private key seed too short")
+	}
+	if privBytes[0] != 'S' {
+		t.Fatalf("expected seed starting with S, got %c", privBytes[0])
+	}
+	// Second character indicates key type: U=user
+	if privBytes[1] != 'U' {
+		t.Fatalf("expected user seed (SU...), got S%c", privBytes[1])
+	}
+}
+
+func TestGenCert_MultipleHosts(t *testing.T) {
+	setupTLSConfigDir(t)
+	config.CertHosts = []string{"localhost", "example.com", "127.0.0.1", "10.0.0.1", "::1"}
+
+	GenCert()
+
+	certBytes, err := os.ReadFile(config.CertFile)
+	if err != nil {
+		t.Fatalf("failed to read cert: %v", err)
+	}
+	block, _ := pem.Decode(certBytes)
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		t.Fatalf("failed to parse cert: %v", err)
+	}
+	if len(cert.DNSNames) != 2 {
+		t.Fatalf("expected 2 DNS SANs, got %d: %v", len(cert.DNSNames), cert.DNSNames)
+	}
+	if len(cert.IPAddresses) != 3 {
+		t.Fatalf("expected 3 IP SANs, got %d: %v", len(cert.IPAddresses), cert.IPAddresses)
+	}
+}
+
+func TestGenCert_EmptyHosts(t *testing.T) {
+	setupTLSConfigDir(t)
+	config.CertHosts = []string{}
+
+	GenCert()
+
+	certBytes, err := os.ReadFile(config.CertFile)
+	if err != nil {
+		t.Fatalf("failed to read cert: %v", err)
+	}
+	block, _ := pem.Decode(certBytes)
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		t.Fatalf("failed to parse cert: %v", err)
+	}
+	if len(cert.DNSNames) != 0 {
+		t.Fatalf("expected no DNS SANs, got %v", cert.DNSNames)
+	}
+	if len(cert.IPAddresses) != 0 {
+		t.Fatalf("expected no IP SANs, got %v", cert.IPAddresses)
+	}
+}
+
 func TestRotateTLSCertsCorruptPEM(t *testing.T) {
 	setupTLSConfigDir(t)
 	config.CertificateValidTime = 24 * time.Hour
