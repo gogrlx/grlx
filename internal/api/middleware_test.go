@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/taigrr/jety"
 )
 
 func TestAuthPublicRoutesPassThrough(t *testing.T) {
@@ -51,6 +53,29 @@ func TestAuthBadTokenReturns403(t *testing.T) {
 	// Should be 403 (forbidden) since the token is invalid
 	if rec.Code != http.StatusForbidden {
 		t.Errorf("bad-token request returned %d, want 403", rec.Code)
+	}
+}
+
+func TestAuthDangerouslyAllowRootBypassesAuth(t *testing.T) {
+	jety.Set("dangerously_allow_root", true)
+	t.Cleanup(func() { jety.Set("dangerously_allow_root", false) })
+
+	called := false
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		w.WriteHeader(http.StatusOK)
+	})
+
+	handler := Auth(inner, "FileServer")
+	req := httptest.NewRequest(http.MethodGet, "/files/test", nil)
+	// No Authorization header — should still pass with dangerously_allow_root.
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Errorf("dangerously_allow_root bypass returned %d, want 200", rec.Code)
+	}
+	if !called {
+		t.Error("inner handler was not called despite dangerously_allow_root=true")
 	}
 }
 
