@@ -1,9 +1,9 @@
 package certs
 
 import (
+	"fmt"
 	"os"
 
-	log "github.com/gogrlx/grlx/v2/internal/log"
 	"github.com/nats-io/nkeys"
 
 	"github.com/gogrlx/grlx/v2/internal/config"
@@ -21,7 +21,7 @@ func GetPubNKey(isFarmer bool) (string, error) {
 	return string(pubKeyBytes), nil
 }
 
-func GenNKey(isFarmer bool) {
+func GenNKey(isFarmer bool) error {
 	privFile := config.NKeySproutPrivFile
 	pubFile := config.NKeySproutPubFile
 	if isFarmer {
@@ -30,47 +30,28 @@ func GenNKey(isFarmer bool) {
 	}
 	_, err := os.Stat(privFile)
 	if err == nil {
-		return
+		return nil
 	}
-	if os.IsNotExist(err) {
-		kp, err := nkeys.CreateUser()
-		if err != nil {
-			log.Panic(err.Error())
-		}
-		pubKey, err := os.OpenFile(pubFile,
-			os.O_WRONLY|os.O_TRUNC|os.O_CREATE,
-			0o600,
-		)
-		if err != nil {
-			log.Panic(err.Error())
-		}
-		defer pubKey.Close()
-		key, err := kp.PublicKey()
-		if err != nil {
-			log.Panic(err.Error())
-		}
-		_, err = pubKey.Write([]byte(key))
-		if err != nil {
-			log.Panic(err.Error())
-		}
-
-		privKey, err := os.OpenFile(privFile,
-			os.O_WRONLY|os.O_TRUNC|os.O_CREATE,
-			0o600,
-		)
-		if err != nil {
-			log.Panic(err.Error())
-		}
-		defer privKey.Close()
-		pkey, err := kp.Seed()
-		if err != nil {
-			log.Panic(err.Error())
-		}
-		_, err = privKey.Write(pkey)
-		if err != nil {
-			log.Panic(err.Error())
-		}
-		return
+	if !os.IsNotExist(err) {
+		return fmt.Errorf("failed to stat NKey file %s: %w", privFile, err)
 	}
-	log.Panic(err)
+	kp, err := nkeys.CreateUser()
+	if err != nil {
+		return fmt.Errorf("failed to create NKey user: %w", err)
+	}
+	key, err := kp.PublicKey()
+	if err != nil {
+		return fmt.Errorf("failed to get NKey public key: %w", err)
+	}
+	if err := os.WriteFile(pubFile, []byte(key), 0o600); err != nil {
+		return fmt.Errorf("failed to write NKey public key to %s: %w", pubFile, err)
+	}
+	seed, err := kp.Seed()
+	if err != nil {
+		return fmt.Errorf("failed to get NKey seed: %w", err)
+	}
+	if err := os.WriteFile(privFile, seed, 0o600); err != nil {
+		return fmt.Errorf("failed to write NKey private key to %s: %w", privFile, err)
+	}
+	return nil
 }
