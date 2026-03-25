@@ -87,6 +87,35 @@ func TestCook_UnknownSprout(t *testing.T) {
 	}
 }
 
+func TestCook_EmptyBody(t *testing.T) {
+	req := httptest.NewRequest(http.MethodPost, "/cook", bytes.NewReader([]byte("")))
+	w := httptest.NewRecorder()
+
+	Cook(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 for empty body, got %d", w.Code)
+	}
+}
+
+func TestCook_NilActionFields(t *testing.T) {
+	// Valid JSON but action has no recipe field
+	ta := apitypes.TargetedAction{
+		Target: nil,
+		Action: map[string]interface{}{},
+	}
+	body, _ := json.Marshal(ta)
+	req := httptest.NewRequest(http.MethodPost, "/cook", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	Cook(w, req)
+
+	// Should succeed — no targets means the loop is skipped and JID is returned
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
 func TestRegisterNatsConn(t *testing.T) {
 	// Verify RegisterNatsConn sets the package-level conn variable
 	oldConn := conn

@@ -213,6 +213,93 @@ func TestSetPropOverwrite(t *testing.T) {
 	}
 }
 
+// TestGetAllProps_MissingSproutID calls GetAllProps directly without a mux so PathValue("sproutID") is "".
+func TestGetAllProps_MissingSproutID(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/props/", nil)
+	w := httptest.NewRecorder()
+
+	// Call directly — no mux, so PathValue returns "".
+	GetAllProps(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 for missing sproutID, got %d", w.Code)
+	}
+}
+
+// TestGetProp_MissingSproutID calls GetProp directly without a mux.
+func TestGetProp_MissingSproutID(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/props//key", nil)
+	w := httptest.NewRecorder()
+
+	GetProp(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 for missing sproutID, got %d", w.Code)
+	}
+}
+
+// TestSetProp_MissingSproutID calls SetProp directly without a mux.
+func TestSetProp_MissingSproutID(t *testing.T) {
+	body, _ := json.Marshal(propRequest{Value: "val"})
+	req := httptest.NewRequest(http.MethodPut, "/props//key", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	SetProp(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 for missing sproutID, got %d", w.Code)
+	}
+}
+
+// TestDeleteProp_MissingSproutID calls DeleteProp directly without a mux.
+func TestDeleteProp_MissingSproutID(t *testing.T) {
+	req := httptest.NewRequest(http.MethodDelete, "/props//key", nil)
+	w := httptest.NewRecorder()
+
+	DeleteProp(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 for missing sproutID, got %d", w.Code)
+	}
+}
+
+// TestDeleteProp_MissingName calls DeleteProp directly without a mux (name is "").
+func TestDeleteProp_MissingName(t *testing.T) {
+	req := httptest.NewRequest(http.MethodDelete, "/props/sprout/", nil)
+	w := httptest.NewRecorder()
+
+	DeleteProp(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 for missing name, got %d", w.Code)
+	}
+}
+
+// TestSetProp_MissingName calls SetProp directly without a mux (name is "").
+func TestSetProp_MissingName(t *testing.T) {
+	body, _ := json.Marshal(propRequest{Value: "val"})
+	req := httptest.NewRequest(http.MethodPut, "/props/sprout/", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	SetProp(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 for missing name, got %d", w.Code)
+	}
+}
+
+// TestGetProp_MissingName calls GetProp directly without a mux (name is "").
+func TestGetProp_MissingName(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/props/sprout/", nil)
+	w := httptest.NewRecorder()
+
+	GetProp(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 for missing name, got %d", w.Code)
+	}
+}
+
 // TestExportedPropsFunctions verifies the exported wrapper functions work.
 func TestExportedPropsFunctions(t *testing.T) {
 	// Direct calls to the exported props package functions

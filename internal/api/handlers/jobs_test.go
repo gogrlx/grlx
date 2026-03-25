@@ -246,6 +246,160 @@ func TestCancelJobAlreadyCompleted(t *testing.T) {
 	}
 }
 
+func TestListJobsNegativeLimit(t *testing.T) {
+	setupTestJobStore(t)
+
+	req := httptest.NewRequest(http.MethodGet, "/jobs?limit=-1", nil)
+	w := httptest.NewRecorder()
+
+	ListJobs(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected status 400 for negative limit, got %d", w.Code)
+	}
+}
+
+func TestListJobsZeroLimit(t *testing.T) {
+	setupTestJobStore(t)
+
+	req := httptest.NewRequest(http.MethodGet, "/jobs?limit=0", nil)
+	w := httptest.NewRecorder()
+
+	ListJobs(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected status 400 for zero limit, got %d", w.Code)
+	}
+}
+
+func TestGetJob_MissingJID(t *testing.T) {
+	setupTestJobStore(t)
+
+	// Call directly without mux so PathValue("jid") returns "".
+	req := httptest.NewRequest(http.MethodGet, "/jobs/", nil)
+	w := httptest.NewRecorder()
+
+	GetJob(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 for missing jid, got %d", w.Code)
+	}
+}
+
+func TestListJobsForSprout_MissingSproutID(t *testing.T) {
+	setupTestJobStore(t)
+
+	// Call directly without mux so PathValue("sproutID") returns "".
+	req := httptest.NewRequest(http.MethodGet, "/jobs/sprout/", nil)
+	w := httptest.NewRecorder()
+
+	ListJobsForSprout(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 for missing sproutID, got %d", w.Code)
+	}
+}
+
+func TestCancelJob_MissingJID(t *testing.T) {
+	setupTestJobStore(t)
+
+	// Call directly without mux so PathValue("jid") returns "".
+	req := httptest.NewRequest(http.MethodDelete, "/jobs/", nil)
+	w := httptest.NewRecorder()
+
+	CancelJob(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 for missing jid, got %d", w.Code)
+	}
+}
+
+func TestCancelJob_FailedJob(t *testing.T) {
+	setupTestJobStore(t)
+
+	// jid-003 is a failed job
+	req := httptest.NewRequest(http.MethodDelete, "/jobs/jid-003", nil)
+	w := serveWithPathValues("DELETE /jobs/{jid}", CancelJob, req)
+
+	if w.Code != http.StatusConflict {
+		t.Fatalf("expected status 409 for failed job, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp map[string]string
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if resp["error"] != "job cannot be cancelled" {
+		t.Errorf("expected 'job cannot be cancelled', got %q", resp["error"])
+	}
+}
+
+func TestListJobsLargeLimit(t *testing.T) {
+	setupTestJobStore(t)
+
+	req := httptest.NewRequest(http.MethodGet, "/jobs?limit=1000", nil)
+	w := httptest.NewRecorder()
+
+	ListJobs(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", w.Code)
+	}
+
+	var summaries []jobs.JobSummary
+	if err := json.Unmarshal(w.Body.Bytes(), &summaries); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	// Should return all 3 jobs
+	if len(summaries) != 3 {
+		t.Fatalf("expected 3 jobs, got %d", len(summaries))
+	}
+}
+
+func TestGetJob_VerifyFields(t *testing.T) {
+	setupTestJobStore(t)
+
+	req := httptest.NewRequest(http.MethodGet, "/jobs/jid-002", nil)
+	w := serveWithPathValues("GET /jobs/{jid}", GetJob, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", w.Code)
+	}
+
+	var summary jobs.JobSummary
+	if err := json.Unmarshal(w.Body.Bytes(), &summary); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if summary.JID != "jid-002" {
+		t.Errorf("expected JID jid-002, got %s", summary.JID)
+	}
+	if summary.SproutID != "sprout-alpha" {
+		t.Errorf("expected sprout sprout-alpha, got %s", summary.SproutID)
+	}
+}
+
+func TestListJobsForSprout_Beta(t *testing.T) {
+	setupTestJobStore(t)
+
+	req := httptest.NewRequest(http.MethodGet, "/jobs/sprout/sprout-beta", nil)
+	w := serveWithPathValues("GET /jobs/sprout/{sproutID}", ListJobsForSprout, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", w.Code)
+	}
+
+	var summaries []jobs.JobSummary
+	if err := json.Unmarshal(w.Body.Bytes(), &summaries); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if len(summaries) != 1 {
+		t.Fatalf("expected 1 job for sprout-beta, got %d", len(summaries))
+	}
+	if summaries[0].JID != "jid-003" {
+		t.Errorf("expected jid-003, got %s", summaries[0].JID)
+	}
+}
+
 func TestListJobsEmptyStore(t *testing.T) {
 	dir := t.TempDir()
 	jobStore = jobs.NewStoreWithDir(dir)

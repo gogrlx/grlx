@@ -84,12 +84,18 @@ func (m Model) Selected() string {
 
 // Run launches the interactive picker and returns the selected sprout ID.
 func Run(cohort string, sprouts []string) (string, error) {
+	return RunWithOptions(cohort, sprouts)
+}
+
+// RunWithOptions launches the picker with optional tea.ProgramOption overrides
+// (e.g. tea.WithInput, tea.WithOutput for testing).
+func RunWithOptions(cohort string, sprouts []string, opts ...tea.ProgramOption) (string, error) {
 	m := Model{
 		Cohort:  cohort,
 		Sprouts: sprouts,
 	}
 
-	p := tea.NewProgram(m)
+	p := tea.NewProgram(m, opts...)
 	result, err := p.Run()
 	if err != nil {
 		return "", fmt.Errorf("picker: %w", err)
