@@ -43,7 +43,9 @@ func main() {
 	}
 	config.LoadConfig("sprout")
 	defer log.Flush()
-	certs.GenNKey(false)
+	if err := certs.GenNKey(false); err != nil {
+		log.Fatalf("failed to generate sprout NKey: %v", err)
+	}
 	rootCARetryDelay := jety.GetDuration("rootca_retry_delay")
 	for err := pki.LoadRootCA("sprout"); err != nil; err = pki.LoadRootCA("sprout") {
 		log.Debugf("Error with RootCA: %v", err)

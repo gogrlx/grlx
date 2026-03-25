@@ -57,8 +57,12 @@ func main() {
 	initAuditLogger()
 	loadAuthPolicy()
 	pki.SetupPKIFarmer()
-	certs.GenCert()
-	certs.GenNKey(true)
+	if err := certs.GenCert(); err != nil {
+		log.Fatalf("failed to generate TLS certificates: %v", err)
+	}
+	if err := certs.GenNKey(true); err != nil {
+		log.Fatalf("failed to generate farmer NKey: %v", err)
+	}
 	RunNATSServer()
 	StartAPIServer()
 	go ConnectFarmer()
