@@ -913,3 +913,93 @@ func TestHandleJobsCancelWithNATS(t *testing.T) {
 		t.Error("cancel message not received within timeout")
 	}
 }
+
+// --- Unique tests from PR branch ---
+
+func TestHandleCookTriggerAndSendEvents(t *testing.T) {
+	nc, cleanup := startEmbeddedNATS(t)
+	defer cleanup()
+
+	pkiDir := setupNatsAPIPKI(t)
+	writeNKey(t, pkiDir, "accepted", "sprout-cook-trigger", "UKEY_COOK_TRIGGER")
+
+	old := natsConn
+	natsConn = nc
+	defer func() { natsConn = old }()
+
+	jetyCleanup := setupJetyDangerouslyAllowRoot(t, true)
+	defer jetyCleanup()
+
+	params := json.RawMessage(`{"target":[{"id":"sprout-cook-trigger"}],"action":{"recipe":"deploy.app"}}`)
+	result, err := handleCook(params)
+	if err != nil {
+		t.Fatalf("handleCook: %v", err)
+	}
+
+	b, _ := json.Marshal(result)
+	var cmd struct {
+		JID string `json:"jid"`
+	}
+	json.Unmarshal(b, &cmd)
+
+	// Simulate the trigger message arriving (normally from the farmer's cook subsystem).
+	triggerSubject := "grlx.farmer.cook.trigger." + cmd.JID
+	msg, err := nc.Request(triggerSubject, nil, 5*time.Second)
+	if err != nil {
+		t.Fatalf("trigger request: %v", err)
+	}
+
+	// The goroutine should respond with the sprout IDs.
+	var sproutIDs []string
+	if err := json.Unmarshal(msg.Data, &sproutIDs); err != nil {
+		t.Fatalf("unmarshal trigger response: %v", err)
+	}
+	if len(sproutIDs) != 1 || sproutIDs[0] != "sprout-cook-trigger" {
+		t.Errorf("trigger response = %v, want [sprout-cook-trigger]", sproutIDs)
+	}
+}
+
+func TestSubscribeSessionDoneUntrackedSession(t *testing.T) {
+	nc, cleanup := startEmbeddedNATS(t)
+	defer cleanup()
+
+	old := natsConn
+	natsConn = nc
+	defer func() { natsConn = old }()
+
+	info := &shell.SessionInfo{
+		SessionID:   "test-done-untracked",
+		SproutID:    "test-sprout",
+		DoneSubject: "grlx.shell.test-done-untracked.done",
+	}
+	// Do NOT add to tracker — simulates an already-removed session.
+
+	subscribeSessionDone(info)
+
+	// Publish done — the callback should handle the nil tracker result gracefully.
+	done := shell.DoneMessage{ExitCode: 0}
+	data, _ := json.Marshal(done)
+	nc.Publish(info.DoneSubject, data)
+	nc.Flush()
+	time.Sleep(200 * time.Millisecond)
+	// No panic = pass.
+}
+
+func TestHandleShellStartSproutIDWithUnderscoreIntegration(t *testing.T) {
+	setupNatsAPIPKI(t)
+
+	_, err := handleShellStart(json.RawMessage(`{"sprout_id":"sprout_bad","cols":80,"rows":24}`))
+	if err == nil {
+		t.Fatal("expected error for sprout ID with underscore")
+	}
+}
+
+func TestShellTrackerIntegration(t *testing.T) {
+	tracker := ShellTracker()
+	if tracker == nil {
+		t.Fatal("ShellTracker returned nil")
+	}
+	if tracker != sessionTracker {
+		t.Error("ShellTracker returned different instance than sessionTracker")
+	}
+}
