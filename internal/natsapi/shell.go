@@ -53,7 +53,7 @@ func handleShellStart(params json.RawMessage) (any, error) {
 		IdleTimeoutSec: req.IdleTimeoutSec,
 	}
 	data, _ := json.Marshal(startReq)
-	topic := "grlx.sprouts." + req.SproutID + ".shell.start"
+	topic := SproutSubject(req.SproutID, SproutShellStart)
 
 	msg, err := natsConn.Request(topic, data, 10*time.Second)
 	if err != nil {

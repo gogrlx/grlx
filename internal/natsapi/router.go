@@ -32,64 +32,64 @@ type response struct {
 // routes maps subject suffixes (after "grlx.api.") to handlers.
 var routes = map[string]handler{
 	// Version
-	"version": handleVersion,
+	MethodVersion: handleVersion,
 
 	// PKI management
-	"pki.list":     handlePKIList,
-	"pki.accept":   handlePKIAccept,
-	"pki.reject":   handlePKIReject,
-	"pki.deny":     handlePKIDeny,
-	"pki.unaccept": handlePKIUnaccept,
-	"pki.delete":   handlePKIDelete,
+	MethodPKIList:     handlePKIList,
+	MethodPKIAccept:   handlePKIAccept,
+	MethodPKIReject:   handlePKIReject,
+	MethodPKIDeny:     handlePKIDeny,
+	MethodPKIUnaccept: handlePKIUnaccept,
+	MethodPKIDelete:   handlePKIDelete,
 
 	// Sprouts
-	"sprouts.list": handleSproutsList,
-	"sprouts.get":  handleSproutsGet,
+	MethodSproutsList: handleSproutsList,
+	MethodSproutsGet:  handleSproutsGet,
 
 	// Test
-	"test.ping": handleTestPing,
+	MethodTestPing: handleTestPing,
 
 	// Cmd
-	"cmd.run": handleCmdRun,
+	MethodCmdRun: handleCmdRun,
 
 	// Cook
-	"cook": handleCook,
+	MethodCook: handleCook,
 
 	// Jobs
-	"jobs.list":      handleJobsList,
-	"jobs.get":       handleJobsGet,
-	"jobs.cancel":    handleJobsCancel,
-	"jobs.forsprout": handleJobsListForSprout,
+	MethodJobsList:      handleJobsList,
+	MethodJobsGet:       handleJobsGet,
+	MethodJobsCancel:    handleJobsCancel,
+	MethodJobsForSprout: handleJobsListForSprout,
 
 	// Props
-	"props.getall": handlePropsGetAll,
-	"props.get":    handlePropsGet,
-	"props.set":    handlePropsSet,
-	"props.delete": handlePropsDelete,
+	MethodPropsGetAll: handlePropsGetAll,
+	MethodPropsGet:    handlePropsGet,
+	MethodPropsSet:    handlePropsSet,
+	MethodPropsDelete: handlePropsDelete,
 
 	// Cohorts
-	"cohorts.list":    handleCohortsList,
-	"cohorts.get":     handleCohortsGet,
-	"cohorts.resolve": handleCohortsResolve,
-	"cohorts.refresh": handleCohortsRefresh,
+	MethodCohortsList:    handleCohortsList,
+	MethodCohortsGet:     handleCohortsGet,
+	MethodCohortsResolve: handleCohortsResolve,
+	MethodCohortsRefresh: handleCohortsRefresh,
 
 	// Auth
-	"auth.whoami":       handleAuthWhoAmI,
-	"auth.users":        handleAuthListUsers,
-	"auth.users.add":    handleAuthAddUser,
-	"auth.users.remove": handleAuthRemoveUser,
-	"auth.explain":      handleAuthExplain,
+	MethodAuthWhoAmI:     handleAuthWhoAmI,
+	MethodAuthListUsers:  handleAuthListUsers,
+	MethodAuthAddUser:    handleAuthAddUser,
+	MethodAuthRemoveUser: handleAuthRemoveUser,
+	MethodAuthExplain:    handleAuthExplain,
 
 	// Shell (interactive SSH-like sessions)
-	"shell.start": handleShellStart,
+	MethodShellStart: handleShellStart,
 
 	// Recipes
-	"recipes.list": handleRecipesList,
-	"recipes.get":  handleRecipesGet,
+	MethodRecipesList: handleRecipesList,
+	MethodRecipesGet:  handleRecipesGet,
 
 	// Audit
-	"audit.dates": handleAuditList,
-	"audit.query": handleAuditQuery,
+	MethodAuditDates: handleAuditList,
+	MethodAuditQuery: handleAuditQuery,
 }
 
 // Subscribe registers all NATS API handlers on the given connection.
@@ -100,7 +100,7 @@ func Subscribe(nc *nats.Conn) error {
 	SetNatsConn(nc)
 
 	for method, h := range routes {
-		subject := "grlx.api." + method
+		subject := Subject(method)
 		handler := authMiddleware(method, h) // wrap with RBAC enforcement
 		action := method                     // capture for audit
 		_, err := nc.Subscribe(subject, func(msg *nats.Msg) {
