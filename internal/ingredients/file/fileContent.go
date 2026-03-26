@@ -182,7 +182,12 @@ func (f File) gatherSource(ctx context.Context, buf *bytes.Buffer, name string, 
 		return notes, errors.Join(err, ErrCacheFailure)
 	}
 
-	sourceDest, err := srcFile.(*File).dest()
+	srcF, ok := srcFile.(File)
+	if !ok {
+		notes = append(notes, cook.Snprintf("unexpected type for cached source"))
+		return notes, fmt.Errorf("cached source is not a File")
+	}
+	sourceDest, err := srcF.dest()
 	if err != nil {
 		notes = append(notes, cook.Snprintf("failed to get cached source destination: %v", err))
 		return notes, err
@@ -255,7 +260,12 @@ func (f File) gatherSources(ctx context.Context, buf *bytes.Buffer, skipVerify b
 			return notes, errors.Join(err, ErrCacheFailure)
 		}
 
-		sourceDest, err := file.(*File).dest()
+		srcF, ok := file.(File)
+		if !ok {
+			notes = append(notes, cook.Snprintf("unexpected type for cached source"))
+			return notes, fmt.Errorf("cached source is not a File")
+		}
+		sourceDest, err := srcF.dest()
 		if err != nil {
 			notes = append(notes, cook.Snprintf("failed to get destination for cached source: %v", err))
 			return notes, err
