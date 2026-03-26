@@ -55,7 +55,7 @@ func handleCook(params json.RawMessage) (any, error) {
 	}
 
 	jid := cook.GenerateJobID()
-	sub, err := natsConn.SubscribeSync(fmt.Sprintf("grlx.farmer.cook.trigger.%s", jid))
+	sub, err := natsConn.SubscribeSync(SproutCookTriggerPrefix + jid)
 	if err != nil {
 		return nil, fmt.Errorf("failed to subscribe for cook trigger: %w", err)
 	}
