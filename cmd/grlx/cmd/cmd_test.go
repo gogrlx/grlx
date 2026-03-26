@@ -128,7 +128,7 @@ func TestFormatSize(t *testing.T) {
 
 func TestResolveEffectiveTarget_BothSet(t *testing.T) {
 	oldS, oldC := sproutTarget, cohortTarget
-	defer func() { sproutTarget, oldS = oldS, oldS; cohortTarget = oldC }()
+	defer func() { sproutTarget = oldS; cohortTarget = oldC }()
 
 	sproutTarget = "sprout-1"
 	cohortTarget = "web-servers"
