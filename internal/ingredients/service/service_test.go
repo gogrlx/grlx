@@ -118,14 +118,17 @@ type mockProvider struct {
 	enabled bool
 	masked  bool
 
-	startErr   error
-	stopErr    error
-	enableErr  error
-	disableErr error
-	maskErr    error
-	unmaskErr  error
-	restartErr error
-	reloadErr  error
+	startErr     error
+	stopErr      error
+	enableErr    error
+	disableErr   error
+	maskErr      error
+	unmaskErr    error
+	restartErr   error
+	reloadErr    error
+	isRunningErr error
+	isEnabledErr error
+	isMaskedErr  error
 }
 
 func (m *mockProvider) Properties() (map[string]interface{}, error) {
@@ -175,8 +178,12 @@ func (m *mockProvider) Disable(_ context.Context) error {
 	return nil
 }
 
-func (m *mockProvider) IsEnabled(_ context.Context) (bool, error) { return m.enabled, nil }
-func (m *mockProvider) IsRunning(_ context.Context) (bool, error) { return m.running, nil }
+func (m *mockProvider) IsEnabled(_ context.Context) (bool, error) {
+	return m.enabled, m.isEnabledErr
+}
+func (m *mockProvider) IsRunning(_ context.Context) (bool, error) {
+	return m.running, m.isRunningErr
+}
 
 func (m *mockProvider) Restart(_ context.Context) error {
 	if m.restartErr != nil {
@@ -209,9 +216,11 @@ func (m *mockProvider) Unmask(_ context.Context) error {
 	return nil
 }
 
-func (m *mockProvider) IsMasked(_ context.Context) (bool, error) { return m.masked, nil }
-func (m *mockProvider) InitName() string                         { return "mock" }
-func (m *mockProvider) IsInit() bool                             { return true }
+func (m *mockProvider) IsMasked(_ context.Context) (bool, error) {
+	return m.masked, m.isMaskedErr
+}
+func (m *mockProvider) InitName() string { return "mock" }
+func (m *mockProvider) IsInit() bool     { return true }
 
 // registerMockProvider registers the mock and sets Init to "mock" so
 // NewServiceProvider resolves to it. It returns a cleanup function.
@@ -659,3 +668,396 @@ func TestTestInvalidMethod(t *testing.T) {
 		t.Errorf("Test(bogus) expected ErrInvalidMethod, got %v", err)
 	}
 }
+
+// Apply error paths for enable/disable/mask/unmask.
+
+func TestApplyEnableError(t *testing.T) {
+	mp := &mockProvider{enabled: false, enableErr: errors.New("enable failed")}
+	cleanup := registerMockProvider(t, mp)
+	defer cleanup()
+
+	s := Service{id: "svc-1", name: "nginx", method: "enabled", properties: map[string]interface{}{"name": "nginx"}}
+	result, err := s.Apply(context.Background())
+	if err == nil {
+		t.Error("expected error from enable failure")
+	}
+	if !result.Failed {
+		t.Error("result should be failed on enable error")
+	}
+}
+
+func TestApplyDisableError(t *testing.T) {
+	mp := &mockProvider{enabled: true, disableErr: errors.New("disable failed")}
+	cleanup := registerMockProvider(t, mp)
+	defer cleanup()
+
+	s := Service{id: "svc-1", name: "nginx", method: "disabled", properties: map[string]interface{}{"name": "nginx"}}
+	result, err := s.Apply(context.Background())
+	if err == nil {
+		t.Error("expected error from disable failure")
+	}
+	if !result.Failed {
+		t.Error("result should be failed on disable error")
+	}
+}
+
+func TestApplyMaskError(t *testing.T) {
+	mp := &mockProvider{masked: false, maskErr: errors.New("mask failed")}
+	cleanup := registerMockProvider(t, mp)
+	defer cleanup()
+
+	s := Service{id: "svc-1", name: "nginx", method: "masked", properties: map[string]interface{}{"name": "nginx"}}
+	result, err := s.Apply(context.Background())
+	if err == nil {
+		t.Error("expected error from mask failure")
+	}
+	if !result.Failed {
+		t.Error("result should be failed on mask error")
+	}
+}
+
+func TestApplyUnmaskError(t *testing.T) {
+	mp := &mockProvider{masked: true, unmaskErr: errors.New("unmask failed")}
+	cleanup := registerMockProvider(t, mp)
+	defer cleanup()
+
+	s := Service{id: "svc-1", name: "nginx", method: "unmasked", properties: map[string]interface{}{"name": "nginx"}}
+	result, err := s.Apply(context.Background())
+	if err == nil {
+		t.Error("expected error from unmask failure")
+	}
+	if !result.Failed {
+		t.Error("result should be failed on unmask error")
+	}
+}
+
+// Apply error paths for IsRunning/IsEnabled/IsMasked query failures.
+
+func TestApplyRunningQueryError(t *testing.T) {
+	mp := &mockProvider{isRunningErr: errors.New("query failed")}
+	cleanup := registerMockProvider(t, mp)
+	defer cleanup()
+
+	s := Service{id: "svc-1", name: "nginx", method: "running", properties: map[string]interface{}{"name": "nginx"}}
+	result, err := s.Apply(context.Background())
+	if err == nil {
+		t.Error("expected error from IsRunning query failure")
+	}
+	if !result.Failed {
+		t.Error("result should be failed on query error")
+	}
+}
+
+func TestApplyStoppedQueryError(t *testing.T) {
+	mp := &mockProvider{isRunningErr: errors.New("query failed")}
+	cleanup := registerMockProvider(t, mp)
+	defer cleanup()
+
+	s := Service{id: "svc-1", name: "nginx", method: "stopped", properties: map[string]interface{}{"name": "nginx"}}
+	result, err := s.Apply(context.Background())
+	if err == nil {
+		t.Error("expected error from IsRunning query failure")
+	}
+	if !result.Failed {
+		t.Error("result should be failed on query error")
+	}
+}
+
+func TestApplyEnabledQueryError(t *testing.T) {
+	mp := &mockProvider{isEnabledErr: errors.New("query failed")}
+	cleanup := registerMockProvider(t, mp)
+	defer cleanup()
+
+	s := Service{id: "svc-1", name: "nginx", method: "enabled", properties: map[string]interface{}{"name": "nginx"}}
+	result, err := s.Apply(context.Background())
+	if err == nil {
+		t.Error("expected error from IsEnabled query failure")
+	}
+	if !result.Failed {
+		t.Error("result should be failed on query error")
+	}
+}
+
+func TestApplyDisabledQueryError(t *testing.T) {
+	mp := &mockProvider{isEnabledErr: errors.New("query failed")}
+	cleanup := registerMockProvider(t, mp)
+	defer cleanup()
+
+	s := Service{id: "svc-1", name: "nginx", method: "disabled", properties: map[string]interface{}{"name": "nginx"}}
+	result, err := s.Apply(context.Background())
+	if err == nil {
+		t.Error("expected error from IsEnabled query failure")
+	}
+	if !result.Failed {
+		t.Error("result should be failed on query error")
+	}
+}
+
+func TestApplyMaskedQueryError(t *testing.T) {
+	mp := &mockProvider{isMaskedErr: errors.New("query failed")}
+	cleanup := registerMockProvider(t, mp)
+	defer cleanup()
+
+	s := Service{id: "svc-1", name: "nginx", method: "masked", properties: map[string]interface{}{"name": "nginx"}}
+	result, err := s.Apply(context.Background())
+	if err == nil {
+		t.Error("expected error from IsMasked query failure")
+	}
+	if !result.Failed {
+		t.Error("result should be failed on query error")
+	}
+}
+
+func TestApplyUnmaskedQueryError(t *testing.T) {
+	mp := &mockProvider{isMaskedErr: errors.New("query failed")}
+	cleanup := registerMockProvider(t, mp)
+	defer cleanup()
+
+	s := Service{id: "svc-1", name: "nginx", method: "unmasked", properties: map[string]interface{}{"name": "nginx"}}
+	result, err := s.Apply(context.Background())
+	if err == nil {
+		t.Error("expected error from IsMasked query failure")
+	}
+	if !result.Failed {
+		t.Error("result should be failed on query error")
+	}
+}
+
+// Test mode — "already in desired state" paths.
+
+func TestTestStoppedAlready(t *testing.T) {
+	mp := &mockProvider{running: false}
+	cleanup := registerMockProvider(t, mp)
+	defer cleanup()
+
+	s := Service{id: "svc-1", name: "nginx", method: "stopped", properties: map[string]interface{}{"name": "nginx"}}
+	result, err := s.Test(context.Background())
+	if err != nil {
+		t.Fatalf("Test(stopped) error: %v", err)
+	}
+	if result.Changed {
+		t.Error("Test(stopped) should not report changed when already stopped")
+	}
+}
+
+func TestTestEnabledAlready(t *testing.T) {
+	mp := &mockProvider{enabled: true}
+	cleanup := registerMockProvider(t, mp)
+	defer cleanup()
+
+	s := Service{id: "svc-1", name: "nginx", method: "enabled", properties: map[string]interface{}{"name": "nginx"}}
+	result, err := s.Test(context.Background())
+	if err != nil {
+		t.Fatalf("Test(enabled) error: %v", err)
+	}
+	if result.Changed {
+		t.Error("Test(enabled) should not report changed when already enabled")
+	}
+}
+
+func TestTestDisabledAlready(t *testing.T) {
+	mp := &mockProvider{enabled: false}
+	cleanup := registerMockProvider(t, mp)
+	defer cleanup()
+
+	s := Service{id: "svc-1", name: "nginx", method: "disabled", properties: map[string]interface{}{"name": "nginx"}}
+	result, err := s.Test(context.Background())
+	if err != nil {
+		t.Fatalf("Test(disabled) error: %v", err)
+	}
+	if result.Changed {
+		t.Error("Test(disabled) should not report changed when already disabled")
+	}
+}
+
+func TestTestMaskedAlready(t *testing.T) {
+	mp := &mockProvider{masked: true}
+	cleanup := registerMockProvider(t, mp)
+	defer cleanup()
+
+	s := Service{id: "svc-1", name: "nginx", method: "masked", properties: map[string]interface{}{"name": "nginx"}}
+	result, err := s.Test(context.Background())
+	if err != nil {
+		t.Fatalf("Test(masked) error: %v", err)
+	}
+	if result.Changed {
+		t.Error("Test(masked) should not report changed when already masked")
+	}
+}
+
+func TestTestUnmaskedAlready(t *testing.T) {
+	mp := &mockProvider{masked: false}
+	cleanup := registerMockProvider(t, mp)
+	defer cleanup()
+
+	s := Service{id: "svc-1", name: "nginx", method: "unmasked", properties: map[string]interface{}{"name": "nginx"}}
+	result, err := s.Test(context.Background())
+	if err != nil {
+		t.Fatalf("Test(unmasked) error: %v", err)
+	}
+	if result.Changed {
+		t.Error("Test(unmasked) should not report changed when already unmasked")
+	}
+}
+
+// Test mode — query error paths.
+
+func TestTestRunningQueryError(t *testing.T) {
+	mp := &mockProvider{isRunningErr: errors.New("query failed")}
+	cleanup := registerMockProvider(t, mp)
+	defer cleanup()
+
+	s := Service{id: "svc-1", name: "nginx", method: "running", properties: map[string]interface{}{"name": "nginx"}}
+	result, err := s.Test(context.Background())
+	if err == nil {
+		t.Error("expected error from IsRunning query failure in Test")
+	}
+	if !result.Failed {
+		t.Error("result should be failed on query error")
+	}
+}
+
+func TestTestStoppedQueryError(t *testing.T) {
+	mp := &mockProvider{isRunningErr: errors.New("query failed")}
+	cleanup := registerMockProvider(t, mp)
+	defer cleanup()
+
+	s := Service{id: "svc-1", name: "nginx", method: "stopped", properties: map[string]interface{}{"name": "nginx"}}
+	result, err := s.Test(context.Background())
+	if err == nil {
+		t.Error("expected error from IsRunning query failure in Test")
+	}
+	if !result.Failed {
+		t.Error("result should be failed on query error")
+	}
+}
+
+func TestTestEnabledQueryError(t *testing.T) {
+	mp := &mockProvider{isEnabledErr: errors.New("query failed")}
+	cleanup := registerMockProvider(t, mp)
+	defer cleanup()
+
+	s := Service{id: "svc-1", name: "nginx", method: "enabled", properties: map[string]interface{}{"name": "nginx"}}
+	result, err := s.Test(context.Background())
+	if err == nil {
+		t.Error("expected error from IsEnabled query failure in Test")
+	}
+	if !result.Failed {
+		t.Error("result should be failed on query error")
+	}
+}
+
+func TestTestDisabledQueryError(t *testing.T) {
+	mp := &mockProvider{isEnabledErr: errors.New("query failed")}
+	cleanup := registerMockProvider(t, mp)
+	defer cleanup()
+
+	s := Service{id: "svc-1", name: "nginx", method: "disabled", properties: map[string]interface{}{"name": "nginx"}}
+	result, err := s.Test(context.Background())
+	if err == nil {
+		t.Error("expected error from IsEnabled query failure in Test")
+	}
+	if !result.Failed {
+		t.Error("result should be failed on query error")
+	}
+}
+
+func TestTestMaskedQueryError(t *testing.T) {
+	mp := &mockProvider{isMaskedErr: errors.New("query failed")}
+	cleanup := registerMockProvider(t, mp)
+	defer cleanup()
+
+	s := Service{id: "svc-1", name: "nginx", method: "masked", properties: map[string]interface{}{"name": "nginx"}}
+	result, err := s.Test(context.Background())
+	if err == nil {
+		t.Error("expected error from IsMasked query failure in Test")
+	}
+	if !result.Failed {
+		t.Error("result should be failed on query error")
+	}
+}
+
+func TestTestUnmaskedQueryError(t *testing.T) {
+	mp := &mockProvider{isMaskedErr: errors.New("query failed")}
+	cleanup := registerMockProvider(t, mp)
+	defer cleanup()
+
+	s := Service{id: "svc-1", name: "nginx", method: "unmasked", properties: map[string]interface{}{"name": "nginx"}}
+	result, err := s.Test(context.Background())
+	if err == nil {
+		t.Error("expected error from IsMasked query failure in Test")
+	}
+	if !result.Failed {
+		t.Error("result should be failed on query error")
+	}
+}
+
+// Providers: guessInit with config fallback.
+
+func TestGuessInitFromConfig(t *testing.T) {
+	oldInit := Init
+	Init = ""
+	defer func() { Init = oldInit }()
+
+	// Clear all registered providers temporarily to prevent probing.
+	provTex.Lock()
+	savedMap := provMap
+	provMap = make(map[string]ServiceProvider)
+	provTex.Unlock()
+	defer func() {
+		provTex.Lock()
+		provMap = savedMap
+		provTex.Unlock()
+	}()
+
+	// config.Init() reads from jety — test is verifying the guessInit flow.
+	// With no providers and Init="", it falls through to /proc/1/comm or "unknown".
+	result := guessInit()
+	if result == "" {
+		t.Error("guessInit() should not return empty string")
+	}
+}
+
+// NewServiceProvider with provider parse error propagation.
+
+func TestNewServiceProviderParseError(t *testing.T) {
+	// Register a provider whose Parse returns an error.
+	errProv := &errParseProvider{}
+	oldInit := Init
+	Init = "errparse"
+	provTex.Lock()
+	provMap["errparse"] = errProv
+	provTex.Unlock()
+	defer func() {
+		Init = oldInit
+		provTex.Lock()
+		delete(provMap, "errparse")
+		provTex.Unlock()
+	}()
+
+	_, err := NewServiceProvider("svc-1", "running", map[string]interface{}{"name": "nginx"})
+	if err == nil {
+		t.Error("expected error from provider Parse failure")
+	}
+}
+
+type errParseProvider struct{}
+
+func (e *errParseProvider) Properties() (map[string]interface{}, error) { return nil, nil }
+func (e *errParseProvider) Parse(_, _ string, _ map[string]interface{}) (ServiceProvider, error) {
+	return nil, errors.New("parse failed")
+}
+func (e *errParseProvider) Start(_ context.Context) error             { return nil }
+func (e *errParseProvider) Stop(_ context.Context) error              { return nil }
+func (e *errParseProvider) Status(_ context.Context) (string, error)  { return "", nil }
+func (e *errParseProvider) Enable(_ context.Context) error            { return nil }
+func (e *errParseProvider) Disable(_ context.Context) error           { return nil }
+func (e *errParseProvider) IsEnabled(_ context.Context) (bool, error) { return false, nil }
+func (e *errParseProvider) IsRunning(_ context.Context) (bool, error) { return false, nil }
+func (e *errParseProvider) Restart(_ context.Context) error           { return nil }
+func (e *errParseProvider) Reload(_ context.Context) error            { return nil }
+func (e *errParseProvider) Mask(_ context.Context) error              { return nil }
+func (e *errParseProvider) Unmask(_ context.Context) error            { return nil }
+func (e *errParseProvider) IsMasked(_ context.Context) (bool, error)  { return false, nil }
+func (e *errParseProvider) InitName() string                          { return "errparse" }
+func (e *errParseProvider) IsInit() bool                              { return false }

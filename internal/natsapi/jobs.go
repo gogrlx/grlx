@@ -144,7 +144,7 @@ func handleJobsCancel(params json.RawMessage) (any, error) {
 		return nil, fmt.Errorf("job cannot be cancelled: status is %s", summary.Status)
 	}
 
-	subject := fmt.Sprintf("grlx.sprouts.%s.cancel", summary.SproutID)
+	subject := SproutSubject(summary.SproutID, SproutCancel)
 	cancelMsg, _ := json.Marshal(map[string]string{"jid": p.JID})
 
 	if natsConn == nil {

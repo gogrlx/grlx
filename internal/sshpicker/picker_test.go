@@ -1,6 +1,8 @@
 package sshpicker
 
 import (
+	"bytes"
+	"io"
 	"strings"
 	"testing"
 
@@ -272,6 +274,67 @@ func TestNavigateMixed(t *testing.T) {
 	m = result.(Model)
 	if m.Cursor != 1 {
 		t.Fatalf("expected cursor 1, got %d", m.Cursor)
+	}
+}
+
+func TestRunWithOptions_SelectFirst(t *testing.T) {
+	// Simulate pressing Enter immediately (select first item).
+	input := bytes.NewReader([]byte("\r"))
+	output := io.Discard
+
+	selected, err := RunWithOptions("web", []string{"alpha", "beta", "gamma"},
+		tea.WithInput(input), tea.WithOutput(output))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if selected != "alpha" {
+		t.Errorf("expected 'alpha', got %q", selected)
+	}
+}
+
+func TestRunWithOptions_SelectSingle(t *testing.T) {
+	// Single-item list — Enter selects the only option.
+	input := bytes.NewReader([]byte("\r"))
+	output := io.Discard
+
+	selected, err := RunWithOptions("web", []string{"single-sprout"},
+		tea.WithInput(input), tea.WithOutput(output))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if selected != "single-sprout" {
+		t.Errorf("expected 'single-sprout', got %q", selected)
+	}
+}
+
+func TestRunWithOptions_Cancel(t *testing.T) {
+	// Press 'q' to cancel.
+	input := bytes.NewReader([]byte("q"))
+	output := io.Discard
+
+	_, err := RunWithOptions("web", []string{"alpha", "beta"},
+		tea.WithInput(input), tea.WithOutput(output))
+	if err == nil {
+		t.Fatal("expected error for cancelled selection")
+	}
+	if err.Error() != "cancelled" {
+		t.Errorf("expected 'cancelled' error, got %q", err.Error())
+	}
+}
+
+func TestRun_WrapsRunWithOptions(t *testing.T) {
+	// We can't test Run directly (it opens a real terminal), but we verify
+	// that RunWithOptions works identically.
+	input := bytes.NewReader([]byte("\r"))
+	output := io.Discard
+
+	selected, err := RunWithOptions("test", []string{"only"},
+		tea.WithInput(input), tea.WithOutput(output))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if selected != "only" {
+		t.Errorf("expected 'only', got %q", selected)
 	}
 }
 

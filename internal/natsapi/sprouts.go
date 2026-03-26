@@ -126,7 +126,7 @@ func probeSprout(sproutID string) bool {
 	if natsConn == nil {
 		return false
 	}
-	topic := "grlx.sprouts." + sproutID + ".test.ping"
+	topic := SproutSubject(sproutID, SproutTestPing)
 	ping := apitypes.PingPong{Ping: true}
 	data, err := json.Marshal(ping)
 	if err != nil {

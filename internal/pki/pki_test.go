@@ -6,9 +6,13 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/json"
 	"encoding/pem"
 	"errors"
+	"fmt"
 	"math/big"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -722,3 +726,590 @@ func TestUnacceptNKey_AlreadyUnaccepted(t *testing.T) {
 		t.Errorf("expected ErrAlreadyUnaccepted, got: %v", err)
 	}
 }
+
+func TestSetNATSServer(t *testing.T) {
+	// SetNATSServer just assigns the package-level var.
+	original := NatsServer
+	defer func() { NatsServer = original }()
+
+	SetNATSServer(nil)
+	if NatsServer != nil {
+		t.Error("expected NatsServer to be nil")
+	}
+}
+
+func TestGetPubNKey_SproutKey(t *testing.T) {
+	tmpDir := t.TempDir()
+	pubFile := filepath.Join(tmpDir, "sprout.pub")
+	if err := os.WriteFile(pubFile, []byte("USPROUT_PUB_KEY"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	config.NKeySproutPubFile = pubFile
+
+	key, err := GetPubNKey(SproutPubNKey)
+	if err != nil {
+		t.Fatalf("GetPubNKey(SproutPubNKey) failed: %v", err)
+	}
+	if key != "USPROUT_PUB_KEY" {
+		t.Errorf("expected %q, got %q", "USPROUT_PUB_KEY", key)
+	}
+}
+
+func TestGetPubNKey_FarmerKey(t *testing.T) {
+	tmpDir := t.TempDir()
+	pubFile := filepath.Join(tmpDir, "farmer.pub")
+	if err := os.WriteFile(pubFile, []byte("UFARMER_PUB_KEY"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	config.NKeyFarmerPubFile = pubFile
+
+	key, err := GetPubNKey(FarmerPubNKey)
+	if err != nil {
+		t.Fatalf("GetPubNKey(FarmerPubNKey) failed: %v", err)
+	}
+	if key != "UFARMER_PUB_KEY" {
+		t.Errorf("expected %q, got %q", "UFARMER_PUB_KEY", key)
+	}
+}
+
+func TestGetPubNKey_MissingFile(t *testing.T) {
+	config.NKeySproutPubFile = "/nonexistent/path/sprout.pub"
+
+	_, err := GetPubNKey(SproutPubNKey)
+	if err == nil {
+		t.Error("expected error for missing pub key file")
+	}
+}
+
+func TestGetPubNKey_CliKeyType(t *testing.T) {
+	// CliPubNKey is not yet implemented — pubFile will be empty string,
+	// which should fail with a file read error.
+	_, err := GetPubNKey(CliPubNKey)
+	if err == nil {
+		t.Error("expected error for unimplemented CliPubNKey type")
+	}
+}
+
+func TestGetSproutID_FromConfig(t *testing.T) {
+	// When config.SproutID is set, GetSproutID should return it directly.
+	config.SproutID = "preconfigured-sprout"
+	defer func() { config.SproutID = "" }()
+
+	id := GetSproutID()
+	if id != "preconfigured-sprout" {
+		t.Errorf("expected %q, got %q", "preconfigured-sprout", id)
+	}
+}
+
+func TestGetSproutID_FallbackToHostname(t *testing.T) {
+	// When config.SproutID is empty, it should fall back to hostname
+	// and persist via SetSproutID (writes to jety, not config var).
+	config.SproutID = ""
+
+	id := GetSproutID()
+	if id == "" {
+		t.Error("expected non-empty sprout ID from hostname fallback")
+	}
+	// The returned ID should be a valid hostname-based string.
+	if strings.HasPrefix(id, "-") {
+		t.Errorf("sprout ID should not start with hyphen, got %q", id)
+	}
+}
+
+func TestFetchRootCA_AlreadyExists(t *testing.T) {
+	tmpDir := t.TempDir()
+	caFile := filepath.Join(tmpDir, "rootca.pem")
+	if err := os.WriteFile(caFile, []byte("existing-cert"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	// Should return nil (no error) because the file already exists.
+	err := FetchRootCA(caFile)
+	if err != nil {
+		t.Errorf("expected nil error when CA already exists, got: %v", err)
+	}
+
+	// File should be unchanged.
+	data, _ := os.ReadFile(caFile)
+	if string(data) != "existing-cert" {
+		t.Errorf("file should be unchanged, got %q", string(data))
+	}
+}
+
+func TestFetchRootCA_FromServer(t *testing.T) {
+	// Create a test HTTPS server that serves a fake cert.
+	certPEM := generateSelfSignedCertPEM(t)
+
+	ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/auth/cert/" {
+			http.NotFound(w, r)
+			return
+		}
+		w.Write(certPEM)
+	}))
+	defer ts.Close()
+
+	// Parse test server address to get host:port.
+	addr := ts.Listener.Addr().String()
+	host, port, _ := strings.Cut(addr, ":")
+
+	config.FarmerInterface = host
+	config.FarmerAPIPort = port
+
+	tmpDir := t.TempDir()
+	caFile := filepath.Join(tmpDir, "fetched-rootca.pem")
+
+	err := FetchRootCA(caFile)
+	if err != nil {
+		t.Fatalf("FetchRootCA failed: %v", err)
+	}
+
+	data, err := os.ReadFile(caFile)
+	if err != nil {
+		t.Fatalf("failed to read fetched CA: %v", err)
+	}
+	if len(data) == 0 {
+		t.Error("expected non-empty CA file")
+	}
+}
+
+func TestFetchRootCA_ServerUnreachable(t *testing.T) {
+	config.FarmerInterface = "127.0.0.1"
+	config.FarmerAPIPort = "1" // port 1 should be unreachable
+
+	tmpDir := t.TempDir()
+	caFile := filepath.Join(tmpDir, "unreachable-rootca.pem")
+
+	err := FetchRootCA(caFile)
+	if err == nil {
+		t.Error("expected error when server is unreachable")
+	}
+
+	// File should have been cleaned up.
+	if _, statErr := os.Stat(caFile); !os.IsNotExist(statErr) {
+		t.Error("expected CA file to be cleaned up on error")
+	}
+}
+
+func TestLoadRootCA_GrlxBinary(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Generate a valid CA cert PEM.
+	certPEM := generateSelfSignedCertPEM(t)
+	caFile := filepath.Join(tmpDir, "grlx-rootca.pem")
+	if err := os.WriteFile(caFile, certPEM, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	config.GrlxRootCA = caFile
+
+	err := LoadRootCA("grlx")
+	if err != nil {
+		t.Fatalf("LoadRootCA(grlx) failed: %v", err)
+	}
+
+	// nkeyClient should be configured.
+	if nkeyClient == nil {
+		t.Error("expected nkeyClient to be non-nil after LoadRootCA")
+	}
+}
+
+func TestLoadRootCA_InvalidPEM(t *testing.T) {
+	tmpDir := t.TempDir()
+	caFile := filepath.Join(tmpDir, "bad-rootca.pem")
+	if err := os.WriteFile(caFile, []byte("not-a-valid-pem"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	config.GrlxRootCA = caFile
+
+	err := LoadRootCA("grlx")
+	if !errors.Is(err, ErrCannotParseRootCA) {
+		t.Errorf("expected ErrCannotParseRootCA, got: %v", err)
+	}
+}
+
+func TestLoadRootCA_MissingFile(t *testing.T) {
+	config.GrlxRootCA = "/nonexistent/rootca.pem"
+
+	err := LoadRootCA("grlx")
+	if err == nil {
+		t.Error("expected error for missing root CA file")
+	}
+}
+
+func TestPutNKey_Success(t *testing.T) {
+	// Set up a sprout pub key file.
+	tmpDir := t.TempDir()
+	pubFile := filepath.Join(tmpDir, "sprout.pub")
+	if err := os.WriteFile(pubFile, []byte("UTEST_SPROUT_KEY"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	config.NKeySproutPubFile = pubFile
+
+	// Set up a test HTTP server to receive the PUT request.
+	var receivedSubmission KeySubmission
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPut {
+			t.Errorf("expected PUT, got %s", r.Method)
+		}
+		if r.URL.Path != "/pki/putnkey" {
+			t.Errorf("expected /pki/putnkey, got %s", r.URL.Path)
+		}
+		if err := json.NewDecoder(r.Body).Decode(&receivedSubmission); err != nil {
+			t.Errorf("failed to decode body: %v", err)
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+
+	config.FarmerURL = ts.URL
+	nkeyClient = ts.Client()
+
+	err := PutNKey("test-sprout")
+	if err != nil {
+		t.Fatalf("PutNKey failed: %v", err)
+	}
+
+	if receivedSubmission.NKey != "UTEST_SPROUT_KEY" {
+		t.Errorf("expected NKey %q, got %q", "UTEST_SPROUT_KEY", receivedSubmission.NKey)
+	}
+	if receivedSubmission.SproutID != "test-sprout" {
+		t.Errorf("expected SproutID %q, got %q", "test-sprout", receivedSubmission.SproutID)
+	}
+}
+
+func TestPutNKey_MissingPubKey(t *testing.T) {
+	config.NKeySproutPubFile = "/nonexistent/sprout.pub"
+	nkeyClient = &http.Client{}
+
+	err := PutNKey("test-sprout")
+	if err == nil {
+		t.Error("expected error when sprout pub key file is missing")
+	}
+}
+
+func TestPutNKey_ServerError(t *testing.T) {
+	tmpDir := t.TempDir()
+	pubFile := filepath.Join(tmpDir, "sprout.pub")
+	if err := os.WriteFile(pubFile, []byte("UTEST_KEY"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	config.NKeySproutPubFile = pubFile
+
+	// Use a URL that won't connect.
+	config.FarmerURL = "http://127.0.0.1:1"
+	nkeyClient = &http.Client{Timeout: time.Millisecond * 100}
+
+	err := PutNKey("test-sprout")
+	if err == nil {
+		t.Error("expected error when server is unreachable")
+	}
+}
+
+func TestDenyNKey_InvalidID(t *testing.T) {
+	NatsServer = nil
+	setupTestPKI(t)
+
+	err := DenyNKey("-invalid")
+	if !errors.Is(err, ErrSproutIDInvalid) {
+		t.Errorf("expected ErrSproutIDInvalid, got: %v", err)
+	}
+}
+
+func TestDenyNKey_NotFound(t *testing.T) {
+	NatsServer = nil
+	setupTestPKI(t)
+
+	err := DenyNKey("ghost")
+	if !errors.Is(err, ErrSproutIDNotFound) {
+		t.Errorf("expected ErrSproutIDNotFound, got: %v", err)
+	}
+}
+
+func TestRejectNKey_InvalidID(t *testing.T) {
+	NatsServer = nil
+	setupTestPKI(t)
+
+	err := RejectNKey("-invalid", "")
+	if !errors.Is(err, ErrSproutIDInvalid) {
+		t.Errorf("expected ErrSproutIDInvalid, got: %v", err)
+	}
+}
+
+func TestRejectNKey_NotFound(t *testing.T) {
+	NatsServer = nil
+	setupTestPKI(t)
+
+	err := RejectNKey("ghost", "")
+	if !errors.Is(err, ErrSproutIDNotFound) {
+		t.Errorf("expected ErrSproutIDNotFound, got: %v", err)
+	}
+}
+
+func TestRootCACached_UnknownBinary(t *testing.T) {
+	// Passing an unrecognized binary name should result in checking
+	// an empty path, which should not exist.
+	if RootCACached("unknown") {
+		t.Error("expected false for unknown binary type")
+	}
+}
+
+func TestAcceptNKey_WithSuffix(t *testing.T) {
+	// When an ID contains "_<suffix>", AcceptNKey should strip the suffix
+	// and also call DeleteNKey on the base ID.
+	NatsServer = nil
+	pkiDir := setupTestPKI(t)
+
+	// Create the suffixed key.
+	writeKey(t, pkiDir, "unaccepted", "web01_2", "NKEY_WEB01_2")
+
+	err := AcceptNKey("web01_2")
+	if err != nil {
+		t.Fatalf("AcceptNKey with suffix failed: %v", err)
+	}
+
+	// Should be accepted as "web01" (base name).
+	accepted := filepath.Join(pkiDir, "sprouts/accepted/web01")
+	if _, err := os.Stat(accepted); err != nil {
+		t.Fatalf("expected key at %s: %v", accepted, err)
+	}
+}
+
+func TestSetupPKIFarmer_Idempotent_ExistingDirs(t *testing.T) {
+	tmpDir := t.TempDir()
+	config.FarmerPKI = filepath.Join(tmpDir, "pki") + "/"
+
+	// Create the full structure first.
+	SetupPKIFarmer()
+
+	// Write a marker file to verify dirs aren't recreated (data preserved).
+	marker := filepath.Join(config.FarmerPKI, "sprouts/accepted/marker")
+	if err := os.WriteFile(marker, []byte("keep"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	// Call again — should not fail and should preserve existing files.
+	SetupPKIFarmer()
+
+	data, err := os.ReadFile(marker)
+	if err != nil {
+		t.Fatalf("marker file should still exist: %v", err)
+	}
+	if string(data) != "keep" {
+		t.Error("marker file content changed")
+	}
+}
+
+func TestNKeyExists_ReadError(t *testing.T) {
+	NatsServer = nil
+	pkiDir := setupTestPKI(t)
+
+	// Create a key file that's unreadable.
+	keyPath := filepath.Join(pkiDir, "sprouts/accepted/unreadable01")
+	if err := os.WriteFile(keyPath, []byte("SECRET"), 0o000); err != nil {
+		t.Fatal(err)
+	}
+	// Restore permissions in cleanup so TempDir can clean up.
+	t.Cleanup(func() { os.Chmod(keyPath, 0o600) })
+
+	registered, matches := NKeyExists("unreadable01", "SECRET")
+	if !registered {
+		t.Error("expected registered=true even when file is unreadable")
+	}
+	if matches {
+		t.Error("expected matches=false when file cannot be read")
+	}
+}
+
+// generateSelfSignedCertPEM creates a self-signed certificate and returns
+// its PEM encoding. Useful for tests that need valid certificate data.
+func generateSelfSignedCertPEM(t *testing.T) []byte {
+	t.Helper()
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatalf("generate key: %v", err)
+	}
+	template := x509.Certificate{
+		SerialNumber:          big.NewInt(1),
+		Subject:               pkix.Name{Organization: []string{"test"}},
+		NotBefore:             time.Now(),
+		NotAfter:              time.Now().Add(time.Hour),
+		KeyUsage:              x509.KeyUsageCertSign,
+		IsCA:                  true,
+		BasicConstraintsValid: true,
+	}
+	certDER, err := x509.CreateCertificate(rand.Reader, &template, &template, &key.PublicKey, key)
+	if err != nil {
+		t.Fatalf("create cert: %v", err)
+	}
+	return pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certDER})
+}
+
+func TestFindNKey_InvalidID(t *testing.T) {
+	NatsServer = nil
+	setupTestPKI(t)
+
+	_, err := findNKey("-bad")
+	if !errors.Is(err, ErrSproutIDInvalid) {
+		t.Errorf("expected ErrSproutIDInvalid, got: %v", err)
+	}
+}
+
+func TestRejectNKey_PathTraversal(t *testing.T) {
+	NatsServer = nil
+	setupTestPKI(t)
+
+	// A sprout ID with path traversal should be caught by the path
+	// clean check in RejectNKey.
+	err := RejectNKey("../escape", "NKEY_BAD")
+	if err == nil {
+		t.Error("expected error for path traversal attempt")
+	}
+}
+
+func TestConfigureNats_ValidConfig(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Generate valid certs.
+	certPEM := generateSelfSignedCertPEM(t)
+	caFile := filepath.Join(tmpDir, "rootca.pem")
+	if err := os.WriteFile(caFile, certPEM, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	// Generate a leaf cert+key for CertFile/KeyFile.
+	leafKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	leafTemplate := x509.Certificate{
+		SerialNumber: big.NewInt(2),
+		Subject:      pkix.Name{Organization: []string{"test"}},
+		NotBefore:    time.Now(),
+		NotAfter:     time.Now().Add(time.Hour),
+		KeyUsage:     x509.KeyUsageDigitalSignature,
+	}
+	// Self-sign the leaf for simplicity.
+	leafDER, err := x509.CreateCertificate(rand.Reader, &leafTemplate, &leafTemplate, &leafKey.PublicKey, leafKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	leafCertFile := filepath.Join(tmpDir, "cert.pem")
+	leafKeyFile := filepath.Join(tmpDir, "key.pem")
+	writePEM(t, leafCertFile, "CERTIFICATE", leafDER)
+	leafPrivBytes, err := x509.MarshalPKCS8PrivateKey(leafKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	writePEM(t, leafKeyFile, "PRIVATE KEY", leafPrivBytes)
+
+	config.FarmerInterface = "127.0.0.1"
+	config.FarmerBusPort = "24222"
+	config.RootCA = caFile
+	config.CertFile = leafCertFile
+	config.KeyFile = leafKeyFile
+
+	opts := ConfigureNats()
+	if opts.Host != "127.0.0.1" {
+		t.Errorf("expected host 127.0.0.1, got %s", opts.Host)
+	}
+	if opts.Port != 24222 {
+		t.Errorf("expected port 24222, got %d", opts.Port)
+	}
+	if opts.TLSConfig == nil {
+		t.Error("expected TLSConfig to be set")
+	}
+	if !opts.TLS {
+		t.Error("expected TLS to be true")
+	}
+}
+
+func TestLoadRootCA_SproutBinary(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// For sprout binary, LoadRootCA calls FetchRootCA first.
+	// We need a valid CA cert file at SproutRootCA.
+	certPEM := generateSelfSignedCertPEM(t)
+	caFile := filepath.Join(tmpDir, "sprout-rootca.pem")
+	if err := os.WriteFile(caFile, certPEM, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	config.SproutRootCA = caFile
+
+	err := LoadRootCA("sprout")
+	if err != nil {
+		t.Fatalf("LoadRootCA(sprout) failed: %v", err)
+	}
+	if nkeyClient == nil {
+		t.Error("expected nkeyClient to be non-nil")
+	}
+}
+
+func TestReloadNKeys_WithAcceptedSprouts(t *testing.T) {
+	NatsServer = nil
+	pkiDir := setupTestPKI(t)
+
+	// Add some accepted sprouts with valid-looking NKeys.
+	writeKey(t, pkiDir, "accepted", "web01", "UABC123")
+	writeKey(t, pkiDir, "accepted", "db01", "UDEF456")
+
+	// ReloadNKeys should not error when NatsServer is nil (skips reload).
+	err := ReloadNKeys()
+	// err may be nil (no server to reload) — that's fine.
+	_ = err
+	// The important thing is it doesn't panic or fatal.
+}
+
+// Verify that the full key lifecycle works: unaccept → accept → reject → unaccept.
+func TestKeyLifecycle_FullCycle(t *testing.T) {
+	NatsServer = nil
+	pkiDir := setupTestPKI(t)
+
+	// 1. Register as unaccepted.
+	err := UnacceptNKey("lifecycle01", "NKEY_LIFE")
+	if err != nil {
+		t.Fatalf("UnacceptNKey: %v", err)
+	}
+
+	// 2. Accept.
+	err = AcceptNKey("lifecycle01")
+	if err != nil {
+		t.Fatalf("AcceptNKey: %v", err)
+	}
+	if _, statErr := os.Stat(filepath.Join(pkiDir, "sprouts/accepted/lifecycle01")); statErr != nil {
+		t.Fatal("expected key in accepted")
+	}
+
+	// 3. Reject.
+	err = RejectNKey("lifecycle01", "")
+	if err != nil {
+		t.Fatalf("RejectNKey: %v", err)
+	}
+	if _, statErr := os.Stat(filepath.Join(pkiDir, "sprouts/rejected/lifecycle01")); statErr != nil {
+		t.Fatal("expected key in rejected")
+	}
+
+	// 4. Unaccept again.
+	err = UnacceptNKey("lifecycle01", "")
+	if err != nil {
+		t.Fatalf("UnacceptNKey (from rejected): %v", err)
+	}
+	if _, statErr := os.Stat(filepath.Join(pkiDir, "sprouts/unaccepted/lifecycle01")); statErr != nil {
+		t.Fatal("expected key back in unaccepted")
+	}
+
+	// 5. Delete.
+	err = DeleteNKey("lifecycle01")
+	if err != nil {
+		t.Fatalf("DeleteNKey: %v", err)
+	}
+	// Verify gone from all states.
+	for _, state := range []string{"unaccepted", "accepted", "denied", "rejected"} {
+		p := filepath.Join(pkiDir, "sprouts", state, "lifecycle01")
+		if _, statErr := os.Stat(p); !os.IsNotExist(statErr) {
+			t.Errorf("expected key removed from %s", state)
+		}
+	}
+}
+
+// Suppress unused import warnings.
+var _ = fmt.Sprintf

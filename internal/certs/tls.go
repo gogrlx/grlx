@@ -1,8 +1,6 @@
 package certs
 
 import (
-	"bufio"
-	"bytes"
 	"crypto/ecdsa"
 	"crypto/ed25519"
 	"crypto/elliptic"
@@ -36,21 +34,21 @@ func publicKey(priv interface{}) interface{} {
 
 var notBefore = time.Now()
 
-func genCACert() {
+func genCACert() error {
 	RootCAPriv := config.RootCAPriv
 	RootCA := config.RootCA
 	_, err := os.Stat(RootCAPriv)
 	if !os.IsNotExist(err) {
-		_, err = os.Stat(RootCAPriv)
+		_, err = os.Stat(RootCA)
 		if !os.IsNotExist(err) {
 			log.Trace("Found a RootCA keypair, not generating a new one...")
-			return
+			return nil
 		}
 	}
 	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
 	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
 	if err != nil {
-		log.Panicf("Failed to generate serial number: %v", err)
+		return fmt.Errorf("failed to generate serial number: %w", err)
 	}
 	caCert := x509.Certificate{
 		SerialNumber: serialNumber,
@@ -66,51 +64,46 @@ func genCACert() {
 	caCert.IsCA = true
 	caPrivKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
-		log.Panic(err.Error())
+		return fmt.Errorf("failed to generate CA private key: %w", err)
 	}
 
-	// create the CA
 	caBytes, err := x509.CreateCertificate(rand.Reader, &caCert, &caCert, &caPrivKey.PublicKey, caPrivKey)
 	if err != nil {
-		log.Panic(err.Error())
+		return fmt.Errorf("failed to create CA certificate: %w", err)
 	}
-
-	// pem encode
-	caPEM := new(bytes.Buffer)
-	pem.Encode(caPEM, &pem.Block{
-		Type:  "CERTIFICATE",
-		Bytes: caBytes,
-	})
 
 	certOut, err := os.Create(RootCA)
 	if err != nil {
-		log.Fatalf("%v", err)
+		return fmt.Errorf("failed to create CA cert file %s: %w", RootCA, err)
 	}
 	if err = pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: caBytes}); err != nil {
-		log.Fatalf("%v", err)
+		certOut.Close()
+		return fmt.Errorf("failed to encode CA cert PEM: %w", err)
 	}
 	if err = certOut.Close(); err != nil {
-		log.Fatalf("%v", err)
+		return fmt.Errorf("failed to close CA cert file: %w", err)
 	}
 	log.Debugf("wrote %s", RootCA)
-	keyOut, err := os.OpenFile(RootCAPriv, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
-	if err != nil {
-		log.Fatalf("%v", err)
-	}
+
 	privBytes, err := x509.MarshalPKCS8PrivateKey(caPrivKey)
 	if err != nil {
-		log.Fatalf("Unable to marshal private key: %v", err)
+		return fmt.Errorf("unable to marshal CA private key: %w", err)
+	}
+	keyOut, err := os.OpenFile(RootCAPriv, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
+	if err != nil {
+		return fmt.Errorf("failed to create CA key file %s: %w", RootCAPriv, err)
 	}
 	if err := pem.Encode(keyOut, &pem.Block{Type: "PRIVATE KEY", Bytes: privBytes}); err != nil {
-		log.Fatalf("Failed to write data to key.pem: %v", err)
+		keyOut.Close()
+		return fmt.Errorf("failed to encode CA private key PEM: %w", err)
 	}
 	if err := keyOut.Close(); err != nil {
-		log.Fatalf("Error closing key.pem: %v", err)
+		return fmt.Errorf("failed to close CA key file: %w", err)
 	}
+	return nil
 }
 
-func GenCert() {
-	// check if certificates already exist first
+func GenCert() error {
 	CertFile := config.CertFile
 	KeyFile := config.KeyFile
 	RootCA := config.RootCA
@@ -119,67 +112,51 @@ func GenCert() {
 		_, err = os.Stat(KeyFile)
 		if !os.IsNotExist(err) {
 			log.Trace("Found a TLS keypair, not generating a new one...")
-			return
+			return nil
 		}
 	}
 
-	genCACert()
-	file, err := os.Open(RootCA)
+	if err := genCACert(); err != nil {
+		return fmt.Errorf("failed to generate CA cert: %w", err)
+	}
+
+	caCertBytes, err := os.ReadFile(RootCA)
 	if err != nil {
-		log.Panic(err)
+		return fmt.Errorf("failed to read CA cert %s: %w", RootCA, err)
 	}
-	defer file.Close()
-	stats, statsErr := file.Stat()
-	if statsErr != nil {
-		log.Panic(err)
+	block, _ := pem.Decode(caCertBytes)
+	if block == nil {
+		return fmt.Errorf("failed to decode CA cert PEM from %s", RootCA)
 	}
-	size := stats.Size()
-	bytes := make([]byte, size)
-	bufr := bufio.NewReader(file)
-	_, err = bufr.Read(bytes)
-	if err != nil {
-		log.Panic("could not read rootCA file into buffer", err)
-	}
-	block, _ := pem.Decode(bytes)
 	caCert, err := x509.ParseCertificate(block.Bytes)
 	if err != nil {
-		log.Panic(err.Error())
+		return fmt.Errorf("failed to parse CA certificate: %w", err)
 	}
-	rootCAPrivFile, err := os.Open(config.RootCAPriv)
+
+	rootCAPrivBytes, err := os.ReadFile(config.RootCAPriv)
 	if err != nil {
-		log.Panic(err)
-	}
-	defer rootCAPrivFile.Close()
-	stats, statsErr = rootCAPrivFile.Stat()
-	if statsErr != nil {
-		log.Panic(err)
-	}
-	size = stats.Size()
-	rootCAPrivBytes := make([]byte, size)
-	bufr2 := bufio.NewReader(rootCAPrivFile)
-	_, err = bufr2.Read(rootCAPrivBytes)
-	if err != nil {
-		log.Panic("could not read rootCA private key file into buffer", err)
+		return fmt.Errorf("failed to read CA private key %s: %w", config.RootCAPriv, err)
 	}
 	block2, _ := pem.Decode(rootCAPrivBytes)
+	if block2 == nil {
+		return fmt.Errorf("failed to decode CA private key PEM from %s", config.RootCAPriv)
+	}
 	caPriv, err := x509.ParsePKCS8PrivateKey(block2.Bytes)
 	if err != nil {
-		log.Panic(err.Error())
+		return fmt.Errorf("failed to parse CA private key: %w", err)
 	}
+
 	hosts := config.CertHosts
-	var priv interface{}
-	priv, err = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
-		log.Panicf("Failed to generate private key: %v", err)
+		return fmt.Errorf("failed to generate private key: %w", err)
 	}
-	// ECDSA, ED25519 and RSA subject keys should have the DigitalSignature
-	// KeyUsage bits set in the x509.Certificate template
-	keyUsage := x509.KeyUsageDigitalSignature
-	keyUsage |= x509.KeyUsageCertSign
+
+	keyUsage := x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign
 	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
 	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
 	if err != nil {
-		log.Fatalf("Failed to generate serial number: %v", err)
+		return fmt.Errorf("failed to generate serial number: %w", err)
 	}
 	template := x509.Certificate{
 		SerialNumber: serialNumber,
@@ -203,35 +180,38 @@ func GenCert() {
 
 	derBytes, err := x509.CreateCertificate(rand.Reader, &template, caCert, publicKey(priv), caPriv)
 	if err != nil {
-		log.Fatalf("Failed to create certificate: %v", err)
+		return fmt.Errorf("failed to create certificate: %w", err)
 	}
 	certOut, err := os.Create(CertFile)
 	if err != nil {
-		log.Fatalf("Failed to open cert.pem for writing: %v", err)
+		return fmt.Errorf("failed to create cert file %s: %w", CertFile, err)
 	}
 	if err = pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes}); err != nil {
-		log.Fatalf("Failed to write data to cert.pem: %v", err)
+		certOut.Close()
+		return fmt.Errorf("failed to encode cert PEM: %w", err)
 	}
 	if err = certOut.Close(); err != nil {
-		log.Fatalf("Error closing cert.pem: %v", err)
+		return fmt.Errorf("failed to close cert file: %w", err)
 	}
 	log.Debug("wrote cert.pem")
-	keyOut, err := os.OpenFile(KeyFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
-	if err != nil {
-		log.Fatalf("Failed to open key.pem for writing: %v", err)
-		return
-	}
+
 	privBytes, err := x509.MarshalPKCS8PrivateKey(priv)
 	if err != nil {
-		log.Fatalf("Unable to marshal private key: %v", err)
+		return fmt.Errorf("unable to marshal private key: %w", err)
+	}
+	keyOut, err := os.OpenFile(KeyFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
+	if err != nil {
+		return fmt.Errorf("failed to create key file %s: %w", KeyFile, err)
 	}
 	if err := pem.Encode(keyOut, &pem.Block{Type: "PRIVATE KEY", Bytes: privBytes}); err != nil {
-		log.Fatalf("Failed to write data to key.pem: %v", err)
+		keyOut.Close()
+		return fmt.Errorf("failed to encode private key PEM: %w", err)
 	}
 	if err := keyOut.Close(); err != nil {
-		log.Fatalf("Error closing key.pem: %v", err)
+		return fmt.Errorf("failed to close key file: %w", err)
 	}
 	log.Debug("wrote key.pem")
+	return nil
 }
 
 // RotateTLSCerts checks the server certificate's expiration and regenerates
@@ -243,7 +223,9 @@ func RotateTLSCerts(threshold time.Duration) (bool, error) {
 	if err != nil {
 		if os.IsNotExist(err) {
 			// No cert exists — generate fresh.
-			GenCert()
+			if err := GenCert(); err != nil {
+				return false, fmt.Errorf("failed to generate cert: %w", err)
+			}
 			return true, nil
 		}
 		return false, fmt.Errorf("failed to read cert file: %w", err)
@@ -283,6 +265,8 @@ func forceRegenCert() (bool, error) {
 	if err := os.Remove(config.KeyFile); err != nil && !os.IsNotExist(err) {
 		return false, fmt.Errorf("failed to remove old key: %w", err)
 	}
-	GenCert()
+	if err := GenCert(); err != nil {
+		return false, fmt.Errorf("failed to regenerate cert: %w", err)
+	}
 	return true, nil
 }

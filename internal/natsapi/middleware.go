@@ -12,58 +12,58 @@ import (
 // Methods not listed here require ActionAdmin (deny by default).
 var natsActionMap = map[string]rbac.Action{
 	// Read-only
-	"version":         rbac.ActionView,
-	"sprouts.list":    rbac.ActionView,
-	"sprouts.get":     rbac.ActionView,
-	"jobs.list":       rbac.ActionView,
-	"jobs.get":        rbac.ActionView,
-	"jobs.forsprout":  rbac.ActionView,
-	"props.getall":    rbac.ActionView,
-	"props.get":       rbac.ActionView,
-	"cohorts.list":    rbac.ActionView,
-	"cohorts.get":     rbac.ActionView,
-	"cohorts.resolve": rbac.ActionView,
-	"cohorts.refresh": rbac.ActionView,
+	MethodVersion:        rbac.ActionView,
+	MethodSproutsList:    rbac.ActionView,
+	MethodSproutsGet:     rbac.ActionView,
+	MethodJobsList:       rbac.ActionView,
+	MethodJobsGet:        rbac.ActionView,
+	MethodJobsForSprout:  rbac.ActionView,
+	MethodPropsGetAll:    rbac.ActionView,
+	MethodPropsGet:       rbac.ActionView,
+	MethodCohortsList:    rbac.ActionView,
+	MethodCohortsGet:     rbac.ActionView,
+	MethodCohortsResolve: rbac.ActionView,
+	MethodCohortsRefresh: rbac.ActionView,
 
 	// Write: scoped
-	"cook":         rbac.ActionCook,
-	"cmd.run":      rbac.ActionCmd,
-	"shell.start":  rbac.ActionShell,
-	"test.ping":    rbac.ActionTest,
-	"props.set":    rbac.ActionProps,
-	"props.delete": rbac.ActionProps,
-	"jobs.cancel":  rbac.ActionJobAdmin,
+	MethodCook:        rbac.ActionCook,
+	MethodCmdRun:      rbac.ActionCmd,
+	MethodShellStart:  rbac.ActionShell,
+	MethodTestPing:    rbac.ActionTest,
+	MethodPropsSet:    rbac.ActionProps,
+	MethodPropsDelete: rbac.ActionProps,
+	MethodJobsCancel:  rbac.ActionJobAdmin,
 
 	// Global: PKI
-	"pki.list":     rbac.ActionPKI,
-	"pki.accept":   rbac.ActionPKI,
-	"pki.reject":   rbac.ActionPKI,
-	"pki.deny":     rbac.ActionPKI,
-	"pki.unaccept": rbac.ActionPKI,
-	"pki.delete":   rbac.ActionPKI,
+	MethodPKIList:     rbac.ActionPKI,
+	MethodPKIAccept:   rbac.ActionPKI,
+	MethodPKIReject:   rbac.ActionPKI,
+	MethodPKIDeny:     rbac.ActionPKI,
+	MethodPKIUnaccept: rbac.ActionPKI,
+	MethodPKIDelete:   rbac.ActionPKI,
 
 	// Auth
-	"auth.whoami":       rbac.ActionUserRead,
-	"auth.users":        rbac.ActionAdmin,
-	"auth.users.add":    rbac.ActionAdmin,
-	"auth.users.remove": rbac.ActionAdmin,
-	"auth.explain":      rbac.ActionUserRead,
+	MethodAuthWhoAmI:     rbac.ActionUserRead,
+	MethodAuthListUsers:  rbac.ActionAdmin,
+	MethodAuthAddUser:    rbac.ActionAdmin,
+	MethodAuthRemoveUser: rbac.ActionAdmin,
+	MethodAuthExplain:    rbac.ActionUserRead,
 
 	// Recipes (read-only)
-	"recipes.list": rbac.ActionView,
-	"recipes.get":  rbac.ActionView,
+	MethodRecipesList: rbac.ActionView,
+	MethodRecipesGet:  rbac.ActionView,
 
 	// Audit
-	"audit.dates": rbac.ActionAdmin,
-	"audit.query": rbac.ActionAdmin,
+	MethodAuditDates: rbac.ActionAdmin,
+	MethodAuditQuery: rbac.ActionAdmin,
 }
 
 // publicMethods are accessible without a token.
 // version is informational; auth.whoami handles its own auth logic.
 var publicMethods = map[string]bool{
-	"version":      true,
-	"auth.whoami":  true,
-	"auth.explain": true,
+	MethodVersion:     true,
+	MethodAuthWhoAmI:  true,
+	MethodAuthExplain: true,
 }
 
 // NATSMethodAction returns the RBAC action required for a NATS API method.
