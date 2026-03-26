@@ -15,7 +15,6 @@ import (
 	log "github.com/gogrlx/grlx/v2/internal/log"
 
 	"github.com/gogrlx/grlx/v2/internal/api"
-	"github.com/gogrlx/grlx/v2/internal/api/handlers"
 	"github.com/gogrlx/grlx/v2/internal/audit"
 	"github.com/gogrlx/grlx/v2/internal/auth"
 	"github.com/gogrlx/grlx/v2/internal/certs"
@@ -114,7 +113,6 @@ func loadCohortRegistry() {
 		log.Errorf("Failed to load cohort config: %v", err)
 		registry = rbac.NewRegistry()
 	}
-	handlers.SetCohortRegistry(registry)
 	natsapi.SetCohortRegistry(registry)
 	names := registry.List()
 	if len(names) > 0 {
@@ -315,7 +313,6 @@ func ConnectFarmer() {
 	cmd.RegisterNatsConn(nc)
 	cook.RegisterNatsConn(nc)
 	jobs.RegisterNatsConn(nc)
-	handlers.RegisterNatsConn(nc)
 	facts.RegisterFarmerListener(nc)
 
 	// Set version info and subscribe NATS API handlers.
