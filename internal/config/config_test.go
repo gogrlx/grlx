@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/gogrlx/grlx/v2/internal/log"
 	"github.com/taigrr/jety"
@@ -18,9 +19,21 @@ import (
 func resetForTest(t *testing.T, configFile string) {
 	t.Helper()
 	configLoaded = sync.Once{}
+	AdminPubkeys = nil
 	jety.SetConfigType("yaml")
 	jety.SetConfigFile(configFile)
 	_ = jety.ReadInConfig()
+}
+
+// resetForBinaryTest resets all config state: sync.Once, globals, jety, and
+// systemConfigRoot. This ensures complete isolation between tests.
+func resetForBinaryTest(t *testing.T, tmpRoot string) {
+	t.Helper()
+	configLoaded = sync.Once{}
+	AdminPubkeys = nil
+	resetJety(t)
+	setSystemConfigRoot(tmpRoot)
+	t.Cleanup(func() { resetSystemConfigRoot() })
 }
 
 func writeTempConfig(t *testing.T, dir, name, content string) string {
@@ -367,5 +380,335 @@ func TestBinaryConstants(t *testing.T) {
 	}
 	if BinarySprout != "sprout" {
 		t.Errorf("BinarySprout = %q", BinarySprout)
+	}
+}
+
+func TestLoadConfig_FarmerDefaults(t *testing.T) {
+	tmpRoot := t.TempDir()
+	cfgFile := writeTempConfig(t, tmpRoot, "farmer", "")
+	resetForBinaryTest(t, tmpRoot)
+	jety.SetConfigType("yaml")
+	jety.SetConfigFile(cfgFile)
+	_ = jety.ReadInConfig()
+
+	LoadConfig("farmer")
+
+	// Check farmer-specific defaults were applied.
+	if FarmerAPIPort != "5405" {
+		t.Errorf("default FarmerAPIPort = %q, want 5405", FarmerAPIPort)
+	}
+	if FarmerInterface != "localhost" {
+		t.Errorf("default FarmerInterface = %q, want localhost", FarmerInterface)
+	}
+	if FarmerOrganization != "grlx farmer" {
+		t.Errorf("FarmerOrganization = %q, want 'grlx farmer'", FarmerOrganization)
+	}
+	if APIWriteTimeout != 120*time.Second {
+		t.Errorf("APIWriteTimeout = %v, want 2m0s", APIWriteTimeout)
+	}
+	if APIReadTimeout != 120*time.Second {
+		t.Errorf("APIReadTimeout = %v, want 2m0s", APIReadTimeout)
+	}
+	if APIIdleTimeout != 120*time.Second {
+		t.Errorf("APIIdleTimeout = %v, want 2m0s", APIIdleTimeout)
+	}
+	if CertificateValidTime != 365*24*time.Hour {
+		t.Errorf("CertificateValidTime = %v, want 8760h", CertificateValidTime)
+	}
+	if AuditLevel != "write" {
+		t.Errorf("AuditLevel = %q, want write", AuditLevel)
+	}
+	wantPKI := filepath.Join(tmpRoot, "pki/farmer") + "/"
+	if FarmerPKI != wantPKI {
+		t.Errorf("FarmerPKI = %q, want %q", FarmerPKI, wantPKI)
+	}
+	wantCert := filepath.Join(tmpRoot, "pki/farmer/tls-cert.pem")
+	if CertFile != wantCert {
+		t.Errorf("CertFile = %q, want %q", CertFile, wantCert)
+	}
+	wantKey := filepath.Join(tmpRoot, "pki/farmer/tls-key.pem")
+	if KeyFile != wantKey {
+		t.Errorf("KeyFile = %q, want %q", KeyFile, wantKey)
+	}
+	wantRootCA := filepath.Join(tmpRoot, "pki/farmer/tls-rootca.pem")
+	if RootCA != wantRootCA {
+		t.Errorf("RootCA = %q, want %q", RootCA, wantRootCA)
+	}
+}
+
+func TestLoadConfig_FarmerWithCustomInterface(t *testing.T) {
+	tmpRoot := t.TempDir()
+	content := "farmerinterface: 192.168.1.100\nfarmerapiport: \"8080\"\nfarmerbusport: \"8081\"\n"
+	cfgFile := writeTempConfig(t, tmpRoot, "farmer", content)
+	resetForBinaryTest(t, tmpRoot)
+	jety.SetConfigType("yaml")
+	jety.SetConfigFile(cfgFile)
+	_ = jety.ReadInConfig()
+
+	LoadConfig("farmer")
+
+	if FarmerInterface != "192.168.1.100" {
+		t.Errorf("FarmerInterface = %q, want 192.168.1.100", FarmerInterface)
+	}
+	if FarmerAPIPort != "8080" {
+		t.Errorf("FarmerAPIPort = %q, want 8080", FarmerAPIPort)
+	}
+	wantURL := "https://192.168.1.100:8080"
+	if FarmerURL != wantURL {
+		t.Errorf("FarmerURL = %q, want %q", FarmerURL, wantURL)
+	}
+	wantBus := "192.168.1.100:8081"
+	if FarmerBusURL != wantBus {
+		t.Errorf("FarmerBusURL = %q, want %q", FarmerBusURL, wantBus)
+	}
+	// Custom interface should be added to cert hosts.
+	found := false
+	for _, h := range CertHosts {
+		if h == "192.168.1.100" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("CertHosts %v should contain 192.168.1.100", CertHosts)
+	}
+}
+
+func TestLoadConfig_FarmerCertHostsDefault(t *testing.T) {
+	tmpRoot := t.TempDir()
+	cfgFile := writeTempConfig(t, tmpRoot, "farmer", "")
+	resetForBinaryTest(t, tmpRoot)
+	jety.SetConfigType("yaml")
+	jety.SetConfigFile(cfgFile)
+	_ = jety.ReadInConfig()
+
+	LoadConfig("farmer")
+
+	// Default cert hosts should include localhost, 127.0.0.1, farmer, grlx.
+	required := []string{"localhost", "127.0.0.1", "farmer", "grlx"}
+	hostSet := make(map[string]bool)
+	for _, h := range CertHosts {
+		hostSet[h] = true
+	}
+	for _, r := range required {
+		if !hostSet[r] {
+			t.Errorf("CertHosts %v missing required host %q", CertHosts, r)
+		}
+	}
+}
+
+func TestLoadConfig_FarmerAdminPubkeysFromConfig(t *testing.T) {
+	tmpRoot := t.TempDir()
+	content := `pubkeys:
+  admin:
+    - KEY_AAA
+    - KEY_BBB
+`
+	cfgFile := writeTempConfig(t, tmpRoot, "farmer", content)
+	resetForBinaryTest(t, tmpRoot)
+	jety.SetConfigType("yaml")
+	jety.SetConfigFile(cfgFile)
+	_ = jety.ReadInConfig()
+
+	LoadConfig("farmer")
+
+	if len(AdminPubkeys) != 2 {
+		t.Fatalf("AdminPubkeys len = %d, want 2; got %v", len(AdminPubkeys), AdminPubkeys)
+	}
+	keySet := make(map[string]bool)
+	for _, k := range AdminPubkeys {
+		keySet[k] = true
+	}
+	if !keySet["KEY_AAA"] || !keySet["KEY_BBB"] {
+		t.Errorf("AdminPubkeys = %v, want KEY_AAA and KEY_BBB", AdminPubkeys)
+	}
+}
+
+func TestLoadConfig_FarmerAdminPubkeysFromEnv(t *testing.T) {
+	tmpRoot := t.TempDir()
+	cfgFile := writeTempConfig(t, tmpRoot, "farmer", "")
+	resetForBinaryTest(t, tmpRoot)
+	jety.SetConfigType("yaml")
+	jety.SetConfigFile(cfgFile)
+	_ = jety.ReadInConfig()
+
+	t.Setenv("ADMIN_PUBKEYS", "ENVKEY1,ENVKEY2,,ENVKEY3")
+
+	LoadConfig("farmer")
+
+	if len(AdminPubkeys) < 3 {
+		t.Fatalf("AdminPubkeys len = %d, want >= 3; got %v", len(AdminPubkeys), AdminPubkeys)
+	}
+	keySet := make(map[string]bool)
+	for _, k := range AdminPubkeys {
+		keySet[k] = true
+	}
+	for _, want := range []string{"ENVKEY1", "ENVKEY2", "ENVKEY3"} {
+		if !keySet[want] {
+			t.Errorf("AdminPubkeys %v missing %q", AdminPubkeys, want)
+		}
+	}
+}
+
+func TestLoadConfig_FarmerCertHostsFromEnv(t *testing.T) {
+	tmpRoot := t.TempDir()
+	cfgFile := writeTempConfig(t, tmpRoot, "farmer", "")
+	resetForBinaryTest(t, tmpRoot)
+	jety.SetConfigType("yaml")
+	jety.SetConfigFile(cfgFile)
+	_ = jety.ReadInConfig()
+
+	t.Setenv("CERT_HOSTS", "myhost.local,,otherhost.local")
+
+	LoadConfig("farmer")
+
+	hostSet := make(map[string]bool)
+	for _, h := range CertHosts {
+		hostSet[h] = true
+	}
+	for _, want := range []string{"myhost.local", "otherhost.local"} {
+		if !hostSet[want] {
+			t.Errorf("CertHosts %v missing env-provided %q", CertHosts, want)
+		}
+	}
+}
+
+func TestLoadConfig_FarmerJobLogTTL(t *testing.T) {
+	tmpRoot := t.TempDir()
+	content := "joblogttl: 168h\n"
+	cfgFile := writeTempConfig(t, tmpRoot, "farmer", content)
+	resetForBinaryTest(t, tmpRoot)
+	jety.SetConfigType("yaml")
+	jety.SetConfigFile(cfgFile)
+	_ = jety.ReadInConfig()
+
+	LoadConfig("farmer")
+
+	want := 168 * time.Hour
+	if JobLogTTL != want {
+		t.Errorf("JobLogTTL = %v, want %v", JobLogTTL, want)
+	}
+}
+
+func TestLoadConfig_SproutDefaults(t *testing.T) {
+	tmpRoot := t.TempDir()
+	cfgFile := writeTempConfig(t, tmpRoot, "sprout", "")
+	resetForBinaryTest(t, tmpRoot)
+	jety.SetConfigType("yaml")
+	jety.SetConfigFile(cfgFile)
+	_ = jety.ReadInConfig()
+
+	LoadConfig("sprout")
+
+	wantPKI := filepath.Join(tmpRoot, "pki/sprout") + "/"
+	if SproutPKI != wantPKI {
+		t.Errorf("SproutPKI = %q, want %q", SproutPKI, wantPKI)
+	}
+	wantRootCA := filepath.Join(tmpRoot, "pki/sprout/tls-rootca.pem")
+	if SproutRootCA != wantRootCA {
+		t.Errorf("SproutRootCA = %q, want %q", SproutRootCA, wantRootCA)
+	}
+	if JobLogDir != "/var/cache/grlx/sprout/jobs" {
+		t.Errorf("JobLogDir = %q, want /var/cache/grlx/sprout/jobs", JobLogDir)
+	}
+	wantNKeyPub := filepath.Join(tmpRoot, "pki/sprout/sprout.nkey.pub")
+	if NKeySproutPubFile != wantNKeyPub {
+		t.Errorf("NKeySproutPubFile = %q, want %q", NKeySproutPubFile, wantNKeyPub)
+	}
+	wantNKeyPriv := filepath.Join(tmpRoot, "pki/sprout/sprout.nkey")
+	if NKeySproutPrivFile != wantNKeyPriv {
+		t.Errorf("NKeySproutPrivFile = %q, want %q", NKeySproutPrivFile, wantNKeyPriv)
+	}
+}
+
+func TestLoadConfig_SproutWithCustomID(t *testing.T) {
+	tmpRoot := t.TempDir()
+	content := "sproutid: my-custom-sprout\nloglevel: warn\n"
+	cfgFile := writeTempConfig(t, tmpRoot, "sprout", content)
+	resetForBinaryTest(t, tmpRoot)
+	jety.SetConfigType("yaml")
+	jety.SetConfigFile(cfgFile)
+	_ = jety.ReadInConfig()
+
+	LoadConfig("sprout")
+
+	if SproutID != "my-custom-sprout" {
+		t.Errorf("SproutID = %q, want my-custom-sprout", SproutID)
+	}
+	if LogLevel != log.LWarn {
+		t.Errorf("LogLevel = %v, want LWarn", LogLevel)
+	}
+}
+
+func TestLoadConfig_SproutCreatesConfigIfMissing(t *testing.T) {
+	tmpRoot := t.TempDir()
+	// Don't create the sprout config file — LoadConfig should create it.
+	resetForBinaryTest(t, tmpRoot)
+
+	LoadConfig("sprout")
+
+	cfgFile := filepath.Join(tmpRoot, "sprout")
+	if _, err := os.Stat(cfgFile); os.IsNotExist(err) {
+		t.Error("LoadConfig should create the sprout config file")
+	}
+}
+
+func TestLoadConfig_FarmerCreatesConfigIfMissing(t *testing.T) {
+	tmpRoot := t.TempDir()
+	// Don't create the farmer config file — LoadConfig should create it.
+	resetForBinaryTest(t, tmpRoot)
+
+	LoadConfig("farmer")
+
+	cfgFile := filepath.Join(tmpRoot, "farmer")
+	if _, err := os.Stat(cfgFile); os.IsNotExist(err) {
+		t.Error("LoadConfig should create the farmer config file")
+	}
+}
+
+func TestLoadConfig_FarmerCertHostsFromConfig(t *testing.T) {
+	tmpRoot := t.TempDir()
+	content := `certhosts:
+  - custom-host-1
+  - custom-host-2
+`
+	cfgFile := writeTempConfig(t, tmpRoot, "farmer", content)
+	resetForBinaryTest(t, tmpRoot)
+	jety.SetConfigType("yaml")
+	jety.SetConfigFile(cfgFile)
+	_ = jety.ReadInConfig()
+
+	LoadConfig("farmer")
+
+	hostSet := make(map[string]bool)
+	for _, h := range CertHosts {
+		hostSet[h] = true
+	}
+	if !hostSet["custom-host-1"] || !hostSet["custom-host-2"] {
+		t.Errorf("CertHosts %v should contain custom-host-1 and custom-host-2", CertHosts)
+	}
+}
+
+func TestLoadConfig_FarmerPropsDir(t *testing.T) {
+	tmpRoot := t.TempDir()
+	content := "propsdir: /custom/props\n"
+	cfgFile := writeTempConfig(t, tmpRoot, "farmer", content)
+	resetForBinaryTest(t, tmpRoot)
+	jety.SetConfigType("yaml")
+	jety.SetConfigFile(cfgFile)
+	_ = jety.ReadInConfig()
+
+	LoadConfig("farmer")
+
+	if PropsDir != "/custom/props" {
+		t.Errorf("PropsDir = %q, want /custom/props", PropsDir)
+	}
+}
+
+func TestStaticProps_Empty(t *testing.T) {
+	jety.Set("props.static", nil)
+	props := StaticProps()
+	if len(props) != 0 {
+		t.Errorf("StaticProps() = %v, want empty", props)
 	}
 }

@@ -19,6 +19,20 @@ var BuildInfo Version
 
 var configLoaded sync.Once
 
+// systemConfigRoot is the root directory for farmer/sprout config files.
+// Defaults to "/etc/grlx". Tests can override via setSystemConfigRoot.
+var systemConfigRoot = "/etc/grlx"
+
+// setSystemConfigRoot overrides the config root for testing.
+func setSystemConfigRoot(root string) {
+	systemConfigRoot = root
+}
+
+// resetSystemConfigRoot restores the default config root.
+func resetSystemConfigRoot() {
+	systemConfigRoot = "/etc/grlx"
+}
+
 var (
 	AdminPubkeys         []string
 	APIIdleTimeout       time.Duration
@@ -82,9 +96,9 @@ func LoadConfig(binary string) {
 			cfgPath := filepath.Join(dirname, ".config/grlx/")
 			jety.SetConfigFile(filepath.Join(cfgPath, "grlx"))
 		case "farmer":
-			jety.SetConfigFile("/etc/grlx/farmer")
+			jety.SetConfigFile(filepath.Join(systemConfigRoot, "farmer"))
 		case "sprout":
-			jety.SetConfigFile("/etc/grlx/sprout")
+			jety.SetConfigFile(filepath.Join(systemConfigRoot, "sprout"))
 		}
 		err := jety.ReadInConfig()
 
@@ -104,15 +118,15 @@ func LoadConfig(binary string) {
 					log.Fatal(err)
 				}
 			case "farmer":
-				os.MkdirAll("/etc/grlx", 0o755)
-				cfgFile := filepath.Join("/etc/grlx", "farmer")
+				os.MkdirAll(systemConfigRoot, 0o755)
+				cfgFile := filepath.Join(systemConfigRoot, "farmer")
 				_, err = os.Create(cfgFile)
 				if err != nil {
 					log.Fatal(err)
 				}
 			case "sprout":
-				os.MkdirAll("/etc/grlx", 0o755)
-				cfgFile := filepath.Join("/etc/grlx", "sprout")
+				os.MkdirAll(systemConfigRoot, 0o755)
+				cfgFile := filepath.Join(systemConfigRoot, "sprout")
 				_, err = os.Create(cfgFile)
 				if err != nil {
 					log.Fatal(err)
@@ -124,7 +138,7 @@ func LoadConfig(binary string) {
 		}
 		jety.SetDefault("loglevel", "info")
 		jety.SetDefault("cachedir", "/var/cache/grlx/sprout/files/provided")
-		jety.SetDefault("configroot", "/etc/grlx/")
+		jety.SetDefault("configroot", systemConfigRoot+"/")
 		jety.SetDefault("recipedir", filepath.Join("/", "srv", "grlx", "recipes", "prod"))
 		jety.SetDefault("farmerinterface", "localhost")
 		jety.SetDefault("farmerapiport", "5405")
@@ -146,18 +160,18 @@ func LoadConfig(binary string) {
 			jety.SetDefault("apireadtimeout", 120*time.Second)
 			jety.SetDefault("apiidletimeout", 120*time.Second)
 			jety.SetDefault("certificatevalidtime", 365*24*time.Hour)
-			jety.SetDefault("certfile", "/etc/grlx/pki/farmer/tls-cert.pem")
-			jety.SetDefault("farmerpki", "/etc/grlx/pki/farmer/")
-			jety.SetDefault("keyfile", "/etc/grlx/pki/farmer/tls-key.pem")
+			jety.SetDefault("certfile", filepath.Join(systemConfigRoot, "pki/farmer/tls-cert.pem"))
+			jety.SetDefault("farmerpki", filepath.Join(systemConfigRoot, "pki/farmer")+"/")
+			jety.SetDefault("keyfile", filepath.Join(systemConfigRoot, "pki/farmer/tls-key.pem"))
 			jety.SetDefault("auditlogdir", "/var/log/grlx/audit")
 			jety.SetDefault("auditlevel", "write")
 			jety.SetDefault("joblogdir", "/var/cache/grlx/farmer/jobs")
 			jety.SetDefault("joblogttl", 30*24*time.Hour) // 30 days default
 			jety.SetDefault("propsdir", "/var/cache/grlx/farmer/props")
-			jety.SetDefault("nkeyfarmerpubfile", "/etc/grlx/pki/farmer/farmer.nkey.pub")
-			jety.SetDefault("nkeyfarmerprivfile", "/etc/grlx/pki/farmer/farmer.nkey")
-			jety.SetDefault("rootca", "/etc/grlx/pki/farmer/tls-rootca.pem")
-			jety.SetDefault("rootcapriv", "/etc/grlx/pki/farmer/tls-rootca-key.pem")
+			jety.SetDefault("nkeyfarmerpubfile", filepath.Join(systemConfigRoot, "pki/farmer/farmer.nkey.pub"))
+			jety.SetDefault("nkeyfarmerprivfile", filepath.Join(systemConfigRoot, "pki/farmer/farmer.nkey"))
+			jety.SetDefault("rootca", filepath.Join(systemConfigRoot, "pki/farmer/tls-rootca.pem"))
+			jety.SetDefault("rootcapriv", filepath.Join(systemConfigRoot, "pki/farmer/tls-rootca-key.pem"))
 			jety.SetDefault("farmerorganization", "grlx farmer")
 			JobLogDir = jety.GetString("joblogdir")
 			JobLogTTL = jety.GetDuration("joblogttl")
@@ -168,13 +182,14 @@ func LoadConfig(binary string) {
 			if len(AdminPubKeys) == 0 {
 				if keyList, found := os.LookupEnv("ADMIN_PUBKEYS"); found {
 					pubkeys := strings.Split(keyList, ",")
-					adminSet := make(map[string][]string)
-					adminSet["admin"] = []string{}
+					adminSet := make(map[string]any)
+					keys := []any{}
 					for _, v := range pubkeys {
 						if v != "" {
-							adminSet["admin"] = append(adminSet["admin"], v)
+							keys = append(keys, v)
 						}
 					}
+					adminSet["admin"] = keys
 					jety.Set("pubkeys", adminSet)
 				}
 			}
@@ -217,11 +232,11 @@ func LoadConfig(binary string) {
 
 		case "sprout":
 			jety.SetDefault("sproutid", "")
-			jety.SetDefault("sproutpki", "/etc/grlx/pki/sprout/")
-			jety.SetDefault("sproutrootca", "/etc/grlx/pki/sprout/tls-rootca.pem")
-			jety.SetDefault("nkeysproutpubfile", "/etc/grlx/pki/sprout/sprout.nkey.pub")
+			jety.SetDefault("sproutpki", filepath.Join(systemConfigRoot, "pki/sprout")+"/")
+			jety.SetDefault("sproutrootca", filepath.Join(systemConfigRoot, "pki/sprout/tls-rootca.pem"))
+			jety.SetDefault("nkeysproutpubfile", filepath.Join(systemConfigRoot, "pki/sprout/sprout.nkey.pub"))
 			jety.SetDefault("joblogdir", "/var/cache/grlx/sprout/jobs")
-			jety.SetDefault("nkeysproutprivfile", "/etc/grlx/pki/sprout/sprout.nkey")
+			jety.SetDefault("nkeysproutprivfile", filepath.Join(systemConfigRoot, "pki/sprout/sprout.nkey"))
 			jety.SetDefault("cachedir", "/var/cache/grlx/sprout/files/provided")
 			jety.SetDefault("rootca_retry_delay", 5*time.Second)
 			jety.SetDefault("nkey_retry_delay", 5*time.Second)
