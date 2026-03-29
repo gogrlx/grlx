@@ -9,25 +9,30 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/fatih/color"
 
 	"github.com/gogrlx/grlx/v2/internal/cook"
 	"github.com/gogrlx/grlx/v2/internal/jobs"
 )
 
 // captureStdout runs fn and returns whatever it wrote to os.Stdout.
+// It also redirects color.Output so fatih/color writes are captured.
 func captureStdout(t *testing.T, fn func()) string {
 	t.Helper()
 	old := os.Stdout
+	oldColor := color.Output
 	r, w, err := os.Pipe()
 	if err != nil {
 		t.Fatal(err)
 	}
 	os.Stdout = w
+	color.Output = w
 
 	fn()
 
 	w.Close()
 	os.Stdout = old
+	color.Output = oldColor
 
 	var buf bytes.Buffer
 	io.Copy(&buf, r)

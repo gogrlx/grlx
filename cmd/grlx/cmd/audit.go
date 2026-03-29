@@ -30,8 +30,10 @@ var cmdAuditDates = &cobra.Command{
 	Use:   "dates",
 	Short: "List available audit log dates",
 	Run: func(cmd *cobra.Command, args []string) {
-		if err := client.ConnectNats(); err != nil {
-			log.Fatal(err)
+		if client.NatsConn == nil {
+			if err := client.ConnectNats(); err != nil {
+				log.Fatal(err)
+			}
 		}
 
 		dates, err := client.ListAuditDates()
@@ -74,8 +76,10 @@ Examples:
   grlx audit list --failed               # only failed actions
   grlx audit list --limit 20             # last 20 entries`,
 	Run: func(cmd *cobra.Command, args []string) {
-		if err := client.ConnectNats(); err != nil {
-			log.Fatal(err)
+		if client.NatsConn == nil {
+			if err := client.ConnectNats(); err != nil {
+				log.Fatal(err)
+			}
 		}
 
 		params := audit.QueryParams{
