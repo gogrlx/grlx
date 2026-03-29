@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 
 	"crypto/ecdsa"
@@ -216,6 +217,100 @@ func TestPutNKey_SameIDDifferentKey(t *testing.T) {
 	rejPath := filepath.Join(dir, "sprouts", "rejected", "conflict-sprout_1")
 	if _, err := os.Stat(rejPath); os.IsNotExist(err) {
 		t.Error("expected conflicting key to be saved as conflict-sprout_1 in rejected")
+	}
+}
+
+func TestPutNKey_SameIDDifferentKey_MatchInLoop(t *testing.T) {
+	dir := setupPKIDirs(t)
+
+	// Existing sprout with ID "loop-sprout" has key A
+	existingKey := generateTestUserNKey(t)
+	writeSproutKey(t, dir, "accepted", "loop-sprout", existingKey)
+
+	// A _1 suffix already exists with key B (the one we'll re-submit)
+	sameKey := generateTestUserNKey(t)
+	writeSproutKey(t, dir, "rejected", "loop-sprout_1", sameKey)
+
+	// Re-submitting key B should match at _1 and return 200 success
+	body, _ := json.Marshal(pki.KeySubmission{
+		SproutID: "loop-sprout",
+		NKey:     sameKey,
+	})
+	req := httptest.NewRequest(http.MethodPut, "/nkey", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+	PutNKey(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp apitypes.Inline
+	json.Unmarshal(w.Body.Bytes(), &resp)
+	if !resp.Success {
+		t.Error("expected success=true for re-submitted known key in loop")
+	}
+}
+
+func TestPutNKey_Over100Keys_ServiceUnavailable(t *testing.T) {
+	dir := setupPKIDirs(t)
+
+	// Create 100 different keys for the same sprout ID (base + _1.._99)
+	baseKey := generateTestUserNKey(t)
+	writeSproutKey(t, dir, "accepted", "flood-sprout", baseKey)
+
+	for i := 1; i < 100; i++ {
+		suffixedKey := generateTestUserNKey(t)
+		name := "flood-sprout_" + strconv.Itoa(i)
+		writeSproutKey(t, dir, "rejected", name, suffixedKey)
+	}
+
+	// Submit a brand new key — should hit the 100-key overflow
+	newKey := generateTestUserNKey(t)
+	body, _ := json.Marshal(pki.KeySubmission{
+		SproutID: "flood-sprout",
+		NKey:     newKey,
+	})
+	req := httptest.NewRequest(http.MethodPut, "/nkey", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+	PutNKey(w, req)
+
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("expected 503 for 100+ keys, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp apitypes.Inline
+	json.Unmarshal(w.Body.Bytes(), &resp)
+	if resp.Success {
+		t.Error("expected success=false for overflow")
+	}
+}
+
+func TestPutNKey_EmptyBody(t *testing.T) {
+	setupPKIDirs(t)
+
+	req := httptest.NewRequest(http.MethodPut, "/nkey", bytes.NewReader([]byte("")))
+	w := httptest.NewRecorder()
+	PutNKey(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 for empty body, got %d", w.Code)
+	}
+}
+
+func TestPutNKey_EmptySproutID(t *testing.T) {
+	setupPKIDirs(t)
+
+	nkey := generateTestUserNKey(t)
+	body, _ := json.Marshal(pki.KeySubmission{
+		SproutID: "",
+		NKey:     nkey,
+	})
+	req := httptest.NewRequest(http.MethodPut, "/nkey", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+	PutNKey(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 for empty sprout ID, got %d", w.Code)
 	}
 }
 
