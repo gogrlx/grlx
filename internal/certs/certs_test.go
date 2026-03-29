@@ -1177,3 +1177,296 @@ func TestRotateTLSCertsReadError(t *testing.T) {
 		t.Fatal("expected error when cert file cannot be read")
 	}
 }
+
+func TestGenNKeyStatErrorNotENOENT(t *testing.T) {
+	// Cover the branch: os.Stat returns an error that is NOT os.IsNotExist.
+	// This happens when the parent directory has no execute permission (EACCES).
+	dir := t.TempDir()
+	noExecDir := filepath.Join(dir, "noexec")
+	if err := os.MkdirAll(noExecDir, 0o755); err != nil {
+		t.Fatalf("failed to create dir: %v", err)
+	}
+
+	config.NKeyFarmerPrivFile = filepath.Join(noExecDir, "subdir", "farmer.nkey")
+	config.NKeyFarmerPubFile = filepath.Join(dir, "farmer.pub")
+
+	// Remove execute permission from noExecDir — os.Stat on the nested path
+	// returns EACCES (not ENOENT).
+	if err := os.Chmod(noExecDir, 0o600); err != nil {
+		t.Fatalf("failed to chmod: %v", err)
+	}
+	defer os.Chmod(noExecDir, 0o755)
+
+	err := GenNKey(true)
+	if err == nil {
+		t.Fatal("GenNKey should fail when stat returns non-ENOENT error")
+	}
+}
+
+func TestForceRegenCertGenCertFails(t *testing.T) {
+	// Cover the branch in forceRegenCert where GenCert fails after removing
+	// cert and key (line 268-270).
+	dir := setupTLSConfigDir(t)
+
+	// Generate valid certs first.
+	if err := GenCert(); err != nil {
+		t.Fatalf("GenCert failed: %v", err)
+	}
+
+	// Now make the cert directory unwritable so GenCert fails after removal.
+	readonlyDir := filepath.Join(dir, "certout")
+	if err := os.MkdirAll(readonlyDir, 0o755); err != nil {
+		t.Fatalf("failed to create certout dir: %v", err)
+	}
+	// Move cert+key into the new dir.
+	newCert := filepath.Join(readonlyDir, "cert.pem")
+	newKey := filepath.Join(readonlyDir, "key.pem")
+	if err := os.Rename(config.CertFile, newCert); err != nil {
+		t.Fatalf("rename cert: %v", err)
+	}
+	if err := os.Rename(config.KeyFile, newKey); err != nil {
+		t.Fatalf("rename key: %v", err)
+	}
+	config.CertFile = newCert
+	config.KeyFile = newKey
+
+	// Lock the directory after removing cert+key won't work because forceRegenCert
+	// removes them then calls GenCert. We need GenCert to fail: corrupt the CA.
+	if err := os.WriteFile(config.RootCA, []byte("corrupt"), 0o644); err != nil {
+		t.Fatalf("failed to corrupt CA: %v", err)
+	}
+	// Also remove RootCAPriv so genCACert will try to regenerate CA, but
+	// point it to an unwritable location.
+	os.Remove(config.RootCAPriv)
+	unwritable := filepath.Join(dir, "locked")
+	if err := os.MkdirAll(unwritable, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	config.RootCA = filepath.Join(unwritable, "rootCA.pem")
+	config.RootCAPriv = filepath.Join(unwritable, "rootCA-key.pem")
+	if err := os.Chmod(unwritable, 0o555); err != nil {
+		t.Fatalf("chmod: %v", err)
+	}
+	defer os.Chmod(unwritable, 0o755)
+
+	rotated, err := forceRegenCert()
+	if err == nil {
+		t.Fatal("expected error when GenCert fails inside forceRegenCert")
+	}
+	if rotated {
+		t.Fatal("should not report rotation on failure")
+	}
+}
+
+func TestRotateTLSCertsGenCertFailsOnMissing(t *testing.T) {
+	// Cover the branch: cert file doesn't exist → GenCert fails (line 226-228).
+	dir := t.TempDir()
+	config.RootCA = filepath.Join(dir, "rootCA.pem")
+	config.RootCAPriv = filepath.Join(dir, "rootCA-key.pem")
+	config.CertHosts = []string{"localhost"}
+	config.FarmerOrganization = "grlx-test"
+	config.CertificateValidTime = 24 * time.Hour
+
+	// CertFile doesn't exist, and we make the cert output dir unwritable.
+	unwritable := filepath.Join(dir, "locked")
+	if err := os.MkdirAll(unwritable, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	config.CertFile = filepath.Join(unwritable, "cert.pem")
+	config.KeyFile = filepath.Join(unwritable, "key.pem")
+
+	// Also make CA dir unwritable so genCACert fails.
+	config.RootCA = filepath.Join(unwritable, "rootCA.pem")
+	config.RootCAPriv = filepath.Join(unwritable, "rootCA-key.pem")
+	if err := os.Chmod(unwritable, 0o555); err != nil {
+		t.Fatalf("chmod: %v", err)
+	}
+	defer os.Chmod(unwritable, 0o755)
+
+	_, err := RotateTLSCerts(1 * time.Hour)
+	if err == nil {
+		t.Fatal("expected error when GenCert fails on missing cert")
+	}
+}
+
+func TestRotateTLSCertsForceRegenFails(t *testing.T) {
+	// Cover the branch: cert exists but is corrupt PEM, and forceRegenCert
+	// fails because GenCert can't write.
+	dir := t.TempDir()
+	unwritable := filepath.Join(dir, "locked")
+	writableDir := t.TempDir()
+	if err := os.MkdirAll(unwritable, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+
+	config.RootCA = filepath.Join(unwritable, "rootCA.pem")
+	config.RootCAPriv = filepath.Join(unwritable, "rootCA-key.pem")
+	config.CertHosts = []string{"localhost"}
+	config.FarmerOrganization = "grlx-test"
+	config.CertificateValidTime = 24 * time.Hour
+	// CertFile in the writable dir so we can create it, then lock things up.
+	config.CertFile = filepath.Join(writableDir, "cert.pem")
+	config.KeyFile = filepath.Join(writableDir, "key.pem")
+
+	// Write corrupt PEM cert — RotateTLSCerts will try forceRegenCert.
+	if err := os.WriteFile(config.CertFile, []byte("not valid pem"), 0o644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	// Lock the CA dir so GenCert fails inside forceRegenCert.
+	if err := os.Chmod(unwritable, 0o555); err != nil {
+		t.Fatalf("chmod: %v", err)
+	}
+	defer os.Chmod(unwritable, 0o755)
+
+	_, err := RotateTLSCerts(1 * time.Hour)
+	if err == nil {
+		t.Fatal("expected error when forceRegenCert fails during rotation")
+	}
+}
+
+func TestRotateTLSCertsInvalidDERForceRegenFails(t *testing.T) {
+	// Cover the branch: cert has valid PEM but invalid DER, and forceRegenCert fails.
+	dir := t.TempDir()
+	unwritable := filepath.Join(dir, "locked")
+	writableDir := t.TempDir()
+	if err := os.MkdirAll(unwritable, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+
+	config.RootCA = filepath.Join(unwritable, "rootCA.pem")
+	config.RootCAPriv = filepath.Join(unwritable, "rootCA-key.pem")
+	config.CertHosts = []string{"localhost"}
+	config.FarmerOrganization = "grlx-test"
+	config.CertificateValidTime = 24 * time.Hour
+	config.CertFile = filepath.Join(writableDir, "cert.pem")
+	config.KeyFile = filepath.Join(writableDir, "key.pem")
+
+	// Write valid PEM wrapping invalid DER.
+	badPEM := pem.EncodeToMemory(&pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: []byte("bad DER data"),
+	})
+	if err := os.WriteFile(config.CertFile, badPEM, 0o644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	// Lock the CA dir so GenCert fails.
+	if err := os.Chmod(unwritable, 0o555); err != nil {
+		t.Fatalf("chmod: %v", err)
+	}
+	defer os.Chmod(unwritable, 0o755)
+
+	_, err := RotateTLSCerts(1 * time.Hour)
+	if err == nil {
+		t.Fatal("expected error when forceRegenCert fails after invalid DER")
+	}
+}
+
+func TestGenCertCertCloseError(t *testing.T) {
+	// This test verifies that GenCert handles the case where the cert
+	// file directory becomes read-only right after CA generation, covering
+	// the cert file creation failure path.
+	dir := setupTLSConfigDir(t)
+
+	// Generate CA in a separate writable dir.
+	if err := genCACert(); err != nil {
+		t.Fatalf("genCACert failed: %v", err)
+	}
+
+	// Point cert file to a new read-only dir (key stays in writable dir).
+	certDir := filepath.Join(dir, "certonly")
+	if err := os.MkdirAll(certDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	config.CertFile = filepath.Join(certDir, "cert.pem")
+	if err := os.Chmod(certDir, 0o555); err != nil {
+		t.Fatalf("chmod: %v", err)
+	}
+	defer os.Chmod(certDir, 0o755)
+
+	err := GenCert()
+	if err == nil {
+		t.Fatal("GenCert should fail when cert file cannot be created")
+	}
+}
+
+func TestGenNKeyWritePubFails(t *testing.T) {
+	// Cover GenNKey error when pub key write fails but stat returns ENOENT.
+	// Dir has read+execute (so stat can see file doesn't exist) but no write.
+	dir := t.TempDir()
+	noWriteDir := filepath.Join(dir, "nowrite")
+	if err := os.MkdirAll(noWriteDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+
+	// Priv file in writable dir so stat returns ENOENT.
+	config.NKeyFarmerPrivFile = filepath.Join(dir, "farmer.nkey")
+	// Pub file in read-only dir so write fails.
+	config.NKeyFarmerPubFile = filepath.Join(noWriteDir, "farmer.pub")
+
+	if err := os.Chmod(noWriteDir, 0o555); err != nil {
+		t.Fatalf("chmod: %v", err)
+	}
+	defer os.Chmod(noWriteDir, 0o755)
+
+	err := GenNKey(true)
+	if err == nil {
+		t.Fatal("GenNKey should fail when pub key write fails")
+	}
+}
+
+func TestGenNKeyWritePrivFails(t *testing.T) {
+	// Cover GenNKey error when priv key write fails after pub succeeds.
+	// Both are in different dirs: priv dir is read-only, pub dir is writable.
+	dir := t.TempDir()
+	noWriteDir := filepath.Join(dir, "nowrite")
+	if err := os.MkdirAll(noWriteDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+
+	// Priv file in read-only dir — stat returns ENOENT (file doesn't exist,
+	// but dir is readable so stat can check).
+	config.NKeyFarmerPrivFile = filepath.Join(noWriteDir, "farmer.nkey")
+	// Pub file in writable dir — write succeeds.
+	config.NKeyFarmerPubFile = filepath.Join(dir, "farmer.pub")
+
+	if err := os.Chmod(noWriteDir, 0o555); err != nil {
+		t.Fatalf("chmod: %v", err)
+	}
+	defer os.Chmod(noWriteDir, 0o755)
+
+	err := GenNKey(true)
+	if err == nil {
+		t.Fatal("GenNKey should fail when priv key write fails")
+	}
+}
+
+func TestGenCACertCertCloseAndKeyWrite(t *testing.T) {
+	// Cover genCACert branch: CA cert writes fine but CA key dir is unwritable.
+	// This specifically targets lines 96-103.
+	certDir := t.TempDir()
+	keyDir := filepath.Join(t.TempDir(), "locked")
+	if err := os.MkdirAll(keyDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+
+	config.RootCA = filepath.Join(certDir, "rootCA.pem")
+	config.RootCAPriv = filepath.Join(keyDir, "rootCA-key.pem")
+	config.CertFile = filepath.Join(certDir, "cert.pem")
+	config.KeyFile = filepath.Join(certDir, "key.pem")
+	config.CertHosts = []string{"localhost"}
+	config.FarmerOrganization = "grlx-test"
+	config.CertificateValidTime = 24 * time.Hour
+
+	// Lock key dir before calling genCACert.
+	if err := os.Chmod(keyDir, 0o555); err != nil {
+		t.Fatalf("chmod: %v", err)
+	}
+	defer os.Chmod(keyDir, 0o755)
+
+	err := genCACert()
+	if err == nil {
+		t.Fatal("genCACert should fail when CA key directory is not writable")
+	}
+}
