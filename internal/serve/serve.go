@@ -89,7 +89,9 @@ func NewMux() *http.ServeMux {
 	mux.HandleFunc("GET /api/v1/logs/stream", HandleLogStream)
 	mux.HandleFunc("GET /api/v1/logs", HandleRecentLogs)
 
-	// Serve embedded web UI (SPA with index.html fallback)
+	// Serve embedded web UI (SPA with index.html fallback).
+	// Static assets get long-lived cache headers; gzip is applied
+	// at the middleware level via WithGzip.
 	mux.Handle("GET /", UIHandler())
 
 	return mux

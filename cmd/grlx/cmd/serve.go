@@ -54,7 +54,7 @@ func runServe(ctx context.Context) error {
 	listenAddr := net.JoinHostPort(serveAddr, servePort)
 	server := &http.Server{
 		Addr:         listenAddr,
-		Handler:      serve.WithCORS(mux),
+		Handler:      serve.WithGzip(serve.WithCORS(mux)),
 		ReadTimeout:  30 * time.Second,
 		WriteTimeout: 30 * time.Second,
 		IdleTimeout:  120 * time.Second,
