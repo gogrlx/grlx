@@ -252,7 +252,7 @@ func TestWhoAmIWithValidToken(t *testing.T) {
 	SetPolicy(rs, urm, nil)
 	defer SetPolicy(nil, nil, nil)
 
-	gotPK, roleName, err := WhoAmI(token)
+	gotPK, roleName, _, err := WhoAmI(token)
 	if err != nil {
 		t.Fatalf("WhoAmI() error: %v", err)
 	}
@@ -270,12 +270,40 @@ func TestWhoAmIUnknownUser(t *testing.T) {
 	SetPolicy(rbac.NewRoleStore(), rbac.NewUserRoleMap(), nil)
 	defer SetPolicy(nil, nil, nil)
 
-	_, roleName, err := WhoAmI(token)
+	_, roleName, _, err := WhoAmI(token)
 	if err != nil {
 		t.Fatalf("WhoAmI() error: %v", err)
 	}
 	if roleName != "" {
 		t.Errorf("WhoAmI() role = %q, want empty for unknown user", roleName)
+	}
+}
+
+func TestWhoAmIWithUsername(t *testing.T) {
+	token, pk := makeValidToken(t)
+
+	rs := rbac.NewRoleStore()
+	rs.Register(&rbac.Role{
+		Name:  "admin",
+		Rules: []rbac.Rule{{Action: rbac.ActionAdmin, Scope: "*"}},
+	})
+
+	urm := rbac.NewUserRoleMap()
+	urm.Set(pk, "admin")
+	urm.SetUsername(pk, "alice")
+
+	SetPolicy(rs, urm, nil)
+	defer SetPolicy(nil, nil, nil)
+
+	_, roleName, username, err := WhoAmI(token)
+	if err != nil {
+		t.Fatalf("WhoAmI() error: %v", err)
+	}
+	if roleName != "admin" {
+		t.Errorf("WhoAmI() role = %q, want 'admin'", roleName)
+	}
+	if username != "alice" {
+		t.Errorf("WhoAmI() username = %q, want 'alice'", username)
 	}
 }
 

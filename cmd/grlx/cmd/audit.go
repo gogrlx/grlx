@@ -17,6 +17,7 @@ var (
 	auditDate       string
 	auditAction     string
 	auditPubkey     string
+	auditUsername   string
 	auditLimit      int
 	auditFailedOnly bool
 )
@@ -74,7 +75,8 @@ Examples:
   grlx audit list --date 2026-03-12      # specific date
   grlx audit list --action cook          # only cook actions
   grlx audit list --failed               # only failed actions
-  grlx audit list --limit 20             # last 20 entries`,
+  grlx audit list --limit 20             # last 20 entries
+  grlx audit list --username alice       # entries by username`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if client.NatsConn == nil {
 			if err := client.ConnectNats(); err != nil {
@@ -86,6 +88,7 @@ Examples:
 			Date:       auditDate,
 			Action:     auditAction,
 			Pubkey:     auditPubkey,
+			Username:   auditUsername,
 			Limit:      auditLimit,
 			FailedOnly: auditFailedOnly,
 		}
@@ -112,9 +115,9 @@ Examples:
 			headerColor.Printf("Audit log for %s (%d entries, showing %d)\n\n",
 				result.Date, result.Total, len(result.Entries))
 
-			headerColor.Printf("%-20s  %-12s  %-8s  %-18s  %s\n",
-				"TIMESTAMP", "ACTION", "STATUS", "ROLE", "TARGETS")
-			fmt.Println(strings.Repeat("─", 80))
+			headerColor.Printf("%-20s  %-12s  %-8s  %-12s  %-18s  %s\n",
+				"TIMESTAMP", "ACTION", "STATUS", "USER", "ROLE", "TARGETS")
+			fmt.Println(strings.Repeat("─", 90))
 
 			successColor := color.New(color.FgGreen)
 			failColor := color.New(color.FgRed)
@@ -140,9 +143,13 @@ Examples:
 				if roleName == "" {
 					roleName = "-"
 				}
+				username := e.Username
+				if username == "" {
+					username = "-"
+				}
 
-				fmt.Printf("%-20s  %-12s  %s  %-18s  %s\n",
-					ts, e.Action, statusPrint, roleName, targets)
+				fmt.Printf("%-20s  %-12s  %s  %-12s  %-18s  %s\n",
+					ts, e.Action, statusPrint, username, roleName, targets)
 
 				if !e.Success && e.Error != "" {
 					failColor.Printf("  └─ %s\n", e.Error)
@@ -167,6 +174,7 @@ func init() {
 	cmdAuditList.Flags().StringVar(&auditDate, "date", "", "Filter by date (YYYY-MM-DD, default: today)")
 	cmdAuditList.Flags().StringVar(&auditAction, "action", "", "Filter by action name (e.g. cook, pki.accept)")
 	cmdAuditList.Flags().StringVar(&auditPubkey, "pubkey", "", "Filter by user pubkey")
+	cmdAuditList.Flags().StringVar(&auditUsername, "username", "", "Filter by username")
 	cmdAuditList.Flags().IntVar(&auditLimit, "limit", 50, "Maximum entries to return")
 	cmdAuditList.Flags().BoolVar(&auditFailedOnly, "failed", false, "Show only failed actions")
 

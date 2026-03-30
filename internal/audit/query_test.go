@@ -2,6 +2,7 @@ package audit
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -316,5 +317,36 @@ not json at all
 	}
 	if result.Total != 2 {
 		t.Errorf("total = %d, want 2 (malformed line skipped)", result.Total)
+	}
+}
+
+func TestQueryByUsername(t *testing.T) {
+	dir := t.TempDir()
+	today := time.Now().UTC().Format("2006-01-02")
+	path := filepath.Join(dir, fmt.Sprintf("audit-%s.jsonl", today))
+
+	content := `{"timestamp":"2026-03-13T01:00:00Z","pubkey":"KEY1","username":"alice","action":"cook","success":true}
+{"timestamp":"2026-03-13T02:00:00Z","pubkey":"KEY2","username":"bob","action":"cook","success":true}
+{"timestamp":"2026-03-13T03:00:00Z","pubkey":"KEY1","username":"alice","action":"props.set","success":true}
+`
+	os.WriteFile(path, []byte(content), 0o640)
+
+	logger, err := NewLogger(dir)
+	if err != nil {
+		t.Fatalf("NewLogger: %v", err)
+	}
+	defer logger.Close()
+
+	result, err := logger.Query(QueryParams{Username: "alice"})
+	if err != nil {
+		t.Fatalf("Query: %v", err)
+	}
+	if result.Total != 2 {
+		t.Errorf("total = %d, want 2 entries for alice", result.Total)
+	}
+	for _, e := range result.Entries {
+		if e.Username != "alice" {
+			t.Errorf("entry username = %q, want alice", e.Username)
+		}
 	}
 }

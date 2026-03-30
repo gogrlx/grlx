@@ -49,7 +49,7 @@ func handleCook(params json.RawMessage) (any, error) {
 		json.Unmarshal(params, &tp)
 	}
 	if tp.Token != "" {
-		if pk, _, resolveErr := auth.WhoAmI(tp.Token); resolveErr == nil {
+		if pk, _, _, resolveErr := auth.WhoAmI(tp.Token); resolveErr == nil {
 			invokerPubkey = pk
 		}
 	}

@@ -1060,3 +1060,149 @@ func TestParseCompoundExpr(t *testing.T) {
 		})
 	}
 }
+
+func TestUserRoleMapUsername(t *testing.T) {
+	m := NewUserRoleMap()
+
+	m.Set("APUBKEY1", "admin")
+	m.SetUsername("APUBKEY1", "alice")
+	m.Set("APUBKEY2", "viewer")
+
+	if got := m.Username("APUBKEY1"); got != "alice" {
+		t.Errorf("Username(APUBKEY1) = %q, want 'alice'", got)
+	}
+	if got := m.Username("APUBKEY2"); got != "" {
+		t.Errorf("Username(APUBKEY2) = %q, want empty", got)
+	}
+
+	names := m.AllWithUsernames()
+	if len(names) != 1 {
+		t.Errorf("AllWithUsernames() len = %d, want 1", len(names))
+	}
+	if names["APUBKEY1"] != "alice" {
+		t.Errorf("AllWithUsernames()[APUBKEY1] = %q, want 'alice'", names["APUBKEY1"])
+	}
+}
+
+func TestUserRoleMapDeleteRemovesUsername(t *testing.T) {
+	m := NewUserRoleMap()
+	m.Set("APUBKEY1", "admin")
+	m.SetUsername("APUBKEY1", "alice")
+
+	m.Delete("APUBKEY1")
+
+	if got := m.Username("APUBKEY1"); got != "" {
+		t.Errorf("after Delete, Username() = %q, want empty", got)
+	}
+	if got := m.RoleName("APUBKEY1"); got != "" {
+		t.Errorf("after Delete, RoleName() = %q, want empty", got)
+	}
+}
+
+func TestParseUserEntries(t *testing.T) {
+	tests := []struct {
+		name  string
+		input any
+		want  []userEntry
+	}{
+		{
+			name:  "plain strings",
+			input: []any{"APUBKEY1", "APUBKEY2"},
+			want:  []userEntry{{Pubkey: "APUBKEY1"}, {Pubkey: "APUBKEY2"}},
+		},
+		{
+			name: "rich format",
+			input: []any{
+				map[string]any{"pubkey": "APUBKEY1", "username": "alice"},
+				map[string]any{"pubkey": "APUBKEY2", "username": "bob"},
+			},
+			want: []userEntry{
+				{Pubkey: "APUBKEY1", Username: "alice"},
+				{Pubkey: "APUBKEY2", Username: "bob"},
+			},
+		},
+		{
+			name: "mixed format",
+			input: []any{
+				"APUBKEY1",
+				map[string]any{"pubkey": "APUBKEY2", "username": "bob"},
+			},
+			want: []userEntry{
+				{Pubkey: "APUBKEY1"},
+				{Pubkey: "APUBKEY2", Username: "bob"},
+			},
+		},
+		{
+			name: "rich without username",
+			input: []any{
+				map[string]any{"pubkey": "APUBKEY1"},
+			},
+			want: []userEntry{{Pubkey: "APUBKEY1"}},
+		},
+		{
+			name:  "single string",
+			input: "APUBKEY1",
+			want:  []userEntry{{Pubkey: "APUBKEY1"}},
+		},
+		{
+			name:  "nil",
+			input: nil,
+			want:  nil,
+		},
+		{
+			name: "skip empty pubkey maps",
+			input: []any{
+				map[string]any{"username": "orphan"},
+			},
+			want: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := parseUserEntries(tt.input)
+			if len(got) != len(tt.want) {
+				t.Fatalf("parseUserEntries() len = %d, want %d", len(got), len(tt.want))
+			}
+			for i := range got {
+				if got[i].Pubkey != tt.want[i].Pubkey {
+					t.Errorf("[%d] Pubkey = %q, want %q", i, got[i].Pubkey, tt.want[i].Pubkey)
+				}
+				if got[i].Username != tt.want[i].Username {
+					t.Errorf("[%d] Username = %q, want %q", i, got[i].Username, tt.want[i].Username)
+				}
+			}
+		})
+	}
+}
+
+func TestLoadUsersWithUsernames(t *testing.T) {
+	setupJetyForRBACTest(t)
+	defer clearJetyRBACKeys(t)
+
+	jety.Set("users", map[string]any{
+		"admin": []any{
+			map[string]any{"pubkey": "APUBKEY1", "username": "alice"},
+			map[string]any{"pubkey": "APUBKEY2", "username": "bob"},
+		},
+		"viewer": []any{"APUBKEY3"},
+	})
+
+	m := LoadUsersFromConfig()
+
+	if m.RoleName("APUBKEY1") != "admin" {
+		t.Errorf("APUBKEY1 role = %q, want 'admin'", m.RoleName("APUBKEY1"))
+	}
+	if m.Username("APUBKEY1") != "alice" {
+		t.Errorf("APUBKEY1 username = %q, want 'alice'", m.Username("APUBKEY1"))
+	}
+	if m.Username("APUBKEY2") != "bob" {
+		t.Errorf("APUBKEY2 username = %q, want 'bob'", m.Username("APUBKEY2"))
+	}
+	if m.RoleName("APUBKEY3") != "viewer" {
+		t.Errorf("APUBKEY3 role = %q, want 'viewer'", m.RoleName("APUBKEY3"))
+	}
+	if m.Username("APUBKEY3") != "" {
+		t.Errorf("APUBKEY3 username = %q, want empty", m.Username("APUBKEY3"))
+	}
+}

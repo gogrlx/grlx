@@ -41,10 +41,11 @@ var authWhoAmICmd = &cobra.Command{
 		switch outputMode {
 		case "json":
 			result := struct {
-				Pubkey string `json:"pubkey"`
-				Role   string `json:"role"`
-				Error  string `json:"error,omitempty"`
-			}{Pubkey: info.Pubkey, Role: info.RoleName}
+				Pubkey   string `json:"pubkey"`
+				Role     string `json:"role"`
+				Username string `json:"username,omitempty"`
+				Error    string `json:"error,omitempty"`
+			}{Pubkey: info.Pubkey, Role: info.RoleName, Username: info.Username}
 			if err != nil {
 				result.Error = err.Error()
 			}
@@ -59,6 +60,9 @@ var authWhoAmICmd = &cobra.Command{
 			if err != nil {
 				log.Println("Error: " + err.Error())
 				os.Exit(1)
+			}
+			if info.Username != "" {
+				fmt.Printf("User:   %s\n", info.Username)
 			}
 			fmt.Printf("Pubkey: %s\nRole:   %s\n", info.Pubkey, info.RoleName)
 		}

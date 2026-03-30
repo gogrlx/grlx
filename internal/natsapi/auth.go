@@ -30,7 +30,7 @@ func handleAuthWhoAmI(params json.RawMessage) (any, error) {
 		return nil, fmt.Errorf("unauthorized")
 	}
 
-	pubkey, roleName, err := intauth.WhoAmI(p.Token)
+	pubkey, roleName, username, err := intauth.WhoAmI(p.Token)
 	if err != nil {
 		return nil, fmt.Errorf("unauthorized")
 	}
@@ -38,6 +38,7 @@ func handleAuthWhoAmI(params json.RawMessage) (any, error) {
 	return apitypes.UserInfo{
 		Pubkey:   pubkey,
 		RoleName: roleName,
+		Username: username,
 	}, nil
 }
 
@@ -61,7 +62,7 @@ func handleAuthExplain(params json.RawMessage) (any, error) {
 		return nil, fmt.Errorf("unauthorized")
 	}
 
-	pubkey, roleName, err := intauth.WhoAmI(p.Token)
+	pubkey, roleName, _, err := intauth.WhoAmI(p.Token)
 	if err != nil {
 		return nil, fmt.Errorf("unauthorized")
 	}

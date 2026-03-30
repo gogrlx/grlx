@@ -734,7 +734,7 @@ func TestNewTokenWithPolicyEndToEnd(t *testing.T) {
 		t.Error("valid admin token should have admin action")
 	}
 
-	gotPK, roleName, err := WhoAmI(token)
+	gotPK, roleName, _, err := WhoAmI(token)
 	if err != nil {
 		t.Fatalf("WhoAmI failed: %v", err)
 	}

@@ -108,7 +108,7 @@ func resolveCallerIdentity(params json.RawMessage) (pubkey, roleName string) {
 	if err := json.Unmarshal(params, &tp); err != nil || tp.Token == "" {
 		return "", ""
 	}
-	pk, role, err := intauth.WhoAmI(tp.Token)
+	pk, role, _, err := intauth.WhoAmI(tp.Token)
 	if err != nil {
 		return "", ""
 	}

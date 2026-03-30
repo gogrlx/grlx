@@ -74,7 +74,7 @@ func TestDangerouslyAllowRootBypassesTokenHasAccess(t *testing.T) {
 }
 
 func TestWhoAmIInvalidToken(t *testing.T) {
-	_, roleName, err := WhoAmI("invalid-token")
+	_, roleName, _, err := WhoAmI("invalid-token")
 	if err == nil {
 		t.Error("expected error for invalid token")
 	}

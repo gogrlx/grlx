@@ -23,6 +23,9 @@ type QueryParams struct {
 	// Pubkey filters entries by user pubkey (exact match).
 	Pubkey string `json:"pubkey,omitempty"`
 
+	// Username filters entries by username (exact match).
+	Username string `json:"username,omitempty"`
+
 	// Limit caps the number of entries returned. 0 means 100.
 	Limit int `json:"limit,omitempty"`
 
@@ -82,6 +85,9 @@ func (l *Logger) Query(params QueryParams) (QueryResult, error) {
 			continue
 		}
 		if params.Pubkey != "" && entry.Pubkey != params.Pubkey {
+			continue
+		}
+		if params.Username != "" && entry.Username != params.Username {
 			continue
 		}
 		if params.FailedOnly && entry.Success {
