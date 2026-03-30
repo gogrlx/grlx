@@ -188,3 +188,60 @@ func TestRefreshCohort_Error(t *testing.T) {
 		t.Fatal("expected error")
 	}
 }
+
+func TestValidateCohorts_Valid(t *testing.T) {
+	cleanup := startTestNATS(t)
+	defer cleanup()
+
+	want := CohortValidateResponse{
+		Valid:   true,
+		Cohorts: 3,
+	}
+	mockHandler(t, NatsConn, "grlx.api.cohorts.validate", want)
+
+	got, err := ValidateCohorts()
+	if err != nil {
+		t.Fatalf("ValidateCohorts: %v", err)
+	}
+	if !got.Valid {
+		t.Error("expected valid")
+	}
+	if got.Cohorts != 3 {
+		t.Errorf("expected 3 cohorts, got %d", got.Cohorts)
+	}
+}
+
+func TestValidateCohorts_Invalid(t *testing.T) {
+	cleanup := startTestNATS(t)
+	defer cleanup()
+
+	want := CohortValidateResponse{
+		Valid:   false,
+		Errors:  []string{"cohort not found: \"bad\" references unknown operand \"ghost\""},
+		Cohorts: 2,
+	}
+	mockHandler(t, NatsConn, "grlx.api.cohorts.validate", want)
+
+	got, err := ValidateCohorts()
+	if err != nil {
+		t.Fatalf("ValidateCohorts: %v", err)
+	}
+	if got.Valid {
+		t.Error("expected invalid")
+	}
+	if len(got.Errors) != 1 {
+		t.Fatalf("expected 1 error, got %d", len(got.Errors))
+	}
+}
+
+func TestValidateCohorts_NATSError(t *testing.T) {
+	cleanup := startTestNATS(t)
+	defer cleanup()
+
+	mockErrorHandler(t, NatsConn, "grlx.api.cohorts.validate", "connection failed")
+
+	_, err := ValidateCohorts()
+	if err == nil {
+		t.Fatal("expected error")
+	}
+}

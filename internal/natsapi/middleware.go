@@ -12,18 +12,19 @@ import (
 // Methods not listed here require ActionAdmin (deny by default).
 var natsActionMap = map[string]rbac.Action{
 	// Read-only
-	MethodVersion:        rbac.ActionView,
-	MethodSproutsList:    rbac.ActionView,
-	MethodSproutsGet:     rbac.ActionView,
-	MethodJobsList:       rbac.ActionView,
-	MethodJobsGet:        rbac.ActionView,
-	MethodJobsForSprout:  rbac.ActionView,
-	MethodPropsGetAll:    rbac.ActionView,
-	MethodPropsGet:       rbac.ActionView,
-	MethodCohortsList:    rbac.ActionView,
-	MethodCohortsGet:     rbac.ActionView,
-	MethodCohortsResolve: rbac.ActionView,
-	MethodCohortsRefresh: rbac.ActionView,
+	MethodVersion:         rbac.ActionView,
+	MethodSproutsList:     rbac.ActionView,
+	MethodSproutsGet:      rbac.ActionView,
+	MethodJobsList:        rbac.ActionView,
+	MethodJobsGet:         rbac.ActionView,
+	MethodJobsForSprout:   rbac.ActionView,
+	MethodPropsGetAll:     rbac.ActionView,
+	MethodPropsGet:        rbac.ActionView,
+	MethodCohortsList:     rbac.ActionView,
+	MethodCohortsGet:      rbac.ActionView,
+	MethodCohortsResolve:  rbac.ActionView,
+	MethodCohortsRefresh:  rbac.ActionView,
+	MethodCohortsValidate: rbac.ActionView,
 
 	// Write: scoped
 	MethodCook:        rbac.ActionCook,

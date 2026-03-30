@@ -169,14 +169,27 @@ func (r *Registry) Register(c *Cohort) error {
 // ValidateReferences checks that all compound cohort operands reference
 // cohorts that exist in the registry, and that no reference chains exceed
 // MaxNestingDepth. Call after all cohorts are registered.
+// Returns the first error encountered.
 func (r *Registry) ValidateReferences() error {
+	errs := r.ValidateReferencesAll()
+	if len(errs) > 0 {
+		return errs[0]
+	}
+	return nil
+}
+
+// ValidateReferencesAll checks all compound cohort references and returns
+// every validation error found (missing operands, circular references,
+// exceeded nesting depth). Returns nil if all references are valid.
+func (r *Registry) ValidateReferencesAll() []error {
+	var errs []error
 	for name, c := range r.cohorts {
 		if c.Type != CohortTypeCompound {
 			continue
 		}
 		for _, op := range c.Compound.Operands {
 			if _, ok := r.cohorts[op]; !ok {
-				return fmt.Errorf("%w: cohort %q references unknown operand %q", ErrCohortNotFound, name, op)
+				errs = append(errs, fmt.Errorf("%w: cohort %q references unknown operand %q", ErrCohortNotFound, name, op))
 			}
 		}
 	}
@@ -187,13 +200,17 @@ func (r *Registry) ValidateReferences() error {
 		}
 		depth, err := r.computeDepth(name, make(map[string]bool))
 		if err != nil {
-			return err
+			errs = append(errs, err)
+			continue
 		}
 		if depth > MaxNestingDepth {
-			return fmt.Errorf("%w: cohort %q has depth %d", ErrMaxDepthExceeded, name, depth)
+			errs = append(errs, fmt.Errorf("%w: cohort %q has depth %d", ErrMaxDepthExceeded, name, depth))
 		}
 	}
-	return nil
+	if len(errs) == 0 {
+		return nil
+	}
+	return errs
 }
 
 // computeDepth returns the maximum nesting depth for a cohort.

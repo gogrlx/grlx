@@ -194,3 +194,34 @@ func handleCohortsRefresh(params json.RawMessage) (any, error) {
 	}
 	return CohortRefreshResponse{Refreshed: results}, nil
 }
+
+// CohortValidateResponse describes the outcome of validating all cohort references.
+type CohortValidateResponse struct {
+	Valid   bool     `json:"valid"`
+	Errors  []string `json:"errors,omitempty"`
+	Cohorts int      `json:"cohorts"`
+}
+
+func handleCohortsValidate(_ json.RawMessage) (any, error) {
+	if cohortRegistry == nil {
+		return CohortValidateResponse{Valid: true, Cohorts: 0}, nil
+	}
+
+	names := cohortRegistry.List()
+	resp := CohortValidateResponse{
+		Cohorts: len(names),
+	}
+
+	errs := cohortRegistry.ValidateReferencesAll()
+	if len(errs) > 0 {
+		resp.Valid = false
+		resp.Errors = make([]string, len(errs))
+		for i, e := range errs {
+			resp.Errors[i] = e.Error()
+		}
+	} else {
+		resp.Valid = true
+	}
+
+	return resp, nil
+}

@@ -116,6 +116,9 @@ func loadCohortRegistry() {
 		log.Errorf("Failed to load cohort config: %v", err)
 		registry = rbac.NewRegistry()
 	}
+	if err := registry.ValidateReferences(); err != nil {
+		log.Errorf("Cohort reference validation failed: %v", err)
+	}
 	natsapi.SetCohortRegistry(registry)
 	names := registry.List()
 	if len(names) > 0 {

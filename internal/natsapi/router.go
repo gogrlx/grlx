@@ -68,10 +68,11 @@ var routes = map[string]handler{
 	MethodPropsDelete: handlePropsDelete,
 
 	// Cohorts
-	MethodCohortsList:    handleCohortsList,
-	MethodCohortsGet:     handleCohortsGet,
-	MethodCohortsResolve: handleCohortsResolve,
-	MethodCohortsRefresh: handleCohortsRefresh,
+	MethodCohortsList:     handleCohortsList,
+	MethodCohortsGet:      handleCohortsGet,
+	MethodCohortsResolve:  handleCohortsResolve,
+	MethodCohortsRefresh:  handleCohortsRefresh,
+	MethodCohortsValidate: handleCohortsValidate,
 
 	// Auth
 	MethodAuthWhoAmI:     handleAuthWhoAmI,

@@ -105,3 +105,25 @@ func RefreshAllCohorts() (*CohortRefreshResponse, error) {
 	}
 	return &result, nil
 }
+
+// CohortValidateResponse describes the outcome of validating cohort references.
+type CohortValidateResponse struct {
+	Valid   bool     `json:"valid"`
+	Errors  []string `json:"errors,omitempty"`
+	Cohorts int      `json:"cohorts"`
+}
+
+// ValidateCohorts checks that all cohort references are valid, there are no
+// circular references, and nesting depth is within limits.
+func ValidateCohorts() (*CohortValidateResponse, error) {
+	resp, err := NatsRequest("cohorts.validate", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var result CohortValidateResponse
+	if err := json.Unmarshal(resp, &result); err != nil {
+		return nil, fmt.Errorf("validate cohorts: %w", err)
+	}
+	return &result, nil
+}
