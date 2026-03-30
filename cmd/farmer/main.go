@@ -64,6 +64,9 @@ func main() {
 	}
 	RunNATSServer()
 	StartAPIServer()
+	cohortCtx, cohortCancel := context.WithCancel(context.Background())
+	defer cohortCancel()
+	natsapi.StartCohortRefresher(cohortCtx, config.CohortRefreshInterval)
 	go ConnectFarmer()
 	go handleSIGHUP()
 	select {}
