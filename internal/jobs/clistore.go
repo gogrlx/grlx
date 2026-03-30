@@ -245,6 +245,153 @@ func (s *CLIStore) ListJobs(limit int, userKey string, sproutFilter string) ([]J
 	return allSummaries, nil
 }
 
+// DeleteJob removes a job's JSONL and metadata files from local storage.
+func (s *CLIStore) DeleteJob(jid string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	sprouts, err := s.listSproutDirs()
+	if err != nil {
+		return err
+	}
+
+	found := false
+	for _, sproutID := range sprouts {
+		sproutDir := filepath.Join(s.logDir, sproutID)
+		jobFile := filepath.Join(sproutDir, fmt.Sprintf("%s.jsonl", jid))
+		metaFile := filepath.Join(sproutDir, fmt.Sprintf("%s.meta.json", jid))
+
+		if _, statErr := os.Stat(jobFile); statErr == nil {
+			found = true
+			if rmErr := os.Remove(jobFile); rmErr != nil {
+				return fmt.Errorf("removing job file: %w", rmErr)
+			}
+			os.Remove(metaFile) // best-effort
+
+			// Remove empty sprout directory.
+			remaining, _ := os.ReadDir(sproutDir)
+			if len(remaining) == 0 {
+				os.Remove(sproutDir)
+			}
+		}
+	}
+
+	if !found {
+		return ErrJobNotFound
+	}
+	return nil
+}
+
+// CLIStoreStats holds summary statistics for the local job store.
+type CLIStoreStats struct {
+	TotalJobs    int   `json:"total_jobs"`
+	TotalSprouts int   `json:"total_sprouts"`
+	DiskBytes    int64 `json:"disk_bytes"`
+}
+
+// Stats returns summary statistics for the local CLI job store.
+func (s *CLIStore) Stats() (*CLIStoreStats, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	sprouts, err := s.listSproutDirs()
+	if err != nil {
+		return nil, err
+	}
+
+	stats := &CLIStoreStats{
+		TotalSprouts: len(sprouts),
+	}
+
+	for _, sproutID := range sprouts {
+		sproutDir := filepath.Join(s.logDir, sproutID)
+		entries, readErr := os.ReadDir(sproutDir)
+		if readErr != nil {
+			continue
+		}
+		for _, entry := range entries {
+			if entry.IsDir() {
+				continue
+			}
+			if strings.HasSuffix(entry.Name(), ".jsonl") {
+				stats.TotalJobs++
+			}
+			info, infoErr := entry.Info()
+			if infoErr == nil {
+				stats.DiskBytes += info.Size()
+			}
+		}
+	}
+
+	return stats, nil
+}
+
+// Purge removes all job files older than the given duration. Returns
+// the number of jobs removed.
+func (s *CLIStore) Purge(olderThan time.Duration) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	cutoff := time.Now().Add(-olderThan)
+	sprouts, err := s.listSproutDirs()
+	if err != nil {
+		return 0, err
+	}
+
+	removed := 0
+	for _, sproutID := range sprouts {
+		sproutDir := filepath.Join(s.logDir, sproutID)
+		entries, readErr := os.ReadDir(sproutDir)
+		if readErr != nil {
+			continue
+		}
+		for _, entry := range entries {
+			if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".jsonl") {
+				continue
+			}
+			info, infoErr := entry.Info()
+			if infoErr != nil {
+				continue
+			}
+			if info.ModTime().Before(cutoff) {
+				jobFile := filepath.Join(sproutDir, entry.Name())
+				if rmErr := os.Remove(jobFile); rmErr != nil {
+					continue
+				}
+				removed++
+				// Remove companion meta file.
+				jid := strings.TrimSuffix(entry.Name(), ".jsonl")
+				metaFile := filepath.Join(sproutDir, fmt.Sprintf("%s.meta.json", jid))
+				os.Remove(metaFile)
+			}
+		}
+		// Clean up empty sprout dirs.
+		remaining, _ := os.ReadDir(sproutDir)
+		if len(remaining) == 0 {
+			os.Remove(sproutDir)
+		}
+	}
+
+	return removed, nil
+}
+
+// StartReaper launches a background goroutine that periodically removes
+// CLI-side job log files older than the given TTL. It checks once per hour.
+// A TTL of 0 or negative disables expiration entirely.
+func (s *CLIStore) StartReaper(ttl time.Duration) {
+	if ttl <= 0 {
+		return
+	}
+	go func() {
+		s.Purge(ttl)
+		ticker := time.NewTicker(1 * time.Hour)
+		defer ticker.Stop()
+		for range ticker.C {
+			s.Purge(ttl)
+		}
+	}()
+}
+
 // listSproutDirs returns directory names under the store dir.
 func (s *CLIStore) listSproutDirs() ([]string, error) {
 	entries, err := os.ReadDir(s.logDir)
