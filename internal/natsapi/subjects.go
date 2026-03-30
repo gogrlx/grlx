@@ -65,10 +65,11 @@ const (
 	MethodPropsDelete = "props.delete"
 
 	// Cohorts
-	MethodCohortsList    = "cohorts.list"
-	MethodCohortsGet     = "cohorts.get"
-	MethodCohortsResolve = "cohorts.resolve"
-	MethodCohortsRefresh = "cohorts.refresh"
+	MethodCohortsList     = "cohorts.list"
+	MethodCohortsGet      = "cohorts.get"
+	MethodCohortsResolve  = "cohorts.resolve"
+	MethodCohortsRefresh  = "cohorts.refresh"
+	MethodCohortsValidate = "cohorts.validate"
 
 	// Auth
 	MethodAuthWhoAmI     = "auth.whoami"
@@ -225,6 +226,9 @@ type CohortsResolveResponse struct {
 // CohortsRefreshResponse wraps the results of a refresh operation.
 type CohortsRefreshResponse = CohortRefreshResponse
 
+// CohortsValidateResponse describes whether all cohort references are valid.
+type CohortsValidateResponse = CohortValidateResponse
+
 // ShellStartResponse contains session subjects for the CLI to use.
 type ShellStartResponse = shell.StartResponse
 
@@ -263,7 +267,7 @@ func AllMethods() []string {
 		MethodCook,
 		MethodJobsList, MethodJobsGet, MethodJobsCancel, MethodJobsForSprout,
 		MethodPropsGetAll, MethodPropsGet, MethodPropsSet, MethodPropsDelete,
-		MethodCohortsList, MethodCohortsGet, MethodCohortsResolve, MethodCohortsRefresh,
+		MethodCohortsList, MethodCohortsGet, MethodCohortsResolve, MethodCohortsRefresh, MethodCohortsValidate,
 		MethodAuthWhoAmI, MethodAuthListUsers, MethodAuthAddUser, MethodAuthRemoveUser, MethodAuthExplain,
 		MethodShellStart,
 		MethodRecipesList, MethodRecipesGet,

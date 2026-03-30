@@ -654,3 +654,78 @@ func TestResolveMultiOperandAND(t *testing.T) {
 		t.Errorf("Resolve() = %v, want only s1", result)
 	}
 }
+
+func TestValidateReferencesAllMultipleErrors(t *testing.T) {
+	reg := NewRegistry()
+	_ = reg.Register(&Cohort{Name: "a", Type: CohortTypeStatic, Members: []string{"s1"}})
+	// Two compound cohorts each referencing a missing operand.
+	reg.cohorts["bad1"] = &Cohort{
+		Name: "bad1", Type: CohortTypeCompound,
+		Compound: &CompoundExpr{Operator: OperatorAND, Operands: []string{"a", "ghost1"}},
+	}
+	reg.cohorts["bad2"] = &Cohort{
+		Name: "bad2", Type: CohortTypeCompound,
+		Compound: &CompoundExpr{Operator: OperatorOR, Operands: []string{"a", "ghost2"}},
+	}
+
+	errs := reg.ValidateReferencesAll()
+	if len(errs) < 2 {
+		t.Fatalf("ValidateReferencesAll() returned %d errors, want at least 2", len(errs))
+	}
+
+	// The single-error version should return just the first.
+	err := reg.ValidateReferences()
+	if err == nil {
+		t.Fatal("ValidateReferences() expected error")
+	}
+}
+
+func TestValidateReferencesAllNoErrors(t *testing.T) {
+	reg := NewRegistry()
+	_ = reg.Register(&Cohort{Name: "a", Type: CohortTypeStatic, Members: []string{"s1"}})
+	_ = reg.Register(&Cohort{Name: "b", Type: CohortTypeStatic, Members: []string{"s2"}})
+	_ = reg.Register(&Cohort{
+		Name: "combo", Type: CohortTypeCompound,
+		Compound: &CompoundExpr{Operator: OperatorOR, Operands: []string{"a", "b"}},
+	})
+
+	errs := reg.ValidateReferencesAll()
+	if errs != nil {
+		t.Fatalf("ValidateReferencesAll() returned %v, want nil", errs)
+	}
+}
+
+func TestValidateReferencesAllCircularAndMissing(t *testing.T) {
+	reg := NewRegistry()
+	_ = reg.Register(&Cohort{Name: "leaf", Type: CohortTypeStatic, Members: []string{"s1"}})
+	// Circular: x -> y -> x
+	reg.cohorts["x"] = &Cohort{
+		Name: "x", Type: CohortTypeCompound,
+		Compound: &CompoundExpr{Operator: OperatorAND, Operands: []string{"y", "leaf"}},
+	}
+	reg.cohorts["y"] = &Cohort{
+		Name: "y", Type: CohortTypeCompound,
+		Compound: &CompoundExpr{Operator: OperatorAND, Operands: []string{"x", "leaf"}},
+	}
+	// Missing reference
+	reg.cohorts["z"] = &Cohort{
+		Name: "z", Type: CohortTypeCompound,
+		Compound: &CompoundExpr{Operator: OperatorOR, Operands: []string{"leaf", "nonexistent"}},
+	}
+
+	errs := reg.ValidateReferencesAll()
+	if len(errs) == 0 {
+		t.Fatal("ValidateReferencesAll() expected errors for circular + missing")
+	}
+
+	// Should find at least the missing reference error.
+	foundMissing := false
+	for _, e := range errs {
+		if errors.Is(e, ErrCohortNotFound) {
+			foundMissing = true
+		}
+	}
+	if !foundMissing {
+		t.Error("expected at least one ErrCohortNotFound error")
+	}
+}

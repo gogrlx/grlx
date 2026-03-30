@@ -181,10 +181,55 @@ are refreshed.`,
 	},
 }
 
+var cmdCohortsValidate = &cobra.Command{
+	Use:   "validate",
+	Short: "Validate that all cohort references are resolvable",
+	Long: `Check that all compound cohort operands reference existing cohorts,
+no circular references exist, and nesting depth does not exceed the
+maximum. Returns non-zero exit code if validation fails.`,
+	Args: cobra.NoArgs,
+	Run: func(cmd *cobra.Command, args []string) {
+		resp, err := client.NatsRequest("cohorts.validate", nil)
+		if err != nil {
+			log.Fatalf("Failed to validate cohorts: %v", err)
+		}
+
+		var result struct {
+			Valid   bool     `json:"valid"`
+			Errors  []string `json:"errors,omitempty"`
+			Cohorts int      `json:"cohorts"`
+		}
+		if err := json.Unmarshal(resp, &result); err != nil {
+			log.Fatalf("Failed to decode response: %v", err)
+		}
+
+		switch outputMode {
+		case "json":
+			jw, _ := json.Marshal(result)
+			fmt.Println(string(jw))
+		default:
+			fmt.Printf("Cohorts: %d\n", result.Cohorts)
+			if result.Valid {
+				color.Green("All cohort references are valid.")
+			} else {
+				color.Red("Validation failed:")
+				for _, e := range result.Errors {
+					fmt.Printf("  - %s\n", e)
+				}
+			}
+		}
+
+		if !result.Valid {
+			log.Fatalf("")
+		}
+	},
+}
+
 func init() {
 	cmdCohorts.AddCommand(cmdCohortsList)
 	cmdCohorts.AddCommand(cmdCohortsShow)
 	cmdCohorts.AddCommand(cmdCohortsResolve)
 	cmdCohorts.AddCommand(cmdCohortsRefresh)
+	cmdCohorts.AddCommand(cmdCohortsValidate)
 	rootCmd.AddCommand(cmdCohorts)
 }
