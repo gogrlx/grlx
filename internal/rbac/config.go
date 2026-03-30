@@ -13,6 +13,10 @@ import (
 // multiple roles in the users/pubkeys config sections.
 var ErrDuplicatePubkey = errors.New("duplicate pubkey assignment")
 
+// ErrDuplicateUsername is returned when two or more pubkeys share the
+// same username in the users config section.
+var ErrDuplicateUsername = errors.New("duplicate username")
+
 // RoleStore holds all custom role definitions loaded from config.
 type RoleStore struct {
 	roles map[string]*Role
@@ -383,6 +387,50 @@ func ValidateUserUniqueness() error {
 	sort.Strings(dupes)
 	return fmt.Errorf("%w: the following pubkeys are assigned to multiple roles:\n%s",
 		ErrDuplicatePubkey, strings.Join(dupes, "\n"))
+}
+
+// ValidateUsernameUniqueness checks the "users" config section for
+// entries where two or more pubkeys share the same username. Duplicate
+// usernames would make audit logs ambiguous and prevent reliable
+// identification. Returns an error listing every conflicting username and
+// the pubkeys that claim it. Empty/missing usernames are ignored.
+func ValidateUsernameUniqueness() error {
+	seen := make(map[string][]string) // username → list of pubkeys
+
+	usersMap := jety.GetStringMap("users")
+	for _, v := range usersMap {
+		entries := parseUserEntries(v)
+		for _, e := range entries {
+			if e.Username == "" {
+				continue
+			}
+			seen[e.Username] = append(seen[e.Username], e.Pubkey)
+		}
+	}
+
+	var dupes []string
+	for username, pubkeys := range seen {
+		if len(pubkeys) > 1 {
+			sort.Strings(pubkeys)
+			// Truncate pubkeys for readability.
+			truncated := make([]string, len(pubkeys))
+			for i, pk := range pubkeys {
+				if len(pk) > 16 {
+					truncated[i] = pk[:16] + "..."
+				} else {
+					truncated[i] = pk
+				}
+			}
+			dupes = append(dupes, fmt.Sprintf("  %q → [%s]", username, strings.Join(truncated, ", ")))
+		}
+	}
+	if len(dupes) == 0 {
+		return nil
+	}
+
+	sort.Strings(dupes)
+	return fmt.Errorf("%w: the following usernames are assigned to multiple pubkeys:\n%s",
+		ErrDuplicateUsername, strings.Join(dupes, "\n"))
 }
 
 // LoadCohortsFromConfig reads the "cohorts" section from the farmer config

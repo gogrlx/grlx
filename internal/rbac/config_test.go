@@ -1,8 +1,10 @@
 package rbac
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/taigrr/jety"
@@ -675,6 +677,114 @@ func TestValidateUserUniqueness_CrossSectionJety(t *testing.T) {
 	err := ValidateUserUniqueness()
 	if err == nil {
 		t.Error("expected error for cross-section duplicate")
+	}
+}
+
+func TestValidateUsernameUniqueness_NoDuplicates(t *testing.T) {
+	setupJetyForRBACTest(t)
+	defer clearJetyRBACKeys(t)
+
+	jety.Set("users", map[string]any{
+		"admin": []any{
+			map[string]any{"pubkey": "KEY_A", "username": "alice"},
+			map[string]any{"pubkey": "KEY_B", "username": "bob"},
+		},
+	})
+
+	err := ValidateUsernameUniqueness()
+	if err != nil {
+		t.Errorf("expected no error for unique usernames, got: %v", err)
+	}
+}
+
+func TestValidateUsernameUniqueness_DetectsDuplicate(t *testing.T) {
+	setupJetyForRBACTest(t)
+	defer clearJetyRBACKeys(t)
+
+	jety.Set("users", map[string]any{
+		"admin": []any{
+			map[string]any{"pubkey": "KEY_A", "username": "alice"},
+		},
+		"viewer": []any{
+			map[string]any{"pubkey": "KEY_B", "username": "alice"},
+		},
+	})
+
+	err := ValidateUsernameUniqueness()
+	if err == nil {
+		t.Fatal("expected error for duplicate username 'alice' across roles")
+	}
+	if !errors.Is(err, ErrDuplicateUsername) {
+		t.Errorf("expected ErrDuplicateUsername, got: %v", err)
+	}
+	if !strings.Contains(err.Error(), "alice") {
+		t.Errorf("error should mention 'alice', got: %v", err)
+	}
+}
+
+func TestValidateUsernameUniqueness_SameRoleDuplicate(t *testing.T) {
+	setupJetyForRBACTest(t)
+	defer clearJetyRBACKeys(t)
+
+	jety.Set("users", map[string]any{
+		"admin": []any{
+			map[string]any{"pubkey": "KEY_A", "username": "bob"},
+			map[string]any{"pubkey": "KEY_C", "username": "bob"},
+		},
+	})
+
+	err := ValidateUsernameUniqueness()
+	if err == nil {
+		t.Fatal("expected error for duplicate username within same role")
+	}
+	if !errors.Is(err, ErrDuplicateUsername) {
+		t.Errorf("expected ErrDuplicateUsername, got: %v", err)
+	}
+}
+
+func TestValidateUsernameUniqueness_EmptyUsernamesIgnored(t *testing.T) {
+	setupJetyForRBACTest(t)
+	defer clearJetyRBACKeys(t)
+
+	// Two pubkeys without usernames should not conflict.
+	jety.Set("users", map[string]any{
+		"admin":  []any{"KEY_A"},
+		"viewer": []any{"KEY_B"},
+	})
+
+	err := ValidateUsernameUniqueness()
+	if err != nil {
+		t.Errorf("expected no error when usernames are empty, got: %v", err)
+	}
+}
+
+func TestValidateUsernameUniqueness_MixedWithAndWithoutUsernames(t *testing.T) {
+	setupJetyForRBACTest(t)
+	defer clearJetyRBACKeys(t)
+
+	jety.Set("users", map[string]any{
+		"admin": []any{
+			map[string]any{"pubkey": "KEY_A", "username": "alice"},
+			"KEY_B", // No username — should not conflict.
+		},
+		"viewer": []any{
+			map[string]any{"pubkey": "KEY_C", "username": "bob"},
+		},
+	})
+
+	err := ValidateUsernameUniqueness()
+	if err != nil {
+		t.Errorf("expected no error for unique usernames with some empty, got: %v", err)
+	}
+}
+
+func TestValidateUsernameUniqueness_EmptyConfig(t *testing.T) {
+	setupJetyForRBACTest(t)
+	defer clearJetyRBACKeys(t)
+
+	err := ValidateUsernameUniqueness()
+	if err != nil {
+		t.Errorf("expected no error for empty config, got: %v", err)
 	}
 }
 

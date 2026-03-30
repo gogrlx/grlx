@@ -46,6 +46,12 @@ func LoadPolicy() error {
 		return err
 	}
 
+	// Validate username uniqueness — reject configs where two pubkeys
+	// share the same username (ambiguous audit logs).
+	if err := rbac.ValidateUsernameUniqueness(); err != nil {
+		return err
+	}
+
 	var err error
 	roleStore, err = rbac.LoadRolesFromConfig()
 	if err != nil {

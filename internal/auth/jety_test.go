@@ -3,6 +3,7 @@ package auth
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/nats-io/nkeys"
@@ -587,6 +588,49 @@ func TestLoadPolicyWithCohorts(t *testing.T) {
 	}
 	if len(members) != 2 {
 		t.Errorf("expected 2 members, got %d", len(members))
+	}
+}
+
+func TestLoadPolicyRejectsDuplicateUsernames(t *testing.T) {
+	setupJetyForTest(t)
+	defer clearJetyKeys(t)
+	defer SetPolicy(nil, nil, nil)
+
+	jety.Set("users", map[string]interface{}{
+		"admin": []interface{}{
+			map[string]interface{}{"pubkey": "KEY_A", "username": "alice"},
+		},
+		"viewer": []interface{}{
+			map[string]interface{}{"pubkey": "KEY_B", "username": "alice"},
+		},
+	})
+
+	err := LoadPolicy()
+	if err == nil {
+		t.Fatal("expected LoadPolicy to reject config with duplicate usernames")
+	}
+	if !strings.Contains(err.Error(), "duplicate username") {
+		t.Errorf("error should mention duplicate username, got: %v", err)
+	}
+}
+
+func TestLoadPolicyAcceptsUniqueUsernames(t *testing.T) {
+	setupJetyForTest(t)
+	defer clearJetyKeys(t)
+	defer SetPolicy(nil, nil, nil)
+
+	jety.Set("users", map[string]interface{}{
+		"admin": []interface{}{
+			map[string]interface{}{"pubkey": "KEY_A", "username": "alice"},
+		},
+		"viewer": []interface{}{
+			map[string]interface{}{"pubkey": "KEY_B", "username": "bob"},
+		},
+	})
+
+	err := LoadPolicy()
+	if err != nil {
+		t.Fatalf("LoadPolicy should accept unique usernames, got: %v", err)
 	}
 }
 
