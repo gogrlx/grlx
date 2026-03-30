@@ -20,6 +20,7 @@ import (
 // Entry represents a single audit log record.
 type Entry struct {
 	Timestamp  time.Time       `json:"timestamp"`
+	Username   string          `json:"username,omitempty"`
 	Pubkey     string          `json:"pubkey"`
 	RoleName   string          `json:"role"`
 	Action     string          `json:"action"`

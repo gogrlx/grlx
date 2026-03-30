@@ -67,6 +67,7 @@ type (
 type UserInfo struct {
 	Pubkey   string `json:"pubkey"`
 	RoleName string `json:"role"`
+	Username string `json:"username,omitempty"`
 }
 
 // RoleInfo describes a role and its rules.

@@ -125,11 +125,11 @@ func TestLogActionWithGlobal(t *testing.T) {
 	defer SetGlobal(nil)
 
 	// Set a mock identity resolver
-	SetIdentityResolver(func(token string) (string, string, error) {
+	SetIdentityResolver(func(token string) (string, string, string, error) {
 		if token == "test-token" {
-			return "APUBKEY_TEST", "admin", nil
+			return "APUBKEY_TEST", "admin", "alice", nil
 		}
-		return "", "", nil
+		return "", "", "", nil
 	})
 	defer SetIdentityResolver(nil)
 
@@ -156,6 +156,9 @@ func TestLogActionWithGlobal(t *testing.T) {
 	}
 	if got.RoleName != "admin" {
 		t.Errorf("role = %q, want admin", got.RoleName)
+	}
+	if got.Username != "alice" {
+		t.Errorf("username = %q, want alice", got.Username)
 	}
 	if got.Action != "pki.accept" {
 		t.Errorf("action = %q, want pki.accept", got.Action)

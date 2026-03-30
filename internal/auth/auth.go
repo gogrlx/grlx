@@ -298,29 +298,31 @@ func TokenScopeFilter(token string, action rbac.Action, sproutIDs []string, allS
 	return role.ScopeFilter(action, sproutIDs, resolver)
 }
 
-// WhoAmI returns the public key and role name for a given token.
-func WhoAmI(token string) (pubkey string, roleName string, err error) {
+// WhoAmI returns the public key, role name, and username for a given token.
+func WhoAmI(token string) (pubkey string, roleName string, username string, err error) {
 	ua, err := decodeToken(token)
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
 	pk, err := ua.IsValid()
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
 
 	policyMu.RLock()
 	defer policyMu.RUnlock()
 	name := ""
+	uname := ""
 	if userRoleMap != nil {
 		name = userRoleMap.RoleName(pk)
+		uname = userRoleMap.Username(pk)
 	}
 	if name == "" {
 		// Check legacy
 		name = legacyRoleName(pk)
 	}
 
-	return pk, name, nil
+	return pk, name, uname, nil
 }
 
 // lookupRole returns the Role object for a pubkey, or nil if not found.

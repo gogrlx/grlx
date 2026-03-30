@@ -114,9 +114,10 @@ func LogAction(action string, params json.RawMessage, result any, err error) err
 	}
 
 	// Extract identity from params (most NATS handlers pass a token).
-	pubkey, roleName := extractIdentity(params)
+	pubkey, roleName, username := extractIdentity(params)
 
 	entry := Entry{
+		Username: username,
 		Pubkey:   pubkey,
 		RoleName: roleName,
 		Action:   action,
@@ -146,13 +147,13 @@ type identityFields struct {
 
 // extractIdentity attempts to resolve the user from the token in params.
 // Returns empty strings if the token is missing or invalid.
-func extractIdentity(params json.RawMessage) (pubkey, roleName string) {
+func extractIdentity(params json.RawMessage) (pubkey, roleName, username string) {
 	if len(params) == 0 {
-		return "", ""
+		return "", "", ""
 	}
 	var fields identityFields
 	if err := json.Unmarshal(params, &fields); err != nil || fields.Token == "" {
-		return "", ""
+		return "", "", ""
 	}
 
 	// Use auth.WhoAmI to resolve — but we don't import auth here to
@@ -162,18 +163,19 @@ func extractIdentity(params json.RawMessage) (pubkey, roleName string) {
 	resolverMu.RUnlock()
 
 	if resolve == nil {
-		return "", ""
+		return "", "", ""
 	}
 
-	pk, role, err := resolve(fields.Token)
+	pk, role, name, err := resolve(fields.Token)
 	if err != nil {
-		return "", ""
+		return "", "", ""
 	}
-	return pk, role
+	return pk, role, name
 }
 
-// IdentityResolverFunc resolves a token to (pubkey, roleName, error).
-type IdentityResolverFunc func(token string) (pubkey, roleName string, err error)
+// IdentityResolverFunc resolves a token to (pubkey, roleName, username, error).
+// Username is the human-readable label configured for the pubkey.
+type IdentityResolverFunc func(token string) (pubkey, roleName, username string, err error)
 
 var (
 	resolverMu       sync.RWMutex

@@ -169,15 +169,19 @@ func parseRoleEntry(name string, raw any) (*Role, error) {
 	return role, nil
 }
 
-// UserRoleMap maps public keys to role names. Loaded from the "users"
-// section of the farmer config.
+// UserRoleMap maps public keys to role names and optional usernames.
+// Loaded from the "users" section of the farmer config.
 type UserRoleMap struct {
 	pubkeyToRole map[string]string
+	pubkeyToName map[string]string
 }
 
 // NewUserRoleMap creates an empty map.
 func NewUserRoleMap() *UserRoleMap {
-	return &UserRoleMap{pubkeyToRole: make(map[string]string)}
+	return &UserRoleMap{
+		pubkeyToRole: make(map[string]string),
+		pubkeyToName: make(map[string]string),
+	}
 }
 
 // Set assigns a role to a pubkey.
@@ -185,16 +189,28 @@ func (m *UserRoleMap) Set(pubkey, roleName string) {
 	m.pubkeyToRole[pubkey] = roleName
 }
 
+// SetUsername assigns a human-readable username to a pubkey.
+func (m *UserRoleMap) SetUsername(pubkey, username string) {
+	m.pubkeyToName[pubkey] = username
+}
+
 // Delete removes a pubkey from the map. Returns true if the key existed.
 func (m *UserRoleMap) Delete(pubkey string) bool {
 	_, existed := m.pubkeyToRole[pubkey]
 	delete(m.pubkeyToRole, pubkey)
+	delete(m.pubkeyToName, pubkey)
 	return existed
 }
 
 // RoleName returns the role name for a pubkey, or empty string if not found.
 func (m *UserRoleMap) RoleName(pubkey string) string {
 	return m.pubkeyToRole[pubkey]
+}
+
+// Username returns the human-readable username for a pubkey, or empty
+// string if no username is configured.
+func (m *UserRoleMap) Username(pubkey string) string {
+	return m.pubkeyToName[pubkey]
 }
 
 // All returns the full map of pubkey → role name.
@@ -206,15 +222,46 @@ func (m *UserRoleMap) All() map[string]string {
 	return result
 }
 
+// AllWithUsernames returns a map of pubkey → username for all users
+// that have a username configured.
+func (m *UserRoleMap) AllWithUsernames() map[string]string {
+	result := make(map[string]string, len(m.pubkeyToName))
+	for k, v := range m.pubkeyToName {
+		if v != "" {
+			result[k] = v
+		}
+	}
+	return result
+}
+
 // LoadUsersFromConfig reads the "users" section from the farmer config.
 //
-// Expected format:
+// Supported formats:
+//
+// Simple format (list of pubkey strings):
 //
 //	users:
 //	  sre-team:
 //	    - APUBKEY1...
 //	  dev-team:
 //	    - APUBKEY2...
+//
+// Rich format (maps with pubkey + optional username):
+//
+//	users:
+//	  admin:
+//	    - pubkey: APUBKEY1...
+//	      username: alice
+//	    - pubkey: APUBKEY2...
+//	      username: bob
+//
+// Mixed format (both strings and maps in the same list):
+//
+//	users:
+//	  admin:
+//	    - APUBKEY1...
+//	    - pubkey: APUBKEY2...
+//	      username: bob
 //
 // Also reads legacy format:
 //
@@ -227,12 +274,15 @@ func (m *UserRoleMap) All() map[string]string {
 func LoadUsersFromConfig() *UserRoleMap {
 	m := NewUserRoleMap()
 
-	// New format: users.<role> = [pubkeys...]
+	// New format: users.<role> = [pubkeys or {pubkey, username} maps...]
 	usersMap := jety.GetStringMap("users")
 	for roleName, v := range usersMap {
-		keys := parseStringSlice(v)
-		for _, k := range keys {
-			m.Set(k, roleName)
+		entries := parseUserEntries(v)
+		for _, e := range entries {
+			m.Set(e.Pubkey, roleName)
+			if e.Username != "" {
+				m.SetUsername(e.Pubkey, e.Username)
+			}
 		}
 	}
 
@@ -251,6 +301,44 @@ func LoadUsersFromConfig() *UserRoleMap {
 	return m
 }
 
+// userEntry holds a parsed user entry from config.
+type userEntry struct {
+	Pubkey   string
+	Username string
+}
+
+// parseUserEntries parses a list that may contain plain pubkey strings
+// or maps with {pubkey, username} fields.
+func parseUserEntries(v any) []userEntry {
+	if v == nil {
+		return nil
+	}
+
+	items, ok := v.([]any)
+	if !ok {
+		// Single string
+		if s, ok := v.(string); ok {
+			return []userEntry{{Pubkey: s}}
+		}
+		return nil
+	}
+
+	var entries []userEntry
+	for _, item := range items {
+		switch val := item.(type) {
+		case string:
+			entries = append(entries, userEntry{Pubkey: val})
+		case map[string]any:
+			pk, _ := val["pubkey"].(string)
+			name, _ := val["username"].(string)
+			if pk != "" {
+				entries = append(entries, userEntry{Pubkey: pk, Username: name})
+			}
+		}
+	}
+	return entries
+}
+
 // ValidateUserUniqueness checks the users and pubkeys config sections for
 // pubkeys that appear under more than one role. Returns an error listing
 // every duplicate pubkey and the roles it was assigned to. This catches
@@ -261,9 +349,9 @@ func ValidateUserUniqueness() error {
 
 	usersMap := jety.GetStringMap("users")
 	for roleName, v := range usersMap {
-		keys := parseStringSlice(v)
-		for _, k := range keys {
-			seen[k] = append(seen[k], "users."+roleName)
+		entries := parseUserEntries(v)
+		for _, e := range entries {
+			seen[e.Pubkey] = append(seen[e.Pubkey], "users."+roleName)
 		}
 	}
 
