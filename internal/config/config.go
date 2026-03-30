@@ -51,28 +51,29 @@ var (
 	// happens over the NATS bus.
 	FarmerAPIPort string
 
-	FarmerBusURL       string
-	FarmerBusPort      string
-	FarmerInterface    string
-	FarmerOrganization string
-	FarmerPKI          string
-	FarmerURL          string
-	GrlxRootCA         string
-	JobLogDir          string
-	JobLogTTL          time.Duration
-	PropsDir           string
-	KeyFile            string
-	LogLevel           log.Level
-	NKeyFarmerPrivFile string
-	NKeyFarmerPubFile  string
-	NKeySproutPrivFile string
-	NKeySproutPubFile  string
-	RecipeDir          string
-	RootCA             string
-	RootCAPriv         string
-	SproutID           string
-	SproutPKI          string
-	SproutRootCA       string
+	FarmerBusURL          string
+	FarmerBusPort         string
+	FarmerInterface       string
+	FarmerOrganization    string
+	FarmerPKI             string
+	FarmerURL             string
+	GrlxRootCA            string
+	CohortRefreshInterval time.Duration
+	JobLogDir             string
+	JobLogTTL             time.Duration
+	PropsDir              string
+	KeyFile               string
+	LogLevel              log.Level
+	NKeyFarmerPrivFile    string
+	NKeyFarmerPubFile     string
+	NKeySproutPrivFile    string
+	NKeySproutPubFile     string
+	RecipeDir             string
+	RootCA                string
+	RootCAPriv            string
+	SproutID              string
+	SproutPKI             string
+	SproutRootCA          string
 )
 
 // Binary represents the type of grlx binary being configured.
@@ -167,6 +168,7 @@ func LoadConfig(binary string) {
 			jety.SetDefault("auditlevel", "write")
 			jety.SetDefault("joblogdir", "/var/cache/grlx/farmer/jobs")
 			jety.SetDefault("joblogttl", 30*24*time.Hour) // 30 days default
+			jety.SetDefault("cohortrefreshinterval", 5*time.Minute)
 			jety.SetDefault("propsdir", "/var/cache/grlx/farmer/props")
 			jety.SetDefault("nkeyfarmerpubfile", filepath.Join(systemConfigRoot, "pki/farmer/farmer.nkey.pub"))
 			jety.SetDefault("nkeyfarmerprivfile", filepath.Join(systemConfigRoot, "pki/farmer/farmer.nkey"))
@@ -272,6 +274,7 @@ func LoadConfig(binary string) {
 	CacheDir = jety.GetString("cachedir")
 	CertFile = jety.GetString("certfile")
 	CertHosts = jety.GetStringSlice("certhosts")
+	CohortRefreshInterval = jety.GetDuration("cohortrefreshinterval")
 	CertificateValidTime = jety.GetDuration("certificatevalidtime")
 	ConfigRoot = jety.GetString("configroot")
 	FarmerAPIPort = jety.GetString("farmerapiport")
