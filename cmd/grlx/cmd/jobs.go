@@ -22,6 +22,7 @@ var (
 	jobsLocal    bool
 	jobsUser     string
 	watchTimeout int
+	purgeOlderH  int
 )
 
 var cmdJobs = &cobra.Command{
@@ -402,15 +403,115 @@ func truncate(s string, max int) string {
 	return s[:max-1] + "…"
 }
 
+var cmdJobsPurge = &cobra.Command{
+	Use:   "purge",
+	Short: "Remove old jobs from local CLI-side storage",
+	Long: `Remove job files older than the specified number of hours from local storage.
+Defaults to 720 hours (30 days).`,
+	Run: func(cmd *cobra.Command, args []string) {
+		storePath, err := jobs.DefaultCLIStorePath()
+		if err != nil {
+			log.Fatal(err)
+		}
+		store, err := jobs.NewCLIStore(storePath)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		dur := time.Duration(purgeOlderH) * time.Hour
+		removed, err := store.Purge(dur)
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Printf("Purged %d job(s) older than %dh.\n", removed, purgeOlderH)
+	},
+}
+
+var cmdJobsStats = &cobra.Command{
+	Use:   "stats",
+	Short: "Show local CLI-side job store statistics",
+	Run: func(cmd *cobra.Command, args []string) {
+		storePath, err := jobs.DefaultCLIStorePath()
+		if err != nil {
+			log.Fatal(err)
+		}
+		store, err := jobs.NewCLIStore(storePath)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		stats, err := store.Stats()
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		switch outputMode {
+		case "json":
+			b, jsonErr := json.Marshal(stats)
+			if jsonErr != nil {
+				log.Fatal(jsonErr)
+			}
+			fmt.Println(string(b))
+		default:
+			fmt.Printf("Jobs:    %d\n", stats.TotalJobs)
+			fmt.Printf("Sprouts: %d\n", stats.TotalSprouts)
+			fmt.Printf("Disk:    %s\n", humanizeBytes(stats.DiskBytes))
+		}
+	},
+}
+
+var cmdJobsDelete = &cobra.Command{
+	Use:   "delete <JID>",
+	Short: "Delete a specific job from local CLI-side storage",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		storePath, err := jobs.DefaultCLIStorePath()
+		if err != nil {
+			log.Fatal(err)
+		}
+		store, err := jobs.NewCLIStore(storePath)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if err := store.DeleteJob(args[0]); err != nil {
+			log.Fatal(err)
+		}
+		fmt.Printf("Deleted job %s from local storage.\n", args[0])
+	},
+}
+
+func humanizeBytes(b int64) string {
+	const (
+		kb = 1024
+		mb = kb * 1024
+		gb = mb * 1024
+	)
+	switch {
+	case b >= gb:
+		return fmt.Sprintf("%.1f GB", float64(b)/float64(gb))
+	case b >= mb:
+		return fmt.Sprintf("%.1f MB", float64(b)/float64(mb))
+	case b >= kb:
+		return fmt.Sprintf("%.1f KB", float64(b)/float64(kb))
+	default:
+		return fmt.Sprintf("%d B", b)
+	}
+}
+
 func init() {
 	cmdJobsList.Flags().IntVar(&jobsLimit, "limit", 50, "Maximum number of jobs to return")
 	cmdJobsList.Flags().BoolVar(&jobsLocal, "local", false, "List jobs from local CLI-side storage instead of the farmer")
 	cmdJobsList.Flags().StringVar(&jobsUser, "user", "", "Filter jobs by invoking user's pubkey (use 'me' for current user)")
 	cmdJobsShow.Flags().BoolVar(&jobsLocal, "local", false, "Show job from local CLI-side storage instead of the farmer")
 	cmdJobsWatch.Flags().IntVar(&watchTimeout, "timeout", 120, "Watch timeout in seconds")
+	cmdJobsPurge.Flags().IntVar(&purgeOlderH, "older-than", 720, "Remove jobs older than this many hours (default 720 = 30 days)")
 	cmdJobs.AddCommand(cmdJobsList)
 	cmdJobs.AddCommand(cmdJobsShow)
 	cmdJobs.AddCommand(cmdJobsWatch)
 	cmdJobs.AddCommand(cmdJobsCancel)
+	cmdJobs.AddCommand(cmdJobsPurge)
+	cmdJobs.AddCommand(cmdJobsStats)
+	cmdJobs.AddCommand(cmdJobsDelete)
 	rootCmd.AddCommand(cmdJobs)
 }

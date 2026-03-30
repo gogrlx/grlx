@@ -300,6 +300,193 @@ func TestCLIStore_GetJobMeta_NotFound(t *testing.T) {
 	}
 }
 
+func TestCLIStore_DeleteJob(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewCLIStore(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	meta := CLIJobMeta{
+		JID:      "del-job",
+		SproutID: "sprout-del",
+		UserKey:  "UKEY",
+	}
+	if err := store.RecordJobStart(meta); err != nil {
+		t.Fatal(err)
+	}
+	step := cook.StepCompletion{
+		ID:               "step-1",
+		CompletionStatus: cook.StepCompleted,
+		Started:          time.Now(),
+		Duration:         time.Second,
+	}
+	if err := store.AppendStep("sprout-del", "del-job", step); err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify it exists.
+	_, _, err = store.GetJob("del-job")
+	if err != nil {
+		t.Fatalf("job should exist before delete: %v", err)
+	}
+
+	// Delete it.
+	if err := store.DeleteJob("del-job"); err != nil {
+		t.Fatalf("DeleteJob: %v", err)
+	}
+
+	// Should be gone.
+	_, _, err = store.GetJob("del-job")
+	if err != ErrJobNotFound {
+		t.Errorf("expected ErrJobNotFound after delete, got %v", err)
+	}
+
+	// Empty sprout dir should be cleaned up.
+	sproutDir := filepath.Join(dir, "sprout-del")
+	if _, statErr := os.Stat(sproutDir); !os.IsNotExist(statErr) {
+		t.Error("expected empty sprout dir to be removed")
+	}
+}
+
+func TestCLIStore_DeleteJob_NotFound(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewCLIStore(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = store.DeleteJob("nonexistent")
+	if err != ErrJobNotFound {
+		t.Errorf("expected ErrJobNotFound, got %v", err)
+	}
+}
+
+func TestCLIStore_Stats(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewCLIStore(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Empty store.
+	stats, err := store.Stats()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stats.TotalJobs != 0 || stats.TotalSprouts != 0 || stats.DiskBytes != 0 {
+		t.Errorf("expected zero stats, got %+v", stats)
+	}
+
+	// Add some jobs.
+	for _, tc := range []struct {
+		jid    string
+		sprout string
+	}{
+		{"j1", "s1"},
+		{"j2", "s1"},
+		{"j3", "s2"},
+	} {
+		meta := CLIJobMeta{JID: tc.jid, SproutID: tc.sprout, UserKey: "U"}
+		if err := store.RecordJobStart(meta); err != nil {
+			t.Fatal(err)
+		}
+		step := cook.StepCompletion{
+			ID: "step-1", CompletionStatus: cook.StepCompleted,
+			Started: time.Now(), Duration: time.Second,
+		}
+		if err := store.AppendStep(tc.sprout, tc.jid, step); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	stats, err = store.Stats()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stats.TotalJobs != 3 {
+		t.Errorf("expected 3 jobs, got %d", stats.TotalJobs)
+	}
+	if stats.TotalSprouts != 2 {
+		t.Errorf("expected 2 sprouts, got %d", stats.TotalSprouts)
+	}
+	if stats.DiskBytes <= 0 {
+		t.Errorf("expected positive disk usage, got %d", stats.DiskBytes)
+	}
+}
+
+func TestCLIStore_Purge(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewCLIStore(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Create two jobs.
+	for _, jid := range []string{"old-job", "new-job"} {
+		meta := CLIJobMeta{JID: jid, SproutID: "sprout-p", UserKey: "U"}
+		if err := store.RecordJobStart(meta); err != nil {
+			t.Fatal(err)
+		}
+		step := cook.StepCompletion{
+			ID: "step-1", CompletionStatus: cook.StepCompleted,
+			Started: time.Now(), Duration: time.Second,
+		}
+		if err := store.AppendStep("sprout-p", jid, step); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// Backdate old-job files.
+	past := time.Now().Add(-48 * time.Hour)
+	sproutDir := filepath.Join(dir, "sprout-p")
+	os.Chtimes(filepath.Join(sproutDir, "old-job.jsonl"), past, past)
+	os.Chtimes(filepath.Join(sproutDir, "old-job.meta.json"), past, past)
+
+	// Purge jobs older than 24h.
+	removed, err := store.Purge(24 * time.Hour)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if removed != 1 {
+		t.Errorf("expected 1 removed, got %d", removed)
+	}
+
+	// old-job should be gone, new-job should remain.
+	_, _, err = store.GetJob("old-job")
+	if err != ErrJobNotFound {
+		t.Errorf("expected old-job to be purged, got %v", err)
+	}
+	_, _, err = store.GetJob("new-job")
+	if err != nil {
+		t.Errorf("new-job should still exist: %v", err)
+	}
+}
+
+func TestCLIStore_StartReaper_ZeroTTL(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewCLIStore(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a job and backdate it.
+	meta := CLIJobMeta{JID: "reaper-test", SproutID: "sr", UserKey: "U"}
+	if err := store.RecordJobStart(meta); err != nil {
+		t.Fatal(err)
+	}
+
+	past := time.Now().Add(-9999 * time.Hour)
+	os.Chtimes(filepath.Join(dir, "sr", "reaper-test.jsonl"), past, past)
+
+	// Zero TTL should not start reaper — file should survive.
+	store.StartReaper(0)
+	time.Sleep(50 * time.Millisecond)
+
+	if _, err := os.Stat(filepath.Join(dir, "sr", "reaper-test.jsonl")); err != nil {
+		t.Errorf("job file should still exist with TTL=0: %v", err)
+	}
+}
+
 // splitNonEmpty splits a string by newline and filters empty lines.
 func splitNonEmpty(s string) []string {
 	var result []string
