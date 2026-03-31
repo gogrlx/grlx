@@ -76,6 +76,7 @@ var readOnlyActions = map[string]bool{
 	"props.get":      true,
 	"cohorts.list":   true,
 	"cohorts.get":    true,
+	"auth.login":     true,
 	"auth.whoami":    true,
 	"auth.users":     true,
 	"pki.list":       true,

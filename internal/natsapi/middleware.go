@@ -44,6 +44,7 @@ var natsActionMap = map[string]rbac.Action{
 	MethodPKIDelete:   rbac.ActionPKI,
 
 	// Auth
+	MethodAuthLogin:      rbac.ActionUserRead,
 	MethodAuthWhoAmI:     rbac.ActionUserRead,
 	MethodAuthListUsers:  rbac.ActionAdmin,
 	MethodAuthAddUser:    rbac.ActionAdmin,
@@ -63,6 +64,7 @@ var natsActionMap = map[string]rbac.Action{
 // version is informational; auth.whoami handles its own auth logic.
 var publicMethods = map[string]bool{
 	MethodVersion:     true,
+	MethodAuthLogin:   true,
 	MethodAuthWhoAmI:  true,
 	MethodAuthExplain: true,
 }

@@ -1256,3 +1256,140 @@ func TestResolveCallerIdentityValidToken(t *testing.T) {
 		t.Errorf("role = %q, want admin", role)
 	}
 }
+
+// --- handleAuthLogin tests ---
+
+func TestHandleAuthLoginDangerouslyAllowRoot(t *testing.T) {
+	cleanup := setupJetyDangerouslyAllowRoot(t, true)
+	defer cleanup()
+
+	result, err := handleAuthLogin(json.RawMessage(`{}`))
+	if err != nil {
+		t.Fatalf("handleAuthLogin: %v", err)
+	}
+
+	b, _ := json.Marshal(result)
+	var resp map[string]interface{}
+	json.Unmarshal(b, &resp)
+
+	if resp["authenticated"] != true {
+		t.Errorf("authenticated = %v, want true", resp["authenticated"])
+	}
+	if resp["pubkey"] != "(dangerously_allow_root)" {
+		t.Errorf("pubkey = %v, want (dangerously_allow_root)", resp["pubkey"])
+	}
+	if resp["role"] != "admin" {
+		t.Errorf("role = %v, want admin", resp["role"])
+	}
+	if resp["isAdmin"] != true {
+		t.Errorf("isAdmin = %v, want true", resp["isAdmin"])
+	}
+}
+
+func TestHandleAuthLoginNoToken(t *testing.T) {
+	cleanup := setupJetyDangerouslyAllowRoot(t, false)
+	defer cleanup()
+
+	_, err := handleAuthLogin(json.RawMessage(`{}`))
+	if err == nil {
+		t.Fatal("expected error for no token")
+	}
+}
+
+func TestHandleAuthLoginEmptyParams(t *testing.T) {
+	cleanup := setupJetyDangerouslyAllowRoot(t, false)
+	defer cleanup()
+
+	_, err := handleAuthLogin(nil)
+	if err == nil {
+		t.Fatal("expected error for nil params")
+	}
+}
+
+func TestHandleAuthLoginValidToken(t *testing.T) {
+	token, cleanup := setupAuthWithToken(t, "operator", []rbac.Rule{
+		{Action: rbac.ActionCook, Scope: "*"},
+		{Action: rbac.ActionView, Scope: "*"},
+	})
+	defer cleanup()
+
+	params, _ := json.Marshal(map[string]string{"token": token})
+	result, err := handleAuthLogin(params)
+	if err != nil {
+		t.Fatalf("handleAuthLogin: %v", err)
+	}
+
+	b, _ := json.Marshal(result)
+	var resp map[string]interface{}
+	json.Unmarshal(b, &resp)
+
+	if resp["authenticated"] != true {
+		t.Errorf("authenticated = %v, want true", resp["authenticated"])
+	}
+	if resp["role"] != "operator" {
+		t.Errorf("role = %v, want operator", resp["role"])
+	}
+	if resp["isAdmin"] == true {
+		t.Error("expected isAdmin=false for operator role")
+	}
+	actions, ok := resp["actions"].([]interface{})
+	if !ok {
+		t.Fatalf("actions type = %T, want []interface{}", resp["actions"])
+	}
+	if len(actions) < 1 {
+		t.Error("expected at least 1 action in response")
+	}
+}
+
+func TestHandleAuthLoginInvalidToken(t *testing.T) {
+	cleanup := setupJetyDangerouslyAllowRoot(t, false)
+	defer cleanup()
+
+	params, _ := json.Marshal(map[string]string{"token": "not-a-real-token"})
+	_, err := handleAuthLogin(params)
+	if err == nil {
+		t.Fatal("expected error for invalid token")
+	}
+}
+
+func TestHandleAuthLoginAdminToken(t *testing.T) {
+	token, cleanup := setupAuthWithToken(t, "admin", []rbac.Rule{
+		{Action: rbac.ActionAdmin, Scope: "*"},
+	})
+	defer cleanup()
+
+	params, _ := json.Marshal(map[string]string{"token": token})
+	result, err := handleAuthLogin(params)
+	if err != nil {
+		t.Fatalf("handleAuthLogin: %v", err)
+	}
+
+	b, _ := json.Marshal(result)
+	var resp map[string]interface{}
+	json.Unmarshal(b, &resp)
+
+	if resp["authenticated"] != true {
+		t.Errorf("authenticated = %v, want true", resp["authenticated"])
+	}
+	if resp["isAdmin"] != true {
+		t.Errorf("isAdmin = %v, want true", resp["isAdmin"])
+	}
+	if resp["role"] != "admin" {
+		t.Errorf("role = %v, want admin", resp["role"])
+	}
+}
+
+func TestHandleAuthLoginIsPublicMethod(t *testing.T) {
+	// auth.login should be in the publicMethods map.
+	if !publicMethods[MethodAuthLogin] {
+		t.Error("auth.login should be a public method")
+	}
+}
+
+func TestHandleAuthLoginMiddlewareAction(t *testing.T) {
+	// auth.login should map to ActionUserRead in the natsActionMap.
+	action := NATSMethodAction(MethodAuthLogin)
+	if action != rbac.ActionUserRead {
+		t.Errorf("NATSMethodAction(auth.login) = %v, want %v", action, rbac.ActionUserRead)
+	}
+}

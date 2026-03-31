@@ -10,7 +10,7 @@ import (
 )
 
 func TestIsReadOnly(t *testing.T) {
-	readOnly := []string{"version", "sprouts.list", "jobs.list", "auth.whoami"}
+	readOnly := []string{"version", "sprouts.list", "jobs.list", "auth.login", "auth.whoami"}
 	for _, a := range readOnly {
 		if !IsReadOnly(a) {
 			t.Errorf("IsReadOnly(%q) = false, want true", a)
