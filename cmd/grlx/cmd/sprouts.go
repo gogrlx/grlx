@@ -16,6 +16,7 @@ import (
 var (
 	sproutsStateFilter string
 	sproutsOnlineOnly  bool
+	sproutsCohort      string
 )
 
 var cmdSprouts = &cobra.Command{
@@ -36,9 +37,26 @@ var cmdSproutsList = &cobra.Command{
 			log.Fatalf("Failed to list sprouts: %v", err)
 		}
 
+		// If -C/--cohort is given, resolve the cohort and restrict the list
+		// to only the sprouts in that cohort.
+		var cohortMembers map[string]bool
+		if sproutsCohort != "" {
+			members, cohortErr := client.ResolveCohort(sproutsCohort)
+			if cohortErr != nil {
+				log.Fatalf("Failed to resolve cohort %q: %v", sproutsCohort, cohortErr)
+			}
+			cohortMembers = make(map[string]bool, len(members))
+			for _, m := range members {
+				cohortMembers[m] = true
+			}
+		}
+
 		// Apply filters.
 		filtered := sprouts[:0]
 		for _, s := range sprouts {
+			if cohortMembers != nil && !cohortMembers[s.ID] {
+				continue
+			}
 			if sproutsStateFilter != "" && s.KeyState != sproutsStateFilter {
 				continue
 			}
@@ -181,6 +199,7 @@ var cmdSproutsShow = &cobra.Command{
 func init() {
 	cmdSproutsList.Flags().StringVar(&sproutsStateFilter, "state", "", "Filter by key state (accepted, unaccepted, denied, rejected)")
 	cmdSproutsList.Flags().BoolVar(&sproutsOnlineOnly, "online", false, "Show only online (connected) sprouts")
+	cmdSproutsList.Flags().StringVarP(&sproutsCohort, "cohort", "C", "", "Filter sprouts to members of a cohort")
 	cmdSprouts.AddCommand(cmdSproutsList)
 	cmdSprouts.AddCommand(cmdSproutsShow)
 	rootCmd.AddCommand(cmdSprouts)
