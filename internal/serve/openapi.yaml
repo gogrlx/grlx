@@ -536,6 +536,39 @@ paths:
         "502":
           $ref: "#/components/responses/NATSError"
 
+  /api/v1/cohorts/validate:
+    get:
+      operationId: validateCohorts
+      summary: Validate cohort references
+      description: |
+        Checks that all compound cohort operands reference existing cohorts,
+        no circular references exist, and nesting depth does not exceed the
+        maximum. Useful for verifying configuration correctness.
+      tags:
+        - cohorts
+      responses:
+        "200":
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NATSEnvelope"
+              examples:
+                valid:
+                  value:
+                    result:
+                      valid: true
+                      cohorts: 3
+                invalid:
+                  value:
+                    result:
+                      valid: false
+                      errors:
+                        - "cohort 'missing' referenced by 'compound-1' does not exist"
+                      cohorts: 3
+        "502":
+          $ref: "#/components/responses/NATSError"
+
   /api/v1/keys:
     get:
       operationId: listKeys
@@ -1504,6 +1537,25 @@ components:
           type: string
           format: date-time
           description: When the membership was last evaluated
+
+    CohortValidateResponse:
+      type: object
+      description: Result of validating all cohort references.
+      required:
+        - valid
+        - cohorts
+      properties:
+        valid:
+          type: boolean
+          description: Whether all cohort references are valid
+        errors:
+          type: array
+          items:
+            type: string
+          description: Validation error messages (only present when invalid)
+        cohorts:
+          type: integer
+          description: Total number of cohorts checked
 
     RecipeInfo:
       type: object

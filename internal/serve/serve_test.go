@@ -497,6 +497,18 @@ func TestMuxCohortsListRoute(t *testing.T) {
 	}
 }
 
+func TestMuxCohortsValidateRoute(t *testing.T) {
+	mux := NewMux()
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/cohorts/validate", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("cohorts validate: expected 502, got %d", rec.Code)
+	}
+}
+
 func TestMuxRecipesRoutes(t *testing.T) {
 	mux := NewMux()
 
