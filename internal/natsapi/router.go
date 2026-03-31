@@ -79,6 +79,7 @@ var routes = map[string]handler{
 	MethodCohortsValidate: handleCohortsValidate,
 
 	// Auth
+	MethodAuthLogin:      handleAuthLogin,
 	MethodAuthWhoAmI:     handleAuthWhoAmI,
 	MethodAuthListUsers:  handleAuthListUsers,
 	MethodAuthAddUser:    handleAuthAddUser,

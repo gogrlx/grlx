@@ -70,6 +70,18 @@ type UserInfo struct {
 	Username string `json:"username,omitempty"`
 }
 
+// LoginResponse is returned by the auth.login endpoint. It confirms
+// the CLI's identity and provides the user's role and permissions.
+type LoginResponse struct {
+	Authenticated bool            `json:"authenticated"`
+	Pubkey        string          `json:"pubkey"`
+	RoleName      string          `json:"role"`
+	Username      string          `json:"username,omitempty"`
+	IsAdmin       bool            `json:"isAdmin"`
+	Actions       []ActionExplain `json:"actions,omitempty"`
+	Message       string          `json:"message,omitempty"`
+}
+
 // RoleInfo describes a role and its rules.
 type RoleInfo struct {
 	Name  string      `json:"name"`

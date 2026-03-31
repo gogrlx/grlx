@@ -14,6 +14,68 @@ type AuthParams struct {
 	Token string `json:"token"`
 }
 
+// handleAuthLogin validates the CLI user's identity by verifying the
+// embedded token. It returns the user's role, permissions, and admin
+// status — a formal "handshake" that confirms the CLI's key is
+// recognized by the farmer before the user runs any real commands.
+func handleAuthLogin(params json.RawMessage) (any, error) {
+	var p AuthParams
+	if len(params) > 0 {
+		json.Unmarshal(params, &p)
+	}
+
+	if p.Token == "" {
+		if intauth.DangerouslyAllowRoot() {
+			return apitypes.LoginResponse{
+				Authenticated: true,
+				Pubkey:        "(dangerously_allow_root)",
+				RoleName:      "admin",
+				IsAdmin:       true,
+				Message:       "authenticated (dangerously_allow_root)",
+			}, nil
+		}
+		return apitypes.LoginResponse{
+			Authenticated: false,
+			Message:       "no token provided",
+		}, fmt.Errorf("unauthorized: no token provided")
+	}
+
+	pubkey, roleName, username, err := intauth.WhoAmI(p.Token)
+	if err != nil {
+		return apitypes.LoginResponse{
+			Authenticated: false,
+			Message:       "invalid or expired token",
+		}, fmt.Errorf("unauthorized: %w", err)
+	}
+
+	// Build permission summary.
+	policy := intauth.CurrentPolicy()
+	summary := rbac.ExplainAccess(policy, pubkey)
+
+	actions := make([]apitypes.ActionExplain, 0, len(summary.Actions))
+	for _, a := range summary.Actions {
+		actions = append(actions, apitypes.ActionExplain{
+			Action: a.Action,
+			Scope:  a.Scope,
+		})
+	}
+
+	displayName := username
+	if displayName == "" {
+		displayName = pubkey[:12] + "..."
+	}
+
+	return apitypes.LoginResponse{
+		Authenticated: true,
+		Pubkey:        pubkey,
+		RoleName:      roleName,
+		Username:      username,
+		IsAdmin:       summary.IsAdmin,
+		Actions:       actions,
+		Message:       fmt.Sprintf("authenticated as %s (role: %s)", displayName, roleName),
+	}, nil
+}
+
 func handleAuthWhoAmI(params json.RawMessage) (any, error) {
 	var p AuthParams
 	if len(params) > 0 {

@@ -22,6 +22,7 @@ var authCmd = &cobra.Command{
 }
 
 func init() {
+	authCmd.AddCommand(authLoginCmd)
 	authCmd.AddCommand(authPrivKeyCmd)
 	authCmd.AddCommand(authPubKeyCmd)
 	authCmd.AddCommand(authTokenCmd)
@@ -30,6 +31,64 @@ func init() {
 	authCmd.AddCommand(authRolesCmd)
 	authCmd.AddCommand(authExplainCmd)
 	rootCmd.AddCommand(authCmd)
+}
+
+var authLoginCmd = &cobra.Command{
+	Use:   "login",
+	Short: "Verify the CLI key is recognized by the farmer and show identity",
+	Long: `Presents the CLI's public key to the farmer over NATS for
+authentication. The farmer validates the key against configured users
+and returns the user's identity, role, and permissions.
+
+This is useful to verify connectivity and auth before running commands.`,
+	Args: cobra.NoArgs,
+	Run: func(cmd *cobra.Command, _ []string) {
+		result, err := client.Login()
+		switch outputMode {
+		case "json":
+			if err != nil {
+				errResult := struct {
+					Authenticated bool   `json:"authenticated"`
+					Error         string `json:"error"`
+				}{Authenticated: false, Error: err.Error()}
+				jw, _ := json.Marshal(errResult)
+				fmt.Println(string(jw))
+				os.Exit(1)
+			}
+			jw, _ := json.Marshal(result)
+			fmt.Println(string(jw))
+		case "":
+			fallthrough
+		case "text":
+			if err != nil {
+				log.Printf("Login failed: %s", err.Error())
+				os.Exit(1)
+			}
+			if !result.Authenticated {
+				log.Printf("Login failed: %s", result.Message)
+				os.Exit(1)
+			}
+			if result.Username != "" {
+				fmt.Printf("User:    %s\n", result.Username)
+			}
+			fmt.Printf("Pubkey:  %s\n", result.Pubkey)
+			fmt.Printf("Role:    %s\n", result.RoleName)
+			if result.IsAdmin {
+				fmt.Println("Admin:   yes")
+			}
+			if len(result.Actions) > 0 {
+				fmt.Println("\nPermissions:")
+				for _, a := range result.Actions {
+					if a.Scope == "" || a.Scope == "*" {
+						fmt.Printf("  %s (all)\n", a.Action)
+					} else {
+						fmt.Printf("  %s → %s\n", a.Action, a.Scope)
+					}
+				}
+			}
+			fmt.Printf("\n%s\n", result.Message)
+		}
+	},
 }
 
 var authWhoAmICmd = &cobra.Command{

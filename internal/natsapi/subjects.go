@@ -6,6 +6,7 @@
 package natsapi
 
 import (
+	apitypes "github.com/gogrlx/grlx/v2/internal/api/types"
 	"github.com/gogrlx/grlx/v2/internal/audit"
 	"github.com/gogrlx/grlx/v2/internal/config"
 	"github.com/gogrlx/grlx/v2/internal/jobs"
@@ -76,6 +77,7 @@ const (
 	MethodCohortsValidate = "cohorts.validate"
 
 	// Auth
+	MethodAuthLogin      = "auth.login"
 	MethodAuthWhoAmI     = "auth.whoami"
 	MethodAuthListUsers  = "auth.users"
 	MethodAuthAddUser    = "auth.users.add"
@@ -157,6 +159,9 @@ type CohortRefreshRequest = CohortRefreshParams
 
 // AuthTokenRequest holds a token for auth operations.
 type AuthTokenRequest = AuthParams
+
+// AuthLoginResponse is the response for the auth.login endpoint.
+type AuthLoginResponse = apitypes.LoginResponse
 
 // ShellStartRequest is the request to start an interactive shell session.
 type ShellStartRequest = shell.CLIStartRequest
@@ -282,7 +287,7 @@ func AllMethods() []string {
 		MethodJobsList, MethodJobsGet, MethodJobsDelete, MethodJobsCancel, MethodJobsForSprout,
 		MethodPropsGetAll, MethodPropsGet, MethodPropsSet, MethodPropsDelete,
 		MethodCohortsList, MethodCohortsGet, MethodCohortsResolve, MethodCohortsRefresh, MethodCohortsValidate,
-		MethodAuthWhoAmI, MethodAuthListUsers, MethodAuthAddUser, MethodAuthRemoveUser, MethodAuthExplain,
+		MethodAuthLogin, MethodAuthWhoAmI, MethodAuthListUsers, MethodAuthAddUser, MethodAuthRemoveUser, MethodAuthExplain,
 		MethodShellStart,
 		MethodRecipesList, MethodRecipesGet,
 		MethodAuditDates, MethodAuditQuery,
