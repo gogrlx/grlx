@@ -55,6 +55,7 @@ const (
 	// Jobs
 	MethodJobsList      = "jobs.list"
 	MethodJobsGet       = "jobs.get"
+	MethodJobsDelete    = "jobs.delete"
 	MethodJobsCancel    = "jobs.cancel"
 	MethodJobsForSprout = "jobs.forsprout"
 
@@ -187,6 +188,12 @@ type JobsListResponse = []jobs.JobSummary
 // JobsGetResponse is a single job detail.
 type JobsGetResponse = jobs.JobSummary
 
+// JobsDeleteResponse confirms a job was deleted from the farmer-side store.
+type JobsDeleteResponse struct {
+	JID     string `json:"jid"`
+	Message string `json:"message"`
+}
+
 // JobsCancelResponse confirms a cancel request was sent.
 type JobsCancelResponse struct {
 	JID     string `json:"jid"`
@@ -265,7 +272,7 @@ func AllMethods() []string {
 		MethodTestPing,
 		MethodCmdRun,
 		MethodCook,
-		MethodJobsList, MethodJobsGet, MethodJobsCancel, MethodJobsForSprout,
+		MethodJobsList, MethodJobsGet, MethodJobsDelete, MethodJobsCancel, MethodJobsForSprout,
 		MethodPropsGetAll, MethodPropsGet, MethodPropsSet, MethodPropsDelete,
 		MethodCohortsList, MethodCohortsGet, MethodCohortsResolve, MethodCohortsRefresh, MethodCohortsValidate,
 		MethodAuthWhoAmI, MethodAuthListUsers, MethodAuthAddUser, MethodAuthRemoveUser, MethodAuthExplain,

@@ -240,6 +240,39 @@ func (s *Store) ListAllJobs(limit int) ([]JobSummary, error) {
 	return allSummaries, nil
 }
 
+// DeleteJob removes a job's JSONL and metadata files from the farmer-side store.
+// It first searches all sprout directories to find the job, then deletes
+// both the .jsonl log file and the optional .meta.json file.
+func (s *Store) DeleteJob(jid string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	sprouts, err := s.listSproutDirs()
+	if err != nil {
+		return err
+	}
+
+	for _, sproutID := range sprouts {
+		sproutDir := filepath.Join(s.logDir, sproutID)
+		jobFile := filepath.Join(sproutDir, fmt.Sprintf("%s.jsonl", jid))
+		if _, statErr := os.Stat(jobFile); statErr != nil {
+			continue
+		}
+
+		// Found the job — remove log and meta files.
+		if removeErr := os.Remove(jobFile); removeErr != nil {
+			return fmt.Errorf("deleting job file: %w", removeErr)
+		}
+
+		metaFile := filepath.Join(sproutDir, fmt.Sprintf("%s.meta.json", jid))
+		os.Remove(metaFile) // best-effort, may not exist
+
+		return nil
+	}
+
+	return ErrJobNotFound
+}
+
 // ListSprouts returns the IDs of all sprouts that have job records.
 func (s *Store) ListSprouts() ([]string, error) {
 	s.mu.RLock()

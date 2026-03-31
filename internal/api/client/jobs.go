@@ -53,6 +53,13 @@ func ListJobsForSprout(sproutID string) ([]jobs.JobSummary, error) {
 	return summaries, nil
 }
 
+// DeleteJob deletes a job from the farmer-side store.
+func DeleteJob(jid string) error {
+	params := map[string]string{"jid": jid}
+	_, err := NatsRequest("jobs.delete", params)
+	return err
+}
+
 // CancelJob sends a cancel request for a job to the farmer.
 func CancelJob(jid string) error {
 	params := map[string]string{"jid": jid}
