@@ -460,24 +460,39 @@ var cmdJobsStats = &cobra.Command{
 	},
 }
 
+var (
+	deleteLocal bool
+)
+
 var cmdJobsDelete = &cobra.Command{
 	Use:   "delete <JID>",
-	Short: "Delete a specific job from local CLI-side storage",
-	Args:  cobra.ExactArgs(1),
+	Short: "Delete a specific job",
+	Long: `Delete a job by JID. By default, deletes from the farmer's server-side store.
+Use --local to delete from local CLI-side storage instead.`,
+	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		storePath, err := jobs.DefaultCLIStorePath()
-		if err != nil {
-			log.Fatal(err)
-		}
-		store, err := jobs.NewCLIStore(storePath)
-		if err != nil {
-			log.Fatal(err)
+		jid := args[0]
+
+		if deleteLocal {
+			storePath, err := jobs.DefaultCLIStorePath()
+			if err != nil {
+				log.Fatal(err)
+			}
+			store, err := jobs.NewCLIStore(storePath)
+			if err != nil {
+				log.Fatal(err)
+			}
+			if err := store.DeleteJob(jid); err != nil {
+				log.Fatal(err)
+			}
+			fmt.Printf("Deleted job %s from local storage.\n", jid)
+			return
 		}
 
-		if err := store.DeleteJob(args[0]); err != nil {
+		if err := client.DeleteJob(jid); err != nil {
 			log.Fatal(err)
 		}
-		fmt.Printf("Deleted job %s from local storage.\n", args[0])
+		fmt.Printf("Deleted job %s from farmer.\n", jid)
 	},
 }
 
@@ -506,6 +521,7 @@ func init() {
 	cmdJobsShow.Flags().BoolVar(&jobsLocal, "local", false, "Show job from local CLI-side storage instead of the farmer")
 	cmdJobsWatch.Flags().IntVar(&watchTimeout, "timeout", 120, "Watch timeout in seconds")
 	cmdJobsPurge.Flags().IntVar(&purgeOlderH, "older-than", 720, "Remove jobs older than this many hours (default 720 = 30 days)")
+	cmdJobsDelete.Flags().BoolVar(&deleteLocal, "local", false, "Delete from local CLI-side storage instead of the farmer")
 	cmdJobs.AddCommand(cmdJobsList)
 	cmdJobs.AddCommand(cmdJobsShow)
 	cmdJobs.AddCommand(cmdJobsWatch)

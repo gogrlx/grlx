@@ -61,6 +61,7 @@ var routes = map[string]handler{
 	// Jobs
 	MethodJobsList:      handleJobsList,
 	MethodJobsGet:       handleJobsGet,
+	MethodJobsDelete:    handleJobsDelete,
 	MethodJobsCancel:    handleJobsCancel,
 	MethodJobsForSprout: handleJobsListForSprout,
 

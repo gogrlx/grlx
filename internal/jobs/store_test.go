@@ -578,6 +578,64 @@ func TestListJobsForSprout_WithInvokedBy(t *testing.T) {
 	}
 }
 
+func TestDeleteJob_Found(t *testing.T) {
+	dir := t.TempDir()
+	store := NewStoreWithDir(dir)
+	now := time.Now().Truncate(time.Second)
+
+	steps := []cook.StepCompletion{
+		makeStep("step-1", cook.StepCompleted, now, 2*time.Second),
+	}
+	writeJobFile(t, dir, "sprout-del", "del-job-1", steps)
+
+	// Also write a meta file.
+	sproutDir := filepath.Join(dir, "sprout-del")
+	metaFile := filepath.Join(sproutDir, "del-job-1.meta.json")
+	os.WriteFile(metaFile, []byte(`{"invoked_by":"testuser"}`), 0o640)
+
+	// Confirm it exists.
+	_, err := store.FindJob("del-job-1")
+	if err != nil {
+		t.Fatalf("setup: job should exist: %v", err)
+	}
+
+	// Delete it.
+	if err := store.DeleteJob("del-job-1"); err != nil {
+		t.Fatalf("DeleteJob: %v", err)
+	}
+
+	// Confirm it's gone.
+	_, err = store.FindJob("del-job-1")
+	if err != ErrJobNotFound {
+		t.Errorf("expected ErrJobNotFound after delete, got %v", err)
+	}
+
+	// Confirm meta file is also gone.
+	if _, statErr := os.Stat(metaFile); !os.IsNotExist(statErr) {
+		t.Error("meta file should have been deleted")
+	}
+}
+
+func TestDeleteJob_NotFound(t *testing.T) {
+	dir := t.TempDir()
+	store := NewStoreWithDir(dir)
+
+	err := store.DeleteJob("nonexistent-jid")
+	if err != ErrJobNotFound {
+		t.Errorf("expected ErrJobNotFound, got %v", err)
+	}
+}
+
+func TestDeleteJob_EmptyDir(t *testing.T) {
+	dir := t.TempDir()
+	store := NewStoreWithDir(dir)
+
+	err := store.DeleteJob("any-jid")
+	if err != ErrJobNotFound {
+		t.Errorf("expected ErrJobNotFound for empty dir, got %v", err)
+	}
+}
+
 func TestReadJobMeta_MalformedJSON(t *testing.T) {
 	dir := t.TempDir()
 	sproutDir := filepath.Join(dir, "sprout-bad")

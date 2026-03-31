@@ -118,6 +118,30 @@ func TestListJobsForSprout_Success(t *testing.T) {
 	}
 }
 
+func TestDeleteJob_Success(t *testing.T) {
+	cleanup := startTestNATS(t)
+	defer cleanup()
+
+	mockHandler(t, NatsConn, "grlx.api.jobs.delete", map[string]string{"jid": "jid-del", "message": "job deleted"})
+
+	err := DeleteJob("jid-del")
+	if err != nil {
+		t.Fatalf("DeleteJob: %v", err)
+	}
+}
+
+func TestDeleteJob_Error(t *testing.T) {
+	cleanup := startTestNATS(t)
+	defer cleanup()
+
+	mockErrorHandler(t, NatsConn, "grlx.api.jobs.delete", "job not found")
+
+	err := DeleteJob("nonexistent")
+	if err == nil {
+		t.Fatal("expected error")
+	}
+}
+
 func TestCancelJob_Success(t *testing.T) {
 	cleanup := startTestNATS(t)
 	defer cleanup()

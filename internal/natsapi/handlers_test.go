@@ -377,6 +377,70 @@ func TestHandleJobsListForSproutNoJobs(t *testing.T) {
 	}
 }
 
+// --- Jobs delete handler tests ---
+
+func TestHandleJobsDeleteSuccess(t *testing.T) {
+	dir, cleanup := setupJobStore(t)
+	defer cleanup()
+
+	steps := []cook.StepCompletion{
+		{ID: "step-1", CompletionStatus: cook.StepCompleted, Started: time.Now(), Duration: time.Second},
+	}
+	writeTestJob(t, dir, "sprout-del", "del-jid", steps)
+
+	params := json.RawMessage(`{"jid":"del-jid"}`)
+	result, err := handleJobsDelete(params)
+	if err != nil {
+		t.Fatalf("handleJobsDelete: %v", err)
+	}
+
+	resp, ok := result.(JobsDeleteResponse)
+	if !ok {
+		t.Fatalf("result type = %T, want JobsDeleteResponse", result)
+	}
+	if resp.JID != "del-jid" {
+		t.Errorf("JID = %q, want %q", resp.JID, "del-jid")
+	}
+
+	// Verify job is gone.
+	_, err = handleJobsGet(json.RawMessage(`{"jid":"del-jid"}`))
+	if err == nil {
+		t.Fatal("expected error: job should be deleted")
+	}
+}
+
+func TestHandleJobsDeleteNotFound(t *testing.T) {
+	_, cleanup := setupJobStore(t)
+	defer cleanup()
+
+	params := json.RawMessage(`{"jid":"nonexistent"}`)
+	_, err := handleJobsDelete(params)
+	if err == nil {
+		t.Fatal("expected error for nonexistent job")
+	}
+}
+
+func TestHandleJobsDeleteEmptyJID(t *testing.T) {
+	_, cleanup := setupJobStore(t)
+	defer cleanup()
+
+	params := json.RawMessage(`{"jid":""}`)
+	_, err := handleJobsDelete(params)
+	if err == nil {
+		t.Fatal("expected error for empty JID")
+	}
+}
+
+func TestHandleJobsDeleteInvalidJSON(t *testing.T) {
+	_, cleanup := setupJobStore(t)
+	defer cleanup()
+
+	_, err := handleJobsDelete(json.RawMessage(`{invalid`))
+	if err == nil {
+		t.Fatal("expected error for invalid JSON")
+	}
+}
+
 // --- Props handler tests ---
 
 func TestHandlePropsSetAndGet(t *testing.T) {

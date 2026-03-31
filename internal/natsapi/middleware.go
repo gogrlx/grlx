@@ -35,6 +35,7 @@ var natsActionMap = map[string]rbac.Action{
 	MethodPropsSet:    rbac.ActionProps,
 	MethodPropsDelete: rbac.ActionProps,
 	MethodJobsCancel:  rbac.ActionJobAdmin,
+	MethodJobsDelete:  rbac.ActionJobAdmin,
 
 	// Global: PKI
 	MethodPKIList:     rbac.ActionPKI,

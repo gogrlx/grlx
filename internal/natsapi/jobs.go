@@ -110,6 +110,49 @@ func handleJobsGet(params json.RawMessage) (any, error) {
 	return summary, nil
 }
 
+// JobsDeleteParams identifies a job to delete by JID.
+type JobsDeleteParams struct {
+	JID string `json:"jid"`
+}
+
+func handleJobsDelete(params json.RawMessage) (any, error) {
+	var p JobsDeleteParams
+	if err := json.Unmarshal(params, &p); err != nil {
+		return nil, err
+	}
+	if p.JID == "" {
+		return nil, fmt.Errorf("jid is required")
+	}
+
+	// Look up the job first to check scope access.
+	summary, err := jobStore.FindJob(p.JID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Scope check: verify the user can delete jobs on this sprout.
+	if !intauth.DangerouslyAllowRoot() {
+		var tp tokenParams
+		if len(params) > 0 {
+			json.Unmarshal(params, &tp)
+		}
+		if tp.Token != "" && summary.SproutID != "" {
+			if err := checkScopedAccess(tp.Token, rbac.ActionJobAdmin, []string{summary.SproutID}); err != nil {
+				return nil, rbac.ErrAccessDenied
+			}
+		}
+	}
+
+	if err := jobStore.DeleteJob(p.JID); err != nil {
+		return nil, err
+	}
+
+	return JobsDeleteResponse{
+		JID:     p.JID,
+		Message: "job deleted",
+	}, nil
+}
+
 func handleJobsCancel(params json.RawMessage) (any, error) {
 	var p JobsGetParams
 	if err := json.Unmarshal(params, &p); err != nil {
