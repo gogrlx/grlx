@@ -31,6 +31,9 @@ type response struct {
 
 // routes maps subject suffixes (after "grlx.api.") to handlers.
 var routes = map[string]handler{
+	// Health
+	MethodHealth: handleHealth,
+
 	// Version
 	MethodVersion: handleVersion,
 
