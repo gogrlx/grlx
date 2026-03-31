@@ -21,6 +21,7 @@ var (
 	jobsLimit    int
 	jobsLocal    bool
 	jobsUser     string
+	jobsCohort   string
 	watchTimeout int
 	purgeOlderH  int
 )
@@ -36,6 +37,7 @@ var cmdJobsList = &cobra.Command{
 	Long: `List recent jobs. By default queries the farmer.
 Use --local to list jobs from local CLI-side storage.
 Use --user to filter jobs by the invoking user's pubkey (use 'me' for current user).
+Use -C/--cohort to filter jobs to sprouts in a cohort.
 When using --local, an optional sproutID argument filters jobs for that sprout.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		var summaries []jobs.JobSummary
@@ -52,7 +54,24 @@ When using --local, an optional sproutID argument filters jobs for that sprout.`
 				}
 				userFilter = key
 			}
-			if len(args) > 0 {
+			if len(args) > 0 && jobsCohort != "" {
+				log.Fatalf("Cannot use both a sproutID argument and --cohort (-C)")
+			}
+			if jobsCohort != "" {
+				// Resolve cohort to sprout list, then fetch jobs for each.
+				members, cohortErr := client.ResolveCohort(jobsCohort)
+				if cohortErr != nil {
+					log.Fatalf("Failed to resolve cohort %q: %v", jobsCohort, cohortErr)
+				}
+				for _, sproutID := range members {
+					sproutJobs, listErr := client.ListJobsForSprout(sproutID)
+					if listErr != nil {
+						log.Errorf("Failed to list jobs for %s: %v", sproutID, listErr)
+						continue
+					}
+					summaries = append(summaries, sproutJobs...)
+				}
+			} else if len(args) > 0 {
 				summaries, err = client.ListJobsForSprout(args[0])
 			} else {
 				summaries, err = client.ListJobs(jobsLimit, userFilter)
@@ -503,6 +522,7 @@ func init() {
 	cmdJobsList.Flags().IntVar(&jobsLimit, "limit", 50, "Maximum number of jobs to return")
 	cmdJobsList.Flags().BoolVar(&jobsLocal, "local", false, "List jobs from local CLI-side storage instead of the farmer")
 	cmdJobsList.Flags().StringVar(&jobsUser, "user", "", "Filter jobs by invoking user's pubkey (use 'me' for current user)")
+	cmdJobsList.Flags().StringVarP(&jobsCohort, "cohort", "C", "", "Filter jobs to sprouts in a cohort")
 	cmdJobsShow.Flags().BoolVar(&jobsLocal, "local", false, "Show job from local CLI-side storage instead of the farmer")
 	cmdJobsWatch.Flags().IntVar(&watchTimeout, "timeout", 120, "Watch timeout in seconds")
 	cmdJobsPurge.Flags().IntVar(&purgeOlderH, "older-than", 720, "Remove jobs older than this many hours (default 720 = 30 days)")
