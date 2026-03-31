@@ -28,6 +28,9 @@ const SproutSubjectPrefix = "grlx.sprouts."
 // ──────────────────────────────────────────────
 
 const (
+	// Health
+	MethodHealth = "health"
+
 	// Version
 	MethodVersion = "version"
 
@@ -170,6 +173,9 @@ type AuditQueryRequest = audit.QueryParams
 // Response types
 // ──────────────────────────────────────────────
 
+// HealthCheckResponse is the typed response for the health endpoint.
+type HealthCheckResponse = HealthResponse
+
 // VersionResponse is the response for the version endpoint.
 type VersionResponse = config.Version
 
@@ -258,6 +264,7 @@ type Response = response
 // Useful for documentation generation and client code generation.
 func AllMethods() []string {
 	return []string{
+		MethodHealth,
 		MethodVersion,
 		MethodPKIList, MethodPKIAccept, MethodPKIReject,
 		MethodPKIDeny, MethodPKIUnaccept, MethodPKIDelete,

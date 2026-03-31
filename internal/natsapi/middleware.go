@@ -12,6 +12,7 @@ import (
 // Methods not listed here require ActionAdmin (deny by default).
 var natsActionMap = map[string]rbac.Action{
 	// Read-only
+	MethodHealth:          rbac.ActionView,
 	MethodVersion:         rbac.ActionView,
 	MethodSproutsList:     rbac.ActionView,
 	MethodSproutsGet:      rbac.ActionView,
@@ -62,6 +63,7 @@ var natsActionMap = map[string]rbac.Action{
 // publicMethods are accessible without a token.
 // version is informational; auth.whoami handles its own auth logic.
 var publicMethods = map[string]bool{
+	MethodHealth:      true,
 	MethodVersion:     true,
 	MethodAuthWhoAmI:  true,
 	MethodAuthExplain: true,
