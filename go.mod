@@ -1,6 +1,6 @@
 module github.com/gogrlx/grlx/v2
 
-go 1.26.1
+go 1.26.2
 
 replace github.com/mattn/go-localereader v0.0.1 => github.com/taigrr/go-localereader v0.0.2
 
@@ -13,11 +13,11 @@ require (
 	github.com/creack/pty v1.1.24
 	github.com/djherbis/atime v1.1.0
 	github.com/fatih/color v1.19.0
-	github.com/gogrlx/snack v0.4.1
+	github.com/gogrlx/snack v0.4.2
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
-	github.com/nats-io/nats-server/v2 v2.12.6
-	github.com/nats-io/nats.go v1.49.0
+	github.com/nats-io/nats-server/v2 v2.12.7
+	github.com/nats-io/nats.go v1.51.0
 	github.com/nats-io/nkeys v0.4.15
 	github.com/spf13/cobra v1.10.2
 	github.com/taigrr/jety v0.4.0
@@ -26,8 +26,8 @@ require (
 	github.com/taigrr/openrc v0.1.0
 	github.com/taigrr/rcd v0.0.2
 	github.com/taigrr/systemctl v1.1.1-0.20260309204324-da8db0d3a3c3
-	golang.org/x/term v0.41.0
-	golang.org/x/text v0.35.0
+	golang.org/x/term v0.42.0
+	golang.org/x/text v0.36.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -91,7 +91,7 @@ require (
 	golang.org/x/exp v0.0.0-20260312153236-7ab1446f8b90 // indirect
 	golang.org/x/net v0.52.0 // indirect
 	golang.org/x/sync v0.20.0 // indirect
-	golang.org/x/sys v0.42.0 // indirect
+	golang.org/x/sys v0.43.0 // indirect
 	golang.org/x/time v0.15.0 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
