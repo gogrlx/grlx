@@ -91,7 +91,7 @@ func collectAllIncludes(sproutID, basepath string, recipeID RecipeName) ([]Recip
 		return []RecipeName{}, err
 	}
 	// parse file imports
-	starterIncludes, err := extractIncludes(sproutID, basepath, recipeFilePath, f)
+	starterIncludes, err := extractIncludes(sproutID, basepath, string(recipeID), f)
 	if err != nil {
 		return []RecipeName{}, err
 	}
@@ -280,7 +280,7 @@ func collectIncludesRecurse(sproutID, basepath string, starter map[RecipeName]bo
 					return starter, err
 				}
 				// parse file imports
-				eIncludes, err := extractIncludes(sproutID, basepath, recipeFilePath, f)
+				eIncludes, err := extractIncludes(sproutID, basepath, string(inc), f)
 				if err != nil {
 					return starter, err
 				}

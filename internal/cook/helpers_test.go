@@ -180,20 +180,45 @@ func TestExtractIncludes(t *testing.T) {
 
 func TestCollectAllIncludes(t *testing.T) {
 	testCases := []struct {
-		id     string
-		recipe RecipeName
-		sprout string
-	}{{
-		id:     "dev",
-		recipe: "dev",
-		sprout: "testSprout",
-	}}
+		id       string
+		recipe   RecipeName
+		sprout   string
+		expected []string
+	}{
+		{
+			id:       "dev resolves nested and cyclic includes once",
+			recipe:   "dev",
+			sprout:   "testSprout",
+			expected: []string{"apache", "dev", "missing"},
+		},
+		{
+			id:       "apache init self-include collapses to the logical recipe name",
+			recipe:   "apache",
+			sprout:   "testSprout",
+			expected: []string{"apache"},
+		},
+	}
 	for _, tc := range testCases {
-		t.Run(tc.id, func(_ *testing.T) {
+		t.Run(tc.id, func(t *testing.T) {
 			recipes, err := collectAllIncludes(tc.sprout, getBasePath(), tc.recipe)
-			// TODO actually test this
-			_, _ = recipes, err
-			// fmt.Printf("%v, %v", recipes, err)
+			if err != nil {
+				t.Fatalf("collectAllIncludes(%q): %v", tc.recipe, err)
+			}
+			if len(recipes) != len(tc.expected) {
+				t.Fatalf("expected %v but got %v", tc.expected, recipes)
+			}
+
+			actual := make([]string, 0, len(recipes))
+			for _, recipe := range recipes {
+				actual = append(actual, string(recipe))
+			}
+			sort.Strings(actual)
+			sort.Strings(tc.expected)
+			for i := range tc.expected {
+				if actual[i] != tc.expected[i] {
+					t.Fatalf("expected %v but got %v", tc.expected, actual)
+				}
+			}
 		})
 	}
 }
