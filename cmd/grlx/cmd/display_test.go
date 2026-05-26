@@ -90,7 +90,7 @@ func TestVersionJSON_Marshaling(t *testing.T) {
 
 func TestVersionJSON_WithError(t *testing.T) {
 	cv := config.CombinedVersion{
-		CLI: config.Version{Tag: "v2.1.0"},
+		CLI:   config.Version{Tag: "v2.1.0"},
 		Error: "connection refused",
 	}
 
