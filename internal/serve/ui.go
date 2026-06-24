@@ -44,8 +44,9 @@ func UIHandler() http.Handler {
 			return
 		}
 
-		// SPA fallback: serve index.html for client-side routing
-		r.URL.Path = "/"
-		fileServer.ServeHTTP(w, r)
+		// SPA fallback: serve index.html for client-side routing.
+		fallbackRequest := r.Clone(r.Context())
+		fallbackRequest.URL.Path = "/"
+		fileServer.ServeHTTP(w, fallbackRequest)
 	})
 }
