@@ -25,13 +25,23 @@ import (
 type CookOption func(*cookOptions)
 
 type cookOptions struct {
-	invokedBy string
+	invokedBy  string
+	targetStep StepID
 }
 
 // WithInvoker sets the pubkey of the user who initiated the cook.
 func WithInvoker(pubkey string) CookOption {
 	return func(o *cookOptions) {
 		o.invokedBy = pubkey
+	}
+}
+
+// WithTargetStep restricts the cook to a single step (and the transitive
+// closure of its requisite dependencies) instead of the whole recipe tree.
+// An empty id runs the full recipe.
+func WithTargetStep(id StepID) CookOption {
+	return func(o *cookOptions) {
+		o.targetStep = id
 	}
 }
 
@@ -147,6 +157,15 @@ func SendCookEvent(sproutID string, recipeID RecipeName, JID string, test bool, 
 	for _, opt := range opts {
 		opt(&co)
 	}
+	// If a target step was requested, prune the tree to that step plus the
+	// transitive closure of its requisite dependencies.
+	if co.targetStep != "" {
+		pruned, pruneErr := PruneToTarget(validSteps, co.targetStep)
+		if pruneErr != nil {
+			return pruneErr
+		}
+		validSteps = pruned
+	}
 	rEnvelope := RecipeEnvelope{
 		JobID:     JID,
 		Steps:     validSteps,
@@ -223,6 +242,3 @@ func ResolveRecipeFilePath(basepath string, recipeID RecipeName) (string, error)
 		return "", err
 	}
 }
-
-// TODO ensure ability to only run individual state (+ dependencies),
-// i.e. start from a root of a given dependency tree

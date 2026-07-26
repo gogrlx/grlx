@@ -14,6 +14,7 @@ type (
 		Async   bool            `json:"async"`
 		Env     string          `json:"env"`
 		Recipe  cook.RecipeName `json:"recipe"`
+		State   string          `json:"state,omitempty"`
 		Test    bool            `json:"test"`
 		Timeout time.Duration   `json:"timeout"`
 
