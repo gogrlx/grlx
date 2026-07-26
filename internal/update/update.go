@@ -10,12 +10,11 @@
 //     always reports that an update is available.
 //   - PerformUpdate/replaceBinary download and swap the running binary WITHOUT
 //     verifying the release signature or checksum (a remote-code-execution
-//     vector), and replaceBinary's temp-file-then-rename can fail across
-//     filesystems (EXDEV).
+//     vector).
 //
 // Implementing this safely requires design decisions (authoritative version
-// source, signature verification against the published checksums.txt(.sig),
-// atomic same-filesystem replace, and rollout policy). Tracked in
+// source, signature verification against the published checksums.txt(.sig), and
+// rollout policy). Tracked in
 // https://github.com/gogrlx/grlx/issues/286.
 
 package selfupdate
@@ -157,23 +156,84 @@ func (u *Updater) replaceBinary(newBinaryPath string) error {
 		return fmt.Errorf("failed to resolve symlinks: %w", err)
 	}
 
+	return replaceBinaryAt(currentExe, newBinaryPath)
+}
+
+func replaceBinaryAt(currentExe, newBinaryPath string) error {
+	stagedPath, err := stageBinary(currentExe, newBinaryPath)
+	if err != nil {
+		return err
+	}
+	defer os.Remove(stagedPath)
+
+	return commitBinaryUpdate(currentExe, stagedPath)
+}
+
+func stageBinary(currentExe, newBinaryPath string) (string, error) {
+	newBinary, err := os.Open(newBinaryPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to open update binary: %w", err)
+	}
+	defer newBinary.Close()
+
+	newBinaryInfo, err := newBinary.Stat()
+	if err != nil {
+		return "", fmt.Errorf("failed to inspect update binary: %w", err)
+	}
+	if newBinaryInfo.IsDir() {
+		return "", fmt.Errorf("update binary is a directory: %s", newBinaryPath)
+	}
+
+	targetDir := filepath.Dir(currentExe)
+	stagedFile, err := os.CreateTemp(targetDir, ".grlx-update-*")
+	if err != nil {
+		return "", fmt.Errorf("failed to stage update in executable directory: %w", err)
+	}
+	stagedPath := stagedFile.Name()
+	removeStaged := true
+	defer func() {
+		if removeStaged {
+			os.Remove(stagedPath)
+		}
+	}()
+
+	if _, err := io.Copy(stagedFile, newBinary); err != nil {
+		stagedFile.Close()
+		return "", fmt.Errorf("failed to stage update binary: %w", err)
+	}
+	if err := stagedFile.Close(); err != nil {
+		return "", fmt.Errorf("failed to close staged update binary: %w", err)
+	}
+	if err := os.Chmod(stagedPath, newBinaryInfo.Mode().Perm()); err != nil {
+		return "", fmt.Errorf("failed to make staged update executable: %w", err)
+	}
+
+	removeStaged = false
+	return stagedPath, nil
+}
+
+func commitBinaryUpdate(currentExe, stagedPath string) error {
 	// Create backup
 	backupPath := currentExe + ".backup"
-	err = os.Rename(currentExe, backupPath)
+	err := os.Rename(currentExe, backupPath)
 	if err != nil {
 		return fmt.Errorf("failed to create backup: %w", err)
 	}
 
 	// Move new binary into place
-	err = os.Rename(newBinaryPath, currentExe)
+	err = os.Rename(stagedPath, currentExe)
 	if err != nil {
 		// Restore backup on failure
-		os.Rename(backupPath, currentExe)
+		if restoreErr := os.Rename(backupPath, currentExe); restoreErr != nil {
+			return fmt.Errorf("failed to install update: %w; failed to restore backup: %w", err, restoreErr)
+		}
 		return fmt.Errorf("failed to install update: %w", err)
 	}
 
 	// Remove backup on success
-	os.Remove(backupPath)
+	if err := os.Remove(backupPath); err != nil {
+		return fmt.Errorf("failed to remove update backup: %w", err)
+	}
 
 	return nil
 }
