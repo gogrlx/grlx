@@ -38,7 +38,14 @@ func FRun(target pki.KeyManager, cmdRun apitypes.CmdRun) (apitypes.CmdRun, error
 }
 
 func SRun(cmd apitypes.CmdRun) (apitypes.CmdRun, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), cmd.Timeout)
+	// A zero (or negative) timeout means "no deadline"; WithTimeout would
+	// otherwise produce an already-expired context and kill the command
+	// immediately.
+	ctx := context.Background()
+	cancel := context.CancelFunc(func() {})
+	if cmd.Timeout > 0 {
+		ctx, cancel = context.WithTimeout(context.Background(), cmd.Timeout)
+	}
 	defer cancel()
 	envMutex.Lock()
 	osPath := os.Getenv("PATH")
@@ -93,6 +100,12 @@ func SRun(cmd apitypes.CmdRun) (apitypes.CmdRun, error) {
 	}
 	cmd.Stdout = stdoutBuf.String()
 	cmd.Stderr = stderrBuf.String()
-	cmd.ErrCode = command.ProcessState.ExitCode()
+	// ProcessState is nil if the process was never started (e.g. fork/exec
+	// failure), so guard against a nil dereference.
+	if command.ProcessState != nil {
+		cmd.ErrCode = command.ProcessState.ExitCode()
+	} else {
+		cmd.ErrCode = -1
+	}
 	return cmd, err
 }

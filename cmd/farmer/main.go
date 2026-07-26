@@ -293,6 +293,9 @@ func ConnectFarmer() {
 	if err != nil {
 		log.Errorf("Got an error on Connect with Secure Options: %+v\n", err)
 	}
+	if nc == nil {
+		log.Fatalf("Failed to connect Farmer to NATS bus: %v", err)
+	}
 	for !nc.IsConnected() {
 		connectionAttempts++
 		log.Debugf("Attempting to pair Farmer to NATS bus (attempt %d/%d).", connectionAttempts, maxFarmerReconnect)
