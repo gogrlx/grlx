@@ -46,22 +46,26 @@ func CookRecipeEnvelope(envelope RecipeEnvelope) error {
 	for _, step := range envelope.Steps {
 		stepMap[step.ID] = step
 	}
-	// create a wait group and a channel to receive step completions
-	wg := sync.WaitGroup{}
-	wg.Add(len(envelope.Steps) + 1)
-	completionChan := make(chan StepCompletion, 1)
+	// completionChan is buffered to hold every possible completion (one per step
+	// plus the seeded "start" completion) so in-flight step goroutines can always
+	// deliver their result without blocking, even after this function has returned
+	// (e.g. on timeout). This prevents the goroutine/process leak that a smaller
+	// buffer would cause.
+	completionChan := make(chan StepCompletion, len(envelope.Steps)+1)
 	completionChan <- StepCompletion{
 		ID:               StepID(fmt.Sprintf("start-%s", envelope.JobID)),
 		CompletionStatus: StepCompleted,
 		ChangesMade:      false,
 		Changes:          nil,
 	}
-	ctx, cancel := context.WithCancel(context.Background())
-	// spawn a goroutine to wait for all steps to complete and then cancel the context
-	go func() {
-		wg.Wait()
-		cancel()
-	}()
+	// expected is the total number of completions required before the recipe is
+	// considered finished: one per step plus the seeded "start" completion.
+	expected := len(envelope.Steps) + 1
+	completed := 0
+	// ctx bounds the total wall-clock time for the entire recipe. When it fires,
+	// in-flight steps observe the cancellation through their Apply/Test context.
+	ctx, cancel := context.WithTimeout(context.Background(), DefaultCookTimeout)
+	defer cancel()
 	for {
 		select {
 		// each time a step completes, check if any other steps can be started
@@ -73,7 +77,7 @@ func CookRecipeEnvelope(envelope RecipeEnvelope) error {
 
 			conn.Publish("grlx.cook."+pki.GetSproutID()+"."+envelope.JobID, b)
 			log.Infof("Step %s completed with status %v", completion.ID, completion)
-			wg.Done()
+			completed++
 			logStepResult(envelope.JobID, completion)
 			completionMap[completion.ID] = completion
 			noneInProgress := true
@@ -157,24 +161,24 @@ func CookRecipeEnvelope(envelope RecipeEnvelope) error {
 				// no steps are in progress, so we're done
 				log.Debug("No steps are in progress")
 			}
-		// All steps are done, so context will be cancelled and we'll exit
+			if completed >= expected {
+				// every step (plus the seeded start completion) has reported in
+				completion := StepCompletion{
+					ID:               StepID(fmt.Sprintf("completed-%s", envelope.JobID)),
+					CompletionStatus: StepCompleted,
+					ChangesMade:      false,
+					Changes:          nil,
+				}
+				b, marshalErr := json.Marshal(completion)
+				if marshalErr != nil {
+					log.Errorf("failed to marshal step completion: %v", marshalErr)
+				}
+				conn.Publish("grlx.cook."+pki.GetSproutID()+"."+envelope.JobID, b)
+				log.Info("All steps completed")
+				return nil
+			}
+		// The recipe exceeded its total time budget.
 		case <-ctx.Done():
-			completion := StepCompletion{
-				ID:               StepID(fmt.Sprintf("completed-%s", envelope.JobID)),
-				CompletionStatus: StepCompleted,
-				ChangesMade:      false,
-				Changes:          nil,
-			}
-			b, marshalErr := json.Marshal(completion)
-			if marshalErr != nil {
-				log.Errorf("failed to marshal step completion: %v", marshalErr)
-			}
-
-			conn.Publish("grlx.cook."+pki.GetSproutID()+"."+envelope.JobID, b)
-			log.Info("All steps completed")
-			return nil
-		case <-time.After(DefaultCookTimeout):
-			cancel()
 			log.Errorf("recipe %s timed out after %v", envelope.JobID, DefaultCookTimeout)
 			completion := StepCompletion{
 				ID:               StepID(fmt.Sprintf("timeout-%s", envelope.JobID)),
