@@ -24,7 +24,7 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       # We need libpathrs so that golangci-lint can typecheck
       # "cyphar.com/go-pathrs" (the package needs to be buildable).
@@ -59,7 +59,7 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v9
         with:
-          version: v2.6
+          version: v2.12
 
   build:
     strategy:
@@ -87,7 +87,7 @@ jobs:
             os: ubuntu-latest
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: actions/setup-go@v6
         with:
           go-version: ${{ matrix.go-version }}
@@ -111,7 +111,7 @@ jobs:
           - "stable"
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: actions/setup-go@v6
         with:
           go-version: ${{ matrix.go-version }}
@@ -144,7 +144,7 @@ jobs:
       - name: upload coverage artefact
         # We can only use -test.gocoverdir for Go >= 1.20.
         if: ${{ matrix.go-version != '1.18' && matrix.go-version != '1.19' }}
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: coverage-${{ runner.os }}-${{ github.job }}-${{ strategy.job-index }}
           path: ${{ env.GOCOVERDIR }}
@@ -179,7 +179,7 @@ jobs:
             os: ubuntu-22.04
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: actions/setup-go@v6
         with:
           go-version: ${{ matrix.go-version }}
@@ -207,7 +207,7 @@ jobs:
       - name: upload coverage artefact
         # We can only use -test.gocoverdir for Go >= 1.20.
         if: ${{ matrix.go-version != '1.18' && matrix.go-version != '1.19' }}
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: coverage-${{ runner.os }}-${{ github.job }}-${{ strategy.job-index }}
           path: ${{ env.GOCOVERDIR }}
@@ -233,7 +233,7 @@ jobs:
           - ubuntu-latest
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - uses: dtolnay/rust-toolchain@stable
       - name: find latest libpathrs release
@@ -289,7 +289,7 @@ jobs:
       - name: upload coverage artefact
         # We can only use -test.gocoverdir for Go >= 1.20.
         if: ${{ matrix.go-version != '1.18' && matrix.go-version != '1.19' }}
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: coverage-${{ runner.os }}-${{ github.job }}-${{ strategy.job-index }}
           path: ${{ env.GOCOVERDIR }}
@@ -309,13 +309,13 @@ jobs:
       - unix
       - libpathrs
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: actions/setup-go@v6
         with:
           go-version: "stable"
           check-latest: true
       - name: download all coverage
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           path: coverage
       - name: generate coverage list
@@ -334,12 +334,12 @@ jobs:
           go tool covdata textfmt -i "$GOCOVERDIRS" -o "$FULLCOVERAGE_FILE"
           go tool cover -html="$FULLCOVERAGE_FILE" -o "$FULLCOVERAGE_FILE.html"
       - name: upload merged coverage
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: fullcoverage-${{ github.job }}
           path: ${{ env.FULLCOVERAGE_FILE }}
       - name: upload coverage html
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: fullcoverage-${{ github.job }}.html
           path: ${{ env.FULLCOVERAGE_FILE }}.html
@@ -347,7 +347,7 @@ jobs:
   codespell:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - run: pip install codespell==v2.4.1
       - run: codespell
 
