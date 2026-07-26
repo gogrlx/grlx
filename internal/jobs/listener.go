@@ -11,7 +11,8 @@ package jobs
 // the cli user's machine. For now, they are only stored farmer-side.
 // Jobs can be retrieved from the farmer with the grlx job command.
 
-// TODO configure expiration time for job data on the sprout and farmer
+// Job data expiration is configurable via the joblogttl setting on both the
+// farmer (Store.StartReaperCtx) and the sprout (StartSproutReaper).
 
 import (
 	"encoding/json"

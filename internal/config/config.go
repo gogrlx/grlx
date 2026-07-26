@@ -244,12 +244,14 @@ func LoadConfig(binary string) {
 			jety.SetDefault("sproutrootca", filepath.Join(systemConfigRoot, "pki/sprout/tls-rootca.pem"))
 			jety.SetDefault("nkeysproutpubfile", filepath.Join(systemConfigRoot, "pki/sprout/sprout.nkey.pub"))
 			jety.SetDefault("joblogdir", "/var/cache/grlx/sprout/jobs")
+			jety.SetDefault("joblogttl", 30*24*time.Hour) // 30 days default
 			jety.SetDefault("nkeysproutprivfile", filepath.Join(systemConfigRoot, "pki/sprout/sprout.nkey"))
 			jety.SetDefault("cachedir", "/var/cache/grlx/sprout/files/provided")
 			jety.SetDefault("rootca_retry_delay", 5*time.Second)
 			jety.SetDefault("nkey_retry_delay", 5*time.Second)
 
 			JobLogDir = jety.GetString("joblogdir")
+			JobLogTTL = jety.GetDuration("joblogttl")
 		}
 		jety.WriteConfig()
 	})
