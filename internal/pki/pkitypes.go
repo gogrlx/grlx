@@ -32,4 +32,5 @@ var (
 	ErrSproutIDNotFound         = errors.New("a Sprout ID matching that system cannot be found")
 	ErrInvalidKeyState          = errors.New("code bug: an invalid key state was supplied")
 	ErrConfirmationLengthIsZero = errors.New("code bug: confirmation options must not be 0-length")
+	ErrNKeyClientNotReady       = errors.New("nkey HTTP client is not initialized; call LoadRootCA first")
 )

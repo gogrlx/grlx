@@ -2,6 +2,7 @@ package pki
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
@@ -14,6 +15,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	log "github.com/gogrlx/grlx/v2/internal/log"
@@ -397,10 +399,13 @@ func RootCACached(binary string) bool {
 	return err == nil
 }
 
-var nkeyClient *http.Client
+var (
+	nkeyClient   *http.Client
+	nkeyClientMu sync.RWMutex
+)
 
 func LoadRootCA(binary string) error {
-	nkeyClient = &http.Client{}
+	client := &http.Client{}
 	var RootCA string
 	switch binary {
 	case "grlx":
@@ -435,8 +440,11 @@ func LoadRootCA(binary string) error {
 			MinVersion: tls.VersionTLS12,
 		},
 	}
-	nkeyClient.Transport = nkeyTransport
-	nkeyClient.Timeout = time.Second * 10
+	client.Transport = nkeyTransport
+	client.Timeout = time.Second * 10
+	nkeyClientMu.Lock()
+	nkeyClient = client
+	nkeyClientMu.Unlock()
 	return nil
 }
 
@@ -451,13 +459,20 @@ func PutNKey(id string) error {
 	if err != nil {
 		return fmt.Errorf("failed to marshal key submission: %w", err)
 	}
-	url := config.FarmerURL + "/pki/putnkey"
-	req, err := http.NewRequest(http.MethodPut, url, bytes.NewBuffer(jw))
-	if err != nil {
-		// handle error
-		log.Fatal(err)
+	nkeyClientMu.RLock()
+	client := nkeyClient
+	nkeyClientMu.RUnlock()
+	if client == nil {
+		return ErrNKeyClientNotReady
 	}
-	resp, err := nkeyClient.Do(req)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
+	url := config.FarmerURL + "/pki/putnkey"
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, url, bytes.NewBuffer(jw))
+	if err != nil {
+		return fmt.Errorf("failed to build NKey submission request: %w", err)
+	}
+	resp, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to submit NKey: %w", err)
 	}
