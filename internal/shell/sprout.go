@@ -23,9 +23,12 @@ type SproutSession struct {
 	nc          *nats.Conn
 	ptmx        *os.File
 	cmd         *exec.Cmd
+	subsMu      sync.Mutex
 	subs        []*nats.Subscription
+	closed      bool
 	done        chan struct{}
 	once        sync.Once
+	doneOnce    sync.Once
 	idleTimeout time.Duration
 	idleResetCh chan struct{}
 }
@@ -104,7 +107,7 @@ func HandleShellStart(nc *nats.Conn, msg *nats.Msg) {
 		respondError(msg, fmt.Errorf("failed to subscribe to input: %w", err))
 		return
 	}
-	session.subs = append(session.subs, inputSub)
+	session.addSub(inputSub)
 
 	// Subscribe to resize messages.
 	resizeSub, err := nc.Subscribe(subjects.ResizeSubject, func(m *nats.Msg) {
@@ -124,7 +127,7 @@ func HandleShellStart(nc *nats.Conn, msg *nats.Msg) {
 		respondError(msg, fmt.Errorf("failed to subscribe to resize: %w", err))
 		return
 	}
-	session.subs = append(session.subs, resizeSub)
+	session.addSub(resizeSub)
 
 	// Read PTY output → publish to CLI.
 	go session.readLoop(subjects.OutputSubject)
@@ -160,13 +163,11 @@ func (s *SproutSession) idleWatcher(doneSubject string) {
 		select {
 		case <-timer.C:
 			log.Infof("shell %s: idle timeout (%v), closing session", s.sessionID, s.idleTimeout)
+			// Record the idle-timeout reason before Close kills the
+			// process, otherwise waitLoop may win the doneOnce race and
+			// publish an empty error for the killed process.
+			s.publishDone(doneSubject, -1, "idle timeout")
 			s.Close(-1, "idle timeout")
-			done := DoneMessage{
-				ExitCode: -1,
-				Error:    "idle timeout",
-			}
-			data, _ := json.Marshal(done)
-			s.nc.Publish(doneSubject, data)
 			return
 		case <-s.idleResetCh:
 			if !timer.Stop() {
@@ -216,14 +217,22 @@ func (s *SproutSession) waitLoop(doneSubject string) {
 		}
 	}
 	s.Close(exitCode, errMsg)
-
-	done := DoneMessage{
-		ExitCode: exitCode,
-		Error:    errMsg,
-	}
-	data, _ := json.Marshal(done)
-	s.nc.Publish(doneSubject, data)
+	s.publishDone(doneSubject, exitCode, errMsg)
 	log.Debugf("shell: session %s exited with code %d", s.sessionID, exitCode)
+}
+
+// publishDone publishes the session's done message exactly once, regardless
+// of whether the process exited on its own or the session was force-closed
+// (e.g. by the idle watcher).
+func (s *SproutSession) publishDone(doneSubject string, exitCode int, errMsg string) {
+	s.doneOnce.Do(func() {
+		done := DoneMessage{
+			ExitCode: exitCode,
+			Error:    errMsg,
+		}
+		data, _ := json.Marshal(done)
+		s.nc.Publish(doneSubject, data)
+	})
 }
 
 // Close cleans up the session.
@@ -234,12 +243,35 @@ func (s *SproutSession) Close(exitCode int, errMsg string) {
 	})
 }
 
+// addSub records a subscription for cleanup. If the session has already been
+// cleaned up, the subscription is unsubscribed immediately to avoid a leak.
+func (s *SproutSession) addSub(sub *nats.Subscription) {
+	s.subsMu.Lock()
+	if s.closed {
+		s.subsMu.Unlock()
+		sub.Unsubscribe()
+		return
+	}
+	s.subs = append(s.subs, sub)
+	s.subsMu.Unlock()
+}
+
 func (s *SproutSession) cleanup() {
-	for _, sub := range s.subs {
+	s.subsMu.Lock()
+	s.closed = true
+	subs := s.subs
+	s.subs = nil
+	s.subsMu.Unlock()
+	for _, sub := range subs {
 		sub.Unsubscribe()
 	}
 	if s.ptmx != nil {
 		s.ptmx.Close()
+	}
+	// Kill the shell process; closing the PTY alone can leave the child
+	// running (e.g. on idle timeout), so terminate it explicitly.
+	if s.cmd != nil && s.cmd.Process != nil {
+		s.cmd.Process.Kill()
 	}
 }
 
