@@ -80,7 +80,6 @@ func recipeToStep(id string, recipe map[string]interface{}) (Step, error) {
 }
 
 func collectAllIncludes(sproutID, basepath string, recipeID RecipeName) ([]RecipeName, error) {
-	// TODO get git branch / tag from environment
 	// pass in an ID to a Recipe
 	recipeFilePath, err := ResolveRecipeFilePath(basepath, recipeID)
 	if err != nil {
@@ -209,7 +208,17 @@ func relativeRecipeToAbsolute(basepath, relatedRecipePath string, recipeID Recip
 	return pathToRecipeName(path)
 }
 
+// RecipeDirEnvVar names an optional environment variable that overrides the
+// recipe base path at cook time. This lets an operator point a cook at a
+// different recipe tree — e.g. a checkout of a specific git branch or tag, or
+// a per-environment directory — without rewriting the farmer config. When
+// unset or empty, config.RecipeDir is used.
+const RecipeDirEnvVar = "GRLX_RECIPE_DIR"
+
 func getBasePath() string {
+	if dir := os.Getenv(RecipeDirEnvVar); dir != "" {
+		return dir
+	}
 	return config.RecipeDir
 }
 
