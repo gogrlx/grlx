@@ -42,12 +42,13 @@ func localIPs() []string {
 	}
 	for _, addr := range addrs {
 		ipNet, ok := addr.(*net.IPNet)
-		if !ok || ipNet.IP.IsLoopback() {
+		if !ok || ipNet.IP == nil {
 			continue
 		}
-		if ipNet.IP.To4() != nil || ipNet.IP.To16() != nil {
-			ips = append(ips, ipNet.IP.String())
+		if ipNet.IP.IsLoopback() || ipNet.IP.IsLinkLocalUnicast() || ipNet.IP.IsLinkLocalMulticast() {
+			continue
 		}
+		ips = append(ips, ipNet.IP.String())
 	}
 	return ips
 }

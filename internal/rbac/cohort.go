@@ -182,6 +182,8 @@ func (r *Registry) ValidateReferences() error {
 // every validation error found (missing operands, circular references,
 // exceeded nesting depth). Returns nil if all references are valid.
 func (r *Registry) ValidateReferencesAll() []error {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
 	var errs []error
 	for name, c := range r.cohorts {
 		if c.Type != CohortTypeCompound {
@@ -336,6 +338,8 @@ func (r *Registry) RefreshAll(allSproutIDs []string) ([]RefreshResult, error) {
 // (needed to evaluate dynamic cohorts). It detects circular references
 // and enforces MaxNestingDepth.
 func (r *Registry) Resolve(name string, allSproutIDs []string) (map[string]bool, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
 	visited := make(map[string]bool)
 	return r.resolve(name, allSproutIDs, visited, 0)
 }
