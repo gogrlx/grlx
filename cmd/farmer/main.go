@@ -10,6 +10,7 @@ import (
 	"os/signal"
 	"runtime"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -316,7 +317,8 @@ func RunNATSServer() {
 
 func ConnectFarmer(ctx context.Context, done chan<- struct{}) {
 	defer close(done)
-	connectionAttempts := 1
+	var connectionAttempts atomic.Int64
+	connectionAttempts.Store(1)
 	maxFarmerReconnect := 30
 	RootCA := config.RootCA
 	BusURL := config.FarmerBusURL
@@ -354,8 +356,7 @@ func ConnectFarmer(ctx context.Context, done chan<- struct{}) {
 		nats.MaxReconnects(maxFarmerReconnect),
 		nats.ReconnectWait(time.Second*15),
 		nats.DisconnectHandler(func(_ *nats.Conn) {
-			connectionAttempts++
-			log.Warnf("WARN: Reconnecting Farmer to NATS bus, attempt: %d\n", connectionAttempts)
+			log.Warnf("WARN: Reconnecting Farmer to NATS bus, attempt: %d\n", connectionAttempts.Add(1))
 		}),
 	)
 	if err != nil {
@@ -365,10 +366,10 @@ func ConnectFarmer(ctx context.Context, done chan<- struct{}) {
 		log.Fatalf("Failed to connect Farmer to NATS bus: %v", err)
 	}
 	for !nc.IsConnected() {
-		connectionAttempts++
-		log.Debugf("Attempting to pair Farmer to NATS bus (attempt %d/%d).", connectionAttempts, maxFarmerReconnect)
-		if connectionAttempts >= maxFarmerReconnect {
-			log.Fatalf("Failed to connect Farmer to NATS %d times, exiting.", connectionAttempts)
+		attempts := connectionAttempts.Add(1)
+		log.Debugf("Attempting to pair Farmer to NATS bus (attempt %d/%d).", attempts, maxFarmerReconnect)
+		if attempts >= int64(maxFarmerReconnect) {
+			log.Fatalf("Failed to connect Farmer to NATS %d times, exiting.", attempts)
 		}
 		select {
 		case <-ctx.Done():
@@ -377,7 +378,7 @@ func ConnectFarmer(ctx context.Context, done chan<- struct{}) {
 		case <-time.After(time.Second * 15):
 		}
 	}
-	connectionAttempts = 0
+	connectionAttempts.Store(0)
 	log.Debugf("Successfully joined Farmer to NATS bus")
 
 	if err := log.ConnectNATS(BusURL); err != nil {

@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"os"
 	"os/signal"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -91,7 +92,7 @@ func createConfigRoot() {
 
 func ConnectSprout(ctx context.Context, done chan<- struct{}) {
 	defer close(done)
-	connectionAttempts := 0
+	var connectionAttempts atomic.Int64
 	var err error
 	SproutRootCA := config.SproutRootCA
 	FarmerInterface := config.FarmerInterface
@@ -118,8 +119,7 @@ func ConnectSprout(ctx context.Context, done chan<- struct{}) {
 		nats.MaxReconnects(-1),
 		nats.ReconnectWait(time.Second*15),
 		nats.DisconnectHandler(func(_ *nats.Conn) {
-			connectionAttempts++
-			log.Debugf("Reconnecting to Farmer, attempt: %d\n", connectionAttempts)
+			log.Debugf("Reconnecting to Farmer, attempt: %d\n", connectionAttempts.Add(1))
 		}),
 	)
 	for err != nil {
@@ -132,8 +132,7 @@ func ConnectSprout(ctx context.Context, done chan<- struct{}) {
 			nats.MaxReconnects(-1),
 			nats.ReconnectWait(time.Second*15),
 			nats.DisconnectHandler(func(_ *nats.Conn) {
-				connectionAttempts++
-				log.Debugf("Reconnecting to Farmer, attempt: %d\n", connectionAttempts)
+				log.Debugf("Reconnecting to Farmer, attempt: %d\n", connectionAttempts.Add(1))
 			}),
 		)
 	}
