@@ -3,6 +3,7 @@ package cmd
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"strings"
@@ -12,6 +13,7 @@ import (
 	gcmd "github.com/gogrlx/grlx/v2/cmd/grlx/ingredients/cmd"
 	apitypes "github.com/gogrlx/grlx/v2/internal/api/types"
 	"github.com/gogrlx/grlx/v2/internal/pki"
+	nats "github.com/nats-io/nats.go"
 	"github.com/spf13/cobra"
 )
 
@@ -63,13 +65,15 @@ var cmdCmdRun = &cobra.Command{
 		}
 		results, err := gcmd.FRun(effectiveTarget, command)
 		if err != nil {
-			switch err {
-			case pki.ErrSproutIDNotFound:
-				log.Fatalf("A targeted Sprout does not exist or is not accepted..")
+			switch {
+			case errors.Is(err, pki.ErrSproutIDNotFound):
+				log.Fatalf("A targeted Sprout does not exist or is not accepted.")
+			case errors.Is(err, nats.ErrNoResponders):
+				log.Fatalf("No Sprout responded: the target may be offline or not subscribed.")
+			case errors.Is(err, nats.ErrTimeout):
+				log.Fatalf("Timed out waiting for the Sprout to respond after %d seconds.", timeout)
 			default:
-				// TODO: handle endpoint timeouts here
-				// TODO: Error running command on the Sprout: nats: no responders available for request  run.go:65
-				log.Panic(err)
+				log.Fatalf("Error running command on the Sprout: %v", err)
 			}
 		}
 		switch outputMode {
