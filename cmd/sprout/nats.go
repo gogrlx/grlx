@@ -98,9 +98,8 @@ func natsInit(nc *nats.Conn) error {
 		ackB, _ := json.Marshal(cook.Ack{Acknowledged: true, JobID: rEnvelope.JobID})
 		m.Respond(ackB)
 		go func() {
-			err = cook.CookRecipeEnvelope(rEnvelope)
-			if err != nil {
-				log.Error(err)
+			if cookErr := cook.CookRecipeEnvelope(rEnvelope); cookErr != nil {
+				log.Error(cookErr)
 			}
 		}()
 	})
