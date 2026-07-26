@@ -38,7 +38,7 @@ var (
 )
 
 func main() {
-	if err := os.MkdirAll(config.CacheDir, os.ModeDir); err != nil {
+	if err := os.MkdirAll(config.CacheDir, 0o755); err != nil {
 		log.Fatalf("failed to create cache directory %s: %v", config.CacheDir, err)
 	}
 	config.LoadConfig("sprout")
