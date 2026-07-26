@@ -62,7 +62,11 @@ func handleAuthLogin(params json.RawMessage) (any, error) {
 
 	displayName := username
 	if displayName == "" {
-		displayName = pubkey[:12] + "..."
+		if len(pubkey) >= 12 {
+			displayName = pubkey[:12] + "..."
+		} else {
+			displayName = pubkey
+		}
 	}
 
 	return apitypes.LoginResponse{
