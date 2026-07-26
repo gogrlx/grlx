@@ -341,5 +341,51 @@ func validateRecipeTree(recipes []*Step) ([]*Step, error) {
 	return recipes, err
 }
 
-// TODO ensure ability to only run individual state (+ dependencies),
-// i.e. start from a root of a given dependency tree
+// PruneToTarget returns the subset of steps needed to run the single step
+// identified by target: the target itself plus the transitive closure of its
+// requisite dependencies (every step reachable through Requisites). This lets
+// a caller run an individual state (and only what it depends on) instead of
+// the whole recipe tree, starting from the root of a given dependency subtree.
+//
+// The returned steps preserve their original relative order. An error is
+// returned if target is not present in steps, or if a requisite references a
+// step ID that does not exist in steps.
+func PruneToTarget(steps []Step, target StepID) ([]Step, error) {
+	byID := make(map[StepID]Step, len(steps))
+	for _, s := range steps {
+		byID[s.ID] = s
+	}
+	if _, ok := byID[target]; !ok {
+		return nil, fmt.Errorf("%w: %q", ErrTargetStepNotFound, target)
+	}
+
+	keep := make(map[StepID]bool)
+	var visit func(id StepID) error
+	visit = func(id StepID) error {
+		if keep[id] {
+			return nil
+		}
+		step, ok := byID[id]
+		if !ok {
+			return fmt.Errorf("%w: %q", ErrDanglingRequisite, id)
+		}
+		keep[id] = true
+		for _, reqID := range step.Requisites.AllIDs() {
+			if err := visit(reqID); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	if err := visit(target); err != nil {
+		return nil, err
+	}
+
+	pruned := make([]Step, 0, len(keep))
+	for _, s := range steps {
+		if keep[s.ID] {
+			pruned = append(pruned, s)
+		}
+	}
+	return pruned, nil
+}

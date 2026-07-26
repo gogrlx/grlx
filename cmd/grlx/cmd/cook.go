@@ -24,6 +24,7 @@ var (
 	async       bool
 	cookTimeout int
 	testMode    bool
+	targetState string
 )
 
 var cmdCook = &cobra.Command{
@@ -39,6 +40,7 @@ var cmdCook = &cobra.Command{
 		cmdCook.Async = async
 		cmdCook.Env = environment
 		cmdCook.Test = testMode
+		cmdCook.State = targetState
 
 		effectiveTarget, err := resolveEffectiveTarget()
 		if err != nil {
@@ -226,5 +228,6 @@ func init() {
 	addTargetFlags(cmdCook)
 	cmdCook.Flags().IntVar(&cookTimeout, "cook-timeout", 30, "Cancel cook execution and return after X seconds")
 	cmdCook.Flags().BoolVar(&testMode, "test", false, "Run in test mode (dry run without applying changes)")
+	cmdCook.Flags().StringVarP(&targetState, "state", "s", "", "Run only the named state and its requisite dependencies")
 	rootCmd.AddCommand(cmdCook)
 }

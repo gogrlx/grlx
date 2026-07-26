@@ -88,7 +88,11 @@ func handleCook(params json.RawMessage) (any, error) {
 		for _, target := range ta.Target {
 			go func(t pki.KeyManager) {
 				defer wg.Done()
-				err := cook.SendCookEvent(t.SproutID, command.Recipe, jid, command.Test, cook.WithInvoker(invokerPubkey))
+				cookOpts := []cook.CookOption{cook.WithInvoker(invokerPubkey)}
+				if command.State != "" {
+					cookOpts = append(cookOpts, cook.WithTargetStep(cook.StepID(command.State)))
+				}
+				err := cook.SendCookEvent(t.SproutID, command.Recipe, jid, command.Test, cookOpts...)
 				if err != nil {
 					mu.Lock()
 					errs[t.SproutID] = err

@@ -1935,6 +1935,12 @@ components:
           type: string
           description: Recipe name in dot-notation
           example: base.webserver
+        state:
+          type: string
+          description: >-
+            Optional. Run only the named state (step ID) and the transitive
+            closure of its requisite dependencies, instead of the whole recipe.
+          example: install-nginx
         test:
           type: boolean
           description: Run in test (dry-run) mode
