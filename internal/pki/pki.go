@@ -55,7 +55,7 @@ func SetupPKIFarmer() {
 		"rejected",
 		"accepted",
 	} {
-		stateFolder := filepath.Join(FarmerPKI + "sprouts/" + acceptanceState)
+		stateFolder := filepath.Join(FarmerPKI, "sprouts", acceptanceState)
 		_, err := os.Stat(stateFolder)
 		if err == nil {
 			continue
@@ -143,7 +143,7 @@ func AcceptNKey(id string) error {
 		DeleteNKey(strings.SplitN(id, "_", 2)[0])
 	}
 	id = strings.SplitN(id, "_", 2)[0]
-	newDest := filepath.Join(config.FarmerPKI + "sprouts/accepted/" + id)
+	newDest := filepath.Join(config.FarmerPKI, "sprouts", "accepted", id)
 	if fname == newDest {
 		return ErrAlreadyAccepted
 	}
@@ -167,7 +167,7 @@ func DenyNKey(id string) error {
 	if !IsValidSproutID(id) {
 		return ErrSproutIDInvalid
 	}
-	newDest := filepath.Join(config.FarmerPKI + "sprouts/denied/" + id)
+	newDest := filepath.Join(config.FarmerPKI, "sprouts", "denied", id)
 	fname, err := findNKey(id)
 	if err != nil {
 		return err
@@ -183,7 +183,7 @@ func UnacceptNKey(id string, nkey string) error {
 	if !IsValidSproutID(id) {
 		return ErrSproutIDInvalid
 	}
-	newDest := filepath.Join(config.FarmerPKI + "sprouts/unaccepted/" + id)
+	newDest := filepath.Join(config.FarmerPKI, "sprouts", "unaccepted", id)
 	fname, err := findNKey(id)
 	if nkey != "" && err == ErrSproutIDNotFound {
 		file, errCreate := os.Create(newDest)

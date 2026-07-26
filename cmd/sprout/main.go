@@ -1,9 +1,12 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	log "github.com/gogrlx/grlx/v2/internal/log"
@@ -56,8 +59,18 @@ func main() {
 		log.Debugf("Error submitting NKey: %v", err)
 		time.Sleep(nkeyRetryDelay)
 	}
-	go ConnectSprout()
-	select {}
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+	done := make(chan struct{})
+	go ConnectSprout(ctx, done)
+	<-ctx.Done()
+	stop()
+	log.Info("Shutdown signal received, stopping sprout...")
+	select {
+	case <-done:
+	case <-time.After(10 * time.Second):
+		log.Warn("timed out waiting for NATS client to close")
+	}
 }
 
 func createConfigRoot() {
@@ -76,7 +89,8 @@ func createConfigRoot() {
 	}
 }
 
-func ConnectSprout() {
+func ConnectSprout(ctx context.Context, done chan<- struct{}) {
+	defer close(done)
 	connectionAttempts := 0
 	var err error
 	SproutRootCA := config.SproutRootCA
@@ -109,7 +123,11 @@ func ConnectSprout() {
 		}),
 	)
 	for err != nil {
-		time.Sleep(time.Second * 15)
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(time.Second * 15):
+		}
 		nc, err = nats.Connect(FarmerBusURL, nats.Secure(config), opt,
 			nats.MaxReconnects(-1),
 			nats.ReconnectWait(time.Second*15),
@@ -132,6 +150,6 @@ func ConnectSprout() {
 	if err != nil {
 		log.Panicf("Error with natsInit: %v", err)
 	}
-	defer nc.Close()
-	select {}
+	<-ctx.Done()
+	nc.Close()
 }

@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"sync"
 	"syscall"
 	"time"
 
@@ -39,11 +40,38 @@ func init() {
 }
 
 var (
+	// srvMu guards the s and apiServer package globals, which are read by the
+	// shutdown path in main and written/read by handleSIGHUP concurrently.
+	srvMu     sync.Mutex
 	s         *nats_server.Server
 	apiServer *http.Server
 	GitCommit string
 	Tag       string
 )
+
+func setNATSServer(v *nats_server.Server) {
+	srvMu.Lock()
+	s = v
+	srvMu.Unlock()
+}
+
+func getNATSServer() *nats_server.Server {
+	srvMu.Lock()
+	defer srvMu.Unlock()
+	return s
+}
+
+func setAPIServer(v *http.Server) {
+	srvMu.Lock()
+	apiServer = v
+	srvMu.Unlock()
+}
+
+func getAPIServer() *http.Server {
+	srvMu.Lock()
+	defer srvMu.Unlock()
+	return apiServer
+}
 
 func main() {
 	config.LoadConfig("farmer")
@@ -64,19 +92,43 @@ func main() {
 	}
 	RunNATSServer()
 	StartAPIServer()
-	cohortCtx, cohortCancel := context.WithCancel(context.Background())
-	defer cohortCancel()
-	natsapi.StartCohortRefresher(cohortCtx, config.CohortRefreshInterval)
-	go ConnectFarmer()
-	go handleSIGHUP()
-	select {}
+	// ctx is cancelled on SIGINT/SIGTERM, driving a graceful shutdown of the
+	// cohort refresher, job reaper, NATS connection, NATS server, and API server.
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+	natsapi.StartCohortRefresher(ctx, config.CohortRefreshInterval)
+	farmerDone := make(chan struct{})
+	sighupDone := make(chan struct{})
+	go ConnectFarmer(ctx, farmerDone)
+	go handleSIGHUP(ctx, sighupDone)
 
-	// Generate nkey and save or read existing
-	// Post user struct to mux
-	// Attempt nats auth
-	// Auth nats bus
-	// Cli accept key, add to config file
-	// Update auth users via api
+	<-ctx.Done()
+	stop()
+	log.Info("Shutdown signal received, stopping farmer...")
+	// Stop the SIGHUP handler first so it can't restart the API server
+	// concurrently with the shutdown below (bounded, with a warning).
+	select {
+	case <-sighupDone:
+	case <-time.After(20 * time.Second):
+		log.Warn("timed out waiting for SIGHUP handler to stop")
+	}
+	// Wait for ConnectFarmer to close the NATS client (bounded).
+	select {
+	case <-farmerDone:
+	case <-time.After(10 * time.Second):
+		log.Warn("timed out waiting for NATS client to close")
+	}
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	if srv := getAPIServer(); srv != nil {
+		if err := srv.Shutdown(shutdownCtx); err != nil {
+			log.Errorf("API server shutdown error: %v", err)
+		}
+	}
+	if srv := getNATSServer(); srv != nil {
+		srv.Shutdown()
+	}
+	log.Info("Farmer stopped")
 }
 
 func initAuditLogger() {
@@ -160,7 +212,7 @@ func StartAPIServer() {
 		IdleTimeout:  config.APIIdleTimeout,
 		Handler:      r,
 	}
-	apiServer = srv
+	setAPIServer(srv)
 	go func() {
 		if err := srv.ListenAndServeTLS(CertFile, KeyFile); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("API server failed: %v", err)
@@ -173,10 +225,23 @@ func StartAPIServer() {
 // handleSIGHUP listens for SIGHUP signals and reloads the API server
 // and NATS server configuration. This allows certificate rotation and
 // configuration changes to take effect without a full restart.
-func handleSIGHUP() {
+func handleSIGHUP(ctx context.Context, done chan<- struct{}) {
+	defer close(done)
 	sighup := make(chan os.Signal, 1)
 	signal.Notify(sighup, syscall.SIGHUP)
-	for range sighup {
+	defer signal.Stop(sighup)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-sighup:
+		}
+		// Re-check cancellation: the select above may have chosen the sighup
+		// case even though shutdown was also requested. Don't start a new
+		// server if we're shutting down.
+		if ctx.Err() != nil {
+			return
+		}
 		log.Info("Received SIGHUP, reloading servers...")
 
 		// Reload NATS server NKeys (picks up new sprout keys, config changes)
@@ -187,8 +252,8 @@ func handleSIGHUP() {
 		}
 
 		// Reload the NATS server configuration
-		if s != nil {
-			if err := s.Reload(); err != nil {
+		if srv := getNATSServer(); srv != nil {
+			if err := srv.Reload(); err != nil {
 				log.Errorf("Failed to reload NATS server: %v", err)
 			} else {
 				log.Info("NATS server reloaded successfully")
@@ -197,9 +262,9 @@ func handleSIGHUP() {
 
 		// Gracefully shut down the API server and restart it
 		// so it picks up any new TLS certificates
-		if apiServer != nil {
+		if srv := getAPIServer(); srv != nil {
 			shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-			if err := apiServer.Shutdown(shutdownCtx); err != nil {
+			if err := srv.Shutdown(shutdownCtx); err != nil {
 				log.Errorf("Failed to gracefully shut down API server: %v", err)
 			}
 			cancel()
@@ -212,6 +277,11 @@ func handleSIGHUP() {
 		props.LoadStaticProps(config.StaticProps())
 		loadCohortRegistry()
 		loadAuthPolicy()
+		// Don't restart the API server if shutdown was requested while we
+		// were reloading.
+		if ctx.Err() != nil {
+			return
+		}
 		StartAPIServer()
 		log.Info("Servers reloaded successfully")
 	}
@@ -227,27 +297,25 @@ func RunNATSServer() {
 	var err error
 	pki.ReloadNKeys()
 	opts := pki.ConfigureNats()
-	s, err = nats_server.NewServer(&opts)
-	if err != nil || s == nil {
-		log.Panicf("No NATS Server object returned: %v", err)
-	}
-	if err != nil || s == nil {
+	srv, err := nats_server.NewServer(&opts)
+	if err != nil || srv == nil {
 		log.Panicf("No NATS Server object returned: %v", err)
 	}
 	// Run server in Go routine.
-	go s.Start()
+	go srv.Start()
 	var natsLogger log.Logger
-	s.SetLogger(natsLogger, true, true)
+	srv.SetLogger(natsLogger, true, true)
 	// Wait for accept loop(s) to be started
-	if !s.ReadyForConnections(10 * time.Second) {
+	if !srv.ReadyForConnections(10 * time.Second) {
 		log.Panicf("Unable to start NATS Server")
 	}
-	// s.ReloadOptions(opts)
-	pki.SetNATSServer(s)
+	setNATSServer(srv)
+	pki.SetNATSServer(srv)
 	pki.ReloadNKeys()
 }
 
-func ConnectFarmer() {
+func ConnectFarmer(ctx context.Context, done chan<- struct{}) {
+	defer close(done)
 	connectionAttempts := 1
 	maxFarmerReconnect := 30
 	RootCA := config.RootCA
@@ -302,7 +370,12 @@ func ConnectFarmer() {
 		if connectionAttempts >= maxFarmerReconnect {
 			log.Fatalf("Failed to connect Farmer to NATS %d times, exiting.", connectionAttempts)
 		}
-		time.Sleep(time.Second * 15)
+		select {
+		case <-ctx.Done():
+			nc.Close()
+			return
+		case <-time.After(time.Second * 15):
+		}
 	}
 	connectionAttempts = 0
 	log.Debugf("Successfully joined Farmer to NATS bus")
@@ -338,7 +411,7 @@ func ConnectFarmer() {
 	}
 	// Start the job log reaper to clean up old job files.
 	jobStore := jobs.NewStore()
-	jobStore.StartReaper(config.JobLogTTL)
-	defer nc.Close()
-	select {}
+	jobStore.StartReaperCtx(ctx, config.JobLogTTL)
+	<-ctx.Done()
+	nc.Close()
 }

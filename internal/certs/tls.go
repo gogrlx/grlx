@@ -32,9 +32,8 @@ func publicKey(priv interface{}) interface{} {
 	}
 }
 
-var notBefore = time.Now()
-
 func genCACert() error {
+	notBefore := time.Now()
 	RootCAPriv := config.RootCAPriv
 	RootCA := config.RootCA
 	_, err := os.Stat(RootCAPriv)
@@ -104,6 +103,7 @@ func genCACert() error {
 }
 
 func GenCert() error {
+	notBefore := time.Now()
 	CertFile := config.CertFile
 	KeyFile := config.KeyFile
 	RootCA := config.RootCA

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/gogrlx/grlx/v2/internal/cook"
@@ -124,7 +125,10 @@ func TestPrepend(t *testing.T) {
 				Changed:   false,
 				Notes:     []fmt.Stringer{cook.Snprintf("failed to open %s", fakePath)},
 			},
-			error: fmt.Errorf("failed to create %s: open %s: permission denied", fakePath, fakePath),
+			// The trailing OS error text varies by platform ("permission
+			// denied" on Linux, "read-only file system" on macOS), so only
+			// the stable prefix is asserted.
+			error: fmt.Errorf("failed to create %s: open %s:", fakePath, fakePath),
 		},
 	}
 	for _, test := range tests {
@@ -138,8 +142,8 @@ func TestPrepend(t *testing.T) {
 			if err != nil || test.error != nil {
 				if (err == nil && test.error != nil) || (err != nil && test.error == nil) {
 					t.Errorf("expected error `%v`, got `%v`", test.error, err)
-				} else if err.Error() != test.error.Error() {
-					t.Errorf("expected error %v, got %v", test.error, err)
+				} else if !strings.HasPrefix(err.Error(), test.error.Error()) {
+					t.Errorf("expected error with prefix %v, got %v", test.error, err)
 				}
 			}
 			compareResults(t, result, test.expected)

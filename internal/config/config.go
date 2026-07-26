@@ -112,21 +112,27 @@ func LoadConfig(binary string) {
 					log.Fatal(errHomeDir)
 				}
 				cfgPath := filepath.Join(dirname, ".config/grlx/")
-				os.MkdirAll(cfgPath, 0o755)
+				if mkErr := os.MkdirAll(cfgPath, 0o755); mkErr != nil {
+					log.Fatal(mkErr)
+				}
 				cfgFile := filepath.Join(cfgPath, "grlx")
 				_, err = os.Create(cfgFile)
 				if err != nil {
 					log.Fatal(err)
 				}
 			case "farmer":
-				os.MkdirAll(systemConfigRoot, 0o755)
+				if mkErr := os.MkdirAll(systemConfigRoot, 0o755); mkErr != nil {
+					log.Fatal(mkErr)
+				}
 				cfgFile := filepath.Join(systemConfigRoot, "farmer")
 				_, err = os.Create(cfgFile)
 				if err != nil {
 					log.Fatal(err)
 				}
 			case "sprout":
-				os.MkdirAll(systemConfigRoot, 0o755)
+				if mkErr := os.MkdirAll(systemConfigRoot, 0o755); mkErr != nil {
+					log.Fatal(mkErr)
+				}
 				cfgFile := filepath.Join(systemConfigRoot, "sprout")
 				_, err = os.Create(cfgFile)
 				if err != nil {

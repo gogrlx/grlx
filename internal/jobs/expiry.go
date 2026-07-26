@@ -1,6 +1,7 @@
 package jobs
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,8 +12,15 @@ import (
 
 // StartReaper launches a background goroutine that periodically removes job
 // log files older than the given TTL. It checks once per hour. A TTL of 0
-// disables expiration entirely.
+// disables expiration entirely. The reaper runs until the process exits; use
+// StartReaperCtx to bind its lifetime to a context.
 func (s *Store) StartReaper(ttl time.Duration) {
+	s.StartReaperCtx(context.Background(), ttl)
+}
+
+// StartReaperCtx is like StartReaper but stops the background goroutine when
+// ctx is cancelled, allowing a clean shutdown.
+func (s *Store) StartReaperCtx(ctx context.Context, ttl time.Duration) {
 	if ttl <= 0 {
 		log.Notice("job log expiration disabled (ttl <= 0)")
 		return
@@ -23,8 +31,14 @@ func (s *Store) StartReaper(ttl time.Duration) {
 		s.reap(ttl)
 		ticker := time.NewTicker(1 * time.Hour)
 		defer ticker.Stop()
-		for range ticker.C {
-			s.reap(ttl)
+		for {
+			select {
+			case <-ctx.Done():
+				log.Notice("job log reaper stopped")
+				return
+			case <-ticker.C:
+				s.reap(ttl)
+			}
 		}
 	}()
 }
