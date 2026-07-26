@@ -3,6 +3,7 @@ package serve
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"sync"
 	"time"
 
@@ -329,7 +330,7 @@ func handleRecentLogsWithHub(h *logHub) http.HandlerFunc {
 		source := r.URL.Query().Get("source")
 		limit := 100
 		if v := r.URL.Query().Get("limit"); v != "" {
-			if n, err := parseInt(v); err == nil && n > 0 {
+			if n, err := strconv.Atoi(v); err == nil && n > 0 {
 				limit = n
 			}
 		}
@@ -337,18 +338,6 @@ func handleRecentLogsWithHub(h *logHub) http.HandlerFunc {
 		logs := h.getRecent(level, source, limit)
 		WriteJSON(w, http.StatusOK, map[string]any{"logs": logs})
 	}
-}
-
-// parseInt is a small helper to parse an int from a string.
-func parseInt(s string) (int, error) {
-	n := 0
-	for _, c := range s {
-		if c < '0' || c > '9' {
-			return 0, &json.InvalidUnmarshalError{}
-		}
-		n = n*10 + int(c-'0')
-	}
-	return n, nil
 }
 
 // writePump writes log entries from the send channel to the WebSocket.

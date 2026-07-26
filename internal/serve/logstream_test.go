@@ -359,32 +359,6 @@ func TestWebSocketSourceFilter(t *testing.T) {
 	}
 }
 
-func TestParseInt(t *testing.T) {
-	tests := []struct {
-		input   string
-		want    int
-		wantErr bool
-	}{
-		{"0", 0, false},
-		{"42", 42, false},
-		{"100", 100, false},
-		{"abc", 0, true},
-		{"12x", 0, true},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.input, func(t *testing.T) {
-			got, err := parseInt(tt.input)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("parseInt(%q) error = %v, wantErr %v", tt.input, err, tt.wantErr)
-			}
-			if !tt.wantErr && got != tt.want {
-				t.Errorf("parseInt(%q) = %d, want %d", tt.input, got, tt.want)
-			}
-		})
-	}
-}
-
 func TestParseCookEvent_ValidMessage(t *testing.T) {
 	h := newTestHub()
 
