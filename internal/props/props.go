@@ -49,14 +49,19 @@ func getStringProp(sproutID, name string) string {
 		return ""
 	}
 	prop, ok := sproutProps[name]
-	if !ok || prop == (expProp{}) {
+	if !ok {
 		propCacheLock.RUnlock()
 		return ""
 	}
 	if prop.Expiry.Before(time.Now()) {
 		propCacheLock.RUnlock()
 		propCacheLock.Lock()
-		delete(propCache[sproutID], name)
+		// Re-check under the write lock: another writer may have refreshed
+		// this prop between releasing the read lock and acquiring the write
+		// lock, in which case we must not delete the fresh value.
+		if cur, ok := propCache[sproutID][name]; ok && cur.Expiry.Before(time.Now()) {
+			delete(propCache[sproutID], name)
+		}
 		propCacheLock.Unlock()
 		return ""
 	}
@@ -144,13 +149,11 @@ func getProps(sproutID string) map[string]interface{} {
 		// get from sprout
 		return nil
 	}
-	propCacheLock.RUnlock()
-
 	props := make(map[string]interface{})
 	var expired []string
-	propCacheLock.RLock()
-	for k, v := range propCache[sproutID] {
-		if v.Expiry.Before(time.Now()) {
+	now := time.Now()
+	for k, v := range sproutProps {
+		if v.Expiry.Before(now) {
 			expired = append(expired, k)
 			continue
 		}
@@ -160,8 +163,15 @@ func getProps(sproutID string) map[string]interface{} {
 
 	if len(expired) > 0 {
 		propCacheLock.Lock()
-		for _, k := range expired {
-			delete(propCache[sproutID], k)
+		if cur, ok := propCache[sproutID]; ok {
+			now := time.Now()
+			for _, k := range expired {
+				// Only delete entries that are still expired; a concurrent
+				// writer may have refreshed one after we released the read lock.
+				if v, ok := cur[k]; ok && v.Expiry.Before(now) {
+					delete(cur, k)
+				}
+			}
 		}
 		propCacheLock.Unlock()
 	}
