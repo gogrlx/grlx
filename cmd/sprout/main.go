@@ -17,6 +17,7 @@ import (
 	"github.com/gogrlx/grlx/v2/internal/ingredients"
 	"github.com/gogrlx/grlx/v2/internal/ingredients/cmd"
 	"github.com/gogrlx/grlx/v2/internal/ingredients/test"
+	"github.com/gogrlx/grlx/v2/internal/jobs"
 	"github.com/gogrlx/grlx/v2/internal/pki"
 
 	nats "github.com/nats-io/nats.go"
@@ -96,6 +97,10 @@ func ConnectSprout(ctx context.Context, done chan<- struct{}) {
 	SproutRootCA := config.SproutRootCA
 	FarmerInterface := config.FarmerInterface
 	FarmerBusURL := config.FarmerBusURL
+	// Capture job-log settings before the local tls.Config below shadows the
+	// config package identifier.
+	jobLogDir := config.JobLogDir
+	jobLogTTL := config.JobLogTTL
 	opt, err := nats.NkeyOptionFromSeed(config.NKeySproutPrivFile)
 	if err != nil {
 		log.Panicf("failed to load NKey seed: %v", err)
@@ -150,6 +155,8 @@ func ConnectSprout(ctx context.Context, done chan<- struct{}) {
 	if err != nil {
 		log.Panicf("Error with natsInit: %v", err)
 	}
+	// Expire old local job logs written by cook runs on this sprout.
+	jobs.StartSproutReaper(ctx, jobLogDir, jobLogTTL)
 	<-ctx.Done()
 	nc.Close()
 }
