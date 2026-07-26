@@ -9,7 +9,11 @@ import (
 	"github.com/gogrlx/grlx/v2/internal/pki"
 )
 
-// TODO allow selector to be more than an ID
+// FPing sends a ping to a single resolved sprout and waits for the pong.
+// Selector expansion (globs, cohorts, "all") is handled upstream by the
+// client's ResolveTargets, which fans a selector out into a TargetedAction
+// with one KeyManager per matched sprout; this function is the per-sprout leg
+// invoked once for each of those targets.
 func FPing(target pki.KeyManager, ping apitypes.PingPong) (apitypes.PingPong, error) {
 	topic := "grlx.sprouts." + target.SproutID + ".test.ping"
 	ping.Ping = true
