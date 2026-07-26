@@ -1,6 +1,23 @@
 //go:build self_update
 // +build self_update
 
+// Package selfupdate is an UNWIRED, INCOMPLETE skeleton for binary
+// self-updates. It is gated behind the `self_update` build tag and is not
+// referenced by any grlx binary (the default build uses the no-op variant in
+// noupdate.go). Do NOT enable it as-is:
+//
+//   - CheckForUpdates returns a hardcoded "placeholder" version and therefore
+//     always reports that an update is available.
+//   - PerformUpdate/replaceBinary download and swap the running binary WITHOUT
+//     verifying the release signature or checksum (a remote-code-execution
+//     vector), and replaceBinary's temp-file-then-rename can fail across
+//     filesystems (EXDEV).
+//
+// Implementing this safely requires design decisions (authoritative version
+// source, signature verification against the published checksums.txt(.sig),
+// atomic same-filesystem replace, and rollout policy). Tracked in
+// https://github.com/gogrlx/grlx/issues/286.
+
 package selfupdate
 
 import (
