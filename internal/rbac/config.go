@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/taigrr/jety"
 )
@@ -19,6 +20,7 @@ var ErrDuplicateUsername = errors.New("duplicate username")
 
 // RoleStore holds all custom role definitions loaded from config.
 type RoleStore struct {
+	mu    sync.RWMutex
 	roles map[string]*Role
 }
 
@@ -33,12 +35,16 @@ func (rs *RoleStore) Register(r *Role) error {
 	if err := r.Validate(); err != nil {
 		return err
 	}
+	rs.mu.Lock()
+	defer rs.mu.Unlock()
 	rs.roles[r.Name] = r
 	return nil
 }
 
 // Get retrieves a role by name.
 func (rs *RoleStore) Get(name string) (*Role, error) {
+	rs.mu.RLock()
+	defer rs.mu.RUnlock()
 	r, ok := rs.roles[name]
 	if !ok {
 		return nil, fmt.Errorf("%w: %q", ErrUnknownRole, name)
@@ -48,6 +54,8 @@ func (rs *RoleStore) Get(name string) (*Role, error) {
 
 // List returns all role names.
 func (rs *RoleStore) List() []string {
+	rs.mu.RLock()
+	defer rs.mu.RUnlock()
 	names := make([]string, 0, len(rs.roles))
 	for name := range rs.roles {
 		names = append(names, name)
@@ -176,6 +184,7 @@ func parseRoleEntry(name string, raw any) (*Role, error) {
 // UserRoleMap maps public keys to role names and optional usernames.
 // Loaded from the "users" section of the farmer config.
 type UserRoleMap struct {
+	mu           sync.RWMutex
 	pubkeyToRole map[string]string
 	pubkeyToName map[string]string
 }
@@ -190,16 +199,22 @@ func NewUserRoleMap() *UserRoleMap {
 
 // Set assigns a role to a pubkey.
 func (m *UserRoleMap) Set(pubkey, roleName string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.pubkeyToRole[pubkey] = roleName
 }
 
 // SetUsername assigns a human-readable username to a pubkey.
 func (m *UserRoleMap) SetUsername(pubkey, username string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.pubkeyToName[pubkey] = username
 }
 
 // Delete removes a pubkey from the map. Returns true if the key existed.
 func (m *UserRoleMap) Delete(pubkey string) bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	_, existed := m.pubkeyToRole[pubkey]
 	delete(m.pubkeyToRole, pubkey)
 	delete(m.pubkeyToName, pubkey)
@@ -208,17 +223,23 @@ func (m *UserRoleMap) Delete(pubkey string) bool {
 
 // RoleName returns the role name for a pubkey, or empty string if not found.
 func (m *UserRoleMap) RoleName(pubkey string) string {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	return m.pubkeyToRole[pubkey]
 }
 
 // Username returns the human-readable username for a pubkey, or empty
 // string if no username is configured.
 func (m *UserRoleMap) Username(pubkey string) string {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	return m.pubkeyToName[pubkey]
 }
 
 // All returns the full map of pubkey → role name.
 func (m *UserRoleMap) All() map[string]string {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	result := make(map[string]string, len(m.pubkeyToRole))
 	for k, v := range m.pubkeyToRole {
 		result[k] = v
@@ -229,6 +250,8 @@ func (m *UserRoleMap) All() map[string]string {
 // AllWithUsernames returns a map of pubkey → username for all users
 // that have a username configured.
 func (m *UserRoleMap) AllWithUsernames() map[string]string {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	result := make(map[string]string, len(m.pubkeyToName))
 	for k, v := range m.pubkeyToName {
 		if v != "" {

@@ -186,6 +186,8 @@ func truncatePubkey(pk string) string {
 
 // allRoleNames returns all unique role names referenced by users.
 func (m *UserRoleMap) allRoleNames() []string {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	seen := make(map[string]bool)
 	for _, name := range m.pubkeyToRole {
 		seen[name] = true
