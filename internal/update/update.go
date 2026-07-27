@@ -6,11 +6,9 @@
 // referenced by any grlx binary (the default build uses the no-op variant in
 // noupdate.go). Do NOT enable it as-is:
 //
-//   - CheckForUpdates returns a hardcoded "placeholder" version and therefore
-//     always reports that an update is available.
-//   - PerformUpdate/replaceBinary download and swap the running binary WITHOUT
-//     verifying the release signature or checksum (a remote-code-execution
-//     vector).
+//   - PerformUpdate downloads and swaps the running binary WITHOUT verifying
+//     the release signature or checksum (a remote-code-execution vector), so it
+//     currently fails closed.
 //
 // Implementing this safely requires design decisions (authoritative version
 // source, signature verification against the published checksums.txt(.sig), and
@@ -21,14 +19,20 @@ package selfupdate
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
-	"runtime"
+	"strings"
 	"time"
+
+	"golang.org/x/mod/semver"
 )
+
+var errUnsignedUpdatesDisabled = errors.New("self-update install is disabled until release signature verification is implemented")
 
 // UpdateConfig holds the configuration for self-updates
 type UpdateConfig struct {
@@ -56,117 +60,100 @@ func NewUpdater(config UpdateConfig) *Updater {
 
 // CheckForUpdates checks if a newer version is available
 func (u *Updater) CheckForUpdates(ctx context.Context) (string, bool, error) {
-	// Implementation would check against your release API
-	// This is a skeleton - you'll need to implement based on your versioning strategy
-
-	req, err := http.NewRequestWithContext(ctx, "GET", u.config.UpdateURL+"/latest", nil)
+	latestVersion, err := u.fetchLatestVersion(ctx)
 	if err != nil {
-		return "", false, fmt.Errorf("failed to create request: %w", err)
+		return "", false, err
 	}
 
-	resp, err := u.client.Do(req)
+	updateAvailable, err := newerVersion(latestVersion, u.config.CurrentVersion)
 	if err != nil {
-		return "", false, fmt.Errorf("failed to check for updates: %w", err)
+		return "", false, err
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", false, fmt.Errorf("update check failed with status: %d", resp.StatusCode)
-	}
-
-	// Parse response to get latest version
-	// This is a placeholder - implement based on your API response format
-	latestVersion := "placeholder"
-
-	if latestVersion != u.config.CurrentVersion {
+	if updateAvailable {
 		return latestVersion, true, nil
 	}
 
 	return u.config.CurrentVersion, false, nil
 }
 
-// PerformUpdate downloads and installs a new version
-func (u *Updater) PerformUpdate(ctx context.Context, version string) error {
-	downloadURL := fmt.Sprintf("%s/%s/%s-%s-%s-%s",
-		u.config.UpdateURL, version, u.config.BinaryName, version, runtime.GOOS, runtime.GOARCH)
-
-	// Download the new binary
-	tempFile, err := u.downloadBinary(ctx, downloadURL)
-	if err != nil {
-		return fmt.Errorf("failed to download update: %w", err)
+func (u *Updater) fetchLatestVersion(ctx context.Context) (string, error) {
+	if strings.TrimSpace(u.config.UpdateURL) == "" {
+		return "", errors.New("update URL is required")
 	}
-	defer os.Remove(tempFile)
 
-	// Replace the current binary
-	return u.replaceBinary(tempFile)
-}
-
-// downloadBinary downloads the binary to a temporary file
-func (u *Updater) downloadBinary(ctx context.Context, url string) (string, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	latestURL := strings.TrimRight(u.config.UpdateURL, "/") + "/latest"
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, latestURL, nil)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to create request: %w", err)
 	}
 
 	resp, err := u.client.Do(req)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to check for updates: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("download failed with status: %d", resp.StatusCode)
+		return "", fmt.Errorf("update check failed with status: %d", resp.StatusCode)
 	}
 
-	// Create temporary file
-	tempFile, err := os.CreateTemp("", "grlx-update-*")
+	latestVersion, err := parseLatestVersion(resp.Body)
 	if err != nil {
 		return "", err
 	}
-	defer tempFile.Close()
 
-	// Copy the binary
-	_, err = io.Copy(tempFile, resp.Body)
-	if err != nil {
-		os.Remove(tempFile.Name())
-		return "", err
-	}
-
-	// Make it executable
-	err = os.Chmod(tempFile.Name(), 0o755)
-	if err != nil {
-		os.Remove(tempFile.Name())
-		return "", err
-	}
-
-	return tempFile.Name(), nil
+	return latestVersion, nil
 }
 
-// replaceBinary replaces the current binary with the new one
-func (u *Updater) replaceBinary(newBinaryPath string) error {
-	// Get the current executable path
-	currentExe, err := os.Executable()
-	if err != nil {
-		return fmt.Errorf("failed to get current executable path: %w", err)
+func parseLatestVersion(body io.Reader) (string, error) {
+	var release struct {
+		TagName string `json:"tag_name"`
+		Name    string `json:"name"`
+		Version string `json:"version"`
+	}
+	if err := json.NewDecoder(body).Decode(&release); err != nil {
+		return "", fmt.Errorf("failed to parse latest release response: %w", err)
 	}
 
-	// Resolve symlinks
-	currentExe, err = filepath.EvalSymlinks(currentExe)
-	if err != nil {
-		return fmt.Errorf("failed to resolve symlinks: %w", err)
+	for _, candidate := range []string{release.TagName, release.Version, release.Name} {
+		version := canonicalVersion(candidate)
+		if version != "" {
+			return version, nil
+		}
 	}
 
-	return replaceBinaryAt(currentExe, newBinaryPath)
+	return "", errors.New("latest release response did not contain a semantic version")
 }
 
-func replaceBinaryAt(currentExe, newBinaryPath string) error {
-	stagedPath, err := stageBinary(currentExe, newBinaryPath)
-	if err != nil {
-		return err
+func newerVersion(latestVersion, currentVersion string) (bool, error) {
+	latest := canonicalVersion(latestVersion)
+	if latest == "" {
+		return false, fmt.Errorf("latest version %q is not semantic", latestVersion)
 	}
-	defer os.Remove(stagedPath)
 
-	return commitBinaryUpdate(currentExe, stagedPath)
+	current := canonicalVersion(currentVersion)
+	if current == "" {
+		return false, fmt.Errorf("current version %q is not semantic", currentVersion)
+	}
+
+	return semver.Compare(latest, current) > 0, nil
+}
+
+func canonicalVersion(version string) string {
+	version = strings.TrimSpace(version)
+	if version == "" {
+		return ""
+	}
+	if !strings.HasPrefix(version, "v") {
+		version = "v" + version
+	}
+
+	return semver.Canonical(version)
+}
+
+// PerformUpdate downloads and installs a new version
+func (u *Updater) PerformUpdate(ctx context.Context, version string) error {
+	return errUnsignedUpdatesDisabled
 }
 
 func stageBinary(currentExe, newBinaryPath string) (string, error) {
