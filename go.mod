@@ -13,19 +13,20 @@ require (
 	github.com/creack/pty v1.1.24
 	github.com/djherbis/atime v1.1.0
 	github.com/fatih/color v1.19.0
-	github.com/gogrlx/snack v0.4.2
+	github.com/gogrlx/snack v0.4.3
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/nats-io/nats-server/v2 v2.14.3
 	github.com/nats-io/nats.go v1.52.0
 	github.com/nats-io/nkeys v0.4.16
 	github.com/spf13/cobra v1.10.2
-	github.com/taigrr/jety v0.4.1
+	github.com/taigrr/jety v0.4.2
 	github.com/taigrr/log-mux v1.2.0
-	github.com/taigrr/log-nats/v2 v2.0.0
+	github.com/taigrr/log-nats/v2 v2.1.1
 	github.com/taigrr/openrc v0.1.0
-	github.com/taigrr/rcd v0.0.2
+	github.com/taigrr/rcd v0.1.0
 	github.com/taigrr/systemctl v1.1.1-0.20260309204324-da8db0d3a3c3
+	golang.org/x/mod v0.38.0
 	golang.org/x/term v0.45.0
 	golang.org/x/text v0.40.0
 	gopkg.in/yaml.v3 v3.0.1
@@ -44,7 +45,7 @@ require (
 	github.com/charmbracelet/ultraviolet v0.0.0-20260720091822-7cc6674724ac // indirect
 	github.com/charmbracelet/x/ansi v0.11.7 // indirect
 	github.com/charmbracelet/x/cellbuf v0.0.15 // indirect
-	github.com/charmbracelet/x/exp/charmtone v0.0.0-20260720091843-3eef36eaaa28 // indirect
+	github.com/charmbracelet/x/exp/charmtone v0.0.0-20260727090823-41c9e6be3365 // indirect
 	github.com/charmbracelet/x/term v0.2.2 // indirect
 	github.com/charmbracelet/x/termios v0.1.1 // indirect
 	github.com/charmbracelet/x/windows v0.2.2 // indirect
@@ -89,7 +90,6 @@ require (
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	golang.org/x/crypto v0.54.0 // indirect
 	golang.org/x/exp v0.0.0-20260718201538-764159d718ef // indirect
-	golang.org/x/mod v0.38.0 // indirect
 	golang.org/x/net v0.57.0 // indirect
 	golang.org/x/sync v0.22.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect

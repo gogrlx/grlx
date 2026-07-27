@@ -105,6 +105,7 @@ func createSproutID() string {
 		log.Errorf("failed to get hostname for sprout ID: %v", err)
 		id = "unknown"
 	}
+	id = strings.ToLower(id)
 	id = strings.ReplaceAll(id, "_", "-")
 	id = strings.TrimPrefix(id, "-")
 	return id
