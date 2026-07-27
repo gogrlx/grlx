@@ -4,11 +4,105 @@
 package selfupdate
 
 import (
+	"context"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 )
+
+func TestCheckForUpdatesUsesLatestReleaseSemver(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/latest" {
+			t.Fatalf("request path = %q, want /latest", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"tag_name":"v1.2.3"}`))
+	}))
+	t.Cleanup(server.Close)
+
+	updater := NewUpdater(UpdateConfig{
+		CurrentVersion: "v1.2.2",
+		UpdateURL:      server.URL + "/",
+	})
+
+	version, available, err := updater.CheckForUpdates(context.Background())
+	if err != nil {
+		t.Fatalf("CheckForUpdates returned error: %v", err)
+	}
+	if version != "v1.2.3" {
+		t.Fatalf("version = %q, want v1.2.3", version)
+	}
+	if !available {
+		t.Fatal("available = false, want true")
+	}
+}
+
+func TestCheckForUpdatesDoesNotDowngrade(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"tag_name":"v1.2.3"}`))
+	}))
+	t.Cleanup(server.Close)
+
+	updater := NewUpdater(UpdateConfig{
+		CurrentVersion: "v1.2.4",
+		UpdateURL:      server.URL,
+	})
+
+	version, available, err := updater.CheckForUpdates(context.Background())
+	if err != nil {
+		t.Fatalf("CheckForUpdates returned error: %v", err)
+	}
+	if version != "v1.2.4" {
+		t.Fatalf("version = %q, want v1.2.4", version)
+	}
+	if available {
+		t.Fatal("available = true, want false")
+	}
+}
+
+func TestParseLatestVersionAcceptsFallbackFields(t *testing.T) {
+	t.Parallel()
+
+	version, err := parseLatestVersion(strings.NewReader(`{"version":"1.2.3"}`))
+	if err != nil {
+		t.Fatalf("parseLatestVersion returned error: %v", err)
+	}
+	if version != "v1.2.3" {
+		t.Fatalf("version = %q, want v1.2.3", version)
+	}
+}
+
+func TestNewerVersionRejectsNonSemver(t *testing.T) {
+	t.Parallel()
+
+	if _, err := newerVersion("placeholder", "v1.2.3"); err == nil {
+		t.Fatal("newerVersion returned nil error for invalid latest version")
+	}
+	if _, err := newerVersion("v1.2.3", "dev"); err == nil {
+		t.Fatal("newerVersion returned nil error for invalid current version")
+	}
+}
+
+func TestPerformUpdateFailsClosedWithoutSignatureVerification(t *testing.T) {
+	t.Parallel()
+
+	updater := NewUpdater(UpdateConfig{})
+	err := updater.PerformUpdate(context.Background(), "v1.2.3")
+	if err == nil {
+		t.Fatal("PerformUpdate returned nil error")
+	}
+	if !strings.Contains(err.Error(), "signature verification") {
+		t.Fatalf("PerformUpdate error = %q, want signature verification failure", err)
+	}
+}
 
 func TestStageBinaryUsesExecutableDirectory(t *testing.T) {
 	t.Parallel()
