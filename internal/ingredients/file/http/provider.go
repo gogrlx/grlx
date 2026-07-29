@@ -29,9 +29,11 @@ func (hf HTTPFile) Download(ctx context.Context) error {
 			method = m
 		}
 	}
-	// TODO add headers, other body settings, etc here
 	req, err := httpc.NewRequestWithContext(ctx, method, hf.Source, nil)
 	if err != nil {
+		return err
+	}
+	if err := applyRequestHeaders(req, hf.Props["headers"]); err != nil {
 		return err
 	}
 	res, err := httpc.DefaultClient.Do(req)
@@ -64,6 +66,61 @@ func (hf HTTPFile) Download(ctx context.Context) error {
 		return closeErr
 	}
 	return nil
+}
+
+func applyRequestHeaders(req *httpc.Request, headers interface{}) error {
+	if headers == nil {
+		return nil
+	}
+
+	switch typedHeaders := headers.(type) {
+	case map[string]string:
+		for headerName, headerValue := range typedHeaders {
+			req.Header.Set(headerName, headerValue)
+		}
+	case map[string]interface{}:
+		for headerName, rawHeaderValue := range typedHeaders {
+			headerValues, err := normalizeHeaderValues(headerName, rawHeaderValue)
+			if err != nil {
+				return err
+			}
+			setHeaderValues(req.Header, headerName, headerValues)
+		}
+	case httpc.Header:
+		req.Header = typedHeaders.Clone()
+	default:
+		return fmt.Errorf("headers property must be a map, got %T", headers)
+	}
+
+	return nil
+}
+
+func normalizeHeaderValues(headerName string, rawHeaderValue interface{}) ([]string, error) {
+	switch headerValue := rawHeaderValue.(type) {
+	case string:
+		return []string{headerValue}, nil
+	case []string:
+		return headerValue, nil
+	case []interface{}:
+		values := make([]string, 0, len(headerValue))
+		for _, rawValue := range headerValue {
+			value, ok := rawValue.(string)
+			if !ok {
+				return nil, fmt.Errorf("header %q value must contain only strings", headerName)
+			}
+			values = append(values, value)
+		}
+		return values, nil
+	default:
+		return nil, fmt.Errorf("header %q value must be a string or string array", headerName)
+	}
+}
+
+func setHeaderValues(headers httpc.Header, headerName string, headerValues []string) {
+	headers.Del(headerName)
+	for _, headerValue := range headerValues {
+		headers.Add(headerName, headerValue)
+	}
 }
 
 func (hf HTTPFile) Properties() (map[string]interface{}, error) {

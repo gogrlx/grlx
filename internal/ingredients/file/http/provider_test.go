@@ -101,6 +101,62 @@ func TestDownloadCustomMethod(t *testing.T) {
 	}
 }
 
+func TestDownloadCustomHeaders(t *testing.T) {
+	var authHeader string
+	var acceptedValues []string
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		authHeader = r.Header.Get("Authorization")
+		acceptedValues = r.Header.Values("X-Accept")
+		w.Write([]byte("headers-ok"))
+	}))
+	defer ts.Close()
+
+	td := t.TempDir()
+	hf := HTTPFile{
+		ID:          "custom-headers",
+		Source:      ts.URL + "/test",
+		Destination: filepath.Join(td, "out"),
+		Props: map[string]interface{}{
+			"headers": map[string]interface{}{
+				"Authorization": "Bearer token",
+				"X-Accept":      []interface{}{"one", "two"},
+			},
+		},
+	}
+
+	if err := hf.Download(context.Background()); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if authHeader != "Bearer token" {
+		t.Errorf("expected Authorization header, got %q", authHeader)
+	}
+	if strings.Join(acceptedValues, ",") != "one,two" {
+		t.Errorf("expected repeated X-Accept headers, got %v", acceptedValues)
+	}
+}
+
+func TestDownloadInvalidHeaders(t *testing.T) {
+	td := t.TempDir()
+	hf := HTTPFile{
+		ID:          "invalid-headers",
+		Source:      "http://example.com/test",
+		Destination: filepath.Join(td, "out"),
+		Props: map[string]interface{}{
+			"headers": map[string]interface{}{
+				"X-Bad": 42,
+			},
+		},
+	}
+
+	err := hf.Download(context.Background())
+	if err == nil {
+		t.Fatal("expected error for invalid header value")
+	}
+	if !strings.Contains(err.Error(), "X-Bad") {
+		t.Fatalf("expected error to name invalid header, got: %v", err)
+	}
+}
+
 func TestDownloadInvalidMethodProp(t *testing.T) {
 	// Non-string method prop should fall back to GET
 	var receivedMethod string
