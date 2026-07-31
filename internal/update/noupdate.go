@@ -1,5 +1,5 @@
-//go:build no_self_update
-// +build no_self_update
+//go:build !self_update
+// +build !self_update
 
 package selfupdate
 
