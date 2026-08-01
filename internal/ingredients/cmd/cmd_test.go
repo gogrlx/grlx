@@ -2,6 +2,8 @@ package cmd
 
 import (
 	"context"
+	"reflect"
+	"sort"
 	"testing"
 	"time"
 )
@@ -118,6 +120,24 @@ func TestMethods(t *testing.T) {
 	}
 	if len(methods) != 1 || methods[0] != "run" {
 		t.Errorf("expected methods [run], got %v", methods)
+	}
+}
+
+func TestMethodsMatchPropertyDefinitions(t *testing.T) {
+	c := Cmd{}
+	_, methods := c.Methods()
+
+	var definedMethods []string
+	for method := range cmdMethodProps {
+		definedMethods = append(definedMethods, method)
+		if _, err := c.PropertiesForMethod(method); err != nil {
+			t.Fatalf("properties for method %q: %v", method, err)
+		}
+	}
+	sort.Strings(definedMethods)
+
+	if !reflect.DeepEqual(methods, definedMethods) {
+		t.Fatalf("methods = %v, want %v", methods, definedMethods)
 	}
 }
 

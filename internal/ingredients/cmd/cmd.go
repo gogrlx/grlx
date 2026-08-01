@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 
 	"github.com/gogrlx/grlx/v2/internal/cook"
 	"github.com/gogrlx/grlx/v2/internal/ingredients"
@@ -14,6 +15,18 @@ var ErrCmdMethodUndefined = errors.New("cmd method undefined")
 
 // Compile-time interface check.
 var _ cook.RecipeCooker = Cmd{}
+
+var cmdMethodProps = map[string]ingredients.MethodPropsSet{
+	"run": {
+		ingredients.MethodProps{Key: "name", Type: "string", IsReq: true},
+		ingredients.MethodProps{Key: "args", Type: "string", IsReq: false},
+		ingredients.MethodProps{Key: "env", Type: "[]string", IsReq: false},
+		ingredients.MethodProps{Key: "cwd", Type: "string", IsReq: false},
+		ingredients.MethodProps{Key: "runas", Type: "string", IsReq: false},
+		ingredients.MethodProps{Key: "path", Type: "string", IsReq: false},
+		ingredients.MethodProps{Key: "timeout", Type: "string", IsReq: false},
+	},
+}
 
 type Cmd struct {
 	id     string
@@ -87,26 +100,21 @@ func (c Cmd) Apply(ctx context.Context) (cook.Result, error) {
 	}
 }
 
-// TODO create map for method: type
 func (c Cmd) PropertiesForMethod(method string) (map[string]string, error) {
-	switch method {
-	case "run":
-		return ingredients.MethodPropsSet{
-			ingredients.MethodProps{Key: "name", Type: "string", IsReq: true},
-			ingredients.MethodProps{Key: "args", Type: "string", IsReq: false},
-			ingredients.MethodProps{Key: "env", Type: "[]string", IsReq: false},
-			ingredients.MethodProps{Key: "cwd", Type: "string", IsReq: false},
-			ingredients.MethodProps{Key: "runas", Type: "string", IsReq: false},
-			ingredients.MethodProps{Key: "path", Type: "string", IsReq: false},
-			ingredients.MethodProps{Key: "timeout", Type: "string", IsReq: false},
-		}.ToMap(), nil
-	default:
+	props, ok := cmdMethodProps[method]
+	if !ok {
 		return nil, fmt.Errorf("method %s undefined", method)
 	}
+	return props.ToMap(), nil
 }
 
 func (c Cmd) Methods() (string, []string) {
-	return "cmd", []string{"run"}
+	methods := make([]string, 0, len(cmdMethodProps))
+	for method := range cmdMethodProps {
+		methods = append(methods, method)
+	}
+	sort.Strings(methods)
+	return "cmd", methods
 }
 
 func (c Cmd) Properties() (map[string]interface{}, error) {
