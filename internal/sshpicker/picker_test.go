@@ -216,6 +216,16 @@ func TestSelected_CursorOutOfRange(t *testing.T) {
 	}
 }
 
+func TestSelected_NegativeCursor(t *testing.T) {
+	m := Model{
+		Sprouts: []string{"only"},
+		Cursor:  -1,
+	}
+	if got := m.Selected(); got != "" {
+		t.Fatalf("expected empty for negative cursor, got %q", got)
+	}
+}
+
 func TestView_EmptySprouts(t *testing.T) {
 	m := Model{
 		Cohort:  "empty-cohort",

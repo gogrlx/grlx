@@ -76,7 +76,7 @@ func (m Model) View() string {
 
 // Selected returns the selected sprout ID, or empty string if cancelled.
 func (m Model) Selected() string {
-	if m.Cancelled || m.Cursor >= len(m.Sprouts) {
+	if m.Cancelled || m.Cursor < 0 || m.Cursor >= len(m.Sprouts) {
 		return ""
 	}
 	return m.Sprouts[m.Cursor]
