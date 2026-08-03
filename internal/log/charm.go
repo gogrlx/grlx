@@ -34,13 +34,21 @@ func (a *charmAdapter) Warnln(v ...any)                 { a.logger.Warn(fmt.Spri
 func (a *charmAdapter) Error(v ...any)                  { a.logger.Error(fmt.Sprint(v...)) }
 func (a *charmAdapter) Errorf(format string, v ...any)  { a.logger.Errorf(format, v...) }
 func (a *charmAdapter) Errorln(v ...any)                { a.logger.Error(fmt.Sprintln(v...)) }
-func (a *charmAdapter) Panic(v ...any)                  { a.logger.Fatal(fmt.Sprint(v...)); panic(fmt.Sprint(v...)) }
-func (a *charmAdapter) Panicf(format string, v ...any) {
-	msg := fmt.Sprintf(format, v...)
-	a.logger.Fatal(msg)
+func (a *charmAdapter) Panic(v ...any) {
+	msg := fmt.Sprint(v...)
+	a.logger.Log(charmlog.FatalLevel, msg)
 	panic(msg)
 }
-func (a *charmAdapter) Panicln(v ...any)               { msg := fmt.Sprintln(v...); a.logger.Fatal(msg); panic(msg) }
+func (a *charmAdapter) Panicf(format string, v ...any) {
+	msg := fmt.Sprintf(format, v...)
+	a.logger.Log(charmlog.FatalLevel, msg)
+	panic(msg)
+}
+func (a *charmAdapter) Panicln(v ...any) {
+	msg := fmt.Sprintln(v...)
+	a.logger.Log(charmlog.FatalLevel, msg)
+	panic(msg)
+}
 func (a *charmAdapter) Fatal(v ...any)                 { a.logger.Fatal(fmt.Sprint(v...)) }
 func (a *charmAdapter) Fatalf(format string, v ...any) { a.logger.Fatalf(format, v...) }
 func (a *charmAdapter) Fatalln(v ...any)               { a.logger.Fatal(fmt.Sprintln(v...)) }
