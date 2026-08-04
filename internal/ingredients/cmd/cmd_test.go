@@ -94,11 +94,24 @@ func TestPropertiesForMethod_Run(t *testing.T) {
 		t.Fatal("expected non-nil props")
 	}
 	// Verify known keys exist
-	expectedKeys := []string{"name", "args", "env", "cwd", "runas", "path", "timeout"}
-	for _, key := range expectedKeys {
-		if _, ok := props[key]; !ok {
+	expectedProps := map[string]string{
+		"name":    "string,req",
+		"args":    "string,opt",
+		"env":     "[]string,opt",
+		"cwd":     "string,opt",
+		"runas":   "string,opt",
+		"path":    "string,opt",
+		"timeout": "string,opt",
+	}
+	for key, expectedType := range expectedProps {
+		if gotType, ok := props[key]; !ok {
 			t.Errorf("missing expected property key %q", key)
+		} else if gotType != expectedType {
+			t.Errorf("property %q type = %q, want %q", key, gotType, expectedType)
 		}
+	}
+	if len(props) != len(expectedProps) {
+		t.Errorf("got %d properties, want %d", len(props), len(expectedProps))
 	}
 }
 

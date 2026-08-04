@@ -12,6 +12,20 @@ import (
 
 var ErrCmdMethodUndefined = errors.New("cmd method undefined")
 
+const cmdRunMethod = "run"
+
+var cmdMethodProps = map[string]ingredients.MethodPropsSet{
+	cmdRunMethod: {
+		ingredients.MethodProps{Key: "name", Type: "string", IsReq: true},
+		ingredients.MethodProps{Key: "args", Type: "string", IsReq: false},
+		ingredients.MethodProps{Key: "env", Type: "[]string", IsReq: false},
+		ingredients.MethodProps{Key: "cwd", Type: "string", IsReq: false},
+		ingredients.MethodProps{Key: "runas", Type: "string", IsReq: false},
+		ingredients.MethodProps{Key: "path", Type: "string", IsReq: false},
+		ingredients.MethodProps{Key: "timeout", Type: "string", IsReq: false},
+	},
+}
+
 // Compile-time interface check.
 var _ cook.RecipeCooker = Cmd{}
 
@@ -67,7 +81,7 @@ func (c Cmd) validate() error {
 
 func (c Cmd) Test(ctx context.Context) (cook.Result, error) {
 	switch c.method {
-	case "run":
+	case cmdRunMethod:
 		return c.run(ctx, true)
 	default:
 		return cook.Result{Succeeded: false, Failed: true, Changed: false, Notes: nil},
@@ -78,7 +92,7 @@ func (c Cmd) Test(ctx context.Context) (cook.Result, error) {
 
 func (c Cmd) Apply(ctx context.Context) (cook.Result, error) {
 	switch c.method {
-	case "run":
+	case cmdRunMethod:
 		return c.run(ctx, false)
 	default:
 		return cook.Result{Succeeded: false, Failed: true, Changed: false, Notes: nil},
@@ -87,26 +101,16 @@ func (c Cmd) Apply(ctx context.Context) (cook.Result, error) {
 	}
 }
 
-// TODO create map for method: type
 func (c Cmd) PropertiesForMethod(method string) (map[string]string, error) {
-	switch method {
-	case "run":
-		return ingredients.MethodPropsSet{
-			ingredients.MethodProps{Key: "name", Type: "string", IsReq: true},
-			ingredients.MethodProps{Key: "args", Type: "string", IsReq: false},
-			ingredients.MethodProps{Key: "env", Type: "[]string", IsReq: false},
-			ingredients.MethodProps{Key: "cwd", Type: "string", IsReq: false},
-			ingredients.MethodProps{Key: "runas", Type: "string", IsReq: false},
-			ingredients.MethodProps{Key: "path", Type: "string", IsReq: false},
-			ingredients.MethodProps{Key: "timeout", Type: "string", IsReq: false},
-		}.ToMap(), nil
-	default:
+	props, ok := cmdMethodProps[method]
+	if !ok {
 		return nil, fmt.Errorf("method %s undefined", method)
 	}
+	return props.ToMap(), nil
 }
 
 func (c Cmd) Methods() (string, []string) {
-	return "cmd", []string{"run"}
+	return "cmd", []string{cmdRunMethod}
 }
 
 func (c Cmd) Properties() (map[string]interface{}, error) {
