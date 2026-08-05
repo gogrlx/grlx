@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/gogrlx/grlx/v2/internal/config"
@@ -16,6 +17,7 @@ var (
 	ErrUnknownInit   = errors.New("unknown init system")
 	ErrDuplicateInit = errors.New("provider for init system already initialized")
 	Init             string
+	readProc1Comm    = os.ReadFile
 )
 
 func init() {
@@ -52,8 +54,8 @@ func guessInit() string {
 		}
 	}
 	// Fallback: try reading the name of PID 1 (Linux procfs).
-	if f, err := os.ReadFile("/proc/1/comm"); err == nil {
-		return string(f)
+	if f, err := readProc1Comm("/proc/1/comm"); err == nil {
+		return strings.TrimSpace(string(f))
 	}
 	return "unknown"
 }
