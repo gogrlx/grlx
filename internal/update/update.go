@@ -32,7 +32,10 @@ import (
 	"golang.org/x/mod/semver"
 )
 
-var errUnsignedUpdatesDisabled = errors.New("self-update install is disabled until release signature verification is implemented")
+var (
+	errUnsignedUpdatesDisabled = errors.New("self-update install is disabled until release signature verification is implemented")
+	errUpdateIntervalRequired  = errors.New("self-update check interval must be greater than zero")
+)
 
 // UpdateConfig holds the configuration for self-updates
 type UpdateConfig struct {
@@ -227,6 +230,13 @@ func commitBinaryUpdate(currentExe, stagedPath string) error {
 
 // StartUpdateChecker starts a background goroutine that periodically checks for updates
 func (u *Updater) StartUpdateChecker(ctx context.Context, callback func(version string, available bool, err error)) {
+	if u.config.CheckInterval <= 0 {
+		if callback != nil {
+			callback("", false, errUpdateIntervalRequired)
+		}
+		return
+	}
+
 	ticker := time.NewTicker(u.config.CheckInterval)
 	defer ticker.Stop()
 
