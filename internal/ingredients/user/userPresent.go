@@ -65,6 +65,9 @@ func shadowPasswordHash(username string) (string, error) {
 		}
 		return fields[1], nil
 	}
+	if err := scanner.Err(); err != nil {
+		return "", fmt.Errorf("cannot scan shadow file: %w", err)
+	}
 	return "", nil
 }
 

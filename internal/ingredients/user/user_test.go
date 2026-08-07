@@ -723,6 +723,33 @@ func TestShadowPasswordHashMissingFile(t *testing.T) {
 	}
 }
 
+func TestShadowPasswordHashScanError(t *testing.T) {
+	tmpFile, err := os.CreateTemp("", "shadow-scan-error-*")
+	if err != nil {
+		t.Fatalf("failed to create temp file: %v", err)
+	}
+	defer os.Remove(tmpFile.Name())
+
+	if _, err := tmpFile.WriteString(strings.Repeat("x", 65*1024)); err != nil {
+		t.Fatalf("failed to write temp shadow: %v", err)
+	}
+	if err := tmpFile.Close(); err != nil {
+		t.Fatalf("failed to close temp shadow: %v", err)
+	}
+
+	origPath := shadowFilePath
+	shadowFilePath = tmpFile.Name()
+	defer func() { shadowFilePath = origPath }()
+
+	_, err = shadowPasswordHash("root")
+	if err == nil {
+		t.Fatal("expected scanner error")
+	}
+	if !strings.Contains(err.Error(), "cannot scan shadow file") {
+		t.Fatalf("expected scanner context, got %v", err)
+	}
+}
+
 func TestBuildUsermodArgsWithPasswordHash(t *testing.T) {
 	// Create a temp shadow file where testuser has an OLD hash.
 	tmpFile, err := os.CreateTemp("", "shadow-mod-*")
