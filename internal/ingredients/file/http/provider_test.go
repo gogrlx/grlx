@@ -7,8 +7,6 @@ import (
 	"crypto/sha512"
 	"encoding/hex"
 	"errors"
-	"fmt"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -19,17 +17,15 @@ import (
 )
 
 func TestDownload(t *testing.T) {
-	listener, err := net.Listen("tcp", "localhost:0")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	mux := http.NewServeMux()
-	mux.HandleFunc("/test", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("testData"))
-	})
-	go http.Serve(listener, mux)
-	port := listener.Addr().(*net.TCPAddr).Port
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/test" {
+			t.Fatalf("path = %q, want /test", r.URL.Path)
+		}
+		if _, err := w.Write([]byte("testData")); err != nil {
+			t.Fatalf("failed to write response: %v", err)
+		}
+	}))
+	t.Cleanup(server.Close)
 
 	td := t.TempDir()
 	type tCase struct {
@@ -43,7 +39,7 @@ func TestDownload(t *testing.T) {
 	}
 	cases := []tCase{{
 		name:     "test",
-		src:      fmt.Sprintf("http://localhost:%d/test", port),
+		src:      server.URL + "/test",
 		dst:      filepath.Join(td, "dst"),
 		hash:     "3a760fae784d30a1b50e304e97a17355",
 		err:      nil,
@@ -62,6 +58,13 @@ func TestDownload(t *testing.T) {
 				err = hf.Download(tc.ctx)
 				if !errors.Is(err, tc.err) {
 					t.Errorf("want error %v, got %v", tc.err, err)
+				}
+				data, err := os.ReadFile(tc.dst)
+				if err != nil {
+					t.Fatalf("failed to read output: %v", err)
+				}
+				if string(data) != "testData" {
+					t.Fatalf("downloaded content = %q, want testData", data)
 				}
 			})
 		}(tc)
@@ -154,6 +157,44 @@ func TestDownloadInvalidHeaders(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "X-Bad") {
 		t.Fatalf("expected error to name invalid header, got: %v", err)
+	}
+}
+
+func TestApplyRequestHeadersMapString(t *testing.T) {
+	t.Parallel()
+
+	req := httptest.NewRequest(http.MethodGet, "http://example.com", nil)
+	headers := map[string]string{
+		"Authorization": "Bearer token",
+		"X-Mode":        "test",
+	}
+
+	if err := applyRequestHeaders(req, headers); err != nil {
+		t.Fatalf("applyRequestHeaders returned error: %v", err)
+	}
+	if got := req.Header.Get("Authorization"); got != "Bearer token" {
+		t.Fatalf("Authorization = %q, want Bearer token", got)
+	}
+	if got := req.Header.Get("X-Mode"); got != "test" {
+		t.Fatalf("X-Mode = %q, want test", got)
+	}
+}
+
+func TestApplyRequestHeadersHTTPHeaderClonesInput(t *testing.T) {
+	t.Parallel()
+
+	req := httptest.NewRequest(http.MethodGet, "http://example.com", nil)
+	headers := http.Header{
+		"X-Accept": []string{"one", "two"},
+	}
+
+	if err := applyRequestHeaders(req, headers); err != nil {
+		t.Fatalf("applyRequestHeaders returned error: %v", err)
+	}
+	headers.Set("X-Accept", "changed")
+
+	if got := strings.Join(req.Header.Values("X-Accept"), ","); got != "one,two" {
+		t.Fatalf("X-Accept = %q, want one,two", got)
 	}
 }
 
