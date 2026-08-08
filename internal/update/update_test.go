@@ -5,6 +5,7 @@ package selfupdate
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -101,6 +102,30 @@ func TestPerformUpdateFailsClosedWithoutSignatureVerification(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "signature verification") {
 		t.Fatalf("PerformUpdate error = %q, want signature verification failure", err)
+	}
+}
+
+func TestStartUpdateCheckerRejectsMissingInterval(t *testing.T) {
+	t.Parallel()
+
+	updater := NewUpdater(UpdateConfig{})
+	called := false
+
+	updater.StartUpdateChecker(context.Background(), func(version string, available bool, err error) {
+		called = true
+		if version != "" {
+			t.Fatalf("version = %q, want empty", version)
+		}
+		if available {
+			t.Fatal("available = true, want false")
+		}
+		if !errors.Is(err, errUpdateIntervalRequired) {
+			t.Fatalf("error = %v, want %v", err, errUpdateIntervalRequired)
+		}
+	})
+
+	if !called {
+		t.Fatal("callback was not called")
 	}
 }
 
