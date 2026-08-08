@@ -3,6 +3,8 @@ package service
 import (
 	"errors"
 	"testing"
+
+	"github.com/taigrr/jety"
 )
 
 func TestRegisterProviderDuplicate(t *testing.T) {
@@ -42,6 +44,13 @@ func TestNewServiceProviderResolvesMock(t *testing.T) {
 	}
 }
 
+type procFallbackProvider struct {
+	mockProvider
+}
+
+func (p *procFallbackProvider) InitName() string { return "systemd" }
+func (p *procFallbackProvider) IsInit() bool     { return false }
+
 func TestGuessInitUsesSetValue(t *testing.T) {
 	oldInit := Init
 	Init = "test-init"
@@ -79,5 +88,75 @@ func TestGuessInitProbesProviders(t *testing.T) {
 	// The point is it doesn't return "unknown" — it probes the providers.
 	if result == "" {
 		t.Error("guessInit() returned empty string")
+	}
+}
+
+func TestGuessInitTrimsProcFallback(t *testing.T) {
+	oldInit := Init
+	Init = ""
+	defer func() { Init = oldInit }()
+	oldConfigInit := jety.GetString("init")
+	jety.Set("init", "")
+	defer jety.Set("init", oldConfigInit)
+
+	provTex.Lock()
+	savedMap := provMap
+	provMap = make(map[string]ServiceProvider)
+	provTex.Unlock()
+	defer func() {
+		provTex.Lock()
+		provMap = savedMap
+		provTex.Unlock()
+	}()
+
+	oldReadProc1Comm := readProc1Comm
+	readProc1Comm = func(name string) ([]byte, error) {
+		if name != "/proc/1/comm" {
+			t.Fatalf("readProc1Comm called with %q", name)
+		}
+		return []byte("systemd\n"), nil
+	}
+	defer func() { readProc1Comm = oldReadProc1Comm }()
+
+	if result := guessInit(); result != "systemd" {
+		t.Errorf("guessInit() = %q, want %q", result, "systemd")
+	}
+}
+
+func TestNewServiceProviderUsesTrimmedProcFallback(t *testing.T) {
+	oldInit := Init
+	Init = ""
+	defer func() { Init = oldInit }()
+	oldConfigInit := jety.GetString("init")
+	jety.Set("init", "")
+	defer jety.Set("init", oldConfigInit)
+
+	mp := &procFallbackProvider{}
+	provTex.Lock()
+	savedMap := provMap
+	provMap = map[string]ServiceProvider{"systemd": mp}
+	provTex.Unlock()
+	defer func() {
+		provTex.Lock()
+		provMap = savedMap
+		provTex.Unlock()
+	}()
+
+	oldReadProc1Comm := readProc1Comm
+	readProc1Comm = func(string) ([]byte, error) {
+		return []byte("systemd\n"), nil
+	}
+	defer func() { readProc1Comm = oldReadProc1Comm }()
+
+	if result := guessInit(); result != "systemd" {
+		t.Fatalf("guessInit() = %q, want %q", result, "systemd")
+	}
+
+	provider, err := NewServiceProvider("svc-1", "running", map[string]interface{}{"name": "nginx"})
+	if err != nil {
+		t.Fatalf("NewServiceProvider() error: %v", err)
+	}
+	if provider == nil {
+		t.Fatal("NewServiceProvider() returned nil")
 	}
 }
