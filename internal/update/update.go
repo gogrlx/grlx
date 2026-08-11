@@ -203,10 +203,12 @@ func stageBinary(currentExe, newBinaryPath string) (string, error) {
 }
 
 func commitBinaryUpdate(currentExe, stagedPath string) error {
-	// Create backup
-	backupPath := currentExe + ".backup"
-	err := os.Rename(currentExe, backupPath)
+	backupPath, err := backupPathFor(currentExe)
 	if err != nil {
+		return err
+	}
+
+	if err := os.Rename(currentExe, backupPath); err != nil {
 		return fmt.Errorf("failed to create backup: %w", err)
 	}
 
@@ -226,6 +228,26 @@ func commitBinaryUpdate(currentExe, stagedPath string) error {
 	}
 
 	return nil
+}
+
+func backupPathFor(currentExe string) (string, error) {
+	targetDir := filepath.Dir(currentExe)
+	targetName := filepath.Base(currentExe)
+
+	backupFile, err := os.CreateTemp(targetDir, targetName+".backup-*")
+	if err != nil {
+		return "", fmt.Errorf("failed to reserve update backup path: %w", err)
+	}
+	backupPath := backupFile.Name()
+	if err := backupFile.Close(); err != nil {
+		os.Remove(backupPath)
+		return "", fmt.Errorf("failed to close update backup placeholder: %w", err)
+	}
+	if err := os.Remove(backupPath); err != nil {
+		return "", fmt.Errorf("failed to clear update backup placeholder: %w", err)
+	}
+
+	return backupPath, nil
 }
 
 // StartUpdateChecker starts a background goroutine that periodically checks for updates
