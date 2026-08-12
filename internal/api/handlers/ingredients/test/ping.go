@@ -25,7 +25,12 @@ func HTestPing(w http.ResponseWriter, r *http.Request) {
 	}
 	jw, _ := json.Marshal(targetAction.Action)
 	var ping apitypes.PingPong
-	json.NewDecoder(bytes.NewBuffer(jw)).Decode(&ping)
+	err = json.NewDecoder(bytes.NewBuffer(jw)).Decode(&ping)
+	if err != nil {
+		log.Trace("An invalid ping request was made.")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
 	// verify our sprout id is valid
 	for _, target := range targetAction.Target {
