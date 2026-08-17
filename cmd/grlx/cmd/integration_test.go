@@ -875,6 +875,25 @@ func TestCohortsRefreshCommand_Empty(t *testing.T) {
 	}
 }
 
+func TestPrintCohortValidationResult_Invalid(t *testing.T) {
+	out := captureStdout(t, func() {
+		printCohortValidationResult(cohortValidationResult{
+			Cohorts: 3,
+			Errors:  []string{"compound cohort references missing cohort"},
+		})
+	})
+
+	if !strings.Contains(out, "Cohorts: 3") {
+		t.Error("expected cohort count in output")
+	}
+	if !strings.Contains(out, "Validation failed") {
+		t.Error("expected validation failure message")
+	}
+	if !strings.Contains(out, "compound cohort references missing cohort") {
+		t.Error("expected validation error details")
+	}
+}
+
 // --- Targeting with cohort resolution ---
 
 // --- Auth whoami command ---

@@ -181,6 +181,12 @@ are refreshed.`,
 	},
 }
 
+type cohortValidationResult struct {
+	Valid   bool     `json:"valid"`
+	Errors  []string `json:"errors,omitempty"`
+	Cohorts int      `json:"cohorts"`
+}
+
 var cmdCohortsValidate = &cobra.Command{
 	Use:   "validate",
 	Short: "Validate that all cohort references are resolvable",
@@ -194,11 +200,7 @@ maximum. Returns non-zero exit code if validation fails.`,
 			log.Fatalf("Failed to validate cohorts: %v", err)
 		}
 
-		var result struct {
-			Valid   bool     `json:"valid"`
-			Errors  []string `json:"errors,omitempty"`
-			Cohorts int      `json:"cohorts"`
-		}
+		var result cohortValidationResult
 		if err := json.Unmarshal(resp, &result); err != nil {
 			log.Fatalf("Failed to decode response: %v", err)
 		}
@@ -208,21 +210,25 @@ maximum. Returns non-zero exit code if validation fails.`,
 			jw, _ := json.Marshal(result)
 			fmt.Println(string(jw))
 		default:
-			fmt.Printf("Cohorts: %d\n", result.Cohorts)
-			if result.Valid {
-				color.Green("All cohort references are valid.")
-			} else {
-				color.Red("Validation failed:")
-				for _, e := range result.Errors {
-					fmt.Printf("  - %s\n", e)
-				}
-			}
+			printCohortValidationResult(result)
 		}
 
 		if !result.Valid {
-			log.Fatalf("")
+			log.Fatalf("Cohort validation failed")
 		}
 	},
+}
+
+func printCohortValidationResult(result cohortValidationResult) {
+	fmt.Printf("Cohorts: %d\n", result.Cohorts)
+	if result.Valid {
+		color.Green("All cohort references are valid.")
+		return
+	}
+	color.Red("Validation failed:")
+	for _, err := range result.Errors {
+		fmt.Printf("  - %s\n", err)
+	}
 }
 
 func init() {
