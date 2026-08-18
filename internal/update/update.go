@@ -18,7 +18,10 @@
 package selfupdate
 
 import (
+	"bufio"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -157,6 +160,63 @@ func canonicalVersion(version string) string {
 // PerformUpdate downloads and installs a new version
 func (u *Updater) PerformUpdate(ctx context.Context, version string) error {
 	return errUnsignedUpdatesDisabled
+}
+
+func verifyBinaryChecksum(binaryPath string, checksums io.Reader) error {
+	expectedChecksum, err := checksumForBinary(filepath.Base(binaryPath), checksums)
+	if err != nil {
+		return err
+	}
+
+	binary, err := os.Open(binaryPath)
+	if err != nil {
+		return fmt.Errorf("failed to open update binary for checksum verification: %w", err)
+	}
+	defer binary.Close()
+
+	hasher := sha256.New()
+	if _, err := io.Copy(hasher, binary); err != nil {
+		return fmt.Errorf("failed to checksum update binary: %w", err)
+	}
+
+	actualChecksum := hex.EncodeToString(hasher.Sum(nil))
+	if actualChecksum != expectedChecksum {
+		return fmt.Errorf("update binary checksum mismatch for %s", filepath.Base(binaryPath))
+	}
+
+	return nil
+}
+
+func checksumForBinary(binaryName string, checksums io.Reader) (string, error) {
+	scanner := bufio.NewScanner(checksums)
+	for scanner.Scan() {
+		fields := strings.Fields(scanner.Text())
+		if len(fields) == 0 {
+			continue
+		}
+		if len(fields) != 2 {
+			return "", fmt.Errorf("malformed checksum line for %s", binaryName)
+		}
+
+		checksum := fields[0]
+		name := strings.TrimPrefix(fields[1], "*")
+		if filepath.Base(name) != binaryName {
+			continue
+		}
+		if len(checksum) != sha256.Size*2 {
+			return "", fmt.Errorf("malformed SHA256 checksum for %s", binaryName)
+		}
+		if _, err := hex.DecodeString(checksum); err != nil {
+			return "", fmt.Errorf("malformed SHA256 checksum for %s: %w", binaryName, err)
+		}
+
+		return strings.ToLower(checksum), nil
+	}
+	if err := scanner.Err(); err != nil {
+		return "", fmt.Errorf("failed to read checksums: %w", err)
+	}
+
+	return "", fmt.Errorf("checksum entry not found for %s", binaryName)
 }
 
 func stageBinary(currentExe, newBinaryPath string) (string, error) {

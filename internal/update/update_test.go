@@ -5,7 +5,9 @@ package selfupdate
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -126,6 +128,76 @@ func TestStartUpdateCheckerRejectsMissingInterval(t *testing.T) {
 
 	if !called {
 		t.Fatal("callback was not called")
+	}
+}
+
+func TestVerifyBinaryChecksumAcceptsMatchingEntry(t *testing.T) {
+	t.Parallel()
+
+	binaryPath := filepath.Join(t.TempDir(), "grlx")
+	contents := []byte("verified binary")
+	if err := os.WriteFile(binaryPath, contents, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	checksum := fmt.Sprintf("%x", sha256.Sum256(contents))
+	checksums := strings.NewReader("abcd unrelated\n" + checksum + "  grlx\n")
+
+	if err := verifyBinaryChecksum(binaryPath, checksums); err != nil {
+		t.Fatalf("verifyBinaryChecksum returned error: %v", err)
+	}
+}
+
+func TestVerifyBinaryChecksumRejectsMismatch(t *testing.T) {
+	t.Parallel()
+
+	binaryPath := filepath.Join(t.TempDir(), "grlx")
+	if err := os.WriteFile(binaryPath, []byte("actual"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	checksum := fmt.Sprintf("%x", sha256.Sum256([]byte("different")))
+	err := verifyBinaryChecksum(binaryPath, strings.NewReader(checksum+"  grlx\n"))
+	if err == nil {
+		t.Fatal("verifyBinaryChecksum returned nil error for checksum mismatch")
+	}
+	if !strings.Contains(err.Error(), "checksum mismatch") {
+		t.Fatalf("verifyBinaryChecksum error = %q, want checksum mismatch", err)
+	}
+}
+
+func TestVerifyBinaryChecksumRejectsMissingEntry(t *testing.T) {
+	t.Parallel()
+
+	binaryPath := filepath.Join(t.TempDir(), "grlx")
+	if err := os.WriteFile(binaryPath, []byte("actual"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	checksum := fmt.Sprintf("%x", sha256.Sum256([]byte("actual")))
+	err := verifyBinaryChecksum(binaryPath, strings.NewReader(checksum+"  sprout\n"))
+	if err == nil {
+		t.Fatal("verifyBinaryChecksum returned nil error for missing checksum entry")
+	}
+	if !strings.Contains(err.Error(), "checksum entry not found") {
+		t.Fatalf("verifyBinaryChecksum error = %q, want missing entry", err)
+	}
+}
+
+func TestVerifyBinaryChecksumRejectsMalformedChecksum(t *testing.T) {
+	t.Parallel()
+
+	binaryPath := filepath.Join(t.TempDir(), "grlx")
+	if err := os.WriteFile(binaryPath, []byte("actual"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	err := verifyBinaryChecksum(binaryPath, strings.NewReader("not-a-sha256  grlx\n"))
+	if err == nil {
+		t.Fatal("verifyBinaryChecksum returned nil error for malformed checksum")
+	}
+	if !strings.Contains(err.Error(), "malformed SHA256 checksum") {
+		t.Fatalf("verifyBinaryChecksum error = %q, want malformed checksum", err)
 	}
 }
 
