@@ -252,6 +252,74 @@ func TestDownloadUnexpectedStatusCode(t *testing.T) {
 	}
 }
 
+func TestDownloadCopyErrorDoesNotLeavePartialDestination(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Length", "128")
+		if _, err := w.Write([]byte("partial")); err != nil {
+			t.Fatalf("failed to write partial response: %v", err)
+		}
+	}))
+	defer ts.Close()
+
+	td := t.TempDir()
+	dest := filepath.Join(td, "out")
+	hf := HTTPFile{
+		ID:          "short-body",
+		Source:      ts.URL + "/short",
+		Destination: dest,
+		Props:       map[string]interface{}{},
+	}
+
+	err := hf.Download(context.Background())
+	if err == nil {
+		t.Fatal("expected error for truncated response body")
+	}
+	if _, statErr := os.Stat(dest); !os.IsNotExist(statErr) {
+		t.Fatalf("destination should not exist after failed download, stat error: %v", statErr)
+	}
+	matches, err := filepath.Glob(filepath.Join(td, ".out-*"))
+	if err != nil {
+		t.Fatalf("failed to glob temporary files: %v", err)
+	}
+	if len(matches) != 0 {
+		t.Fatalf("temporary download files were not cleaned up: %v", matches)
+	}
+}
+
+func TestDownloadCopyErrorPreservesExistingDestination(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Length", "128")
+		if _, err := w.Write([]byte("partial")); err != nil {
+			t.Fatalf("failed to write partial response: %v", err)
+		}
+	}))
+	defer ts.Close()
+
+	td := t.TempDir()
+	dest := filepath.Join(td, "out")
+	if err := os.WriteFile(dest, []byte("current"), 0644); err != nil {
+		t.Fatalf("failed to write existing destination: %v", err)
+	}
+	hf := HTTPFile{
+		ID:          "short-body-existing",
+		Source:      ts.URL + "/short",
+		Destination: dest,
+		Props:       map[string]interface{}{},
+	}
+
+	err := hf.Download(context.Background())
+	if err == nil {
+		t.Fatal("expected error for truncated response body")
+	}
+	data, err := os.ReadFile(dest)
+	if err != nil {
+		t.Fatalf("failed to read existing destination: %v", err)
+	}
+	if string(data) != "current" {
+		t.Fatalf("destination content = %q, want current", data)
+	}
+}
+
 func TestDownloadCustomExpectedCode(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusAccepted)

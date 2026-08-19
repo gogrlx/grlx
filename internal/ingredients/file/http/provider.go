@@ -6,6 +6,7 @@ import (
 	"io"
 	httpc "net/http"
 	"os"
+	"path/filepath"
 
 	"github.com/gogrlx/grlx/v2/internal/ingredients/file"
 	"github.com/gogrlx/grlx/v2/internal/ingredients/file/hashers"
@@ -51,19 +52,26 @@ func (hf HTTPFile) Download(ctx context.Context) error {
 		// TODO standardize this error message
 		return fmt.Errorf("unexpected HTTP status code %d", res.StatusCode)
 	}
-	dest, err := os.Create(hf.Destination)
+	destDir := filepath.Dir(hf.Destination)
+	destName := filepath.Base(hf.Destination)
+	dest, err := os.CreateTemp(destDir, "."+destName+"-*")
 	if err != nil {
 		return err
 	}
+	tempName := dest.Name()
 	_, copyErr := io.Copy(dest, res.Body)
 	closeErr := dest.Close()
 	if copyErr != nil {
-		os.Remove(hf.Destination)
+		os.Remove(tempName)
 		return copyErr
 	}
 	if closeErr != nil {
-		os.Remove(hf.Destination)
+		os.Remove(tempName)
 		return closeErr
+	}
+	if err := os.Rename(tempName, hf.Destination); err != nil {
+		os.Remove(tempName)
+		return err
 	}
 	return nil
 }
