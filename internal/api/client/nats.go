@@ -1,6 +1,7 @@
 package client
 
 import (
+	"bytes"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
@@ -130,10 +131,7 @@ func injectToken(data []byte) []byte {
 	// Inject token into existing JSON object by replacing the opening
 	// brace with an opening brace + token field. This avoids
 	// unmarshaling/remarshaling the entire payload.
-	trimmed := data
-	for len(trimmed) > 0 && trimmed[0] == ' ' {
-		trimmed = trimmed[1:]
-	}
+	trimmed := bytes.TrimLeft(data, " \t\r\n")
 	if len(trimmed) > 0 && trimmed[0] == '{' {
 		return append([]byte(fmt.Sprintf(`{"token":%s,`, tokenJSON)), trimmed[1:]...)
 	}
