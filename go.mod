@@ -1,6 +1,6 @@
 module github.com/gogrlx/grlx/v2
 
-go 1.26.5
+go 1.26.6
 
 replace github.com/mattn/go-localereader v0.0.1 => github.com/taigrr/go-localereader v0.0.2
 
@@ -57,7 +57,7 @@ require (
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
 	github.com/go-git/go-billy/v5 v5.9.1 // indirect
-	github.com/go-git/go-git/v5 v5.19.1 // indirect
+	github.com/go-git/go-git/v5 v5.19.2 // indirect
 	github.com/go-logfmt/logfmt v0.6.1 // indirect
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
 	github.com/google/go-tpm v0.9.8 // indirect

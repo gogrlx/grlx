@@ -73,7 +73,7 @@ all-arches-farmer: farmer
 		go build -ldflags "-X main.GitCommit=$$GitCommit -X main.Tag=$$GitTag" -o "bin/arches/"$$(printf $$GOOS)"/"$$(printf $$GOARCH)"/"$$(printf $$GitTag)"/grlx-farmer" ./cmd/farmer/main.go &&\
 		printf "\e[32mSuccess!\e[39m\n" ;\
 		mkdir -p bin/arches/"$$(printf $$GOOS)"/"$$(printf $$GOARCH)"/latest ;\
-		cp bin/arches/"$$(printf $$GOOS)"/"$$(printf $$GOARCH)"/"$$(printf $$GitTag)"/farmer bin/arches/"$$(printf $$GOOS)"/"$$(printf $$GOARCH)"/latest/grlx-farmer ;\
+		cp bin/arches/"$$(printf $$GOOS)"/"$$(printf $$GOARCH)"/"$$(printf $$GitTag)"/grlx-farmer bin/arches/"$$(printf $$GOOS)"/"$$(printf $$GOARCH)"/latest/grlx-farmer ;\
 	done
 
 all-arches-sprout: sprout
@@ -89,7 +89,7 @@ all-arches-sprout: sprout
 		go build -ldflags "-X main.GitCommit=$$GitCommit -X main.Tag=$$GitTag" -o "bin/arches/"$$(printf $$GOOS)"/"$$(printf $$GOARCH)"/"$$(printf $$GitTag)"/grlx-sprout" ./cmd/sprout/*.go &&\
 		printf "\e[32mSuccess!\e[39m\n" ;\
 		mkdir -p bin/arches/"$$(printf $$GOOS)"/"$$(printf $$GOARCH)"/latest ;\
-		cp bin/arches/"$$(printf $$GOOS)"/"$$(printf $$GOARCH)"/"$$(printf $$GitTag)"/sprout bin/arches/"$$(printf $$GOOS)"/"$$(printf $$GOARCH)"/latest/grlx-sprout ;\
+		cp bin/arches/"$$(printf $$GOOS)"/"$$(printf $$GOARCH)"/"$$(printf $$GitTag)"/grlx-sprout bin/arches/"$$(printf $$GOOS)"/"$$(printf $$GOARCH)"/latest/grlx-sprout ;\
 	done
 
 all-arches-grlx: grlx
@@ -126,13 +126,13 @@ github: all-arches-farmer all-arches-sprout all-arches-grlx
 	mkdir -p bin/github
 	for arch in amd64 386 arm arm64 ; do \
 		export GitTag=$$(TAG=`git tag --contains $$(git rev-parse HEAD) | sort -R | tr '\n' ' '`; if [ "$$(printf "$$TAG")" ]; then printf "$$TAG"; else printf "undefined"; fi);\
-		cp bin/arches/linux/$$arch/$$(printf $$GitTag)/farmer bin/github/grlx-farmer-$$(printf $$GitTag)-linux-$$(printf $$arch);\
+		cp bin/arches/linux/$$arch/$$(printf $$GitTag)/grlx-farmer bin/github/grlx-farmer-$$(printf $$GitTag)-linux-$$(printf $$arch);\
 		tar -czf bin/github/grlx-farmer-$$(printf $$GitTag)-linux-$$(printf $$arch).tar.gz \
 	      -C bin/arches/linux/$$arch/$$(printf $$GitTag) grlx-farmer;\
 	done
 	for arch in amd64 386 arm arm64 ; do \
 		export GitTag=$$(TAG=`git tag --contains $$(git rev-parse HEAD) | sort -R | tr '\n' ' '`; if [ "$$(printf "$$TAG")" ]; then printf "$$TAG"; else printf "undefined"; fi);\
-		cp bin/arches/linux/$$arch/$$(printf $$GitTag)/sprout bin/github/grlx-sprout-$$(printf $$GitTag)-linux-$$(printf $$arch);\
+		cp bin/arches/linux/$$arch/$$(printf $$GitTag)/grlx-sprout bin/github/grlx-sprout-$$(printf $$GitTag)-linux-$$(printf $$arch);\
 		tar -czf bin/github/grlx-sprout-$$(printf $$GitTag)-linux-$$(printf $$arch).tar.gz \
 			-C bin/arches/linux/$$arch/$$(printf $$GitTag) grlx-sprout;\
 	done
@@ -161,11 +161,11 @@ clean:
 	docker rmi grlx/sprout:latest || true
 	docker rmi grlx/farmer:latest || true
 	rm -f ~/.config/grlx/tls-rootca.pem
-	rm -f main bin/grlx bin/farmer bin/sprout
+	rm -f main bin/grlx bin/grlx-farmer bin/grlx-sprout
 	rm -r bin/arches bin/github || true
 
 install: clean all
-	mv bin/grlx bin/farmer bin/sprout "$$GOPATH/bin/"
+	mv bin/grlx bin/grlx-farmer bin/grlx-sprout "$$GOPATH/bin/"
 
 docker:
 	docker build -t grlx/farmer . -f docker/farmer.dockerfile
