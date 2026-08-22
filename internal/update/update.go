@@ -110,12 +110,20 @@ func (u *Updater) fetchLatestVersion(ctx context.Context) (string, error) {
 
 func parseLatestVersion(body io.Reader) (string, error) {
 	var release struct {
-		TagName string `json:"tag_name"`
-		Name    string `json:"name"`
-		Version string `json:"version"`
+		TagName    string `json:"tag_name"`
+		Name       string `json:"name"`
+		Version    string `json:"version"`
+		Draft      bool   `json:"draft"`
+		Prerelease bool   `json:"prerelease"`
 	}
 	if err := json.NewDecoder(body).Decode(&release); err != nil {
 		return "", fmt.Errorf("failed to parse latest release response: %w", err)
+	}
+	if release.Draft {
+		return "", errors.New("latest release response is a draft")
+	}
+	if release.Prerelease {
+		return "", errors.New("latest release response is a prerelease")
 	}
 
 	for _, candidate := range []string{release.TagName, release.Version, release.Name} {

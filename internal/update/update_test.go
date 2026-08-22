@@ -81,6 +81,41 @@ func TestParseLatestVersionAcceptsFallbackFields(t *testing.T) {
 	}
 }
 
+func TestParseLatestVersionRejectsUnstableReleases(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		body string
+		want string
+	}{
+		{
+			name: "draft",
+			body: `{"tag_name":"v1.2.3","draft":true}`,
+			want: "draft",
+		},
+		{
+			name: "prerelease",
+			body: `{"tag_name":"v1.2.3","prerelease":true}`,
+			want: "prerelease",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			_, err := parseLatestVersion(strings.NewReader(test.body))
+			if err == nil {
+				t.Fatal("parseLatestVersion returned nil error")
+			}
+			if !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("parseLatestVersion error = %q, want %q", err, test.want)
+			}
+		})
+	}
+}
+
 func TestNewerVersionRejectsNonSemver(t *testing.T) {
 	t.Parallel()
 
