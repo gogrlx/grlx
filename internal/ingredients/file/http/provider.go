@@ -6,6 +6,7 @@ import (
 	"io"
 	httpc "net/http"
 	"os"
+	"path/filepath"
 
 	"github.com/gogrlx/grlx/v2/internal/ingredients/file"
 	"github.com/gogrlx/grlx/v2/internal/ingredients/file/hashers"
@@ -18,6 +19,8 @@ type HTTPFile struct {
 	Hash        string
 	Props       map[string]interface{}
 }
+
+const downloadTempPattern = ".grlx-http-download-*"
 
 // Compile-time interface check.
 var _ file.FileProvider = HTTPFile{}
@@ -51,20 +54,31 @@ func (hf HTTPFile) Download(ctx context.Context) error {
 		// TODO standardize this error message
 		return fmt.Errorf("unexpected HTTP status code %d", res.StatusCode)
 	}
-	dest, err := os.Create(hf.Destination)
+	destinationDir := filepath.Dir(hf.Destination)
+	stagedFile, err := os.CreateTemp(destinationDir, downloadTempPattern)
 	if err != nil {
 		return err
 	}
-	_, copyErr := io.Copy(dest, res.Body)
-	closeErr := dest.Close()
+	stagedPath := stagedFile.Name()
+	cleanupStaged := true
+	defer func() {
+		if cleanupStaged {
+			os.Remove(stagedPath)
+		}
+	}()
+
+	_, copyErr := io.Copy(stagedFile, res.Body)
+	closeErr := stagedFile.Close()
 	if copyErr != nil {
-		os.Remove(hf.Destination)
 		return copyErr
 	}
 	if closeErr != nil {
-		os.Remove(hf.Destination)
 		return closeErr
 	}
+	if err := os.Rename(stagedPath, hf.Destination); err != nil {
+		return err
+	}
+	cleanupStaged = false
 	return nil
 }
 
