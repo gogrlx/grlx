@@ -37,6 +37,8 @@ var (
 	errUpdateIntervalRequired  = errors.New("self-update check interval must be greater than zero")
 )
 
+const maxLatestReleaseResponseBytes = 1 << 20
+
 // UpdateConfig holds the configuration for self-updates
 type UpdateConfig struct {
 	CurrentVersion string
@@ -109,6 +111,14 @@ func (u *Updater) fetchLatestVersion(ctx context.Context) (string, error) {
 }
 
 func parseLatestVersion(body io.Reader) (string, error) {
+	contents, err := io.ReadAll(io.LimitReader(body, maxLatestReleaseResponseBytes+1))
+	if err != nil {
+		return "", fmt.Errorf("failed to read latest release response: %w", err)
+	}
+	if len(contents) > maxLatestReleaseResponseBytes {
+		return "", fmt.Errorf("latest release response exceeds %d bytes", maxLatestReleaseResponseBytes)
+	}
+
 	var release struct {
 		TagName    string `json:"tag_name"`
 		Name       string `json:"name"`
@@ -116,7 +126,7 @@ func parseLatestVersion(body io.Reader) (string, error) {
 		Draft      bool   `json:"draft"`
 		Prerelease bool   `json:"prerelease"`
 	}
-	if err := json.NewDecoder(body).Decode(&release); err != nil {
+	if err := json.Unmarshal(contents, &release); err != nil {
 		return "", fmt.Errorf("failed to parse latest release response: %w", err)
 	}
 	if release.Draft {

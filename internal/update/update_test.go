@@ -116,6 +116,19 @@ func TestParseLatestVersionRejectsUnstableReleases(t *testing.T) {
 	}
 }
 
+func TestParseLatestVersionRejectsOversizedResponse(t *testing.T) {
+	t.Parallel()
+
+	body := strings.NewReader(strings.Repeat(" ", maxLatestReleaseResponseBytes+1))
+	_, err := parseLatestVersion(body)
+	if err == nil {
+		t.Fatal("parseLatestVersion returned nil error for oversized response")
+	}
+	if !strings.Contains(err.Error(), "exceeds") {
+		t.Fatalf("parseLatestVersion error = %q, want size limit failure", err)
+	}
+}
+
 func TestNewerVersionRejectsNonSemver(t *testing.T) {
 	t.Parallel()
 
