@@ -5,7 +5,9 @@ package selfupdate
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -150,6 +152,97 @@ func TestPerformUpdateFailsClosedWithoutSignatureVerification(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "signature verification") {
 		t.Fatalf("PerformUpdate error = %q, want signature verification failure", err)
+	}
+}
+
+func TestChecksumNameUsesExplicitConfig(t *testing.T) {
+	t.Parallel()
+
+	updater := NewUpdater(UpdateConfig{
+		BinaryName:   "/usr/local/bin/grlx",
+		ChecksumName: "grlx-v1.2.3-linux-amd64",
+	})
+
+	if got := updater.checksumName(); got != "grlx-v1.2.3-linux-amd64" {
+		t.Fatalf("checksumName() = %q, want grlx-v1.2.3-linux-amd64", got)
+	}
+}
+
+func TestChecksumNameDefaultsToBinaryBase(t *testing.T) {
+	t.Parallel()
+
+	updater := NewUpdater(UpdateConfig{BinaryName: "/usr/local/bin/grlx"})
+
+	if got := updater.checksumName(); got != "grlx" {
+		t.Fatalf("checksumName() = %q, want grlx", got)
+	}
+}
+
+func TestVerifyArtifactChecksumAcceptsMatchingChecksum(t *testing.T) {
+	t.Parallel()
+
+	artifact := "new binary"
+	checksum := sha256.Sum256([]byte(artifact))
+	manifest := fmt.Sprintf("%x  dist/grlx-v1.2.3-linux-amd64\n", checksum)
+
+	err := verifyArtifactChecksum(strings.NewReader(manifest), strings.NewReader(artifact), "grlx-v1.2.3-linux-amd64")
+	if err != nil {
+		t.Fatalf("verifyArtifactChecksum returned error: %v", err)
+	}
+}
+
+func TestVerifyArtifactChecksumRejectsMismatch(t *testing.T) {
+	t.Parallel()
+
+	checksum := sha256.Sum256([]byte("expected binary"))
+	manifest := fmt.Sprintf("%x  grlx-v1.2.3-linux-amd64\n", checksum)
+
+	err := verifyArtifactChecksum(strings.NewReader(manifest), strings.NewReader("different binary"), "grlx-v1.2.3-linux-amd64")
+	if err == nil {
+		t.Fatal("verifyArtifactChecksum returned nil error for mismatched artifact")
+	}
+	if !strings.Contains(err.Error(), "checksum mismatch") {
+		t.Fatalf("verifyArtifactChecksum error = %q, want checksum mismatch", err)
+	}
+}
+
+func TestChecksumForArtifactRejectsMissingName(t *testing.T) {
+	t.Parallel()
+
+	_, err := checksumForArtifact(strings.NewReader(""), "")
+	if err == nil {
+		t.Fatal("checksumForArtifact returned nil error for missing artifact name")
+	}
+}
+
+func TestChecksumForArtifactRejectsMissingChecksum(t *testing.T) {
+	t.Parallel()
+
+	checksum := sha256.Sum256([]byte("other binary"))
+	manifest := fmt.Sprintf("%x  grlx-v1.2.3-darwin-amd64\n", checksum)
+
+	_, err := checksumForArtifact(strings.NewReader(manifest), "grlx-v1.2.3-linux-amd64")
+	if err == nil {
+		t.Fatal("checksumForArtifact returned nil error for missing checksum")
+	}
+	if !strings.Contains(err.Error(), "not found") {
+		t.Fatalf("checksumForArtifact error = %q, want not found", err)
+	}
+}
+
+func TestChecksumForArtifactIgnoresMalformedEntries(t *testing.T) {
+	t.Parallel()
+
+	artifact := "new binary"
+	checksum := sha256.Sum256([]byte(artifact))
+	manifest := fmt.Sprintf("not-a-checksum  grlx-v1.2.3-linux-amd64\n%x  *grlx-v1.2.3-linux-amd64\n", checksum)
+
+	got, err := checksumForArtifact(strings.NewReader(manifest), "grlx-v1.2.3-linux-amd64")
+	if err != nil {
+		t.Fatalf("checksumForArtifact returned error: %v", err)
+	}
+	if want := fmt.Sprintf("%x", checksum); got != want {
+		t.Fatalf("checksumForArtifact = %q, want %q", got, want)
 	}
 }
 

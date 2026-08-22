@@ -18,7 +18,10 @@
 package selfupdate
 
 import (
+	"bufio"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -43,6 +46,7 @@ const maxLatestReleaseResponseBytes = 1 << 20
 type UpdateConfig struct {
 	CurrentVersion string
 	BinaryName     string
+	ChecksumName   string
 	UpdateURL      string
 	CheckInterval  time.Duration
 }
@@ -175,6 +179,66 @@ func canonicalVersion(version string) string {
 // PerformUpdate downloads and installs a new version
 func (u *Updater) PerformUpdate(ctx context.Context, version string) error {
 	return errUnsignedUpdatesDisabled
+}
+
+func (u *Updater) checksumName() string {
+	if strings.TrimSpace(u.config.ChecksumName) != "" {
+		return strings.TrimSpace(u.config.ChecksumName)
+	}
+
+	return filepath.Base(u.config.BinaryName)
+}
+
+func verifyArtifactChecksum(checksums io.Reader, artifact io.Reader, artifactName string) error {
+	expectedChecksum, err := checksumForArtifact(checksums, artifactName)
+	if err != nil {
+		return err
+	}
+
+	hasher := sha256.New()
+	if _, err := io.Copy(hasher, artifact); err != nil {
+		return fmt.Errorf("failed to hash update artifact: %w", err)
+	}
+
+	actualChecksum := hex.EncodeToString(hasher.Sum(nil))
+	if actualChecksum != expectedChecksum {
+		return fmt.Errorf("update artifact checksum mismatch for %s", artifactName)
+	}
+
+	return nil
+}
+
+func checksumForArtifact(checksums io.Reader, artifactName string) (string, error) {
+	artifactName = strings.TrimSpace(artifactName)
+	if artifactName == "" {
+		return "", errors.New("update artifact name is required")
+	}
+
+	scanner := bufio.NewScanner(checksums)
+	for scanner.Scan() {
+		fields := strings.Fields(scanner.Text())
+		if len(fields) != 2 {
+			continue
+		}
+
+		checksum := strings.ToLower(strings.TrimSpace(fields[0]))
+		if len(checksum) != sha256.Size*2 {
+			continue
+		}
+		if _, err := hex.DecodeString(checksum); err != nil {
+			continue
+		}
+
+		name := strings.TrimPrefix(fields[1], "*")
+		if name == artifactName || filepath.Base(name) == artifactName {
+			return checksum, nil
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return "", fmt.Errorf("failed to read update checksums: %w", err)
+	}
+
+	return "", fmt.Errorf("checksum for update artifact %s not found", artifactName)
 }
 
 func stageBinary(currentExe, newBinaryPath string) (string, error) {

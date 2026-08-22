@@ -13,6 +13,7 @@ import (
 type UpdateConfig struct {
 	CurrentVersion string
 	BinaryName     string
+	ChecksumName   string
 	UpdateURL      string
 	CheckInterval  time.Duration
 }
