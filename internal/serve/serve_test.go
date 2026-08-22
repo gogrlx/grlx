@@ -694,6 +694,29 @@ func TestHandlePropsSetProxyFormats(t *testing.T) {
 	}
 }
 
+func TestParsePropsSetValue(t *testing.T) {
+	tests := []struct {
+		name string
+		body string
+		want string
+	}{
+		{name: "empty body", body: "", want: ""},
+		{name: "wrapper", body: `{"value":"my-host"}`, want: "my-host"},
+		{name: "empty wrapper value", body: `{"value":""}`, want: ""},
+		{name: "bare json string", body: `"my-host"`, want: "my-host"},
+		{name: "raw text", body: `my-host`, want: "my-host"},
+		{name: "wrapper missing value falls back to raw", body: `{"other":"value"}`, want: `{"other":"value"}`},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := parsePropsSetValue([]byte(tt.body)); got != tt.want {
+				t.Fatalf("parsePropsSetValue() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestHandlePropsSetProxyMissingParams(t *testing.T) {
 	handler := HandlePropsSetProxy("props.set")
 

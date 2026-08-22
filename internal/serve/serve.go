@@ -332,21 +332,7 @@ func HandlePropsSetProxy(method string) http.HandlerFunc {
 		}
 		defer r.Body.Close()
 
-		var value string
-		if len(body) > 0 {
-			// Try to parse as {"value": "..."} first (web UI format).
-			var wrapper struct {
-				Value string `json:"value"`
-			}
-			if err := json.Unmarshal(body, &wrapper); err == nil && wrapper.Value != "" {
-				value = wrapper.Value
-			} else {
-				// Fall back to bare JSON string or raw text.
-				if err := json.Unmarshal(body, &value); err != nil {
-					value = string(body)
-				}
-			}
-		}
+		value := parsePropsSetValue(body)
 
 		params := map[string]string{"sprout_id": id, "name": key, "value": value}
 		result, err := client.NatsRequest(method, params)
@@ -358,6 +344,27 @@ func HandlePropsSetProxy(method string) http.HandlerFunc {
 		w.WriteHeader(http.StatusOK)
 		w.Write(result)
 	}
+}
+
+func parsePropsSetValue(body []byte) string {
+	if len(body) == 0 {
+		return ""
+	}
+
+	// Try to parse as {"value": "..."} first (web UI format).
+	var wrapper struct {
+		Value *string `json:"value"`
+	}
+	if err := json.Unmarshal(body, &wrapper); err == nil && wrapper.Value != nil {
+		return *wrapper.Value
+	}
+
+	// Fall back to bare JSON string or raw text.
+	var value string
+	if err := json.Unmarshal(body, &value); err != nil {
+		return string(body)
+	}
+	return value
 }
 
 // HandleCohortGetProxy returns a handler that forwards a cohort get request
