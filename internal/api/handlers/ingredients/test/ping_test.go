@@ -82,6 +82,18 @@ func TestHTestPing_InvalidJSON(t *testing.T) {
 	}
 }
 
+func TestHTestPing_InvalidAction(t *testing.T) {
+	body := []byte(`{"target":[{"id":"sprout1"}],"action":"not-a-ping-object"}`)
+	req := httptest.NewRequest(http.MethodPost, "/test/ping", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+
+	HTestPing(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", w.Code)
+	}
+}
+
 func TestHTestPing_InvalidSproutID(t *testing.T) {
 	setupPingTestPKI(t)
 
