@@ -246,8 +246,12 @@ func TestCommitBinaryUpdateReplacesCurrentBinary(t *testing.T) {
 		t.Fatalf("current binary contents = %q, want %q", contents, "new")
 	}
 
-	if _, err := os.Stat(currentExe + ".backup"); !os.IsNotExist(err) {
-		t.Fatalf("backup stat error = %v, want not exist", err)
+	matches, err := filepath.Glob(currentExe + ".backup-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(matches) != 0 {
+		t.Fatalf("backup files = %v, want none", matches)
 	}
 }
 
@@ -278,7 +282,40 @@ func TestCommitBinaryUpdateRestoresBackupOnInstallFailure(t *testing.T) {
 		t.Fatalf("current binary contents = %q, want %q", contents, "old")
 	}
 
-	if _, statErr := os.Stat(currentExe + ".backup"); !os.IsNotExist(statErr) {
-		t.Fatalf("backup stat error = %v, want not exist", statErr)
+	matches, err := filepath.Glob(currentExe + ".backup-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(matches) != 0 {
+		t.Fatalf("backup files = %v, want none", matches)
+	}
+}
+
+func TestCommitBinaryUpdateDoesNotClobberExistingBackup(t *testing.T) {
+	t.Parallel()
+
+	tempDir := t.TempDir()
+	currentExe := filepath.Join(tempDir, "grlx")
+	existingBackup := currentExe + ".backup"
+	missingStagedPath := filepath.Join(tempDir, ".missing-update")
+
+	if err := os.WriteFile(currentExe, []byte("old"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(existingBackup, []byte("previous backup"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	err := commitBinaryUpdate(currentExe, missingStagedPath)
+	if err == nil {
+		t.Fatal("commitBinaryUpdate returned nil error for missing staged binary")
+	}
+
+	contents, err := os.ReadFile(existingBackup)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(contents) != "previous backup" {
+		t.Fatalf("existing backup contents = %q, want %q", contents, "previous backup")
 	}
 }
