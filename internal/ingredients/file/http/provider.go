@@ -75,6 +75,17 @@ func (hf HTTPFile) Download(ctx context.Context) error {
 	if closeErr != nil {
 		return closeErr
 	}
+	// os.CreateTemp creates the staged file with mode 0600. Preserve the
+	// existing destination's mode when replacing it, otherwise fall back to
+	// 0644 (honoring umask) to match the prior os.Create behavior instead of
+	// silently tightening permissions to 0600.
+	mode := os.FileMode(0o644)
+	if info, statErr := os.Stat(hf.Destination); statErr == nil {
+		mode = info.Mode().Perm()
+	}
+	if err := os.Chmod(stagedPath, mode); err != nil {
+		return err
+	}
 	if err := os.Rename(stagedPath, hf.Destination); err != nil {
 		return err
 	}

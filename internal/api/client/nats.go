@@ -133,6 +133,11 @@ func injectToken(data []byte) []byte {
 	// unmarshaling/remarshaling the entire payload.
 	trimmed := bytes.TrimLeft(data, " \t\r\n")
 	if len(trimmed) > 0 && trimmed[0] == '{' {
+		// Avoid emitting a trailing comma for an empty object ({}), which
+		// would produce invalid JSON like {"token":"...",}.
+		if rest := bytes.TrimLeft(trimmed[1:], " \t\r\n"); len(rest) > 0 && rest[0] == '}' {
+			return append([]byte(fmt.Sprintf(`{"token":%s`, tokenJSON)), rest...)
+		}
 		return append([]byte(fmt.Sprintf(`{"token":%s,`, tokenJSON)), trimmed[1:]...)
 	}
 
