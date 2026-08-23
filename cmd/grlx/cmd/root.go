@@ -62,12 +62,18 @@ func init() {
 	}
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.config/grlx/grlx)")
 	noFailForCert := !util.IsInteractive()
+	// skipNats tracks commands that don't establish a NATS connection.
+	// Crucially this is decided from the invoked command only, NOT from
+	// interactivity: headless/CI invocations of normal commands must still
+	// connect (previously they were wrongly skipped via noFailForCert).
+	skipNats := false
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
 		case "version", "help", "auth", "init":
 			fallthrough
 		case "--version", "--help", "--auth", "--init":
 			noFailForCert = true
+			skipNats = true
 		}
 	}
 	skipTLS := false
@@ -98,7 +104,13 @@ func init() {
 		os.Exit(1)
 	}
 	// Connect to NATS for API operations (most commands need this).
-	if !skipTLS && !noFailForCert {
+	// Gate on whether the command needs NATS, independent of the
+	// interactive flag, so headless invocations still connect. Only
+	// attempt a connection once the RootCA has loaded successfully:
+	// ConnectNats panics on a missing/unusable cert, and in headless mode
+	// (noFailForCert) a cert-load failure does not exit above, so guarding
+	// on err here keeps that path a soft failure rather than a crash.
+	if !skipTLS && !skipNats && err == nil {
 		if natsErr := client.ConnectNats(); natsErr != nil {
 			fmt.Printf("warning: NATS connection failed: %v\n", natsErr)
 		}

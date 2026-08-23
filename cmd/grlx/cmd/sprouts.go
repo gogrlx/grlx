@@ -52,19 +52,7 @@ var cmdSproutsList = &cobra.Command{
 		}
 
 		// Apply filters.
-		filtered := sprouts[:0]
-		for _, s := range sprouts {
-			if cohortMembers != nil && !cohortMembers[s.ID] {
-				continue
-			}
-			if sproutsStateFilter != "" && s.KeyState != sproutsStateFilter {
-				continue
-			}
-			if sproutsOnlineOnly && !s.Connected {
-				continue
-			}
-			filtered = append(filtered, s)
-		}
+		filtered := filterSprouts(sprouts, cohortMembers, sproutsStateFilter, sproutsOnlineOnly)
 
 		// Sort: connected first, then alphabetical.
 		sort.Slice(filtered, func(i, j int) bool {
@@ -139,6 +127,27 @@ var cmdSproutsList = &cobra.Command{
 			fmt.Printf("\n%d sprout(s) accepted, %d online\n", accepted, online)
 		}
 	},
+}
+
+// filterSprouts returns a NEW slice containing only the sprouts that match the
+// given filters. It intentionally does not alias the backing array (e.g. via
+// sprouts[:0]) so that callers can still iterate or summarize the original
+// slice after subsequent sorting of the filtered result.
+func filterSprouts(sprouts []client.SproutInfo, cohortMembers map[string]bool, stateFilter string, onlineOnly bool) []client.SproutInfo {
+	filtered := make([]client.SproutInfo, 0, len(sprouts))
+	for _, s := range sprouts {
+		if cohortMembers != nil && !cohortMembers[s.ID] {
+			continue
+		}
+		if stateFilter != "" && s.KeyState != stateFilter {
+			continue
+		}
+		if onlineOnly && !s.Connected {
+			continue
+		}
+		filtered = append(filtered, s)
+	}
+	return filtered
 }
 
 var cmdSproutsShow = &cobra.Command{
