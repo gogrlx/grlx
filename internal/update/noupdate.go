@@ -11,11 +11,13 @@ import (
 
 // UpdateConfig holds the configuration for self-updates (no-op version)
 type UpdateConfig struct {
-	CurrentVersion string
-	BinaryName     string
-	ChecksumName   string
-	UpdateURL      string
-	CheckInterval  time.Duration
+	CurrentVersion     string
+	BinaryName         string
+	ChecksumName       string
+	UpdateURL          string
+	CheckInterval      time.Duration
+	TrustedPublicKey   string
+	TrustedFingerprint string
 }
 
 // Updater handles self-update functionality (no-op version)
