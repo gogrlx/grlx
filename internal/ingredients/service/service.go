@@ -199,6 +199,9 @@ func (s Service) Parse(id, method string, properties map[string]interface{}) (co
 	switch nameI := nameI.(type) {
 	case string:
 		name = nameI
+		if name == "" {
+			return nil, ingredients.ErrMissingName
+		}
 	default:
 		return nil, ingredients.ErrMissingName
 	}
