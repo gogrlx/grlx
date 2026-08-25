@@ -52,6 +52,14 @@ func TestServiceParseNameNotString(t *testing.T) {
 	}
 }
 
+func TestServiceParseEmptyName(t *testing.T) {
+	s := Service{}
+	_, err := s.Parse("test-id", "running", map[string]interface{}{"name": ""})
+	if err != ingredients.ErrMissingName {
+		t.Errorf("expected ErrMissingName for empty name, got %v", err)
+	}
+}
+
 func TestServiceParseInvalidMethod(t *testing.T) {
 	s := Service{}
 	_, err := s.Parse("test-id", "nonexistent", map[string]interface{}{"name": "nginx"})
