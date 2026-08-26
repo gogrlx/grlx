@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sync"
@@ -206,19 +207,33 @@ func logStepResult(jobID string, completion StepCompletion) {
 		return
 	}
 	logFile := filepath.Join(config.JobLogDir, fmt.Sprintf("%s.jsonl", jobID))
-	b, err := json.Marshal(completion)
-	if err != nil {
-		log.Errorf("failed to marshal step completion for logging: %v", err)
-		return
-	}
 	f, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
 		log.Errorf("failed to open job log file %s: %v", logFile, err)
 		return
 	}
 	defer f.Close()
-	f.Write(b)
-	f.WriteString("\n")
+	if err := writeStepCompletionLogLine(f, completion); err != nil {
+		log.Errorf("failed to write step completion to job log %s: %v", logFile, err)
+	}
+}
+
+func writeStepCompletionLogLine(writer io.Writer, completion StepCompletion) error {
+	b, err := json.Marshal(completion)
+	if err != nil {
+		return fmt.Errorf("failed to marshal step completion for logging: %w", err)
+	}
+	if written, err := writer.Write(b); err != nil {
+		return fmt.Errorf("failed to write step completion: %w", err)
+	} else if written != len(b) {
+		return fmt.Errorf("failed to write step completion: %w", io.ErrShortWrite)
+	}
+	if written, err := writer.Write([]byte("\n")); err != nil {
+		return fmt.Errorf("failed to write step completion newline: %w", err)
+	} else if written != 1 {
+		return fmt.Errorf("failed to write step completion newline: %w", io.ErrShortWrite)
+	}
+	return nil
 }
 
 // RequisitesAreMet returns true if all of the requisites for the given step are met
