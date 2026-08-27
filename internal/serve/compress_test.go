@@ -131,3 +131,61 @@ func TestWithGzip_SetsVaryHeader(t *testing.T) {
 		t.Fatalf("expected Vary: Accept-Encoding, got %q", v)
 	}
 }
+
+func TestWithGzip_PreservesHeaderOnlyStatus(t *testing.T) {
+	inner := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})
+
+	handler := WithGzip(inner)
+	req := httptest.NewRequest(http.MethodOptions, "/", nil)
+	req.Header.Set("Accept-Encoding", "gzip")
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("expected status 204, got %d", rec.Code)
+	}
+	if ce := rec.Header().Get("Content-Encoding"); ce != "" {
+		t.Fatalf("expected no Content-Encoding, got %q", ce)
+	}
+	if rec.Body.Len() != 0 {
+		t.Fatalf("expected empty body, got %q", rec.Body.String())
+	}
+}
+
+func TestWithGzip_HeaderOnlyResponseDoesNotCorruptNextResponse(t *testing.T) {
+	first := WithGzip(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	firstReq := httptest.NewRequest(http.MethodOptions, "/", nil)
+	firstReq.Header.Set("Accept-Encoding", "gzip")
+	firstRec := httptest.NewRecorder()
+	first.ServeHTTP(firstRec, firstReq)
+
+	second := WithGzip(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		w.Write([]byte(strings.Repeat("next response\n", 100)))
+	}))
+	secondReq := httptest.NewRequest(http.MethodGet, "/", nil)
+	secondReq.Header.Set("Accept-Encoding", "gzip")
+	secondRec := httptest.NewRecorder()
+	second.ServeHTTP(secondRec, secondReq)
+
+	if secondRec.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", secondRec.Code)
+	}
+	gr, err := gzip.NewReader(secondRec.Body)
+	if err != nil {
+		t.Fatalf("gzip.NewReader: %v", err)
+	}
+	defer gr.Close()
+	body, err := io.ReadAll(gr)
+	if err != nil {
+		t.Fatalf("read gzip body: %v", err)
+	}
+	if !strings.Contains(string(body), "next response") {
+		t.Fatalf("body missing expected content")
+	}
+}
