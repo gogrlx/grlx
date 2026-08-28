@@ -161,6 +161,49 @@ func TestDownloadSkipsWhenHashMatches(t *testing.T) {
 	}
 }
 
+func TestDownloadReplacesMismatchedDestination(t *testing.T) {
+	td := t.TempDir()
+	srcPath := filepath.Join(td, "source.txt")
+	dstPath := filepath.Join(td, "destination.txt")
+	sourceContent := []byte("fresh content")
+	staleContent := []byte("stale content")
+
+	if err := os.WriteFile(srcPath, sourceContent, 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(dstPath, staleContent, 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	hash := fmt.Sprintf("%x", md5.Sum(sourceContent))
+	lf := LocalFile{
+		ID:          "test-refresh",
+		Source:      srcPath,
+		Destination: dstPath,
+		Hash:        hash,
+		Props:       map[string]interface{}{"hashType": "md5"},
+	}
+
+	if err := lf.Download(context.Background()); err != nil {
+		t.Fatalf("Download failed: %v", err)
+	}
+
+	got, err := os.ReadFile(dstPath)
+	if err != nil {
+		t.Fatalf("failed to read destination: %v", err)
+	}
+	if string(got) != string(sourceContent) {
+		t.Fatalf("destination = %q, want %q", got, sourceContent)
+	}
+	info, err := os.Stat(dstPath)
+	if err != nil {
+		t.Fatalf("failed to stat destination: %v", err)
+	}
+	if gotMode := info.Mode().Perm(); gotMode != 0600 {
+		t.Fatalf("destination mode = %v, want 0600", gotMode)
+	}
+}
+
 func TestDownloadSourceNotFound(t *testing.T) {
 	td := t.TempDir()
 	dstPath := filepath.Join(td, "destination.txt")
