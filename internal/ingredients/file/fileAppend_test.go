@@ -46,6 +46,10 @@ func TestAppend(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create file without content %s: %v", fileWithoutContent, err)
 	}
+	anotherFileWithoutContent := filepath.Join(tempDir, "there-is-another-file-without-content-here")
+	if err := os.WriteFile(anotherFileWithoutContent, nil, 0o644); err != nil {
+		t.Fatalf("failed to create file without content %s: %v", anotherFileWithoutContent, err)
+	}
 
 	fakePath := filepath.Join("/", "fakepath")
 
@@ -107,12 +111,12 @@ func TestAppend(t *testing.T) {
 		},
 		{
 			name:   "AppendFileWithoutContent",
-			params: map[string]interface{}{"name": fileWithoutContent, "text": "test"},
+			params: map[string]interface{}{"name": anotherFileWithoutContent, "text": "test"},
 			expected: cook.Result{
 				Succeeded: true,
 				Failed:    false,
 				Changed:   false,
-				Notes:     []fmt.Stringer{cook.Snprintf("file %s does not contain all specified content", fileWithoutContent), cook.Snprintf("appended to %s", fileWithoutContent)},
+				Notes:     []fmt.Stringer{cook.Snprintf("file %s does not contain all specified content", anotherFileWithoutContent), cook.Snprintf("appended to %s", anotherFileWithoutContent)},
 			},
 			error: nil,
 		},
