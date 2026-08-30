@@ -103,12 +103,28 @@ func TestServiceProperties(t *testing.T) {
 
 func TestServicePropertiesForMethod(t *testing.T) {
 	s := Service{}
-	props, err := s.PropertiesForMethod("running")
-	if err != nil {
-		t.Errorf("PropertiesForMethod() returned error: %v", err)
+	for _, method := range []string{
+		"disabled", "enabled", "masked", "reloaded",
+		"restarted", "running", "stopped", "unmasked",
+	} {
+		props, err := s.PropertiesForMethod(method)
+		if err != nil {
+			t.Errorf("PropertiesForMethod(%q) returned error: %v", method, err)
+			continue
+		}
+		if props["name"] != "string,req" {
+			t.Errorf("PropertiesForMethod(%q)[name] = %q, want %q", method, props["name"], "string,req")
+		}
+		if props["userMode"] != "bool,opt" {
+			t.Errorf("PropertiesForMethod(%q)[userMode] = %q, want %q", method, props["userMode"], "bool,opt")
+		}
 	}
-	if props != nil {
-		t.Errorf("PropertiesForMethod() = %v, want nil", props)
+}
+
+func TestServicePropertiesForMethodInvalid(t *testing.T) {
+	s := Service{}
+	if _, err := s.PropertiesForMethod("nonexistent"); err == nil {
+		t.Fatal("PropertiesForMethod() expected error for invalid method")
 	}
 }
 
