@@ -230,5 +230,13 @@ func (s Service) Methods() (string, []string) {
 }
 
 func (s Service) PropertiesForMethod(method string) (map[string]string, error) {
-	return nil, nil
+	switch method {
+	case "disabled", "enabled", "masked", "reloaded", "restarted", "running", "stopped", "unmasked":
+		return ingredients.MethodPropsSet{
+			ingredients.MethodProps{Key: "name", Type: "string", IsReq: true},
+			ingredients.MethodProps{Key: "userMode", Type: "bool", IsReq: false},
+		}.ToMap(), nil
+	default:
+		return nil, fmt.Errorf("method %s undefined", method)
+	}
 }
