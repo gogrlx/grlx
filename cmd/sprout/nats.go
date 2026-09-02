@@ -1,13 +1,11 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"runtime"
 
 	log "github.com/gogrlx/grlx/v2/internal/log"
 
-	apitypes "github.com/gogrlx/grlx/v2/internal/api/types"
 	"github.com/gogrlx/grlx/v2/internal/config"
 	"github.com/gogrlx/grlx/v2/internal/cook"
 	"github.com/gogrlx/grlx/v2/internal/facts"
@@ -15,6 +13,7 @@ import (
 	"github.com/gogrlx/grlx/v2/internal/ingredients/test"
 	"github.com/gogrlx/grlx/v2/internal/pki"
 	"github.com/gogrlx/grlx/v2/internal/shell"
+	"github.com/gogrlx/grlx/v2/internal/sproutnats"
 
 	nats "github.com/nats-io/nats.go"
 )
@@ -64,8 +63,13 @@ func natsInit(nc *nats.Conn) error {
 	}
 
 	_, err = nc.Subscribe("grlx.sprouts."+sproutID+".cmd.run", func(m *nats.Msg) {
-		var cmdRun apitypes.CmdRun
-		json.NewDecoder(bytes.NewBuffer(m.Data)).Decode(&cmdRun)
+		cmdRun, errorResponse, decodeErr := sproutnats.DecodeCmdRun(m.Data)
+		if decodeErr != nil {
+			log.Errorf("invalid cmd.run request: %v", decodeErr)
+			resultsB, _ := json.Marshal(errorResponse)
+			m.Respond(resultsB)
+			return
+		}
 		log.Trace(cmdRun)
 		results, err := cmd.SRun(cmdRun)
 		if err != nil {
@@ -81,8 +85,13 @@ func natsInit(nc *nats.Conn) error {
 		return err
 	}
 	_, err = nc.Subscribe("grlx.sprouts."+sproutID+".test.ping", func(m *nats.Msg) {
-		var ping apitypes.PingPong
-		json.NewDecoder(bytes.NewBuffer(m.Data)).Decode(&ping)
+		ping, errorResponse, decodeErr := sproutnats.DecodePing(m.Data)
+		if decodeErr != nil {
+			log.Errorf("invalid test.ping request: %v", decodeErr)
+			pongB, _ := json.Marshal(errorResponse)
+			m.Respond(pongB)
+			return
+		}
 		log.Trace(ping)
 		pong, _ := test.SPing(ping)
 		pongB, _ := json.Marshal(pong)
@@ -92,8 +101,13 @@ func natsInit(nc *nats.Conn) error {
 		return err
 	}
 	_, err = nc.Subscribe("grlx.sprouts."+sproutID+".cook", func(m *nats.Msg) {
-		var rEnvelope cook.RecipeEnvelope
-		json.NewDecoder(bytes.NewBuffer(m.Data)).Decode(&rEnvelope)
+		rEnvelope, errorResponse, decodeErr := sproutnats.DecodeCook(m.Data)
+		if decodeErr != nil {
+			log.Errorf("invalid cook request: %v", decodeErr)
+			ackB, _ := json.Marshal(errorResponse)
+			m.Respond(ackB)
+			return
+		}
 		log.Trace(rEnvelope)
 		ackB, _ := json.Marshal(cook.Ack{Acknowledged: true, JobID: rEnvelope.JobID})
 		m.Respond(ackB)
