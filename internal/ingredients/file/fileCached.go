@@ -45,27 +45,31 @@ func (f File) cached(ctx context.Context, test bool) (cook.Result, error) {
 				Succeeded: true, Failed: false,
 				Changed: false, Notes: notes,
 			}, nil
-		} else {
-			if test {
-				notes = append(notes, cook.Snprintf("%s would be cached", cacheDest))
-				return cook.Result{
-					Succeeded: true, Failed: false,
-					Changed: true, Notes: notes,
-				}, nil
-			}
-			err = fp.Download(ctx)
-			if err != nil {
-				return cook.Result{
-					Succeeded: false, Failed: true,
-				}, err
-			}
-			notes = append(notes, cook.Snprintf("%s has been cached", cacheDest))
+		}
+		if !errors.Is(statErr, os.ErrNotExist) {
+			return cook.Result{
+				Succeeded: false, Failed: true,
+				Changed: false, Notes: notes,
+			}, statErr
+		}
+		if test {
+			notes = append(notes, cook.Snprintf("%s would be cached", cacheDest))
 			return cook.Result{
 				Succeeded: true, Failed: false,
 				Changed: true, Notes: notes,
 			}, nil
-
 		}
+		err = fp.Download(ctx)
+		if err != nil {
+			return cook.Result{
+				Succeeded: false, Failed: true,
+			}, err
+		}
+		notes = append(notes, cook.Snprintf("%s has been cached", cacheDest))
+		return cook.Result{
+			Succeeded: true, Failed: false,
+			Changed: true, Notes: notes,
+		}, nil
 	}
 	valid, errVal := fp.Verify(ctx)
 	if errVal != nil && !errors.Is(errVal, ErrFileNotFound) {

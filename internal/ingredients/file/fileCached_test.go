@@ -2,9 +2,11 @@ package file
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -169,4 +171,41 @@ func TestCachedSkipVerify(t *testing.T) {
 	}
 	res, _ := f.cached(context.Background(), false)
 	compareResults(t, res, expected)
+}
+
+func TestCachedSkipVerifyReturnsStatErrors(t *testing.T) {
+	td := t.TempDir()
+	config.CacheDir = td
+	defer func() {
+		config.CacheDir = ""
+	}()
+
+	cacheDest := filepath.Join(td, "skip_dst")
+	if err := os.Symlink(cacheDest, cacheDest); err != nil {
+		t.Fatal(err)
+	}
+
+	f := File{
+		id:     "test",
+		method: "cached",
+		params: map[string]interface{}{
+			"name":        filepath.Join(td, "dst"),
+			"source":      tempFile,
+			"skip_verify": true,
+		},
+	}
+
+	res, err := f.cached(context.Background(), false)
+	if err == nil {
+		t.Fatal("expected stat error")
+	}
+	if errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("expected non-missing stat error, got %v", err)
+	}
+	compareResults(t, res, cook.Result{
+		Succeeded: false,
+		Failed:    true,
+		Changed:   false,
+		Notes:     []fmt.Stringer{},
+	})
 }
