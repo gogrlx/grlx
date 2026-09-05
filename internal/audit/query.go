@@ -11,6 +11,8 @@ import (
 	"time"
 )
 
+const maxAuditEntryBytes = 1024 * 1024
+
 // QueryParams controls which audit entries to return.
 type QueryParams struct {
 	// Date filters entries to a specific date (YYYY-MM-DD).
@@ -71,6 +73,7 @@ func (l *Logger) Query(params QueryParams) (QueryResult, error) {
 
 	var all []Entry
 	scanner := bufio.NewScanner(f)
+	scanner.Buffer(make([]byte, 0, 64*1024), maxAuditEntryBytes)
 	for scanner.Scan() {
 		line := scanner.Text()
 		if strings.TrimSpace(line) == "" {
@@ -169,6 +172,7 @@ func countLines(path string) int {
 
 	count := 0
 	scanner := bufio.NewScanner(f)
+	scanner.Buffer(make([]byte, 0, 64*1024), maxAuditEntryBytes)
 	for scanner.Scan() {
 		if strings.TrimSpace(scanner.Text()) != "" {
 			count++
