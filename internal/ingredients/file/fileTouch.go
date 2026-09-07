@@ -79,6 +79,14 @@ func (f File) touch(ctx context.Context, test bool) (cook.Result, error) {
 		needsMkdirs := false
 		fileDir := filepath.Dir(name)
 		_, dirErr := os.Stat(fileDir)
+		if dirErr != nil && !errors.Is(dirErr, os.ErrNotExist) {
+			return cook.Result{
+				Succeeded: false, Failed: true,
+				Changed: false, Notes: []fmt.Stringer{
+					cook.Snprintf("failed to stat parent directory `%s`", fileDir),
+				},
+			}, dirErr
+		}
 		if errors.Is(dirErr, os.ErrNotExist) {
 			needsMkdirs = true
 		}
@@ -118,8 +126,30 @@ func (f File) touch(ctx context.Context, test bool) (cook.Result, error) {
 				},
 			}, errCreate
 		}
-		f.Close()
-		stt, _ = os.Stat(name)
+		if closeErr := f.Close(); closeErr != nil {
+			return cook.Result{
+				Succeeded: false, Failed: true,
+				Changed: false, Notes: []fmt.Stringer{
+					cook.Snprintf("failed to close file `%s`", name),
+				},
+			}, closeErr
+		}
+		stt, err = os.Stat(name)
+		if err != nil {
+			return cook.Result{
+				Succeeded: false, Failed: true,
+				Changed: false, Notes: []fmt.Stringer{
+					cook.Snprintf("failed to stat file `%s`", name),
+				},
+			}, err
+		}
+	} else if err != nil {
+		return cook.Result{
+			Succeeded: false, Failed: true,
+			Changed: false, Notes: []fmt.Stringer{
+				cook.Snprintf("failed to stat file `%s`", name),
+			},
+		}, err
 	}
 	omt := stt.ModTime()
 	oat, err := atime.Stat(name)
