@@ -477,7 +477,15 @@ func PutNKey(id string) error {
 	if err != nil {
 		return fmt.Errorf("failed to submit NKey: %w", err)
 	}
-	resp.Body.Close()
+	defer resp.Body.Close()
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+		msg := strings.TrimSpace(string(body))
+		if msg == "" {
+			msg = resp.Status
+		}
+		return fmt.Errorf("failed to submit NKey: farmer returned %s: %s", resp.Status, msg)
+	}
 	return nil
 }
 
