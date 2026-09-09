@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/gogrlx/grlx/v2/internal/ingredients/file"
@@ -130,6 +131,37 @@ func TestDownloadCopiesFile(t *testing.T) {
 	}
 }
 
+func TestDownloadCopiesFileURLSource(t *testing.T) {
+	td := t.TempDir()
+	srcPath := filepath.Join(td, "source.txt")
+	dstPath := filepath.Join(td, "destination.txt")
+	content := []byte("hello from a file URL")
+
+	if err := os.WriteFile(srcPath, content, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	h := md5.Sum(content)
+	lf := LocalFile{
+		ID:          "test-download-file-url",
+		Source:      "file://" + srcPath,
+		Destination: dstPath,
+		Hash:        fmt.Sprintf("%x", h),
+		Props:       map[string]interface{}{"hashType": "md5"},
+	}
+
+	if err := lf.Download(context.Background()); err != nil {
+		t.Fatalf("Download failed: %v", err)
+	}
+	got, err := os.ReadFile(dstPath)
+	if err != nil {
+		t.Fatalf("failed to read destination: %v", err)
+	}
+	if string(got) != string(content) {
+		t.Errorf("content mismatch: want %q, got %q", content, got)
+	}
+}
+
 func TestDownloadSkipsWhenHashMatches(t *testing.T) {
 	td := t.TempDir()
 	srcPath := filepath.Join(td, "source.txt")
@@ -183,6 +215,57 @@ func TestDownloadSourceNotFound(t *testing.T) {
 		if !errors.Is(err, os.ErrNotExist) {
 			t.Logf("got error (acceptable): %v", err)
 		}
+	}
+}
+
+func TestLocalSourcePath(t *testing.T) {
+	tests := []struct {
+		name    string
+		source  string
+		want    string
+		wantErr string
+	}{
+		{
+			name:   "plain path",
+			source: "/tmp/source.txt",
+			want:   "/tmp/source.txt",
+		},
+		{
+			name:   "file URL",
+			source: "file:///tmp/source.txt",
+			want:   "/tmp/source.txt",
+		},
+		{
+			name:   "localhost file URL",
+			source: "file://localhost/tmp/source.txt",
+			want:   "/tmp/source.txt",
+		},
+		{
+			name:    "remote file URL",
+			source:  "file://example.com/tmp/source.txt",
+			wantErr: "unsupported file URL host",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := localSourcePath(tt.source)
+			if tt.wantErr != "" {
+				if err == nil {
+					t.Fatal("expected error")
+				}
+				if !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("error = %q, want it to contain %q", err, tt.wantErr)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if got != tt.want {
+				t.Fatalf("path = %q, want %q", got, tt.want)
+			}
+		})
 	}
 }
 
