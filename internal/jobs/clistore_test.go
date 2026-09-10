@@ -36,8 +36,15 @@ func TestCLIStore_RecordJobStart(t *testing.T) {
 
 	// Verify JSONL file exists.
 	jsonlPath := filepath.Join(dir, "sprout-a", "job-001.jsonl")
-	if _, err := os.Stat(jsonlPath); err != nil {
+	info, err := os.Stat(jsonlPath)
+	if err != nil {
 		t.Fatalf("jsonl file should exist: %v", err)
+	}
+	if info.Size() != 0 {
+		t.Fatalf("jsonl file should start empty, got %d bytes", info.Size())
+	}
+	if got := info.Mode().Perm(); got != 0o600 {
+		t.Fatalf("jsonl file mode = %v, want 0600", got)
 	}
 }
 
