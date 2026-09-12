@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestCheckForUpdatesUsesLatestReleaseSemver(t *testing.T) {
@@ -267,6 +268,45 @@ func TestStartUpdateCheckerRejectsMissingInterval(t *testing.T) {
 
 	if !called {
 		t.Fatal("callback was not called")
+	}
+}
+
+func TestStartUpdateCheckerRunsInBackground(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"tag_name":"v1.2.4"}`))
+	}))
+	t.Cleanup(server.Close)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+
+	updater := NewUpdater(UpdateConfig{
+		CurrentVersion: "v1.2.3",
+		UpdateURL:      server.URL,
+		CheckInterval:  time.Millisecond,
+	})
+	callbacks := make(chan string, 1)
+
+	updater.StartUpdateChecker(ctx, func(version string, available bool, err error) {
+		if err != nil || !available {
+			return
+		}
+		select {
+		case callbacks <- version:
+		default:
+		}
+	})
+
+	select {
+	case version := <-callbacks:
+		if version != "v1.2.4" {
+			t.Fatalf("version = %q, want v1.2.4", version)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("StartUpdateChecker did not invoke callback")
 	}
 }
 
