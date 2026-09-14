@@ -341,18 +341,23 @@ func (u *Updater) StartUpdateChecker(ctx context.Context, callback func(version 
 		return
 	}
 
-	ticker := time.NewTicker(u.config.CheckInterval)
-	defer ticker.Stop()
+	go func() {
+		ticker := time.NewTicker(u.config.CheckInterval)
+		defer ticker.Stop()
 
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			version, available, err := u.CheckForUpdates(ctx)
-			if callback != nil {
-				callback(version, available, err)
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				if ctx.Err() != nil {
+					return
+				}
+				version, available, err := u.CheckForUpdates(ctx)
+				if callback != nil {
+					callback(version, available, err)
+				}
 			}
 		}
-	}
+	}()
 }
