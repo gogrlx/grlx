@@ -25,7 +25,7 @@ func (lf LocalFile) Download(ctx context.Context) error {
 	ok, err := lf.Verify(ctx)
 	// if verification failed because the file doesn't exist,
 	// that's ok. Otherwise, return the error.
-	if !errors.Is(err, file.ErrFileNotFound) {
+	if err != nil && !errors.Is(err, file.ErrFileNotFound) {
 		return err
 	}
 	// if the file exists and the hash matches, we're done.

@@ -161,6 +161,44 @@ func TestDownloadSkipsWhenHashMatches(t *testing.T) {
 	}
 }
 
+func TestDownloadRefreshesHashMismatch(t *testing.T) {
+	td := t.TempDir()
+	srcPath := filepath.Join(td, "source.txt")
+	dstPath := filepath.Join(td, "destination.txt")
+	content := []byte("fresh content")
+
+	if err := os.WriteFile(srcPath, content, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(dstPath, []byte("stale content"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	h := md5.Sum(content)
+	hash := fmt.Sprintf("%x", h)
+
+	lf := LocalFile{
+		ID:          "test-refresh-mismatch",
+		Source:      srcPath,
+		Destination: dstPath,
+		Hash:        hash,
+		Props:       map[string]interface{}{"hashType": "md5"},
+	}
+
+	ctx := context.Background()
+	if err := lf.Download(ctx); err != nil {
+		t.Fatalf("Download failed: %v", err)
+	}
+
+	got, err := os.ReadFile(dstPath)
+	if err != nil {
+		t.Fatalf("failed to read destination: %v", err)
+	}
+	if string(got) != string(content) {
+		t.Errorf("content mismatch: want %q, got %q", content, got)
+	}
+}
+
 func TestDownloadSourceNotFound(t *testing.T) {
 	td := t.TempDir()
 	dstPath := filepath.Join(td, "destination.txt")
