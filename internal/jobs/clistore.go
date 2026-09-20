@@ -217,11 +217,13 @@ func (s *CLIStore) ListJobs(limit int, userKey string, sproutFilter string) ([]J
 			// Filter by user if requested.
 			if userKey != "" {
 				metaFile := filepath.Join(sproutDir, fmt.Sprintf("%s.meta.json", jid))
-				if metaData, metaErr := os.ReadFile(metaFile); metaErr == nil {
-					var meta CLIJobMeta
-					if json.Unmarshal(metaData, &meta) == nil && meta.UserKey != userKey {
-						continue
-					}
+				metaData, metaErr := os.ReadFile(metaFile)
+				if metaErr != nil {
+					continue
+				}
+				var meta CLIJobMeta
+				if json.Unmarshal(metaData, &meta) != nil || meta.UserKey != userKey {
+					continue
 				}
 			}
 

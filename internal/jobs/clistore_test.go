@@ -1,6 +1,7 @@
 package jobs
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -258,6 +259,70 @@ func TestCLIStore_ListJobs(t *testing.T) {
 	}
 	if len(none) != 0 {
 		t.Errorf("expected 0 jobs for nonexistent sprout, got %d", len(none))
+	}
+}
+
+func TestCLIStore_ListJobs_UserFilterSkipsMissingMeta(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewCLIStore(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	step := cook.StepCompletion{
+		ID:               "step-1",
+		CompletionStatus: cook.StepCompleted,
+		Started:          time.Now(),
+		Duration:         time.Second,
+	}
+	if err := store.AppendStep("sprout-missing-meta", "missing-meta-job", step); err != nil {
+		t.Fatal(err)
+	}
+
+	jobs, err := store.ListJobs(0, "USER_A", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(jobs) != 0 {
+		t.Fatalf("expected missing-meta job to be excluded from user-filtered list, got %d jobs", len(jobs))
+	}
+}
+
+func TestCLIStore_ListJobs_UserFilterSkipsMalformedMeta(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewCLIStore(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sproutDir := filepath.Join(dir, "sprout-bad-meta")
+	if err := os.MkdirAll(sproutDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+
+	step := cook.StepCompletion{
+		ID:               "step-1",
+		CompletionStatus: cook.StepCompleted,
+		Started:          time.Now(),
+		Duration:         time.Second,
+	}
+	stepData, err := json.Marshal(step)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(sproutDir, "bad-meta-job.jsonl"), append(stepData, '\n'), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(sproutDir, "bad-meta-job.meta.json"), []byte("not json"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	jobs, err := store.ListJobs(0, "USER_A", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(jobs) != 0 {
+		t.Fatalf("expected malformed-meta job to be excluded from user-filtered list, got %d jobs", len(jobs))
 	}
 }
 
