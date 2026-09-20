@@ -10,6 +10,10 @@ permissions:
 
 jobs:
   goreleaser:
+    # Only run on the upstream repo — this publishes a real GitHub Release,
+    # Docker images, and package artifacts under gogrlx's accounts/infra.
+    # A fork pushing a v* tag should not trigger any of that.
+    if: github.repository == 'gogrlx/grlx'
     environment: goreleaser
     runs-on: ubuntu-latest
     steps:

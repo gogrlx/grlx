@@ -8,6 +8,11 @@ on:
 
 jobs:
   snapshot:
+    # Only run on the upstream repo — this job publishes to gogrlx's own
+    # infra (S3 bucket, GHCR, Docker Hub) and needs secrets a fork won't
+    # (and shouldn't) have. Forks get a plain `go build`/`go test` via ci.yml
+    # instead.
+    if: github.repository == 'gogrlx/grlx'
     environment: goreleaser
     runs-on: ubuntu-latest
     steps:
