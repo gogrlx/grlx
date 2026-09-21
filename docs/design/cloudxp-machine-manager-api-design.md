@@ -153,7 +153,7 @@ These close the gaps identified earlier but haven't been through a design pass t
 | `POST/GET/DELETE` | `/tenants/{tenant_id}/webhooks` |
 | `GET` | `/tenants/{tenant_id}/usage`, `/tenants/{tenant_id}/plan` |
 
-Flagged explicitly as **not yet designed** — auth scheme for human users (bearer/API-key vs. SSO/OIDC), webhook delivery/retry semantics, and billing-system integration are all open.
+Flagged explicitly as **not yet designed** — auth scheme for human users (bearer/API-key vs. SSO/OIDC), webhook delivery/retry semantics, and billing-system integration are all open. Two candidates worth evaluating when this gets designed, surfaced while working through the sprout-JWT design and set aside there as a better fit here instead: `gourdiantoken` (Go, MIT — access/refresh rotation, revocation, multi-tenant bulk revocation via a `tid` claim, matching this API's own tenant model closely; young/single-maintainer, worth weighing against a more established primitive), and OpenBao's own Identity/OIDC provider (native ID-token issuance against OpenBao's existing entity model, if human users end up modeled there) as an alternative to standing up a separate IdP.
 
 ### 1.8 Fleet updates
 
@@ -255,8 +255,14 @@ Transport: NATS subjects under `grlx.api.*` (existing) and a new `grlx.internal.
 // internal.sprout.mint request
 { "tenant_id": "t_8f2a", "nkey_pub": "U...", "sprout_id_hint": "web-01" }
 // reply
-{ "sprout_id": "s_1", "jwt": "<signed User JWT>", "nkey_identity": "U..." }
+{
+  "sprout_id": "s_1",
+  "nats_jwt": "<signed NATS User JWT, ed25519-nkey alg, Account-signed>",
+  "gateway_jwt": "<signed gateway JWT, EdDSA alg, gateway-key-signed, for Envoy jwt_authn>",
+  "nkey_identity": "U..."
+}
 ```
+Two tokens, one signing event, minted together every time this subject (or the enrollment flow's internal equivalent, §3.3) is invoked — including at rotation, not just first enrollment. See `grlx-envoy-enrollment-design.md` for why a single JWT can't serve both the NATS and Envoy gates.
 
 ```json
 // internal.sprouts.list request
@@ -317,6 +323,25 @@ farmer at all** — the failure mode is categorically worse. Before any
 
 ---
 
+### 2.4 JWKS endpoint — for Envoy, not internal-only
+
+Unlike everything else in §2, this route is deliberately **not** on the privileged `grlx.internal.*`/system-NATS-identity path — it serves public key material only, so it carries no confidentiality requirement, the same trust model as any standard `/.well-known/jwks.json`.
+
+| Method | Path | Notes |
+|---|---|---|
+| `GET` | `https://enroll.<region>/v1/.well-known/jwks.json` | Served by farmer, plain HTTP (TLS-terminated, unauthenticated). Envoy's `jwt_authn` filter polls this via `remote_jwks` (5–10 min refresh), not `local_jwks`. |
+
+```json
+// response
+{
+  "keys": [
+    { "kty": "OKP", "crv": "Ed25519", "x": "<base64url pubkey>", "kid": "gw-2026-q3", "use": "sig" }
+  ]
+}
+```
+
+Contains the **gateway signing key's** public key only (see `grlx-nats-jwt-auth-design.md`'s key-custody section) — one entry, or two during the gateway key's own rotation overlap window (old + new `kid`). Never grows with tenant count: this is not a per-tenant Account-key JWKS, since Envoy's `jwt_authn` check never needs tenant granularity. Farmer already holds this public key (fetched from OpenBao alongside the signing operation itself), so this route is a pure data-transformation read, no new secret access.
+
 ## 3. Sprout enrollment flow
 
 The one moment in the whole system where a caller has no credential yet. Borrowed deliberately from `kubeadm`'s join-token model, and it's the one place worth a genuine security review before trusting it in production — everything downstream assumes whatever identity this issues is real.
@@ -336,7 +361,12 @@ The one moment in the whole system where a caller has no credential yet. Borrowe
 { "join_token": "ab3f9k2q.9fT...longsecret", "nkey_pub": "U...", "hostname": "web-01" }
 
 // success response
-{ "sprout_id": "s_1", "jwt": "<signed User JWT>", "nats_urls": ["wss://bus1.dmz...", "wss://bus2.dmz..."] }
+{
+  "sprout_id": "s_1",
+  "nats_jwt": "<signed NATS User JWT>",
+  "gateway_jwt": "<signed gateway JWT, presented to Envoy on the ws upgrade and the recipe endpoint>",
+  "nats_urls": ["wss://bus1.dmz...", "wss://bus2.dmz..."]
+}
 
 // failure response — deliberately generic, see §3.4
 { "error": "enrollment_failed" }
@@ -358,7 +388,7 @@ The one moment in the whole system where a caller has no credential yet. Borrowe
    GRANT UPDATE (used_count, last_used_at) ON saas.enrollment_keys TO 'farmer_svc'@'%';
    ```
    Everything else in `saas` stays read-only to farmer, exactly as before.
-5. **Mint**: generate the sprout's NATS User JWT under the tenant's Account (`internal.sprout.mint`, §2.2), insert the row into `farmer.sprouts`.
+5. **Mint**: generate the sprout's paired NATS User JWT (under the tenant's Account) and gateway JWT (under the platform-wide gateway signing key) in one signing step (`internal.sprout.mint`, §2.2), insert the row into `farmer.sprouts`.
 6. **Respond** to the sprout synchronously — Ansible is blocking on this HTTP call, so this step can't be async.
 7. **Notify the SaaS API**: publish `internal.sprout.enrolled` (`tenant_id`, `sprout_id`, `key_id`, `asset_id` if the key carried one). The SaaS API uses this to auto-create the `asset_links` row when the enrollment key was issued with a known `asset_id`, and to fire an `enrollment.succeeded` webhook (§1.7) — this is a fire-and-forget notification, not something the sprout's own response waits on.
 

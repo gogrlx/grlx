@@ -5,8 +5,8 @@ Supersedes the phase structure in `grlx-1m-scale-plan.md`. Companion detail docs
 ## Settled architecture, referenced throughout
 
 - **Messaging:** NATS core pub/sub only (no JetStream) — bus in DMZ, farmer/core in non-DMZ, outbound-only connection from core to bus.
-- **Identity:** Operator → Account-per-tenant → User-per-sprout JWT hierarchy. One JWT per sprout, reused across NATS auth, Envoy validation, and the recipe HTTP endpoint.
-- **Gateway:** Envoy in front of NATS, JWT validation before traffic reaches nats-server — mitigates the 2026 pre-auth websocket CVE class as a side effect, not just an auth convenience.
+- **Identity:** Operator → Account-per-tenant → User-per-sprout JWT hierarchy. One signing identity per sprout, expressed as **two paired JWTs minted together at enrollment** (and together at every rotation): a NATS User JWT (`ed25519-nkey` alg, Account-signed) consumed only by nats-server's own decentralized auth, and a standard EdDSA JWT (gateway-signed) presented to Envoy on both the websocket route and the recipe HTTP endpoint. They're not interchangeable — NATS's `ed25519-nkey` header alg isn't a registered JOSE algorithm, so a standard `jwt_authn`-style validator like Envoy's can't consume the NATS JWT directly. Full rationale and JWKS design in `grlx-envoy-enrollment-design.md`.
+- **Gateway:** Envoy in front of NATS, gateway-JWT validation before traffic reaches nats-server — mitigates the 2026 pre-auth websocket CVE class as a side effect, not just an auth convenience.
 - **Storage:** PXC (durable metadata — PKI, RBAC, tenant accounts, sprout X25519 public keys), Valkey Cluster (heartbeat/connection-state, fed from NATS connection lifecycle events, no tenant hash-tagging), object storage (job logs, recipes). No etcd, no Kine.
 - **Secrets custody (CloudXP's own):** OpenBao — operator/account signing keys, TLS cert issuance, per-tenant X25519 private keys.
 - **Licensing:** PXC (GPLv2, under commercial Percona agreement) and OpenBao (MPL-2.0) accepted as exceptions to the Apache/MIT default.
