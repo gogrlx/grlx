@@ -82,13 +82,31 @@ func (f File) contains(ctx context.Context, test bool) (cook.Result, bytes.Buffe
 	for scanner.Scan() {
 		currentContents = append(currentContents, scanner.Text())
 	}
-	file.Close()
+	if scanErr := scanner.Err(); scanErr != nil {
+		closeErr := file.Close()
+		return cook.Result{
+			Succeeded: false, Failed: true,
+			Changed: false, Notes: notes,
+		}, content, errors.Join(fmt.Errorf("failed to scan %s: %w", name, scanErr), closeErr)
+	}
+	if closeErr := file.Close(); closeErr != nil {
+		return cook.Result{
+			Succeeded: false, Failed: true,
+			Changed: false, Notes: notes,
+		}, content, fmt.Errorf("failed to close %s: %w", name, closeErr)
+	}
 	sort.Strings(currentContents)
 
 	shouldContents := []string{}
-	scanner = bufio.NewScanner(&content)
+	scanner = bufio.NewScanner(bytes.NewReader(content.Bytes()))
 	for scanner.Scan() {
 		shouldContents = append(shouldContents, scanner.Text())
+	}
+	if scanErr := scanner.Err(); scanErr != nil {
+		return cook.Result{
+			Succeeded: false, Failed: true,
+			Changed: false, Notes: notes,
+		}, content, fmt.Errorf("failed to scan expected content for %s: %w", name, scanErr)
 	}
 	sort.Strings(shouldContents)
 
