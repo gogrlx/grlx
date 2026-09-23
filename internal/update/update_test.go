@@ -4,6 +4,7 @@
 package selfupdate
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"errors"
@@ -14,6 +15,9 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/ProtonMail/go-crypto/openpgp"
+	"github.com/ProtonMail/go-crypto/openpgp/armor"
 )
 
 func TestCheckForUpdatesUsesLatestReleaseSemver(t *testing.T) {
@@ -206,6 +210,43 @@ func TestVerifyArtifactChecksumRejectsMismatch(t *testing.T) {
 	}
 }
 
+func TestVerifyChecksumsSignatureAcceptsTrustedSignature(t *testing.T) {
+	t.Parallel()
+
+	publicKey, signature := signedChecksums(t, "abc123  grlx\n")
+
+	err := verifyChecksumsSignature(strings.NewReader(publicKey), strings.NewReader("abc123  grlx\n"), bytes.NewReader(signature))
+	if err != nil {
+		t.Fatalf("verifyChecksumsSignature returned error: %v", err)
+	}
+}
+
+func TestVerifyChecksumsSignatureRejectsTamperedChecksums(t *testing.T) {
+	t.Parallel()
+
+	publicKey, signature := signedChecksums(t, "abc123  grlx\n")
+
+	err := verifyChecksumsSignature(strings.NewReader(publicKey), strings.NewReader("def456  grlx\n"), bytes.NewReader(signature))
+	if err == nil {
+		t.Fatal("verifyChecksumsSignature returned nil error for tampered checksums")
+	}
+	if !strings.Contains(err.Error(), "failed to verify") {
+		t.Fatalf("verifyChecksumsSignature error = %q, want verification failure", err)
+	}
+}
+
+func TestVerifyChecksumsSignatureRejectsInvalidKeyring(t *testing.T) {
+	t.Parallel()
+
+	err := verifyChecksumsSignature(strings.NewReader("not a key"), strings.NewReader("abc123  grlx\n"), strings.NewReader("not a signature"))
+	if err == nil {
+		t.Fatal("verifyChecksumsSignature returned nil error for invalid keyring")
+	}
+	if !strings.Contains(err.Error(), "trusted update signing keys") {
+		t.Fatalf("verifyChecksumsSignature error = %q, want keyring failure", err)
+	}
+}
+
 func TestChecksumForArtifactRejectsMissingName(t *testing.T) {
 	t.Parallel()
 
@@ -244,6 +285,34 @@ func TestChecksumForArtifactIgnoresMalformedEntries(t *testing.T) {
 	if want := fmt.Sprintf("%x", checksum); got != want {
 		t.Fatalf("checksumForArtifact = %q, want %q", got, want)
 	}
+}
+
+func signedChecksums(t *testing.T, checksums string) (string, []byte) {
+	t.Helper()
+
+	entity, err := openpgp.NewEntity("grlx signing key", "", "security@grlx.dev", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var publicKey bytes.Buffer
+	publicKeyArmor, err := armor.Encode(&publicKey, openpgp.PublicKeyType, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := entity.Serialize(publicKeyArmor); err != nil {
+		t.Fatal(err)
+	}
+	if err := publicKeyArmor.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	var signature bytes.Buffer
+	if err := openpgp.DetachSign(&signature, entity, strings.NewReader(checksums), nil); err != nil {
+		t.Fatal(err)
+	}
+
+	return publicKey.String(), signature.Bytes()
 }
 
 func TestStartUpdateCheckerRejectsMissingInterval(t *testing.T) {
