@@ -83,10 +83,8 @@ func (s *Store) reap(ttl time.Duration) {
 				os.Remove(metaFile) // ignore error — file may not exist
 			}
 		}
-		// Remove empty sprout directories.
-		remaining, _ := os.ReadDir(sproutDir)
-		if len(remaining) == 0 {
-			os.Remove(sproutDir)
+		if err := removeDirIfEmpty(sproutDir); err != nil {
+			log.Errorf("reaper: cleaning %s: %v", sproutDir, err)
 		}
 	}
 
