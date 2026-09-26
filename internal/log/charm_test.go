@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	charmlog "github.com/charmbracelet/log"
+	mux "github.com/taigrr/log-mux/log"
 )
 
 func TestToCharmLevel(t *testing.T) {
@@ -134,11 +135,149 @@ func TestCharmAdapterPanicLogsAndPanics(t *testing.T) {
 	}
 }
 
+func TestPackageLogFunctionsWriteThroughMux(t *testing.T) {
+	var buf bytes.Buffer
+	restore := replaceTestLogger(&buf)
+	t.Cleanup(restore)
+
+	Trace("package trace")
+	Tracef("package %s", "tracef")
+	Traceln("package traceln")
+	Debug("package debug")
+	Debugf("package %s", "debugf")
+	Debugln("package debugln")
+	Info("package info")
+	Infof("package %s", "infof")
+	Infoln("package infoln")
+	Notice("package notice")
+	Noticef("package %s", "noticef")
+	Noticeln("package noticeln")
+	Warn("package warn")
+	Warnf("package %s", "warnf")
+	Warnln("package warnln")
+	Error("package error")
+	Errorf("package %s", "errorf")
+	Errorln("package errorln")
+	Print("package print")
+	Printf("package %s", "printf")
+	Println("package println")
+
+	assertLogContains(t, buf.String(), []string{
+		"package trace",
+		"package tracef",
+		"package traceln",
+		"package debug",
+		"package debugf",
+		"package debugln",
+		"package info",
+		"package infof",
+		"package infoln",
+		"package notice",
+		"package noticef",
+		"package noticeln",
+		"package warn",
+		"package warnf",
+		"package warnln",
+		"package error",
+		"package errorf",
+		"package errorln",
+		"package print",
+		"package printf",
+		"package println",
+	})
+}
+
+func TestLoggerMethodsWriteThroughMux(t *testing.T) {
+	var buf bytes.Buffer
+	restore := replaceTestLogger(&buf)
+	t.Cleanup(restore)
+
+	wrapped := Logger{}
+	wrapped.SetInfoDepth(3)
+	wrapped.Trace("logger trace")
+	wrapped.Tracef("logger %s", "tracef")
+	wrapped.Traceln("logger traceln")
+	wrapped.Debug("logger debug")
+	wrapped.Debugf("logger %s", "debugf")
+	wrapped.Debugln("logger debugln")
+	wrapped.Info("logger info")
+	wrapped.Infof("logger %s", "infof")
+	wrapped.Infoln("logger infoln")
+	wrapped.Notice("logger notice")
+	wrapped.Noticef("logger %s", "noticef")
+	wrapped.Noticeln("logger noticeln")
+	wrapped.Warn("logger warn")
+	wrapped.Warnf("logger %s", "warnf")
+	wrapped.Warnln("logger warnln")
+	wrapped.Error("logger error")
+	wrapped.Errorf("logger %s", "errorf")
+	wrapped.Errorln("logger errorln")
+	wrapped.Print("logger print")
+	wrapped.Printf("logger %s", "printf")
+	wrapped.Println("logger println")
+
+	assertLogContains(t, buf.String(), []string{
+		"logger trace",
+		"logger tracef",
+		"logger traceln",
+		"logger debug",
+		"logger debugf",
+		"logger debugln",
+		"logger info",
+		"logger infof",
+		"logger infoln",
+		"logger notice",
+		"logger noticef",
+		"logger noticeln",
+		"logger warn",
+		"logger warnf",
+		"logger warnln",
+		"logger error",
+		"logger errorf",
+		"logger errorln",
+		"logger print",
+		"logger printf",
+		"logger println",
+	})
+}
+
 func newTestCharmAdapter(buf *bytes.Buffer) *charmAdapter {
 	logger := charmlog.NewWithOptions(buf, charmlog.Options{})
 	logger.SetLevel(charmlog.DebugLevel - 1)
 	logger.SetStyles(charmlog.DefaultStyles())
 	return newCharmAdapter(logger)
+}
+
+func replaceTestLogger(buf *bytes.Buffer) func() {
+	mu.Lock()
+	previousLogger := logger
+	previousCharm := charm
+	previousNATSUp := natsUp
+
+	charm = charmlog.NewWithOptions(buf, charmlog.Options{})
+	charm.SetLevel(charmlog.DebugLevel - 1)
+	charm.SetStyles(charmlog.DefaultStyles())
+	logger = mux.Default()
+	logger.SubLoggers = append(logger.SubLoggers, newCharmAdapter(charm))
+	natsUp = false
+	mu.Unlock()
+
+	return func() {
+		mu.Lock()
+		logger = previousLogger
+		charm = previousCharm
+		natsUp = previousNATSUp
+		mu.Unlock()
+	}
+}
+
+func assertLogContains(t *testing.T, output string, wants []string) {
+	t.Helper()
+	for _, want := range wants {
+		if !strings.Contains(output, want) {
+			t.Fatalf("log output missing %q:\n%s", want, output)
+		}
+	}
 }
 
 func recoverPanic(fn func()) (value any) {
