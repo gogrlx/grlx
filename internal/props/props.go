@@ -175,6 +175,9 @@ func getProps(sproutID string) map[string]interface{} {
 		}
 		propCacheLock.Unlock()
 	}
+	if len(props) == 0 {
+		return nil
+	}
 	return props
 }
 
