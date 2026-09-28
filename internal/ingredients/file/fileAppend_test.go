@@ -117,13 +117,13 @@ func TestAppend(t *testing.T) {
 			error: nil,
 		},
 		{
-			name:   "AppendFileWithoutContent",
+			name:   "AppendFileWithContentAfterAppend",
 			params: map[string]interface{}{"name": fileWithoutContent, "text": "test"},
 			expected: cook.Result{
 				Succeeded: true,
 				Failed:    false,
 				Changed:   false,
-				Notes:     []fmt.Stringer{cook.Snprintf("file %s does not contain all specified content", fileWithoutContent), cook.Snprintf("appended to %s", fileWithoutContent)},
+				Notes:     []fmt.Stringer{},
 			},
 			error: nil,
 		},
@@ -159,5 +159,38 @@ func TestAppend(t *testing.T) {
 			}
 			compareResults(t, result, test.expected)
 		})
+	}
+}
+
+func TestAppendWritesMissingContent(t *testing.T) {
+	tempDir := t.TempDir()
+	target := filepath.Join(tempDir, "target")
+	if err := os.WriteFile(target, []byte("existing\n"), 0o644); err != nil {
+		t.Fatalf("failed to seed target: %v", err)
+	}
+
+	f := File{
+		id:     "append-missing-content",
+		method: "append",
+		params: map[string]interface{}{
+			"name": target,
+			"text": "new content",
+		},
+	}
+
+	result, err := f.append(context.TODO(), false)
+	if err != nil {
+		t.Fatalf("append returned error: %v", err)
+	}
+	if !result.Succeeded || !result.Changed {
+		t.Fatalf("expected successful change, got %+v", result)
+	}
+
+	got, err := os.ReadFile(target)
+	if err != nil {
+		t.Fatalf("failed to read target: %v", err)
+	}
+	if string(got) != "existing\nnew content\n" {
+		t.Fatalf("unexpected content: %q", got)
 	}
 }
