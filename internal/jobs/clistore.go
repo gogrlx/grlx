@@ -268,10 +268,8 @@ func (s *CLIStore) DeleteJob(jid string) error {
 			}
 			os.Remove(metaFile) // best-effort
 
-			// Remove empty sprout directory.
-			remaining, _ := os.ReadDir(sproutDir)
-			if len(remaining) == 0 {
-				os.Remove(sproutDir)
+			if err := removeDirIfEmpty(sproutDir); err != nil {
+				return err
 			}
 		}
 	}
@@ -365,10 +363,8 @@ func (s *CLIStore) Purge(olderThan time.Duration) (int, error) {
 				os.Remove(metaFile)
 			}
 		}
-		// Clean up empty sprout dirs.
-		remaining, _ := os.ReadDir(sproutDir)
-		if len(remaining) == 0 {
-			os.Remove(sproutDir)
+		if err := removeDirIfEmpty(sproutDir); err != nil {
+			return removed, err
 		}
 	}
 
