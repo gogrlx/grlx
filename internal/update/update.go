@@ -6,9 +6,8 @@
 // referenced by any grlx binary (the default build uses the no-op variant in
 // noupdate.go). Do NOT enable it as-is:
 //
-//   - PerformUpdate downloads and swaps the running binary WITHOUT verifying
-//     the release signature or checksum (a remote-code-execution vector), so it
-//     currently fails closed.
+//   - PerformUpdate is not wired to fetch and verify the release signature plus
+//     checksum before swapping the running binary, so it currently fails closed.
 //
 // Implementing this safely requires design decisions (authoritative version
 // source, signature verification against the published checksums.txt(.sig), and
@@ -32,6 +31,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ProtonMail/go-crypto/openpgp"
 	"golang.org/x/mod/semver"
 )
 
@@ -203,6 +203,22 @@ func verifyArtifactChecksum(checksums io.Reader, artifact io.Reader, artifactNam
 	actualChecksum := hex.EncodeToString(hasher.Sum(nil))
 	if actualChecksum != expectedChecksum {
 		return fmt.Errorf("update artifact checksum mismatch for %s", artifactName)
+	}
+
+	return nil
+}
+
+func verifyChecksumsSignature(publicKeys io.Reader, checksums io.Reader, signature io.Reader) error {
+	keyring, err := openpgp.ReadArmoredKeyRing(publicKeys)
+	if err != nil {
+		return fmt.Errorf("failed to read trusted update signing keys: %w", err)
+	}
+	if len(keyring) == 0 {
+		return errors.New("trusted update signing keyring is empty")
+	}
+
+	if _, err := openpgp.CheckDetachedSignature(keyring, checksums, signature, nil); err != nil {
+		return fmt.Errorf("failed to verify update checksums signature: %w", err)
 	}
 
 	return nil
