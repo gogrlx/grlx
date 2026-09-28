@@ -138,6 +138,12 @@ func TestHTestPing_UnknownSprout(t *testing.T) {
 	if w.Code != http.StatusNotFound {
 		t.Fatalf("expected 404, got %d", w.Code)
 	}
+	if got := w.Header().Get("Content-Type"); got != "application/json" {
+		t.Fatalf("expected JSON content type, got %q", got)
+	}
+	if w.Body.String() != "{}" {
+		t.Fatalf("expected empty targeted results object, got %q", w.Body.String())
+	}
 }
 
 func TestHTestPing_EmptyBody(t *testing.T) {
@@ -227,6 +233,9 @@ func TestHTestPing_SingleSproutSuccess(t *testing.T) {
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	if got := w.Header().Get("Content-Type"); got != "application/json" {
+		t.Fatalf("expected JSON content type, got %q", got)
 	}
 
 	var results apitypes.TargetedResults

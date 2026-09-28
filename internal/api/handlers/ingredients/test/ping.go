@@ -23,7 +23,12 @@ func HTestPing(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	jw, _ := json.Marshal(targetAction.Action)
+	jw, err := json.Marshal(targetAction.Action)
+	if err != nil {
+		log.Trace("An invalid ping request was made.")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 	var ping apitypes.PingPong
 	err = json.NewDecoder(bytes.NewBuffer(jw)).Decode(&ping)
 	if err != nil {
@@ -44,9 +49,7 @@ func HTestPing(w http.ResponseWriter, r *http.Request) {
 			var results apitypes.TargetedResults
 			results.Results = nil
 			log.Trace("An unknown Sprout was pinged. Ignoring.")
-			jw, _ := json.Marshal(results)
-			w.WriteHeader(http.StatusNotFound)
-			w.Write(jw)
+			writeJSONResponse(w, http.StatusNotFound, results)
 			return
 		}
 	}
@@ -73,10 +76,19 @@ func HTestPing(w http.ResponseWriter, r *http.Request) {
 		}(target)
 	}
 	wg.Wait()
-	jr, err := json.Marshal(results)
+	writeJSONResponse(w, http.StatusOK, results)
+}
+
+func writeJSONResponse(w http.ResponseWriter, status int, value interface{}) {
+	response, err := json.Marshal(value)
 	if err != nil {
 		log.Error(err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
 	}
-	w.WriteHeader(http.StatusOK)
-	w.Write(jr)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	if _, err := w.Write(response); err != nil {
+		log.Error(err)
+	}
 }
