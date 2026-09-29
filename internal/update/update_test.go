@@ -246,6 +246,23 @@ func TestChecksumForArtifactIgnoresMalformedEntries(t *testing.T) {
 	}
 }
 
+func TestChecksumForArtifactAcceptsLongArtifactNames(t *testing.T) {
+	t.Parallel()
+
+	artifact := "new binary"
+	artifactName := strings.Repeat("grlx-", 20_000)
+	checksum := sha256.Sum256([]byte(artifact))
+	manifest := fmt.Sprintf("%x  %s\n", checksum, artifactName)
+
+	got, err := checksumForArtifact(strings.NewReader(manifest), artifactName)
+	if err != nil {
+		t.Fatalf("checksumForArtifact returned error: %v", err)
+	}
+	if want := fmt.Sprintf("%x", checksum); got != want {
+		t.Fatalf("checksumForArtifact = %q, want %q", got, want)
+	}
+}
+
 func TestStartUpdateCheckerRejectsMissingInterval(t *testing.T) {
 	t.Parallel()
 
