@@ -117,6 +117,61 @@ func TestPrepend(t *testing.T) {
 			error: nil,
 		},
 		{
+			name: "PrependMissingParentNoMakedirs",
+			params: map[string]interface{}{
+				"name": filepath.Join(tempDir, "missing-parent", "file"),
+				"text": "test",
+			},
+			expected: cook.Result{
+				Succeeded: false,
+				Failed:    true,
+				Changed:   false,
+				Notes: []fmt.Stringer{
+					cook.Snprintf("parent directory `%s` does not exist and makedirs is false", filepath.Join(tempDir, "missing-parent")),
+				},
+			},
+			error: ErrPathNotFound,
+		},
+		{
+			name: "PrependMissingParentMakedirs",
+			params: map[string]interface{}{
+				"name":     filepath.Join(tempDir, "created-parent", "file"),
+				"text":     "test",
+				"makedirs": true,
+			},
+			expected: cook.Result{
+				Succeeded: true,
+				Failed:    false,
+				Changed:   true,
+				Notes: []fmt.Stringer{
+					cook.Snprintf("failed to open %s", filepath.Join(tempDir, "created-parent", "file")),
+					cook.Snprintf("created directory `%s`", filepath.Join(tempDir, "created-parent")),
+					cook.Snprintf("prepended %s", filepath.Join(tempDir, "created-parent", "file")),
+				},
+			},
+			error: nil,
+		},
+		{
+			name: "PrependMissingParentMakedirsTest",
+			params: map[string]interface{}{
+				"name":     filepath.Join(tempDir, "test-parent", "file"),
+				"text":     "test",
+				"makedirs": true,
+			},
+			expected: cook.Result{
+				Succeeded: true,
+				Failed:    false,
+				Changed:   true,
+				Notes: []fmt.Stringer{
+					cook.Snprintf("failed to open %s", filepath.Join(tempDir, "test-parent", "file")),
+					cook.Snprintf("directory `%s` would be created", filepath.Join(tempDir, "test-parent")),
+					cook.Snprintf("would create and prepend to %s", filepath.Join(tempDir, "test-parent", "file")),
+				},
+			},
+			error: nil,
+			test:  true,
+		},
+		{
 			name:   "PrependDirectory",
 			params: map[string]interface{}{"name": fakePath},
 			expected: cook.Result{
