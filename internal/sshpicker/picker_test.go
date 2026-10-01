@@ -2,6 +2,7 @@ package sshpicker
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"strings"
 	"testing"
@@ -314,6 +315,16 @@ func TestRunWithOptions_SelectSingle(t *testing.T) {
 	}
 	if selected != "single-sprout" {
 		t.Errorf("expected 'single-sprout', got %q", selected)
+	}
+}
+
+func TestRunWithOptions_EmptySprouts(t *testing.T) {
+	selected, err := RunWithOptions("web", nil, tea.WithOutput(io.Discard))
+	if !errors.Is(err, errNoSprouts) {
+		t.Fatalf("expected errNoSprouts, got %v", err)
+	}
+	if selected != "" {
+		t.Fatalf("expected empty selection, got %q", selected)
 	}
 }
 
