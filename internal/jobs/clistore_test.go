@@ -30,14 +30,22 @@ func TestCLIStore_RecordJobStart(t *testing.T) {
 
 	// Verify meta file exists.
 	metaPath := filepath.Join(dir, "sprout-a", "job-001.meta.json")
-	if _, err := os.Stat(metaPath); err != nil {
+	metaInfo, err := os.Stat(metaPath)
+	if err != nil {
 		t.Fatalf("meta file should exist: %v", err)
+	}
+	if got := metaInfo.Mode().Perm(); got != 0o600 {
+		t.Fatalf("expected meta file mode 0600, got %04o", got)
 	}
 
 	// Verify JSONL file exists.
 	jsonlPath := filepath.Join(dir, "sprout-a", "job-001.jsonl")
-	if _, err := os.Stat(jsonlPath); err != nil {
+	jsonlInfo, err := os.Stat(jsonlPath)
+	if err != nil {
 		t.Fatalf("jsonl file should exist: %v", err)
+	}
+	if got := jsonlInfo.Mode().Perm(); got != 0o600 {
+		t.Fatalf("expected jsonl file mode 0600, got %04o", got)
 	}
 }
 
