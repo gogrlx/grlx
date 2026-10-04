@@ -26,6 +26,26 @@ func TestNewLogger(t *testing.T) {
 	if !info.IsDir() {
 		t.Fatal("expected directory")
 	}
+	if got := logger.Dir(); got != subdir {
+		t.Fatalf("Dir() = %q, want %q", got, subdir)
+	}
+}
+
+func TestNewLoggerRejectsFilePath(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "audit.log")
+	if err := os.WriteFile(path, []byte("not a directory"), 0o600); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	logger, err := NewLogger(path)
+	if err == nil {
+		logger.Close()
+		t.Fatal("expected NewLogger to reject path occupied by a file")
+	}
+	if !strings.Contains(err.Error(), "audit: create dir") {
+		t.Fatalf("error = %q, want audit dir context", err)
+	}
 }
 
 func TestLogEntry(t *testing.T) {
