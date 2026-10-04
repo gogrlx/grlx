@@ -2,7 +2,9 @@ package jobs
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -11,6 +13,20 @@ import (
 	"github.com/gogrlx/grlx/v2/internal/config"
 	"github.com/gogrlx/grlx/v2/internal/cook"
 )
+
+type failingStringWriter struct {
+	err error
+}
+
+func (writer failingStringWriter) WriteString(string) (int, error) {
+	return 0, writer.err
+}
+
+type shortStringWriter struct{}
+
+func (writer shortStringWriter) WriteString(value string) (int, error) {
+	return len(value) - 1, nil
+}
 
 func TestRegisterNatsConn(t *testing.T) {
 	dir := t.TempDir()
@@ -25,6 +41,28 @@ func TestRegisterNatsConn(t *testing.T) {
 
 	if _, err := os.Stat(config.JobLogDir); err != nil {
 		t.Errorf("expected job log dir to be created: %v", err)
+	}
+}
+
+func TestWritePlaceholderStepsReturnsWriteErrors(t *testing.T) {
+	t.Parallel()
+
+	writeErr := errors.New("short write")
+	err := writePlaceholderSteps(failingStringWriter{err: writeErr}, []cook.Step{{ID: "step-a"}})
+	if err == nil {
+		t.Fatal("writePlaceholderSteps returned nil error")
+	}
+	if !errors.Is(err, writeErr) {
+		t.Fatalf("writePlaceholderSteps error = %v, want %v", err, writeErr)
+	}
+}
+
+func TestWritePlaceholderStepsReturnsShortWriteErrors(t *testing.T) {
+	t.Parallel()
+
+	err := writePlaceholderSteps(shortStringWriter{}, []cook.Step{{ID: "step-a"}})
+	if !errors.Is(err, io.ErrShortWrite) {
+		t.Fatalf("writePlaceholderSteps error = %v, want %v", err, io.ErrShortWrite)
 	}
 }
 
