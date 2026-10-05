@@ -21,6 +21,7 @@ import (
 	"bufio"
 	"context"
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -32,6 +33,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ProtonMail/go-crypto/openpgp"
 	"golang.org/x/mod/semver"
 )
 
@@ -44,11 +46,13 @@ const maxLatestReleaseResponseBytes = 1 << 20
 
 // UpdateConfig holds the configuration for self-updates
 type UpdateConfig struct {
-	CurrentVersion string
-	BinaryName     string
-	ChecksumName   string
-	UpdateURL      string
-	CheckInterval  time.Duration
+	CurrentVersion     string
+	BinaryName         string
+	ChecksumName       string
+	UpdateURL          string
+	CheckInterval      time.Duration
+	TrustedPublicKey   string
+	TrustedFingerprint string
 }
 
 // Updater handles self-update functionality
@@ -206,6 +210,52 @@ func verifyArtifactChecksum(checksums io.Reader, artifact io.Reader, artifactNam
 	}
 
 	return nil
+}
+
+func verifyChecksumsSignature(publicKey, checksums, signature io.Reader, trustedFingerprint string) error {
+	keyring, err := openpgp.ReadArmoredKeyRing(publicKey)
+	if err != nil {
+		return fmt.Errorf("failed to read trusted update signing key: %w", err)
+	}
+
+	signer, err := openpgp.CheckDetachedSignature(keyring, checksums, signature, nil)
+	if err != nil {
+		return fmt.Errorf("failed to verify update checksums signature: %w", err)
+	}
+	if signer == nil || signer.PrimaryKey == nil {
+		return errors.New("update checksums signature did not identify a signing key")
+	}
+
+	if !fingerprintMatches(signer.PrimaryKey.Fingerprint[:], trustedFingerprint) {
+		return fmt.Errorf("update checksums were signed by unexpected key fingerprint %s", fingerprintString(signer.PrimaryKey.Fingerprint[:]))
+	}
+
+	return nil
+}
+
+func fingerprintMatches(actual []byte, expected string) bool {
+	expected = strings.Map(func(r rune) rune {
+		switch {
+		case r >= '0' && r <= '9':
+			return r
+		case r >= 'a' && r <= 'f':
+			return r
+		case r >= 'A' && r <= 'F':
+			return r + ('a' - 'A')
+		default:
+			return -1
+		}
+	}, expected)
+	if expected == "" {
+		return false
+	}
+
+	actualHex := fingerprintString(actual)
+	return subtle.ConstantTimeCompare([]byte(actualHex), []byte(expected)) == 1
+}
+
+func fingerprintString(fingerprint []byte) string {
+	return hex.EncodeToString(fingerprint)
 }
 
 func checksumForArtifact(checksums io.Reader, artifactName string) (string, error) {
