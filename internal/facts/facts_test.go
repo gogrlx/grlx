@@ -195,6 +195,31 @@ func TestStoreFactsNoIPs(t *testing.T) {
 	}
 }
 
+func TestStoreFactsClearsStaleIPs(t *testing.T) {
+	sproutID := "sprout-clear-stale-ips"
+
+	storeFacts(SystemFacts{
+		OS:          "linux",
+		Arch:        "amd64",
+		Hostname:    "host-with-ips",
+		IPAddresses: []string{"10.0.0.1"},
+		SproutID:    sproutID,
+	})
+	if got := props.GetStringProp(sproutID, "ip_addresses"); got == "" {
+		t.Fatal("expected initial ip_addresses prop to be set")
+	}
+
+	storeFacts(SystemFacts{
+		OS:       "linux",
+		Arch:     "amd64",
+		Hostname: "host-without-ips",
+		SproutID: sproutID,
+	})
+	if got := props.GetStringProp(sproutID, "ip_addresses"); got != "" {
+		t.Errorf("expected stale ip_addresses prop to be cleared, got %q", got)
+	}
+}
+
 func TestStoreFactsOverwrite(t *testing.T) {
 	sproutID := "sprout-overwrite-test"
 
