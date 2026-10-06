@@ -42,5 +42,7 @@ func storeFacts(sf SystemFacts) {
 	if len(sf.IPAddresses) > 0 {
 		ipsJSON, _ := json.Marshal(sf.IPAddresses)
 		props.SetProp(sid, "ip_addresses", string(ipsJSON))
+	} else {
+		props.DeleteProp(sid, "ip_addresses")
 	}
 }
