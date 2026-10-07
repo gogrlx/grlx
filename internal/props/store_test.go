@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"sync"
 	"testing"
+	"time"
 )
 
 // resetGlobals resets package-level state so tests are independent.
@@ -74,5 +75,22 @@ func TestDeleteRemovesFile(t *testing.T) {
 	DeleteProp("sprout-2", "role")
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
 		t.Error("expected file to be removed after deleting last prop")
+	}
+	if got := GetProps("sprout-2"); got != nil {
+		t.Fatalf("expected nil props after deleting last prop, got %#v", got)
+	}
+}
+
+func TestGetPropsReturnsNilAfterAllPropsExpire(t *testing.T) {
+	resetGlobals()
+
+	if err := setPropWithTTL("sprout-expired", "role", "web", time.Nanosecond); err != nil {
+		t.Fatal(err)
+	}
+
+	time.Sleep(time.Millisecond)
+
+	if got := GetProps("sprout-expired"); got != nil {
+		t.Fatalf("expected nil props after all props expire, got %#v", got)
 	}
 }
