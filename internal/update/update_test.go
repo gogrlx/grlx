@@ -71,6 +71,91 @@ func TestCheckForUpdatesDoesNotDowngrade(t *testing.T) {
 	}
 }
 
+func TestCheckForUpdatesAcceptsLatestEndpointURL(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/repos/gogrlx/grlx/releases/latest" {
+			t.Fatalf("request path = %q, want /repos/gogrlx/grlx/releases/latest", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"tag_name":"v1.2.3"}`))
+	}))
+	t.Cleanup(server.Close)
+
+	updater := NewUpdater(UpdateConfig{
+		CurrentVersion: "v1.2.2",
+		UpdateURL:      server.URL + "/repos/gogrlx/grlx/releases/latest",
+	})
+
+	version, available, err := updater.CheckForUpdates(context.Background())
+	if err != nil {
+		t.Fatalf("CheckForUpdates returned error: %v", err)
+	}
+	if version != "v1.2.3" {
+		t.Fatalf("version = %q, want v1.2.3", version)
+	}
+	if !available {
+		t.Fatal("available = false, want true")
+	}
+}
+
+func TestLatestReleaseURL(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		updateURL string
+		want      string
+		wantErr   bool
+	}{
+		{
+			name:      "base URL",
+			updateURL: "https://api.github.com/repos/gogrlx/grlx/releases",
+			want:      "https://api.github.com/repos/gogrlx/grlx/releases/latest",
+		},
+		{
+			name:      "base URL trailing slash",
+			updateURL: "https://api.github.com/repos/gogrlx/grlx/releases/",
+			want:      "https://api.github.com/repos/gogrlx/grlx/releases/latest",
+		},
+		{
+			name:      "latest endpoint",
+			updateURL: "https://api.github.com/repos/gogrlx/grlx/releases/latest",
+			want:      "https://api.github.com/repos/gogrlx/grlx/releases/latest",
+		},
+		{
+			name:      "latest endpoint trailing slash",
+			updateURL: "https://api.github.com/repos/gogrlx/grlx/releases/latest/",
+			want:      "https://api.github.com/repos/gogrlx/grlx/releases/latest",
+		},
+		{
+			name:    "empty",
+			wantErr: true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := latestReleaseURL(test.updateURL)
+			if test.wantErr {
+				if err == nil {
+					t.Fatal("latestReleaseURL returned nil error")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("latestReleaseURL returned error: %v", err)
+			}
+			if got != test.want {
+				t.Fatalf("latestReleaseURL = %q, want %q", got, test.want)
+			}
+		})
+	}
+}
+
 func TestParseLatestVersionAcceptsFallbackFields(t *testing.T) {
 	t.Parallel()
 

@@ -86,11 +86,11 @@ func (u *Updater) CheckForUpdates(ctx context.Context) (string, bool, error) {
 }
 
 func (u *Updater) fetchLatestVersion(ctx context.Context) (string, error) {
-	if strings.TrimSpace(u.config.UpdateURL) == "" {
-		return "", errors.New("update URL is required")
+	latestURL, err := latestReleaseURL(u.config.UpdateURL)
+	if err != nil {
+		return "", err
 	}
 
-	latestURL := strings.TrimRight(u.config.UpdateURL, "/") + "/latest"
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, latestURL, nil)
 	if err != nil {
 		return "", fmt.Errorf("failed to create request: %w", err)
@@ -112,6 +112,20 @@ func (u *Updater) fetchLatestVersion(ctx context.Context) (string, error) {
 	}
 
 	return latestVersion, nil
+}
+
+func latestReleaseURL(updateURL string) (string, error) {
+	updateURL = strings.TrimSpace(updateURL)
+	if updateURL == "" {
+		return "", errors.New("update URL is required")
+	}
+
+	updateURL = strings.TrimRight(updateURL, "/")
+	if strings.HasSuffix(updateURL, "/latest") {
+		return updateURL, nil
+	}
+
+	return updateURL + "/latest", nil
 }
 
 func parseLatestVersion(body io.Reader) (string, error) {
