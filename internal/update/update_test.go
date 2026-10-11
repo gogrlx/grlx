@@ -384,6 +384,26 @@ func TestCommitBinaryUpdateRestoresBackupOnInstallFailure(t *testing.T) {
 	}
 }
 
+func TestCommitBinaryUpdateRemovesStagedBinaryOnBackupFailure(t *testing.T) {
+	t.Parallel()
+
+	tempDir := t.TempDir()
+	currentExe := filepath.Join(tempDir, "missing-grlx")
+	stagedPath := filepath.Join(tempDir, ".grlx-update-test")
+
+	if err := os.WriteFile(stagedPath, []byte("new"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	err := commitBinaryUpdate(currentExe, stagedPath)
+	if err == nil {
+		t.Fatal("commitBinaryUpdate returned nil error for missing current binary")
+	}
+	if _, statErr := os.Stat(stagedPath); !errors.Is(statErr, os.ErrNotExist) {
+		t.Fatalf("staged binary stat error = %v, want os.ErrNotExist", statErr)
+	}
+}
+
 func TestCommitBinaryUpdateDoesNotClobberExistingBackup(t *testing.T) {
 	t.Parallel()
 

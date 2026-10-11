@@ -285,6 +285,13 @@ func stageBinary(currentExe, newBinaryPath string) (string, error) {
 }
 
 func commitBinaryUpdate(currentExe, stagedPath string) error {
+	removeStaged := true
+	defer func() {
+		if removeStaged {
+			os.Remove(stagedPath)
+		}
+	}()
+
 	backupPath, err := backupPathFor(currentExe)
 	if err != nil {
 		return err
@@ -309,6 +316,7 @@ func commitBinaryUpdate(currentExe, stagedPath string) error {
 		return fmt.Errorf("failed to remove update backup: %w", err)
 	}
 
+	removeStaged = false
 	return nil
 }
 
