@@ -1,6 +1,7 @@
 package jobs
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -485,6 +486,38 @@ func TestCLIStore_StartReaper_ZeroTTL(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(dir, "sr", "reaper-test.jsonl")); err != nil {
 		t.Errorf("job file should still exist with TTL=0: %v", err)
 	}
+}
+
+func TestCLIStore_StartReaperCtx_RemovesExpiredJobs(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewCLIStore(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	meta := CLIJobMeta{JID: "ctx-reaper-test", SproutID: "srctx", UserKey: "U"}
+	if err := store.RecordJobStart(meta); err != nil {
+		t.Fatal(err)
+	}
+
+	jobPath := filepath.Join(dir, "srctx", "ctx-reaper-test.jsonl")
+	past := time.Now().Add(-48 * time.Hour)
+	if err := os.Chtimes(jobPath, past, past); err != nil {
+		t.Fatal(err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	store.StartReaperCtx(ctx, 24*time.Hour)
+
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		if _, err := os.Stat(jobPath); os.IsNotExist(err) {
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatal("expired CLI job was not removed")
 }
 
 // splitNonEmpty splits a string by newline and filters empty lines.

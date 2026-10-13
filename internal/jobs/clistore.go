@@ -1,6 +1,7 @@
 package jobs
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -379,6 +380,12 @@ func (s *CLIStore) Purge(olderThan time.Duration) (int, error) {
 // CLI-side job log files older than the given TTL. It checks once per hour.
 // A TTL of 0 or negative disables expiration entirely.
 func (s *CLIStore) StartReaper(ttl time.Duration) {
+	s.StartReaperCtx(context.Background(), ttl)
+}
+
+// StartReaperCtx is like StartReaper but stops the background goroutine when
+// ctx is cancelled, allowing a clean shutdown.
+func (s *CLIStore) StartReaperCtx(ctx context.Context, ttl time.Duration) {
 	if ttl <= 0 {
 		return
 	}
@@ -386,8 +393,13 @@ func (s *CLIStore) StartReaper(ttl time.Duration) {
 		s.Purge(ttl)
 		ticker := time.NewTicker(1 * time.Hour)
 		defer ticker.Stop()
-		for range ticker.C {
-			s.Purge(ttl)
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				s.Purge(ttl)
+			}
 		}
 	}()
 }
