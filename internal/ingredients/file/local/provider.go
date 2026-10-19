@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"os"
+	"path/filepath"
 
 	"github.com/gogrlx/grlx/v2/internal/ingredients/file"
 	"github.com/gogrlx/grlx/v2/internal/ingredients/file/hashers"
@@ -18,14 +19,14 @@ type LocalFile struct {
 	Props       map[string]interface{}
 }
 
+const downloadTempPattern = ".grlx-local-download-*"
+
 // Compile-time interface check.
 var _ file.FileProvider = LocalFile{}
 
 func (lf LocalFile) Download(ctx context.Context) error {
 	ok, err := lf.Verify(ctx)
-	// if verification failed because the file doesn't exist,
-	// that's ok. Otherwise, return the error.
-	if !errors.Is(err, file.ErrFileNotFound) {
+	if err != nil && !errors.Is(err, file.ErrFileNotFound) {
 		return err
 	}
 	// if the file exists and the hash matches, we're done.
@@ -38,15 +39,38 @@ func (lf LocalFile) Download(ctx context.Context) error {
 		return err
 	}
 	defer f.Close()
-	dest, err := os.Create(lf.Destination)
+	destinationDir := filepath.Dir(lf.Destination)
+	stagedFile, err := os.CreateTemp(destinationDir, downloadTempPattern)
 	if err != nil {
 		return err
 	}
-	_, err = io.Copy(dest, f)
-	dest.Close()
-	if err != nil {
+	stagedPath := stagedFile.Name()
+	cleanupStaged := true
+	defer func() {
+		if cleanupStaged {
+			os.Remove(stagedPath)
+		}
+	}()
+
+	_, copyErr := io.Copy(stagedFile, f)
+	closeErr := stagedFile.Close()
+	if copyErr != nil {
+		return copyErr
+	}
+	if closeErr != nil {
+		return closeErr
+	}
+	mode := os.FileMode(0o644)
+	if info, statErr := os.Stat(lf.Destination); statErr == nil {
+		mode = info.Mode().Perm()
+	}
+	if err := os.Chmod(stagedPath, mode); err != nil {
 		return err
 	}
+	if err := os.Rename(stagedPath, lf.Destination); err != nil {
+		return err
+	}
+	cleanupStaged = false
 	_, err = lf.Verify(ctx)
 	return err
 }
