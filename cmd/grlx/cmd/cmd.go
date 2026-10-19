@@ -50,13 +50,11 @@ var cmdCmdRun = &cobra.Command{
 		}
 		command.CWD = cwd
 		command.Timeout = time.Second * time.Duration(timeout)
-		command.Env = make(apitypes.EnvVar)
-		for _, pair := range strings.Split(environment, " ") {
-			if strings.ContainsRune(pair, '=') {
-				kv := strings.SplitN(pair, "=", 2)
-				command.Env[kv[0]] = kv[1]
-			}
+		env, err := parseEnvironment(environment)
+		if err != nil {
+			log.Fatalf("Invalid environment: %v", err)
 		}
+		command.Env = env
 		command.Path = path
 		command.RunAs = user
 		effectiveTarget, err := resolveEffectiveTarget()
@@ -131,4 +129,16 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	// cmdCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+}
+
+func parseEnvironment(raw string) (apitypes.EnvVar, error) {
+	env := make(apitypes.EnvVar)
+	for _, pair := range strings.Fields(raw) {
+		key, value, ok := strings.Cut(pair, "=")
+		if !ok || key == "" {
+			return nil, fmt.Errorf("invalid environment variable %q; vars must be key=value pairs", pair)
+		}
+		env[key] = value
+	}
+	return env, nil
 }
