@@ -3,11 +3,17 @@
 package sshpicker
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+)
+
+var (
+	errNoSprouts  = errors.New("no sprouts available")
+	errNoSelected = errors.New("no sprout selected")
 )
 
 var (
@@ -90,6 +96,10 @@ func Run(cohort string, sprouts []string) (string, error) {
 // RunWithOptions launches the picker with optional tea.ProgramOption overrides
 // (e.g. tea.WithInput, tea.WithOutput for testing).
 func RunWithOptions(cohort string, sprouts []string, opts ...tea.ProgramOption) (string, error) {
+	if len(sprouts) == 0 {
+		return "", errNoSprouts
+	}
+
 	m := Model{
 		Cohort:  cohort,
 		Sprouts: sprouts,
@@ -106,5 +116,10 @@ func RunWithOptions(cohort string, sprouts []string, opts ...tea.ProgramOption) 
 		return "", fmt.Errorf("cancelled")
 	}
 
-	return final.Selected(), nil
+	selected := final.Selected()
+	if selected == "" {
+		return "", errNoSelected
+	}
+
+	return selected, nil
 }
