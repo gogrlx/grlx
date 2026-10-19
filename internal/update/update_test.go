@@ -698,3 +698,15 @@ func TestCommitBinaryUpdateDoesNotClobberExistingBackup(t *testing.T) {
 		t.Fatalf("existing backup contents = %q, want %q", contents, "previous backup")
 	}
 }
+
+func TestNormalizeFingerprintRejectsMalformedPins(t *testing.T) {
+	valid := "3F62 AB01 3F62 AB01 3F62 AB01 3F62 AB01 3F62 AB01"
+	if got, ok := normalizeFingerprint(valid); !ok || got != strings.ToLower(strings.ReplaceAll(valid, " ", "")) {
+		t.Fatalf("expected valid fingerprint, got %q %v", got, ok)
+	}
+	for _, bad := range []string{"", "0x3f62ab013f62ab013f62ab013f62ab013f62ab01", "3f62ab013f62ab013f62ab013f62ab013f62ab0z", "abcd"} {
+		if _, ok := normalizeFingerprint(bad); ok {
+			t.Errorf("expected %q to be rejected", bad)
+		}
+	}
+}

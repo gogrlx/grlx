@@ -251,25 +251,43 @@ func verifyChecksumsSignature(publicKey, checksums, signature io.Reader, trusted
 }
 
 func fingerprintMatches(actual []byte, expected string) bool {
-	expected = strings.Map(func(r rune) rune {
-		switch {
-		case r >= '0' && r <= '9':
-			return r
-		case r >= 'a' && r <= 'f':
-			return r
-		case r >= 'A' && r <= 'F':
-			return r + ('a' - 'A')
-		default:
-			return -1
-		}
-	}, expected)
-	if expected == "" {
+	normalized, ok := normalizeFingerprint(expected)
+	if !ok {
 		return false
 	}
 
 	actualHex := fingerprintString(actual)
-	return subtle.ConstantTimeCompare([]byte(actualHex), []byte(expected)) == 1
+	return subtle.ConstantTimeCompare([]byte(actualHex), []byte(normalized)) == 1
 }
+
+// normalizeFingerprint lowercases a configured fingerprint, removing only
+// space and colon separators. Any other non-hex character is rejected so a
+// malformed pin fails closed instead of being silently rewritten.
+func normalizeFingerprint(fingerprint string) (string, bool) {
+	var builder strings.Builder
+	for _, r := range fingerprint {
+		switch {
+		case r == ' ' || r == ':':
+			continue
+		case r >= '0' && r <= '9', r >= 'a' && r <= 'f':
+			builder.WriteRune(r)
+		case r >= 'A' && r <= 'F':
+			builder.WriteRune(r + ('a' - 'A'))
+		default:
+			return "", false
+		}
+	}
+	normalized := builder.String()
+	if len(normalized) != sha1FingerprintHexLen && len(normalized) != sha256FingerprintHexLen {
+		return "", false
+	}
+	return normalized, true
+}
+
+const (
+	sha1FingerprintHexLen   = 40
+	sha256FingerprintHexLen = 64
+)
 
 func fingerprintString(fingerprint []byte) string {
 	return hex.EncodeToString(fingerprint)
