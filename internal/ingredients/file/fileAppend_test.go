@@ -122,7 +122,7 @@ func TestAppend(t *testing.T) {
 		},
 		{
 			name:   "AppendFileWithContentAfterAppend",
-			params: map[string]interface{}{"name": fileWithoutContent, "text": "test"},
+			params: map[string]interface{}{"name": anotherFileWithoutContent, "text": "test"},
 			expected: cook.Result{
 				Succeeded: true,
 				Failed:    false,
