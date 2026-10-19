@@ -121,3 +121,48 @@ func TestTrackerDoubleRemove(t *testing.T) {
 		t.Fatal("second remove should return nil")
 	}
 }
+
+func TestTrackerCopiesSessionInfo(t *testing.T) {
+	tracker := NewTracker()
+	info := &SessionInfo{
+		SessionID: "s1",
+		SproutID:  "sprout-a",
+		StartedAt: time.Now().UTC(),
+	}
+
+	tracker.Add(info)
+	info.SproutID = "mutated-after-add"
+
+	got := tracker.Get("s1")
+	if got == nil {
+		t.Fatal("expected tracked session")
+	}
+	if got.SproutID != "sprout-a" {
+		t.Fatalf("stored session was mutated through original pointer: %q", got.SproutID)
+	}
+
+	got.SproutID = "mutated-after-get"
+	got = tracker.Get("s1")
+	if got.SproutID != "sprout-a" {
+		t.Fatalf("stored session was mutated through Get result: %q", got.SproutID)
+	}
+
+	list := tracker.List()
+	if len(list) != 1 {
+		t.Fatalf("expected one session, got %d", len(list))
+	}
+	list[0].SproutID = "mutated-after-list"
+	got = tracker.Get("s1")
+	if got.SproutID != "sprout-a" {
+		t.Fatalf("stored session was mutated through List result: %q", got.SproutID)
+	}
+
+	removed := tracker.Remove("s1")
+	if removed == nil {
+		t.Fatal("expected removed session")
+	}
+	removed.SproutID = "mutated-after-remove"
+	if tracker.Get("s1") != nil {
+		t.Fatal("session should be removed")
+	}
+}
