@@ -287,3 +287,19 @@ func recoverPanic(fn func()) (value any) {
 	fn()
 	return nil
 }
+
+func TestConnectNATSAlreadyConnected(t *testing.T) {
+	mu.Lock()
+	previousNatsUp := natsUp
+	natsUp = true
+	mu.Unlock()
+	t.Cleanup(func() {
+		mu.Lock()
+		natsUp = previousNatsUp
+		mu.Unlock()
+	})
+
+	if err := ConnectNATS("not-a-real-url"); err != nil {
+		t.Fatalf("ConnectNATS returned error while already connected: %v", err)
+	}
+}
