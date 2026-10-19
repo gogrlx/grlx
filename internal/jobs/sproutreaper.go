@@ -66,6 +66,9 @@ func reapFlatDir(logDir string, ttl time.Duration) {
 				log.Errorf("sprout reaper: removing %s: %v", jobFile, rmErr)
 				continue
 			}
+			jobID := strings.TrimSuffix(entry.Name(), ".jsonl")
+			metaFile := filepath.Join(logDir, jobID+".meta.json")
+			os.Remove(metaFile)
 			removed++
 		}
 	}

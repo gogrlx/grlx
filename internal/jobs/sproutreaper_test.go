@@ -12,12 +12,20 @@ func TestReapFlatDirRemovesExpiredJobs(t *testing.T) {
 	dir := t.TempDir()
 
 	oldFile := filepath.Join(dir, "old-job.jsonl")
+	oldMetaFile := filepath.Join(dir, "old-job.meta.json")
 	newFile := filepath.Join(dir, "new-job.jsonl")
+	newMetaFile := filepath.Join(dir, "new-job.meta.json")
 
 	if err := os.WriteFile(oldFile, []byte(`{}`+"\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	if err := os.WriteFile(oldMetaFile, []byte(`{}`+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.WriteFile(newFile, []byte(`{}`+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(newMetaFile, []byte(`{}`+"\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -26,14 +34,23 @@ func TestReapFlatDirRemovesExpiredJobs(t *testing.T) {
 	if err := os.Chtimes(oldFile, past, past); err != nil {
 		t.Fatal(err)
 	}
+	if err := os.Chtimes(oldMetaFile, past, past); err != nil {
+		t.Fatal(err)
+	}
 
 	reapFlatDir(dir, 24*time.Hour)
 
 	if _, err := os.Stat(oldFile); !os.IsNotExist(err) {
 		t.Errorf("expected old-job.jsonl to be removed, but it still exists")
 	}
+	if _, err := os.Stat(oldMetaFile); !os.IsNotExist(err) {
+		t.Errorf("expected old-job.meta.json to be removed, but it still exists")
+	}
 	if _, err := os.Stat(newFile); err != nil {
 		t.Errorf("expected new-job.jsonl to still exist, got error: %v", err)
+	}
+	if _, err := os.Stat(newMetaFile); err != nil {
+		t.Errorf("expected new-job.meta.json to still exist, got error: %v", err)
 	}
 }
 
