@@ -42,7 +42,10 @@ var (
 	errUpdateIntervalRequired  = errors.New("self-update check interval must be greater than zero")
 )
 
-const maxLatestReleaseResponseBytes = 1 << 20
+const (
+	maxLatestReleaseResponseBytes = 1 << 20
+	maxChecksumManifestLineBytes  = 1 << 20
+)
 
 // UpdateConfig holds the configuration for self-updates
 type UpdateConfig struct {
@@ -265,6 +268,7 @@ func checksumForArtifact(checksums io.Reader, artifactName string) (string, erro
 	}
 
 	scanner := bufio.NewScanner(checksums)
+	scanner.Buffer(make([]byte, 0, 64*1024), maxChecksumManifestLineBytes)
 	for scanner.Scan() {
 		fields := strings.Fields(scanner.Text())
 		if len(fields) != 2 {
