@@ -6,6 +6,7 @@ package rbac
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -266,16 +267,24 @@ func (r *Registry) List() []string {
 	return names
 }
 
-// GetCachedMembership returns the cached membership for a cohort, if available.
+// GetCachedMembership returns an independent snapshot of the cached membership
+// for a cohort, if available.
 func (r *Registry) GetCachedMembership(name string) (*CachedMembership, bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	cm, ok := r.cache[name]
-	return cm, ok
+	if !ok {
+		return nil, false
+	}
+	return &CachedMembership{
+		Members:       slices.Clone(cm.Members),
+		LastRefreshed: cm.LastRefreshed,
+	}, true
 }
 
 // Refresh re-evaluates a named cohort against the current set of sprout IDs
-// and caches the resolved membership with a timestamp. Returns the refresh result.
+// and caches the resolved membership with a timestamp. The returned result owns
+// its members independently of the cache.
 func (r *Registry) Refresh(name string, allSproutIDs []string) (*RefreshResult, error) {
 	r.mu.RLock()
 	_, ok := r.cohorts[name]
@@ -306,7 +315,7 @@ func (r *Registry) Refresh(name string, allSproutIDs []string) (*RefreshResult, 
 
 	return &RefreshResult{
 		Name:          name,
-		Members:       memberList,
+		Members:       slices.Clone(memberList),
 		LastRefreshed: now,
 	}, nil
 }
