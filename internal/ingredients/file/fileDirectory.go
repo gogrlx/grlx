@@ -103,12 +103,15 @@ func (f File) directory(ctx context.Context, test bool) (cook.Result, error) {
 				notes = append(notes, cook.Snprintf("chown %s to %s", name, d.user))
 			}
 			if val, ok := f.params["recurse"].(bool); ok && val {
-				walkErr := filepath.WalkDir(name, func(path string, d fs.DirEntry, err error) error {
+				walkErr := filepath.WalkDir(name, func(path string, _ fs.DirEntry, err error) error {
+					if err != nil {
+						return err
+					}
 					if test {
-						notes = append(notes, cook.Snprintf("would chown %s to %s", name, val))
+						notes = append(notes, cook.Snprintf("would chown %s to %s", path, d.user))
 						return nil
 					}
-					notes = append(notes, cook.Snprintf("chown %s to %s", name, val))
+					notes = append(notes, cook.Snprintf("chown %s to %s", path, d.user))
 					return os.Chown(path, int(uint32(uid)), -1)
 				})
 				if walkErr != nil {
@@ -147,12 +150,15 @@ func (f File) directory(ctx context.Context, test bool) (cook.Result, error) {
 				notes = append(notes, cook.Snprintf("chown %s to %s", name, d.group))
 			}
 			if val, ok := f.params["recurse"].(bool); ok && val {
-				walkErr := filepath.WalkDir(name, func(path string, d fs.DirEntry, err error) error {
+				walkErr := filepath.WalkDir(name, func(path string, _ fs.DirEntry, err error) error {
+					if err != nil {
+						return err
+					}
 					if test {
-						notes = append(notes, cook.Snprintf("would chown %s to %s", name, val))
+						notes = append(notes, cook.Snprintf("would chown %s to %s", path, d.group))
 						return nil
 					}
-					notes = append(notes, cook.Snprintf("chown %s to %s", name, val))
+					notes = append(notes, cook.Snprintf("chown %s to %s", path, d.group))
 					return os.Chown(path, -1, int(uint32(gid)))
 				})
 				if walkErr != nil {

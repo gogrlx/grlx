@@ -14,6 +14,15 @@ import (
 	"github.com/gogrlx/grlx/v2/internal/ingredients"
 )
 
+func resultHasNote(result cook.Result, want string) bool {
+	for _, note := range result.Notes {
+		if note.String() == want {
+			return true
+		}
+	}
+	return false
+}
+
 func TestDirectory(t *testing.T) {
 	tempDir := t.TempDir()
 	sampleDir := filepath.Join(tempDir, "there-is-a-dir-here")
@@ -532,15 +541,14 @@ func TestDirectoryApplyRecurse(t *testing.T) {
 		if !result.Succeeded || result.Failed {
 			t.Errorf("expected successful result")
 		}
-		foundWouldChown := false
-		for _, note := range result.Notes {
-			if note.String() == fmt.Sprintf("would chown %s to %s", targetDir, currentGroup.Name) {
-				foundWouldChown = true
-				break
-			}
-		}
-		if !foundWouldChown {
+		if !resultHasNote(result, fmt.Sprintf("would chown %s to %s", targetDir, currentGroup.Name)) {
 			t.Errorf("expected 'would chown' note in test mode, got notes: %v", result.Notes)
+		}
+		if !resultHasNote(result, fmt.Sprintf("would chown %s to %s", subDir, currentGroup.Name)) {
+			t.Errorf("expected recursive child 'would chown' note in test mode, got notes: %v", result.Notes)
+		}
+		if resultHasNote(result, fmt.Sprintf("would chown %s to true", targetDir)) {
+			t.Errorf("recursive notes should include group name, got notes: %v", result.Notes)
 		}
 	})
 
@@ -597,6 +605,15 @@ func TestDirectoryApplyRecurse(t *testing.T) {
 		}
 		if !result.Succeeded || result.Failed {
 			t.Errorf("expected successful result")
+		}
+		if !resultHasNote(result, fmt.Sprintf("would chown %s to %s", targetDir, currentUser.Username)) {
+			t.Errorf("expected 'would chown' note in test mode, got notes: %v", result.Notes)
+		}
+		if !resultHasNote(result, fmt.Sprintf("would chown %s to %s", filepath.Join(targetDir, "subdir"), currentUser.Username)) {
+			t.Errorf("expected recursive child 'would chown' note in test mode, got notes: %v", result.Notes)
+		}
+		if resultHasNote(result, fmt.Sprintf("would chown %s to true", targetDir)) {
+			t.Errorf("recursive notes should include user name, got notes: %v", result.Notes)
 		}
 	})
 }
