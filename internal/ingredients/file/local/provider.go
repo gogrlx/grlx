@@ -3,9 +3,12 @@ package local
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/gogrlx/grlx/v2/internal/ingredients/file"
 	"github.com/gogrlx/grlx/v2/internal/ingredients/file/hashers"
@@ -34,7 +37,11 @@ func (lf LocalFile) Download(ctx context.Context) error {
 		return nil
 	}
 	// otherwise, "download" the file.
-	f, err := os.Open(lf.Source)
+	source, err := localSourcePath(lf.Source)
+	if err != nil {
+		return err
+	}
+	f, err := os.Open(source)
 	if err != nil {
 		return err
 	}
@@ -73,6 +80,20 @@ func (lf LocalFile) Download(ctx context.Context) error {
 	cleanupStaged = false
 	_, err = lf.Verify(ctx)
 	return err
+}
+
+func localSourcePath(source string) (string, error) {
+	if !strings.HasPrefix(source, "file://") {
+		return source, nil
+	}
+	sourceURL, err := url.Parse(source)
+	if err != nil {
+		return "", err
+	}
+	if sourceURL.Host != "" && sourceURL.Host != "localhost" {
+		return "", fmt.Errorf("unsupported file URL host %q", sourceURL.Host)
+	}
+	return sourceURL.Path, nil
 }
 
 func (lf LocalFile) Properties() (map[string]interface{}, error) {
