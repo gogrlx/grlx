@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -101,7 +102,11 @@ func logJobCreation(msg *nats.Msg) {
 			CreatedAt: time.Now().UTC(),
 		}
 		if metaData, mErr := json.Marshal(meta); mErr == nil {
-			os.WriteFile(metaFile, metaData, 0o640)
+			if err := os.WriteFile(metaFile, metaData, 0o640); err != nil {
+				log.Errorf("failed to write job metadata for %s: %v", envelope.JobID, err)
+			}
+		} else {
+			log.Errorf("failed to marshal job metadata for %s: %v", envelope.JobID, mErr)
 		}
 	}
 
@@ -114,21 +119,45 @@ func logJobCreation(msg *nats.Msg) {
 	}
 	defer f.Close()
 
-	for _, step := range envelope.Steps {
+	if err := writePlaceholderSteps(f, envelope.Steps); err != nil {
+		log.Errorf("failed to write placeholder steps for %s: %v", envelope.JobID, err)
+		return
+	}
+	log.Noticef("job %s created for sprout %s (%d steps)", envelope.JobID, sprout, len(envelope.Steps))
+}
+
+func writePlaceholderSteps(writer io.StringWriter, steps []cook.Step) error {
+	for _, step := range steps {
 		placeholder := cook.StepCompletion{
 			ID:               step.ID,
 			CompletionStatus: cook.StepNotStarted,
 			Started:          time.Now(),
 		}
-		b, marshalErr := json.Marshal(placeholder)
-		if marshalErr != nil {
-			log.Errorf("failed to marshal placeholder step: %v", marshalErr)
-			continue
+		b, err := json.Marshal(placeholder)
+		if err != nil {
+			return fmt.Errorf("failed to marshal placeholder step %s: %w", step.ID, err)
 		}
-		f.Write(b)
-		f.WriteString("\n")
+		if err := writeFullString(writer, string(b)); err != nil {
+			return fmt.Errorf("failed to write placeholder step %s: %w", step.ID, err)
+		}
+		if err := writeFullString(writer, "\n"); err != nil {
+			return fmt.Errorf("failed to terminate placeholder step %s: %w", step.ID, err)
+		}
 	}
-	log.Noticef("job %s created for sprout %s (%d steps)", envelope.JobID, sprout, len(envelope.Steps))
+
+	return nil
+}
+
+func writeFullString(writer io.StringWriter, value string) error {
+	written, err := writer.WriteString(value)
+	if err != nil {
+		return err
+	}
+	if written != len(value) {
+		return io.ErrShortWrite
+	}
+
+	return nil
 }
 
 func logJobs(msg *nats.Msg) {
