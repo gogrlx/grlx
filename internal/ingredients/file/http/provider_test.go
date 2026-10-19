@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"crypto/sha512"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -350,6 +351,52 @@ func TestDownloadCustomExpectedCode(t *testing.T) {
 	}
 	if string(data) != "accepted" {
 		t.Errorf("unexpected content: %s", data)
+	}
+}
+
+func TestDownloadCustomExpectedCodeFromDecodedNumber(t *testing.T) {
+	tests := []struct {
+		name         string
+		expectedCode interface{}
+	}{
+		{
+			name:         "float64",
+			expectedCode: float64(http.StatusAccepted),
+		},
+		{
+			name:         "json number",
+			expectedCode: json.Number("202"),
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusAccepted)
+				w.Write([]byte("accepted"))
+			}))
+			defer ts.Close()
+
+			td := t.TempDir()
+			hf := HTTPFile{
+				ID:          test.name,
+				Source:      ts.URL + "/accept",
+				Destination: filepath.Join(td, "out"),
+				Props: map[string]interface{}{
+					expectedCodeProperty: test.expectedCode,
+				},
+			}
+			if err := hf.Download(context.Background()); err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			data, err := os.ReadFile(filepath.Join(td, "out"))
+			if err != nil {
+				t.Fatalf("failed to read output: %v", err)
+			}
+			if string(data) != "accepted" {
+				t.Errorf("unexpected content: %s", data)
+			}
+		})
 	}
 }
 
