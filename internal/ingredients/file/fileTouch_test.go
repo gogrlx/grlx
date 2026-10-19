@@ -246,6 +246,33 @@ func TestTouch(t *testing.T) {
 	}
 }
 
+func TestTouchStatFailure(t *testing.T) {
+	testDir := t.TempDir()
+	parentFile := filepath.Join(testDir, "not-a-dir")
+	if err := os.WriteFile(parentFile, []byte("content"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	name := filepath.Join(parentFile, "child")
+	f := File{
+		id:     "",
+		method: "touch",
+		params: map[string]interface{}{
+			"name": name,
+		},
+	}
+
+	result, err := f.touch(context.TODO(), false)
+	if err == nil {
+		t.Fatal("expected stat error")
+	}
+	expected := cook.Result{
+		Succeeded: false,
+		Failed:    true,
+		Notes:     []fmt.Stringer{cook.Snprintf("failed to stat file `%s`", name)},
+	}
+	compareResults(t, result, expected)
+}
+
 // Validates that the times are set properly when both are provided.
 func TestTouchValidate(t *testing.T) {
 	testDir := t.TempDir()
