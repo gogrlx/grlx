@@ -6,9 +6,8 @@
 // referenced by any grlx binary (the default build uses the no-op variant in
 // noupdate.go). Do NOT enable it as-is:
 //
-//   - PerformUpdate downloads and swaps the running binary WITHOUT verifying
-//     the release signature or checksum (a remote-code-execution vector), so it
-//     currently fails closed.
+//   - PerformUpdate is not wired to fetch and verify the release signature plus
+//     checksum before swapping the running binary, so it currently fails closed.
 //
 // Implementing this safely requires design decisions (authoritative version
 // source, signature verification against the published checksums.txt(.sig), and
