@@ -1,7 +1,6 @@
 package file
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"errors"
@@ -69,7 +68,7 @@ func (f File) contains(ctx context.Context, test bool) (cook.Result, bytes.Buffe
 	}
 
 	// Read current file contents.
-	file, err := os.Open(name)
+	fileContents, err := os.ReadFile(name)
 	if err != nil {
 		notes = append(notes, cook.Snprintf("failed to open %s", name))
 		return cook.Result{
@@ -77,19 +76,10 @@ func (f File) contains(ctx context.Context, test bool) (cook.Result, bytes.Buffe
 			Changed: false, Notes: notes,
 		}, content, err
 	}
-	currentContents := []string{}
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		currentContents = append(currentContents, scanner.Text())
-	}
-	file.Close()
+	currentContents := lines(fileContents)
 	sort.Strings(currentContents)
 
-	shouldContents := []string{}
-	scanner = bufio.NewScanner(&content)
-	for scanner.Scan() {
-		shouldContents = append(shouldContents, scanner.Text())
-	}
+	shouldContents := lines(content.Bytes())
 	sort.Strings(shouldContents)
 
 	isSubset, _ := stringSliceIsSubset(shouldContents, currentContents)
@@ -103,6 +93,23 @@ func (f File) contains(ctx context.Context, test bool) (cook.Result, bytes.Buffe
 		Succeeded: false, Failed: true,
 		Changed: false, Notes: notes,
 	}, content, ErrMissingContent
+}
+
+func lines(contents []byte) []string {
+	if len(contents) == 0 {
+		return nil
+	}
+
+	split := bytes.Split(contents, []byte("\n"))
+	if len(split) > 0 && len(split[len(split)-1]) == 0 {
+		split = split[:len(split)-1]
+	}
+
+	lines := make([]string, 0, len(split))
+	for _, line := range split {
+		lines = append(lines, string(line))
+	}
+	return lines
 }
 
 // gatherSourceBuf collects content from a single "source"/"source_hash" param pair into buf.
