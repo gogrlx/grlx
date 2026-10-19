@@ -108,3 +108,10 @@ func TestContainsLongLine(t *testing.T) {
 		t.Fatalf("expected missing long line to be preserved, got %d bytes", len(got))
 	}
 }
+
+func TestLinesStripsCarriageReturns(t *testing.T) {
+	got := lines([]byte("one\r\ntwo\r\n"))
+	if len(got) != 2 || got[0] != "one" || got[1] != "two" {
+		t.Fatalf("unexpected lines: %q", got)
+	}
+}
