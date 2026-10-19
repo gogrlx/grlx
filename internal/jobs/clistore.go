@@ -82,12 +82,18 @@ func (s *CLIStore) RecordJobStart(meta CLIJobMeta) error {
 
 	// Create empty JSONL file if it doesn't exist.
 	jobFile := filepath.Join(sproutDir, fmt.Sprintf("%s.jsonl", meta.JID))
-	if _, statErr := os.Stat(jobFile); errors.Is(statErr, os.ErrNotExist) {
-		f, createErr := os.Create(jobFile)
-		if createErr != nil {
+	f, createErr := os.OpenFile(jobFile, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
+	if createErr == nil {
+		if closeErr := f.Close(); closeErr != nil {
+			return fmt.Errorf("closing job file: %w", closeErr)
+		}
+	} else {
+		if !errors.Is(createErr, os.ErrExist) {
 			return fmt.Errorf("creating job file: %w", createErr)
 		}
-		f.Close()
+		if _, statErr := os.Stat(jobFile); statErr != nil {
+			return fmt.Errorf("checking existing job file: %w", statErr)
+		}
 	}
 
 	return nil
