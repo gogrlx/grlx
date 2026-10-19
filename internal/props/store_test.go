@@ -81,6 +81,32 @@ func TestDeleteRemovesFile(t *testing.T) {
 	}
 }
 
+func TestPersistEncodesSproutIDPathSegments(t *testing.T) {
+	resetGlobals()
+	dir := t.TempDir()
+	InitStore(dir)
+
+	sproutID := "../tenant/sprout-1"
+	if err := SetProp(sproutID, "role", "web"); err != nil {
+		t.Fatal(err)
+	}
+
+	encodedPath := filepath.Join(dir, "..%2Ftenant%2Fsprout-1.json")
+	if _, err := os.Stat(encodedPath); err != nil {
+		t.Fatalf("expected encoded props file to exist: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "..", "tenant", "sprout-1.json")); !os.IsNotExist(err) {
+		t.Fatalf("expected sprout ID not to escape props dir, got err %v", err)
+	}
+
+	resetGlobals()
+	InitStore(dir)
+
+	if got := GetStringProp(sproutID, "role"); got != "web" {
+		t.Fatalf("expected reloaded prop for escaped sprout ID, got %q", got)
+	}
+}
+
 func TestGetPropsReturnsNilAfterAllPropsExpire(t *testing.T) {
 	resetGlobals()
 

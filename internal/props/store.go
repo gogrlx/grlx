@@ -2,6 +2,7 @@ package props
 
 import (
 	"encoding/json"
+	"net/url"
 	"os"
 	"path/filepath"
 	"sync"
@@ -38,7 +39,7 @@ func persistSprout(sproutID string) {
 	current := getProps(sproutID)
 	if len(current) == 0 {
 		// Remove the file if no props remain.
-		path := filepath.Join(propsDir, sproutID+".json")
+		path := sproutPropsPath(sproutID)
 		os.Remove(path)
 		return
 	}
@@ -49,7 +50,7 @@ func persistSprout(sproutID string) {
 		return
 	}
 
-	path := filepath.Join(propsDir, sproutID+".json")
+	path := sproutPropsPath(sproutID)
 	if err := os.WriteFile(path, data, 0o644); err != nil {
 		log.Errorf("props: failed to write props for %s: %v", sproutID, err)
 	}
@@ -73,7 +74,11 @@ func loadAll() {
 		if filepath.Ext(name) != ".json" {
 			continue
 		}
-		sproutID := name[:len(name)-5] // strip .json
+		sproutID, err := sproutIDFromPropsFile(name)
+		if err != nil {
+			log.Errorf("props: failed to decode sprout ID from %s: %v", name, err)
+			continue
+		}
 
 		data, readErr := os.ReadFile(filepath.Join(propsDir, name))
 		if readErr != nil {
@@ -105,4 +110,13 @@ func loadAll() {
 	if loaded > 0 {
 		log.Noticef("props: loaded persistent props for %d sprout(s)", loaded)
 	}
+}
+
+func sproutPropsPath(sproutID string) string {
+	return filepath.Join(propsDir, url.PathEscape(sproutID)+".json")
+}
+
+func sproutIDFromPropsFile(name string) (string, error) {
+	sproutID := name[:len(name)-len(".json")]
+	return url.PathUnescape(sproutID)
 }
