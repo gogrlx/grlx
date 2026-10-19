@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -317,6 +318,72 @@ not json at all
 	}
 	if result.Total != 2 {
 		t.Errorf("total = %d, want 2 (malformed line skipped)", result.Total)
+	}
+}
+
+func TestQueryLargeEntry(t *testing.T) {
+	dir := t.TempDir()
+	logger, err := NewLogger(dir)
+	if err != nil {
+		t.Fatalf("NewLogger: %v", err)
+	}
+	defer logger.Close()
+
+	largeParams := json.RawMessage(fmt.Sprintf(`{"payload":%q}`, strings.Repeat("x", 70*1024)))
+	writeTestEntries(t, logger, []Entry{
+		{Action: "large", Success: true, Parameters: largeParams},
+	})
+
+	result, err := logger.Query(QueryParams{Action: "large"})
+	if err != nil {
+		t.Fatalf("Query: %v", err)
+	}
+	if result.Total != 1 {
+		t.Errorf("total = %d, want 1", result.Total)
+	}
+	if len(result.Entries) != 1 {
+		t.Fatalf("entries = %d, want 1", len(result.Entries))
+	}
+	if string(result.Entries[0].Parameters) != string(largeParams) {
+		t.Error("large params payload was not preserved")
+	}
+}
+
+func TestListDatesCountsLargeEntries(t *testing.T) {
+	dir := t.TempDir()
+	today := time.Now().UTC().Format("2006-01-02")
+	path := filepath.Join(dir, "audit-"+today+".jsonl")
+
+	entry := Entry{
+		Timestamp:  time.Now().UTC(),
+		Action:     "large",
+		Success:    true,
+		Parameters: json.RawMessage(fmt.Sprintf(`{"payload":%q}`, strings.Repeat("x", 70*1024))),
+	}
+	data, err := json.Marshal(entry)
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	data = append(data, '\n')
+	if err := os.WriteFile(path, data, 0o640); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	logger, err := NewLogger(dir)
+	if err != nil {
+		t.Fatalf("NewLogger: %v", err)
+	}
+	defer logger.Close()
+
+	dates, err := logger.ListDates()
+	if err != nil {
+		t.Fatalf("ListDates: %v", err)
+	}
+	if len(dates) != 1 {
+		t.Fatalf("dates = %d, want 1", len(dates))
+	}
+	if dates[0].EntryCount != 1 {
+		t.Errorf("entry_count = %d, want 1", dates[0].EntryCount)
 	}
 }
 

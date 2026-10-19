@@ -1,6 +1,8 @@
 package jobs
 
 import (
+	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -36,8 +38,15 @@ func TestCLIStore_RecordJobStart(t *testing.T) {
 
 	// Verify JSONL file exists.
 	jsonlPath := filepath.Join(dir, "sprout-a", "job-001.jsonl")
-	if _, err := os.Stat(jsonlPath); err != nil {
+	info, err := os.Stat(jsonlPath)
+	if err != nil {
 		t.Fatalf("jsonl file should exist: %v", err)
+	}
+	if info.Size() != 0 {
+		t.Fatalf("jsonl file should start empty, got %d bytes", info.Size())
+	}
+	if got := info.Mode().Perm(); got != 0o600 {
+		t.Fatalf("jsonl file mode = %v, want 0600", got)
 	}
 }
 
@@ -258,6 +267,70 @@ func TestCLIStore_ListJobs(t *testing.T) {
 	}
 	if len(none) != 0 {
 		t.Errorf("expected 0 jobs for nonexistent sprout, got %d", len(none))
+	}
+}
+
+func TestCLIStore_ListJobs_UserFilterSkipsMissingMeta(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewCLIStore(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	step := cook.StepCompletion{
+		ID:               "step-1",
+		CompletionStatus: cook.StepCompleted,
+		Started:          time.Now(),
+		Duration:         time.Second,
+	}
+	if err := store.AppendStep("sprout-missing-meta", "missing-meta-job", step); err != nil {
+		t.Fatal(err)
+	}
+
+	jobs, err := store.ListJobs(0, "USER_A", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(jobs) != 0 {
+		t.Fatalf("expected missing-meta job to be excluded from user-filtered list, got %d jobs", len(jobs))
+	}
+}
+
+func TestCLIStore_ListJobs_UserFilterSkipsMalformedMeta(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewCLIStore(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sproutDir := filepath.Join(dir, "sprout-bad-meta")
+	if err := os.MkdirAll(sproutDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+
+	step := cook.StepCompletion{
+		ID:               "step-1",
+		CompletionStatus: cook.StepCompleted,
+		Started:          time.Now(),
+		Duration:         time.Second,
+	}
+	stepData, err := json.Marshal(step)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(sproutDir, "bad-meta-job.jsonl"), append(stepData, '\n'), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(sproutDir, "bad-meta-job.meta.json"), []byte("not json"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	jobs, err := store.ListJobs(0, "USER_A", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(jobs) != 0 {
+		t.Fatalf("expected malformed-meta job to be excluded from user-filtered list, got %d jobs", len(jobs))
 	}
 }
 
@@ -485,6 +558,38 @@ func TestCLIStore_StartReaper_ZeroTTL(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(dir, "sr", "reaper-test.jsonl")); err != nil {
 		t.Errorf("job file should still exist with TTL=0: %v", err)
 	}
+}
+
+func TestCLIStore_StartReaperCtx_RemovesExpiredJobs(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewCLIStore(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	meta := CLIJobMeta{JID: "ctx-reaper-test", SproutID: "srctx", UserKey: "U"}
+	if err := store.RecordJobStart(meta); err != nil {
+		t.Fatal(err)
+	}
+
+	jobPath := filepath.Join(dir, "srctx", "ctx-reaper-test.jsonl")
+	past := time.Now().Add(-48 * time.Hour)
+	if err := os.Chtimes(jobPath, past, past); err != nil {
+		t.Fatal(err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	store.StartReaperCtx(ctx, 24*time.Hour)
+
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		if _, err := os.Stat(jobPath); os.IsNotExist(err) {
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatal("expired CLI job was not removed")
 }
 
 // splitNonEmpty splits a string by newline and filters empty lines.

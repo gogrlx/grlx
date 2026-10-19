@@ -2,11 +2,13 @@ package http
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	httpc "net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	"github.com/gogrlx/grlx/v2/internal/ingredients/file"
 	"github.com/gogrlx/grlx/v2/internal/ingredients/file/hashers"
@@ -20,7 +22,12 @@ type HTTPFile struct {
 	Props       map[string]interface{}
 }
 
-const downloadTempPattern = ".grlx-http-download-*"
+const (
+	downloadTempPattern       = ".grlx-http-download-*"
+	expectedCodeProperty      = "expectedCode"
+	defaultExpectedStatusCode = httpc.StatusOK
+	maxExpectedStatusCode     = 999
+)
 
 // Compile-time interface check.
 var _ file.FileProvider = HTTPFile{}
@@ -44,12 +51,7 @@ func (hf HTTPFile) Download(ctx context.Context) error {
 		return err
 	}
 	defer res.Body.Close()
-	expectedCode := httpc.StatusOK
-	if hf.Props["expectedCode"] != nil {
-		if ec, okEC := hf.Props["expectedCode"].(int); okEC {
-			expectedCode = ec
-		}
-	}
+	expectedCode := expectedStatusCode(hf.Props)
 	if res.StatusCode != expectedCode {
 		// TODO standardize this error message
 		return fmt.Errorf("unexpected HTTP status code %d", res.StatusCode)
@@ -91,6 +93,66 @@ func (hf HTTPFile) Download(ctx context.Context) error {
 	}
 	cleanupStaged = false
 	return nil
+}
+
+func expectedStatusCode(props map[string]interface{}) int {
+	rawExpectedCode := props[expectedCodeProperty]
+	if rawExpectedCode == nil {
+		return defaultExpectedStatusCode
+	}
+
+	switch expectedCode := rawExpectedCode.(type) {
+	case int:
+		return expectedCode
+	case int8:
+		return int(expectedCode)
+	case int16:
+		return int(expectedCode)
+	case int32:
+		return int(expectedCode)
+	case int64:
+		return boundedStatusCode(expectedCode)
+	case uint:
+		return int(expectedCode)
+	case uint8:
+		return int(expectedCode)
+	case uint16:
+		return int(expectedCode)
+	case uint32:
+		return int(expectedCode)
+	case uint64:
+		if expectedCode <= maxExpectedStatusCode {
+			return int(expectedCode)
+		}
+	case float32:
+		return integralFloatStatusCode(float64(expectedCode))
+	case float64:
+		return integralFloatStatusCode(expectedCode)
+	case json.Number:
+		parsedCode, err := strconv.ParseInt(expectedCode.String(), 10, 64)
+		if err == nil {
+			return boundedStatusCode(parsedCode)
+		}
+	}
+
+	return defaultExpectedStatusCode
+}
+
+func boundedStatusCode(expectedCode int64) int {
+	if expectedCode >= 0 && expectedCode <= maxExpectedStatusCode {
+		return int(expectedCode)
+	}
+
+	return defaultExpectedStatusCode
+}
+
+func integralFloatStatusCode(expectedCode float64) int {
+	parsedCode := int(expectedCode)
+	if float64(parsedCode) == expectedCode && parsedCode >= 0 && parsedCode <= maxExpectedStatusCode {
+		return parsedCode
+	}
+
+	return defaultExpectedStatusCode
 }
 
 func applyRequestHeaders(req *httpc.Request, headers interface{}) error {

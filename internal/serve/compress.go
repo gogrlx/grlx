@@ -36,6 +36,7 @@ type gzipResponseWriter struct {
 	statusCode int
 	sniffBuf   []byte
 	sniffDone  bool
+	gzipUsed   bool
 }
 
 func (g *gzipResponseWriter) WriteHeader(code int) {
@@ -80,6 +81,7 @@ func (g *gzipResponseWriter) flush() error {
 		}
 		g.ResponseWriter.WriteHeader(g.statusCode)
 		g.writer.Reset(g.ResponseWriter)
+		g.gzipUsed = true
 		_, err := g.writer.Write(g.sniffBuf)
 		return err
 	}
@@ -99,7 +101,10 @@ func (g *gzipResponseWriter) Close() error {
 			return err
 		}
 	}
-	if g.writer != nil {
+	if !g.sniffDone && g.statusCode != 0 {
+		g.ResponseWriter.WriteHeader(g.statusCode)
+	}
+	if g.gzipUsed {
 		return g.writer.Close()
 	}
 	return nil

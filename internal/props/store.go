@@ -2,8 +2,10 @@ package props
 
 import (
 	"encoding/json"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	log "github.com/gogrlx/grlx/v2/internal/log"
@@ -38,7 +40,7 @@ func persistSprout(sproutID string) {
 	current := getProps(sproutID)
 	if len(current) == 0 {
 		// Remove the file if no props remain.
-		path := filepath.Join(propsDir, sproutID+".json")
+		path := sproutPropsPath(sproutID)
 		os.Remove(path)
 		return
 	}
@@ -49,7 +51,7 @@ func persistSprout(sproutID string) {
 		return
 	}
 
-	path := filepath.Join(propsDir, sproutID+".json")
+	path := sproutPropsPath(sproutID)
 	if err := os.WriteFile(path, data, 0o644); err != nil {
 		log.Errorf("props: failed to write props for %s: %v", sproutID, err)
 	}
@@ -73,7 +75,18 @@ func loadAll() {
 		if filepath.Ext(name) != ".json" {
 			continue
 		}
-		sproutID := name[:len(name)-5] // strip .json
+		sproutID := sproutIDFromPropsFile(name)
+		if canonical := sproutPropsPath(sproutID); filepath.Base(canonical) != name {
+			legacy := filepath.Join(propsDir, name)
+			if _, statErr := os.Stat(canonical); statErr == nil {
+				log.Errorf("props: legacy file %s conflicts with %s; skipping", name, filepath.Base(canonical))
+				continue
+			} else if renameErr := os.Rename(legacy, canonical); renameErr != nil {
+				log.Errorf("props: failed to migrate %s: %v", name, renameErr)
+			} else {
+				name = filepath.Base(canonical)
+			}
+		}
 
 		data, readErr := os.ReadFile(filepath.Join(propsDir, name))
 		if readErr != nil {
@@ -105,4 +118,26 @@ func loadAll() {
 	if loaded > 0 {
 		log.Noticef("props: loaded persistent props for %d sprout(s)", loaded)
 	}
+}
+
+const propsFileExt = ".json"
+
+func escapeSproutID(sproutID string) string {
+	return strings.ReplaceAll(url.PathEscape(sproutID), `\`, "%5C")
+}
+
+func sproutPropsPath(sproutID string) string {
+	return filepath.Join(propsDir, escapeSproutID(sproutID)+propsFileExt)
+}
+
+// sproutIDFromPropsFile decodes a props filename back into a sprout ID.
+// Files written before IDs were escaped used the raw sprout ID, so names that
+// do not round-trip through escaping are treated as legacy raw IDs.
+func sproutIDFromPropsFile(name string) string {
+	stem := strings.TrimSuffix(name, propsFileExt)
+	sproutID, err := url.PathUnescape(stem)
+	if err != nil || escapeSproutID(sproutID) != stem {
+		return stem
+	}
+	return sproutID
 }

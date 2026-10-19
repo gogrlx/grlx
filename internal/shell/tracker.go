@@ -32,9 +32,12 @@ func NewTracker() *Tracker {
 
 // Add registers a new active session.
 func (t *Tracker) Add(info *SessionInfo) {
+	if info == nil {
+		return
+	}
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	t.sessions[info.SessionID] = info
+	t.sessions[info.SessionID] = cloneSessionInfo(info)
 }
 
 // Remove removes a session and returns its info, or nil if not found.
@@ -46,7 +49,7 @@ func (t *Tracker) Remove(sessionID string) *SessionInfo {
 		return nil
 	}
 	delete(t.sessions, sessionID)
-	return info
+	return cloneSessionInfo(info)
 }
 
 // Get returns session info for the given ID, or nil if not found.
@@ -54,7 +57,7 @@ func (t *Tracker) Get(sessionID string) *SessionInfo {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	info := t.sessions[sessionID]
-	return info
+	return cloneSessionInfo(info)
 }
 
 // Active returns the number of active sessions.
@@ -70,7 +73,15 @@ func (t *Tracker) List() []*SessionInfo {
 	defer t.mu.Unlock()
 	result := make([]*SessionInfo, 0, len(t.sessions))
 	for _, info := range t.sessions {
-		result = append(result, info)
+		result = append(result, cloneSessionInfo(info))
 	}
 	return result
+}
+
+func cloneSessionInfo(info *SessionInfo) *SessionInfo {
+	if info == nil {
+		return nil
+	}
+	clone := *info
+	return &clone
 }

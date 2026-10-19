@@ -46,6 +46,10 @@ func TestAppend(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create file without content %s: %v", fileWithoutContent, err)
 	}
+	anotherFileWithoutContent := filepath.Join(tempDir, "there-is-another-file-without-content-here")
+	if err := os.WriteFile(anotherFileWithoutContent, nil, 0o644); err != nil {
+		t.Fatalf("failed to create file without content %s: %v", anotherFileWithoutContent, err)
+	}
 
 	fakePath := filepath.Join("/", "fakepath")
 
@@ -107,12 +111,12 @@ func TestAppend(t *testing.T) {
 		},
 		{
 			name:   "AppendFileWithoutContent",
-			params: map[string]interface{}{"name": fileWithoutContent, "text": "test"},
+			params: map[string]interface{}{"name": anotherFileWithoutContent, "text": "test"},
 			expected: cook.Result{
 				Succeeded: true,
 				Failed:    false,
 				Changed:   false,
-				Notes:     []fmt.Stringer{cook.Snprintf("file %s does not contain all specified content", fileWithoutContent), cook.Snprintf("appended to %s", fileWithoutContent)},
+				Notes:     []fmt.Stringer{cook.Snprintf("file %s does not contain all specified content", anotherFileWithoutContent), cook.Snprintf("appended to %s", anotherFileWithoutContent)},
 			},
 			error: nil,
 		},
@@ -159,5 +163,38 @@ func TestAppend(t *testing.T) {
 			}
 			compareResults(t, result, test.expected)
 		})
+	}
+}
+
+func TestAppendWritesMissingContent(t *testing.T) {
+	tempDir := t.TempDir()
+	target := filepath.Join(tempDir, "target")
+	if err := os.WriteFile(target, []byte("existing\n"), 0o644); err != nil {
+		t.Fatalf("failed to seed target: %v", err)
+	}
+
+	f := File{
+		id:     "append-missing-content",
+		method: "append",
+		params: map[string]interface{}{
+			"name": target,
+			"text": "new content",
+		},
+	}
+
+	result, err := f.append(context.TODO(), false)
+	if err != nil {
+		t.Fatalf("append returned error: %v", err)
+	}
+	if !result.Succeeded || !result.Changed {
+		t.Fatalf("expected successful change, got %+v", result)
+	}
+
+	got, err := os.ReadFile(target)
+	if err != nil {
+		t.Fatalf("failed to read target: %v", err)
+	}
+	if string(got) != "existing\nnew content\n" {
+		t.Fatalf("unexpected content: %q", got)
 	}
 }

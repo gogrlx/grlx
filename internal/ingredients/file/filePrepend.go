@@ -48,6 +48,7 @@ func (f File) prepend(ctx context.Context, test bool) (cook.Result, error) {
 			Succeeded: false, Failed: true, Notes: notes,
 		}, ErrModifyRoot
 	}
+	makedirs, _ := f.params["makedirs"].(bool)
 	res, _, err := f.contains(ctx, test)
 	notes = append(notes, res.Notes...)
 	if err == nil {
@@ -59,6 +60,27 @@ func (f File) prepend(ctx context.Context, test bool) (cook.Result, error) {
 	}
 	if os.IsNotExist(err) {
 		content := f.prependContent()
+		dir := filepath.Dir(name)
+		if _, dirErr := os.Stat(dir); os.IsNotExist(dirErr) {
+			if !makedirs {
+				return cook.Result{
+					Succeeded: false, Failed: true,
+					Changed: false, Notes: []fmt.Stringer{
+						cook.Snprintf("parent directory `%s` does not exist and makedirs is false", dir),
+					},
+				}, ErrPathNotFound
+			}
+			if test {
+				notes = append(notes, cook.Snprintf("directory `%s` would be created", dir))
+			} else if mkErr := os.MkdirAll(dir, 0o755); mkErr != nil {
+				return cook.Result{
+					Succeeded: false, Failed: true,
+					Changed: false, Notes: notes,
+				}, fmt.Errorf("failed to create parent directory %s: %w", dir, mkErr)
+			} else {
+				notes = append(notes, cook.Snprintf("created directory `%s`", dir))
+			}
+		}
 		if test {
 			notes = append(notes, cook.Snprintf("would create and prepend to %s", name))
 			return cook.Result{

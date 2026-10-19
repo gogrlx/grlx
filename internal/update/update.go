@@ -21,6 +21,7 @@ import (
 	"bufio"
 	"context"
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -32,6 +33,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ProtonMail/go-crypto/openpgp"
 	"golang.org/x/mod/semver"
 )
 
@@ -40,15 +42,20 @@ var (
 	errUpdateIntervalRequired  = errors.New("self-update check interval must be greater than zero")
 )
 
-const maxLatestReleaseResponseBytes = 1 << 20
+const (
+	maxLatestReleaseResponseBytes = 1 << 20
+	maxChecksumManifestLineBytes  = 1 << 20
+)
 
 // UpdateConfig holds the configuration for self-updates
 type UpdateConfig struct {
-	CurrentVersion string
-	BinaryName     string
-	ChecksumName   string
-	UpdateURL      string
-	CheckInterval  time.Duration
+	CurrentVersion     string
+	BinaryName         string
+	ChecksumName       string
+	UpdateURL          string
+	CheckInterval      time.Duration
+	TrustedPublicKey   string
+	TrustedFingerprint string
 }
 
 // Updater handles self-update functionality
@@ -86,11 +93,11 @@ func (u *Updater) CheckForUpdates(ctx context.Context) (string, bool, error) {
 }
 
 func (u *Updater) fetchLatestVersion(ctx context.Context) (string, error) {
-	if strings.TrimSpace(u.config.UpdateURL) == "" {
-		return "", errors.New("update URL is required")
+	latestURL, err := latestReleaseURL(u.config.UpdateURL)
+	if err != nil {
+		return "", err
 	}
 
-	latestURL := strings.TrimRight(u.config.UpdateURL, "/") + "/latest"
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, latestURL, nil)
 	if err != nil {
 		return "", fmt.Errorf("failed to create request: %w", err)
@@ -112,6 +119,20 @@ func (u *Updater) fetchLatestVersion(ctx context.Context) (string, error) {
 	}
 
 	return latestVersion, nil
+}
+
+func latestReleaseURL(updateURL string) (string, error) {
+	updateURL = strings.TrimSpace(updateURL)
+	if updateURL == "" {
+		return "", errors.New("update URL is required")
+	}
+
+	updateURL = strings.TrimRight(updateURL, "/")
+	if strings.HasSuffix(updateURL, "/latest") {
+		return updateURL, nil
+	}
+
+	return updateURL + "/latest", nil
 }
 
 func parseLatestVersion(body io.Reader) (string, error) {
@@ -208,6 +229,70 @@ func verifyArtifactChecksum(checksums io.Reader, artifact io.Reader, artifactNam
 	return nil
 }
 
+func verifyChecksumsSignature(publicKey, checksums, signature io.Reader, trustedFingerprint string) error {
+	keyring, err := openpgp.ReadArmoredKeyRing(publicKey)
+	if err != nil {
+		return fmt.Errorf("failed to read trusted update signing key: %w", err)
+	}
+
+	signer, err := openpgp.CheckDetachedSignature(keyring, checksums, signature, nil)
+	if err != nil {
+		return fmt.Errorf("failed to verify update checksums signature: %w", err)
+	}
+	if signer == nil || signer.PrimaryKey == nil {
+		return errors.New("update checksums signature did not identify a signing key")
+	}
+
+	if !fingerprintMatches(signer.PrimaryKey.Fingerprint[:], trustedFingerprint) {
+		return fmt.Errorf("update checksums were signed by unexpected key fingerprint %s", fingerprintString(signer.PrimaryKey.Fingerprint[:]))
+	}
+
+	return nil
+}
+
+func fingerprintMatches(actual []byte, expected string) bool {
+	normalized, ok := normalizeFingerprint(expected)
+	if !ok {
+		return false
+	}
+
+	actualHex := fingerprintString(actual)
+	return subtle.ConstantTimeCompare([]byte(actualHex), []byte(normalized)) == 1
+}
+
+// normalizeFingerprint lowercases a configured fingerprint, removing only
+// space and colon separators. Any other non-hex character is rejected so a
+// malformed pin fails closed instead of being silently rewritten.
+func normalizeFingerprint(fingerprint string) (string, bool) {
+	var builder strings.Builder
+	for _, r := range fingerprint {
+		switch {
+		case r == ' ' || r == ':':
+			continue
+		case r >= '0' && r <= '9', r >= 'a' && r <= 'f':
+			builder.WriteRune(r)
+		case r >= 'A' && r <= 'F':
+			builder.WriteRune(r + ('a' - 'A'))
+		default:
+			return "", false
+		}
+	}
+	normalized := builder.String()
+	if len(normalized) != sha1FingerprintHexLen && len(normalized) != sha256FingerprintHexLen {
+		return "", false
+	}
+	return normalized, true
+}
+
+const (
+	sha1FingerprintHexLen   = 40
+	sha256FingerprintHexLen = 64
+)
+
+func fingerprintString(fingerprint []byte) string {
+	return hex.EncodeToString(fingerprint)
+}
+
 func checksumForArtifact(checksums io.Reader, artifactName string) (string, error) {
 	artifactName = strings.TrimSpace(artifactName)
 	if artifactName == "" {
@@ -215,6 +300,7 @@ func checksumForArtifact(checksums io.Reader, artifactName string) (string, erro
 	}
 
 	scanner := bufio.NewScanner(checksums)
+	scanner.Buffer(make([]byte, 0, 64*1024), maxChecksumManifestLineBytes)
 	for scanner.Scan() {
 		fields := strings.Fields(scanner.Text())
 		if len(fields) != 2 {
@@ -285,6 +371,13 @@ func stageBinary(currentExe, newBinaryPath string) (string, error) {
 }
 
 func commitBinaryUpdate(currentExe, stagedPath string) error {
+	removeStaged := true
+	defer func() {
+		if removeStaged {
+			os.Remove(stagedPath)
+		}
+	}()
+
 	backupPath, err := backupPathFor(currentExe)
 	if err != nil {
 		return err
@@ -309,6 +402,7 @@ func commitBinaryUpdate(currentExe, stagedPath string) error {
 		return fmt.Errorf("failed to remove update backup: %w", err)
 	}
 
+	removeStaged = false
 	return nil
 }
 
@@ -341,18 +435,23 @@ func (u *Updater) StartUpdateChecker(ctx context.Context, callback func(version 
 		return
 	}
 
-	ticker := time.NewTicker(u.config.CheckInterval)
-	defer ticker.Stop()
+	go func() {
+		ticker := time.NewTicker(u.config.CheckInterval)
+		defer ticker.Stop()
 
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			version, available, err := u.CheckForUpdates(ctx)
-			if callback != nil {
-				callback(version, available, err)
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				if ctx.Err() != nil {
+					return
+				}
+				version, available, err := u.CheckForUpdates(ctx)
+				if callback != nil {
+					callback(version, available, err)
+				}
 			}
 		}
-	}
+	}()
 }

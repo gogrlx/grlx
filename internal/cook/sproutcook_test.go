@@ -1,9 +1,68 @@
 package cook
 
 import (
+	"bytes"
 	"errors"
+	"io"
+	"strings"
 	"testing"
 )
+
+type failingWriter struct{}
+
+func (failingWriter) Write([]byte) (int, error) {
+	return 0, io.ErrClosedPipe
+}
+
+type shortWriter struct{}
+
+func (shortWriter) Write(p []byte) (int, error) {
+	return len(p) - 1, nil
+}
+
+func TestWriteStepCompletionLogLine(t *testing.T) {
+	var buf bytes.Buffer
+	completion := StepCompletion{
+		ID:               "step-one",
+		CompletionStatus: StepCompleted,
+		ChangesMade:      true,
+		Changes:          []string{"created file"},
+	}
+
+	if err := writeStepCompletionLogLine(&buf, completion); err != nil {
+		t.Fatalf("writeStepCompletionLogLine returned error: %v", err)
+	}
+
+	got := buf.String()
+	if !strings.HasSuffix(got, "\n") {
+		t.Fatalf("expected JSONL output to end with newline, got %q", got)
+	}
+	if !strings.Contains(got, `"ID":"step-one"`) {
+		t.Fatalf("expected JSONL output to contain step ID, got %q", got)
+	}
+}
+
+func TestWriteStepCompletionLogLineReturnsWriteError(t *testing.T) {
+	err := writeStepCompletionLogLine(failingWriter{}, StepCompletion{
+		ID:               "step-one",
+		CompletionStatus: StepCompleted,
+	})
+
+	if !errors.Is(err, io.ErrClosedPipe) {
+		t.Fatalf("expected write error, got %v", err)
+	}
+}
+
+func TestWriteStepCompletionLogLineReturnsShortWrite(t *testing.T) {
+	err := writeStepCompletionLogLine(shortWriter{}, StepCompletion{
+		ID:               "step-one",
+		CompletionStatus: StepCompleted,
+	})
+
+	if !errors.Is(err, io.ErrShortWrite) {
+		t.Fatalf("expected short write error, got %v", err)
+	}
+}
 
 func TestRequisitesAreMet(t *testing.T) {
 

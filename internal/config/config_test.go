@@ -257,7 +257,7 @@ func TestLoadConfig_CreatesConfigDirIfMissing(t *testing.T) {
 	cfgFile := filepath.Join(cfgDir, "grlx")
 
 	t.Setenv("HOME", tmpHome)
-	configLoaded = sync.Once{}
+	resetForBinaryTest(t, t.TempDir())
 	// Don't call resetForTest — let LoadConfig handle the missing file.
 	LoadConfig("grlx")
 
@@ -266,6 +266,45 @@ func TestLoadConfig_CreatesConfigDirIfMissing(t *testing.T) {
 	}
 	if _, err := os.Stat(cfgFile); os.IsNotExist(err) {
 		t.Error("LoadConfig should create the config file")
+	}
+}
+
+func TestLoadConfig_CreatesSystemConfigFilesIfMissing(t *testing.T) {
+	for _, binary := range []string{"farmer", "sprout"} {
+		t.Run(binary, func(t *testing.T) {
+			configRoot := t.TempDir()
+			cfgFile := filepath.Join(configRoot, binary)
+
+			resetForBinaryTest(t, configRoot)
+			LoadConfig(binary)
+
+			info, err := os.Stat(cfgFile)
+			if err != nil {
+				t.Fatalf("LoadConfig should create %s config file: %v", binary, err)
+			}
+			if info.IsDir() {
+				t.Fatalf("%s config path should be a file", binary)
+			}
+		})
+	}
+}
+
+func TestCreateConfigFilePreservesExistingFile(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "grlx")
+	if err := os.WriteFile(path, []byte("existing"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := createConfigFile(path); err != nil {
+		t.Fatalf("createConfigFile returned error: %v", err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(data) != "existing" {
+		t.Fatalf("config file content = %q, want existing", data)
 	}
 }
 

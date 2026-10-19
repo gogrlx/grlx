@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"strings"
 	"testing"
 	"time"
 
@@ -37,20 +36,22 @@ func TestCmdRunEnvParsing(t *testing.T) {
 			expected: map[string]string{},
 		},
 		{
-			name:     "no equals sign",
-			envStr:   "JUSTKEY",
-			expected: map[string]string{},
+			name:     "extra whitespace",
+			envStr:   "  FOO=bar\tBAZ=qux  ",
+			expected: map[string]string{"FOO": "bar", "BAZ": "qux"},
+		},
+		{
+			name:     "empty value",
+			envStr:   "EMPTY=",
+			expected: map[string]string{"EMPTY": ""},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			env := make(apitypes.EnvVar)
-			for _, pair := range strings.Split(tt.envStr, " ") {
-				if strings.ContainsRune(pair, '=') {
-					kv := strings.SplitN(pair, "=", 2)
-					env[kv[0]] = kv[1]
-				}
+			env, err := parseEnvironment(tt.envStr)
+			if err != nil {
+				t.Fatalf("parseEnvironment(%q): %v", tt.envStr, err)
 			}
 			for k, want := range tt.expected {
 				got, ok := env[k]
@@ -66,6 +67,40 @@ func TestCmdRunEnvParsing(t *testing.T) {
 				t.Errorf("env has %d entries, want %d", len(env), len(tt.expected))
 			}
 		})
+	}
+}
+
+func TestCmdRunEnvParsingRejectsInvalidPairs(t *testing.T) {
+	tests := []struct {
+		name   string
+		envStr string
+	}{
+		{
+			name:   "no equals sign",
+			envStr: "JUSTKEY",
+		},
+		{
+			name:   "empty key",
+			envStr: "=value",
+		},
+		{
+			name:   "mixed valid and invalid",
+			envStr: "FOO=bar JUSTKEY",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if _, err := parseEnvironment(tt.envStr); err == nil {
+				t.Fatalf("parseEnvironment(%q): expected error", tt.envStr)
+			}
+		})
+	}
+}
+
+func TestCmdRunEnvParsingRejectsWhitespaceSeparatedValue(t *testing.T) {
+	if _, err := parseEnvironment("FOO=bar baz"); err == nil {
+		t.Fatal("expected error for whitespace-separated value fragment")
 	}
 }
 

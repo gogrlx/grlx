@@ -2,9 +2,11 @@ package file
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/gogrlx/grlx/v2/internal/config"
@@ -75,5 +77,41 @@ func TestContains(t *testing.T) {
 			}
 			compareResults(t, result, test.expected)
 		})
+	}
+}
+
+func TestContainsLongLine(t *testing.T) {
+	tempDir := t.TempDir()
+	target := filepath.Join(tempDir, "long-line")
+	existing := strings.Repeat("a", 70*1024)
+	missing := strings.Repeat("b", 70*1024)
+	if err := os.WriteFile(target, []byte(existing), 0o644); err != nil {
+		t.Fatalf("failed to write target: %v", err)
+	}
+
+	f := File{
+		id:     "long-line",
+		method: "contains",
+		params: map[string]interface{}{
+			"name": target,
+			"text": missing,
+		},
+	}
+	result, missingContent, err := f.contains(context.TODO(), false)
+	if !errors.Is(err, ErrMissingContent) {
+		t.Fatalf("expected ErrMissingContent, got %v", err)
+	}
+	if result.Succeeded || !result.Failed {
+		t.Fatalf("expected failed missing-content result, got %+v", result)
+	}
+	if got := missingContent.String(); got != missing {
+		t.Fatalf("expected missing long line to be preserved, got %d bytes", len(got))
+	}
+}
+
+func TestLinesStripsCarriageReturns(t *testing.T) {
+	got := lines([]byte("one\r\ntwo\r\n"))
+	if len(got) != 2 || got[0] != "one" || got[1] != "two" {
+		t.Fatalf("unexpected lines: %q", got)
 	}
 }

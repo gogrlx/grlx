@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/gogrlx/grlx/v2/internal/ingredients/file"
@@ -130,6 +131,37 @@ func TestDownloadCopiesFile(t *testing.T) {
 	}
 }
 
+func TestDownloadCopiesFileURLSource(t *testing.T) {
+	td := t.TempDir()
+	srcPath := filepath.Join(td, "source.txt")
+	dstPath := filepath.Join(td, "destination.txt")
+	content := []byte("hello from a file URL")
+
+	if err := os.WriteFile(srcPath, content, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	h := md5.Sum(content)
+	lf := LocalFile{
+		ID:          "test-download-file-url",
+		Source:      "file://" + srcPath,
+		Destination: dstPath,
+		Hash:        fmt.Sprintf("%x", h),
+		Props:       map[string]interface{}{"hashType": "md5"},
+	}
+
+	if err := lf.Download(context.Background()); err != nil {
+		t.Fatalf("Download failed: %v", err)
+	}
+	got, err := os.ReadFile(dstPath)
+	if err != nil {
+		t.Fatalf("failed to read destination: %v", err)
+	}
+	if string(got) != string(content) {
+		t.Errorf("content mismatch: want %q, got %q", content, got)
+	}
+}
+
 func TestDownloadSkipsWhenHashMatches(t *testing.T) {
 	td := t.TempDir()
 	srcPath := filepath.Join(td, "source.txt")
@@ -161,6 +193,49 @@ func TestDownloadSkipsWhenHashMatches(t *testing.T) {
 	}
 }
 
+func TestDownloadReplacesMismatchedDestination(t *testing.T) {
+	td := t.TempDir()
+	srcPath := filepath.Join(td, "source.txt")
+	dstPath := filepath.Join(td, "destination.txt")
+	sourceContent := []byte("fresh content")
+	staleContent := []byte("stale content")
+
+	if err := os.WriteFile(srcPath, sourceContent, 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(dstPath, staleContent, 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	hash := fmt.Sprintf("%x", md5.Sum(sourceContent))
+	lf := LocalFile{
+		ID:          "test-refresh",
+		Source:      srcPath,
+		Destination: dstPath,
+		Hash:        hash,
+		Props:       map[string]interface{}{"hashType": "md5"},
+	}
+
+	if err := lf.Download(context.Background()); err != nil {
+		t.Fatalf("Download failed: %v", err)
+	}
+
+	got, err := os.ReadFile(dstPath)
+	if err != nil {
+		t.Fatalf("failed to read destination: %v", err)
+	}
+	if string(got) != string(sourceContent) {
+		t.Fatalf("destination = %q, want %q", got, sourceContent)
+	}
+	info, err := os.Stat(dstPath)
+	if err != nil {
+		t.Fatalf("failed to stat destination: %v", err)
+	}
+	if gotMode := info.Mode().Perm(); gotMode != 0600 {
+		t.Fatalf("destination mode = %v, want 0600", gotMode)
+	}
+}
+
 func TestDownloadSourceNotFound(t *testing.T) {
 	td := t.TempDir()
 	dstPath := filepath.Join(td, "destination.txt")
@@ -183,6 +258,57 @@ func TestDownloadSourceNotFound(t *testing.T) {
 		if !errors.Is(err, os.ErrNotExist) {
 			t.Logf("got error (acceptable): %v", err)
 		}
+	}
+}
+
+func TestLocalSourcePath(t *testing.T) {
+	tests := []struct {
+		name    string
+		source  string
+		want    string
+		wantErr string
+	}{
+		{
+			name:   "plain path",
+			source: "/tmp/source.txt",
+			want:   "/tmp/source.txt",
+		},
+		{
+			name:   "file URL",
+			source: "file:///tmp/source.txt",
+			want:   "/tmp/source.txt",
+		},
+		{
+			name:   "localhost file URL",
+			source: "file://localhost/tmp/source.txt",
+			want:   "/tmp/source.txt",
+		},
+		{
+			name:    "remote file URL",
+			source:  "file://example.com/tmp/source.txt",
+			wantErr: "unsupported file URL host",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := localSourcePath(tt.source)
+			if tt.wantErr != "" {
+				if err == nil {
+					t.Fatal("expected error")
+				}
+				if !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("error = %q, want it to contain %q", err, tt.wantErr)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if got != tt.want {
+				t.Fatalf("path = %q, want %q", got, tt.want)
+			}
+		})
 	}
 }
 
@@ -318,5 +444,46 @@ func TestDownloadWithSHA256(t *testing.T) {
 	}
 	if !ok {
 		t.Error("expected Verify to pass after Download")
+	}
+}
+
+func TestDownloadWritesThroughSymlinkDestination(t *testing.T) {
+	dir := t.TempDir()
+	src := filepath.Join(dir, "src")
+	target := filepath.Join(dir, "target")
+	link := filepath.Join(dir, "link")
+	if err := os.WriteFile(src, []byte("fresh"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(target, []byte("stale"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(target, link); err != nil {
+		t.Skipf("symlinks unsupported: %v", err)
+	}
+	sum := sha256.Sum256([]byte("fresh"))
+	lf := LocalFile{
+		ID:          "symlink",
+		Source:      src,
+		Destination: link,
+		Hash:        fmt.Sprintf("%x", sum),
+		Props:       map[string]interface{}{"hashType": "sha256"},
+	}
+	if err := lf.Download(context.Background()); err != nil {
+		t.Fatalf("download: %v", err)
+	}
+	info, err := os.Lstat(link)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Mode()&os.ModeSymlink == 0 {
+		t.Fatal("expected destination symlink to be preserved")
+	}
+	got, err := os.ReadFile(target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != "fresh" {
+		t.Fatalf("expected symlink target updated, got %q", got)
 	}
 }

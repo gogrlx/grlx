@@ -1,6 +1,7 @@
 package jobs
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,6 +11,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	log "github.com/gogrlx/grlx/v2/internal/log"
 
 	"github.com/gogrlx/grlx/v2/internal/cook"
 )
@@ -82,12 +85,18 @@ func (s *CLIStore) RecordJobStart(meta CLIJobMeta) error {
 
 	// Create empty JSONL file if it doesn't exist.
 	jobFile := filepath.Join(sproutDir, fmt.Sprintf("%s.jsonl", meta.JID))
-	if _, statErr := os.Stat(jobFile); errors.Is(statErr, os.ErrNotExist) {
-		f, createErr := os.Create(jobFile)
-		if createErr != nil {
+	f, createErr := os.OpenFile(jobFile, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
+	if createErr == nil {
+		if closeErr := f.Close(); closeErr != nil {
+			return fmt.Errorf("closing job file: %w", closeErr)
+		}
+	} else {
+		if !errors.Is(createErr, os.ErrExist) {
 			return fmt.Errorf("creating job file: %w", createErr)
 		}
-		f.Close()
+		if _, statErr := os.Stat(jobFile); statErr != nil {
+			return fmt.Errorf("checking existing job file: %w", statErr)
+		}
 	}
 
 	return nil
@@ -217,11 +226,13 @@ func (s *CLIStore) ListJobs(limit int, userKey string, sproutFilter string) ([]J
 			// Filter by user if requested.
 			if userKey != "" {
 				metaFile := filepath.Join(sproutDir, fmt.Sprintf("%s.meta.json", jid))
-				if metaData, metaErr := os.ReadFile(metaFile); metaErr == nil {
-					var meta CLIJobMeta
-					if json.Unmarshal(metaData, &meta) == nil && meta.UserKey != userKey {
-						continue
-					}
+				metaData, metaErr := os.ReadFile(metaFile)
+				if metaErr != nil {
+					continue
+				}
+				var meta CLIJobMeta
+				if json.Unmarshal(metaData, &meta) != nil || meta.UserKey != userKey {
+					continue
 				}
 			}
 
@@ -268,10 +279,8 @@ func (s *CLIStore) DeleteJob(jid string) error {
 			}
 			os.Remove(metaFile) // best-effort
 
-			// Remove empty sprout directory.
-			remaining, _ := os.ReadDir(sproutDir)
-			if len(remaining) == 0 {
-				os.Remove(sproutDir)
+			if err := removeDirIfEmpty(sproutDir); err != nil {
+				log.Errorf("delete job: cleaning %s: %v", sproutDir, err)
 			}
 		}
 	}
@@ -365,10 +374,8 @@ func (s *CLIStore) Purge(olderThan time.Duration) (int, error) {
 				os.Remove(metaFile)
 			}
 		}
-		// Clean up empty sprout dirs.
-		remaining, _ := os.ReadDir(sproutDir)
-		if len(remaining) == 0 {
-			os.Remove(sproutDir)
+		if err := removeDirIfEmpty(sproutDir); err != nil {
+			log.Errorf("purge: cleaning %s: %v", sproutDir, err)
 		}
 	}
 
@@ -379,6 +386,12 @@ func (s *CLIStore) Purge(olderThan time.Duration) (int, error) {
 // CLI-side job log files older than the given TTL. It checks once per hour.
 // A TTL of 0 or negative disables expiration entirely.
 func (s *CLIStore) StartReaper(ttl time.Duration) {
+	s.StartReaperCtx(context.Background(), ttl)
+}
+
+// StartReaperCtx is like StartReaper but stops the background goroutine when
+// ctx is cancelled, allowing a clean shutdown.
+func (s *CLIStore) StartReaperCtx(ctx context.Context, ttl time.Duration) {
 	if ttl <= 0 {
 		return
 	}
@@ -386,8 +399,13 @@ func (s *CLIStore) StartReaper(ttl time.Duration) {
 		s.Purge(ttl)
 		ticker := time.NewTicker(1 * time.Hour)
 		defer ticker.Stop()
-		for range ticker.C {
-			s.Purge(ttl)
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				s.Purge(ttl)
+			}
 		}
 	}()
 }

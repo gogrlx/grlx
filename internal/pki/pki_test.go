@@ -977,6 +977,34 @@ func TestPutNKey_Success(t *testing.T) {
 	}
 }
 
+func TestPutNKey_HTTPError(t *testing.T) {
+	tmpDir := t.TempDir()
+	pubFile := filepath.Join(tmpDir, "sprout.pub")
+	if err := os.WriteFile(pubFile, []byte("UTEST_KEY"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	config.NKeySproutPubFile = pubFile
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "sprout key rejected", http.StatusConflict)
+	}))
+	defer ts.Close()
+
+	config.FarmerURL = ts.URL
+	nkeyClient = ts.Client()
+
+	err := PutNKey("test-sprout")
+	if err == nil {
+		t.Fatal("expected error when farmer rejects the NKey")
+	}
+	if !strings.Contains(err.Error(), "409 Conflict") {
+		t.Errorf("expected status in error, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "sprout key rejected") {
+		t.Errorf("expected response body in error, got %v", err)
+	}
+}
+
 func TestPutNKey_MissingPubKey(t *testing.T) {
 	config.NKeySproutPubFile = "/nonexistent/sprout.pub"
 	nkeyClient = &http.Client{}

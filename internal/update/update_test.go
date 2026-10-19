@@ -4,8 +4,10 @@
 package selfupdate
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"net/http"
@@ -14,6 +16,10 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/ProtonMail/go-crypto/openpgp"
+	"github.com/ProtonMail/go-crypto/openpgp/armor"
 )
 
 func TestCheckForUpdatesUsesLatestReleaseSemver(t *testing.T) {
@@ -68,6 +74,91 @@ func TestCheckForUpdatesDoesNotDowngrade(t *testing.T) {
 	}
 	if available {
 		t.Fatal("available = true, want false")
+	}
+}
+
+func TestCheckForUpdatesAcceptsLatestEndpointURL(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/repos/gogrlx/grlx/releases/latest" {
+			t.Fatalf("request path = %q, want /repos/gogrlx/grlx/releases/latest", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"tag_name":"v1.2.3"}`))
+	}))
+	t.Cleanup(server.Close)
+
+	updater := NewUpdater(UpdateConfig{
+		CurrentVersion: "v1.2.2",
+		UpdateURL:      server.URL + "/repos/gogrlx/grlx/releases/latest",
+	})
+
+	version, available, err := updater.CheckForUpdates(context.Background())
+	if err != nil {
+		t.Fatalf("CheckForUpdates returned error: %v", err)
+	}
+	if version != "v1.2.3" {
+		t.Fatalf("version = %q, want v1.2.3", version)
+	}
+	if !available {
+		t.Fatal("available = false, want true")
+	}
+}
+
+func TestLatestReleaseURL(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		updateURL string
+		want      string
+		wantErr   bool
+	}{
+		{
+			name:      "base URL",
+			updateURL: "https://api.github.com/repos/gogrlx/grlx/releases",
+			want:      "https://api.github.com/repos/gogrlx/grlx/releases/latest",
+		},
+		{
+			name:      "base URL trailing slash",
+			updateURL: "https://api.github.com/repos/gogrlx/grlx/releases/",
+			want:      "https://api.github.com/repos/gogrlx/grlx/releases/latest",
+		},
+		{
+			name:      "latest endpoint",
+			updateURL: "https://api.github.com/repos/gogrlx/grlx/releases/latest",
+			want:      "https://api.github.com/repos/gogrlx/grlx/releases/latest",
+		},
+		{
+			name:      "latest endpoint trailing slash",
+			updateURL: "https://api.github.com/repos/gogrlx/grlx/releases/latest/",
+			want:      "https://api.github.com/repos/gogrlx/grlx/releases/latest",
+		},
+		{
+			name:    "empty",
+			wantErr: true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := latestReleaseURL(test.updateURL)
+			if test.wantErr {
+				if err == nil {
+					t.Fatal("latestReleaseURL returned nil error")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("latestReleaseURL returned error: %v", err)
+			}
+			if got != test.want {
+				t.Fatalf("latestReleaseURL = %q, want %q", got, test.want)
+			}
+		})
 	}
 }
 
@@ -206,6 +297,73 @@ func TestVerifyArtifactChecksumRejectsMismatch(t *testing.T) {
 	}
 }
 
+func TestVerifyChecksumsSignatureAcceptsTrustedSigner(t *testing.T) {
+	t.Parallel()
+
+	publicKey, fingerprint, signature := testSignedChecksums(t, "checksum manifest")
+
+	err := verifyChecksumsSignature(
+		strings.NewReader(publicKey),
+		strings.NewReader("checksum manifest"),
+		bytes.NewReader(signature),
+		fingerprint,
+	)
+	if err != nil {
+		t.Fatalf("verifyChecksumsSignature returned error: %v", err)
+	}
+}
+
+func TestVerifyChecksumsSignatureRejectsTamperedChecksums(t *testing.T) {
+	t.Parallel()
+
+	publicKey, fingerprint, signature := testSignedChecksums(t, "checksum manifest")
+
+	err := verifyChecksumsSignature(
+		strings.NewReader(publicKey),
+		strings.NewReader("tampered manifest"),
+		bytes.NewReader(signature),
+		fingerprint,
+	)
+	if err == nil {
+		t.Fatal("verifyChecksumsSignature returned nil error for tampered checksums")
+	}
+	if !strings.Contains(err.Error(), "signature") {
+		t.Fatalf("verifyChecksumsSignature error = %q, want signature failure", err)
+	}
+}
+
+func TestVerifyChecksumsSignatureRejectsUnexpectedFingerprint(t *testing.T) {
+	t.Parallel()
+
+	publicKey, _, signature := testSignedChecksums(t, "checksum manifest")
+
+	err := verifyChecksumsSignature(
+		strings.NewReader(publicKey),
+		strings.NewReader("checksum manifest"),
+		bytes.NewReader(signature),
+		"3F62 7C68 8B72 ACC6 BC4C A9A7 1E0B 7A1D 33DC E4DD",
+	)
+	if err == nil {
+		t.Fatal("verifyChecksumsSignature returned nil error for unexpected signer")
+	}
+	if !strings.Contains(err.Error(), "unexpected key fingerprint") {
+		t.Fatalf("verifyChecksumsSignature error = %q, want unexpected fingerprint failure", err)
+	}
+}
+
+func TestFingerprintMatchesDocumentedFormat(t *testing.T) {
+	t.Parallel()
+
+	fingerprint, err := hex.DecodeString("3f627c688b72acc6bc4ca9a71e0b7a1d33dce4dd")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !fingerprintMatches(fingerprint, "3F62 7C68 8B72 ACC6 BC4C A9A7 1E0B 7A1D 33DC E4DD") {
+		t.Fatal("fingerprintMatches rejected documented spaced uppercase fingerprint format")
+	}
+}
+
 func TestChecksumForArtifactRejectsMissingName(t *testing.T) {
 	t.Parallel()
 
@@ -213,6 +371,34 @@ func TestChecksumForArtifactRejectsMissingName(t *testing.T) {
 	if err == nil {
 		t.Fatal("checksumForArtifact returned nil error for missing artifact name")
 	}
+}
+
+func testSignedChecksums(t *testing.T, checksums string) (string, string, []byte) {
+	t.Helper()
+
+	entity, err := openpgp.NewEntity("grlx signing key", "", "security@grlx.dev", nil)
+	if err != nil {
+		t.Fatalf("NewEntity returned error: %v", err)
+	}
+
+	var publicKey bytes.Buffer
+	keyWriter, err := armor.Encode(&publicKey, openpgp.PublicKeyType, nil)
+	if err != nil {
+		t.Fatalf("armor.Encode returned error: %v", err)
+	}
+	if err := entity.Serialize(keyWriter); err != nil {
+		t.Fatalf("Serialize returned error: %v", err)
+	}
+	if err := keyWriter.Close(); err != nil {
+		t.Fatalf("closing armored public key returned error: %v", err)
+	}
+
+	var signature bytes.Buffer
+	if err := openpgp.DetachSign(&signature, entity, strings.NewReader(checksums), nil); err != nil {
+		t.Fatalf("DetachSign returned error: %v", err)
+	}
+
+	return publicKey.String(), fingerprintString(entity.PrimaryKey.Fingerprint[:]), signature.Bytes()
 }
 
 func TestChecksumForArtifactRejectsMissingChecksum(t *testing.T) {
@@ -246,6 +432,23 @@ func TestChecksumForArtifactIgnoresMalformedEntries(t *testing.T) {
 	}
 }
 
+func TestChecksumForArtifactAcceptsLongArtifactNames(t *testing.T) {
+	t.Parallel()
+
+	artifact := "new binary"
+	artifactName := strings.Repeat("grlx-", 20_000)
+	checksum := sha256.Sum256([]byte(artifact))
+	manifest := fmt.Sprintf("%x  %s\n", checksum, artifactName)
+
+	got, err := checksumForArtifact(strings.NewReader(manifest), artifactName)
+	if err != nil {
+		t.Fatalf("checksumForArtifact returned error: %v", err)
+	}
+	if want := fmt.Sprintf("%x", checksum); got != want {
+		t.Fatalf("checksumForArtifact = %q, want %q", got, want)
+	}
+}
+
 func TestStartUpdateCheckerRejectsMissingInterval(t *testing.T) {
 	t.Parallel()
 
@@ -267,6 +470,69 @@ func TestStartUpdateCheckerRejectsMissingInterval(t *testing.T) {
 
 	if !called {
 		t.Fatal("callback was not called")
+	}
+}
+
+func TestStartUpdateCheckerReturnsImmediately(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+
+	updater := NewUpdater(UpdateConfig{
+		CheckInterval: time.Hour,
+	})
+
+	returned := make(chan struct{})
+	go func() {
+		updater.StartUpdateChecker(ctx, nil)
+		close(returned)
+	}()
+
+	select {
+	case <-returned:
+	case <-time.After(time.Second):
+		t.Fatal("StartUpdateChecker blocked caller")
+	}
+}
+
+func TestStartUpdateCheckerInvokesCallbackOnInterval(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"tag_name":"v1.2.4"}`))
+	}))
+	t.Cleanup(server.Close)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+
+	updater := NewUpdater(UpdateConfig{
+		CurrentVersion: "v1.2.3",
+		UpdateURL:      server.URL,
+		CheckInterval:  time.Millisecond,
+	})
+
+	called := make(chan string, 1)
+	updater.StartUpdateChecker(ctx, func(version string, available bool, err error) {
+		if err != nil {
+			t.Errorf("callback error = %v, want nil", err)
+		}
+		if !available {
+			t.Error("callback available = false, want true")
+		}
+		called <- version
+		cancel()
+	})
+
+	select {
+	case version := <-called:
+		if version != "v1.2.4" {
+			t.Fatalf("callback version = %q, want v1.2.4", version)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("StartUpdateChecker did not invoke callback")
 	}
 }
 
@@ -384,6 +650,26 @@ func TestCommitBinaryUpdateRestoresBackupOnInstallFailure(t *testing.T) {
 	}
 }
 
+func TestCommitBinaryUpdateRemovesStagedBinaryOnBackupFailure(t *testing.T) {
+	t.Parallel()
+
+	tempDir := t.TempDir()
+	currentExe := filepath.Join(tempDir, "missing-grlx")
+	stagedPath := filepath.Join(tempDir, ".grlx-update-test")
+
+	if err := os.WriteFile(stagedPath, []byte("new"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	err := commitBinaryUpdate(currentExe, stagedPath)
+	if err == nil {
+		t.Fatal("commitBinaryUpdate returned nil error for missing current binary")
+	}
+	if _, statErr := os.Stat(stagedPath); !errors.Is(statErr, os.ErrNotExist) {
+		t.Fatalf("staged binary stat error = %v, want os.ErrNotExist", statErr)
+	}
+}
+
 func TestCommitBinaryUpdateDoesNotClobberExistingBackup(t *testing.T) {
 	t.Parallel()
 
@@ -410,5 +696,17 @@ func TestCommitBinaryUpdateDoesNotClobberExistingBackup(t *testing.T) {
 	}
 	if string(contents) != "previous backup" {
 		t.Fatalf("existing backup contents = %q, want %q", contents, "previous backup")
+	}
+}
+
+func TestNormalizeFingerprintRejectsMalformedPins(t *testing.T) {
+	valid := "3F62 AB01 3F62 AB01 3F62 AB01 3F62 AB01 3F62 AB01"
+	if got, ok := normalizeFingerprint(valid); !ok || got != strings.ToLower(strings.ReplaceAll(valid, " ", "")) {
+		t.Fatalf("expected valid fingerprint, got %q %v", got, ok)
+	}
+	for _, bad := range []string{"", "0x3f62ab013f62ab013f62ab013f62ab013f62ab01", "3f62ab013f62ab013f62ab013f62ab013f62ab0z", "abcd"} {
+		if _, ok := normalizeFingerprint(bad); ok {
+			t.Errorf("expected %q to be rejected", bad)
+		}
 	}
 }

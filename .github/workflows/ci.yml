@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        go-version: ["1.26.x"]
+        go-version: ["1.27.x"]
 
     steps:
       - name: Checkout
@@ -37,8 +37,11 @@ jobs:
       - name: Test with race detection and coverage
         run: go test -race -coverprofile=coverage.out -covermode=atomic ./...
 
+      - name: Test self_update build tag
+        run: go test -race -tags self_update ./internal/update/...
+
       - name: Upload coverage to Codecov
-        if: matrix.go-version == '1.26.x'
+        if: matrix.go-version == '1.27.x'
         uses: codecov/codecov-action@v7
         with:
           files: coverage.out
@@ -56,7 +59,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v7
         with:
-          go-version: 1.26.x
+          go-version: 1.27.x
           check-latest: true
 
       - name: Run staticcheck
@@ -70,4 +73,11 @@ jobs:
           test -z "$(goimports -l .)" || (goimports -d . && exit 1)
 
       - name: Vet
-        run: go vet ./...
+        run: |
+          go vet ./...
+          go vet -tags self_update ./...
+
+      - name: Check go.mod tidiness
+        run: |
+          go mod tidy
+          git diff --exit-code go.mod go.sum
