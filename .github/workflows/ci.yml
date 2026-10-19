@@ -37,6 +37,9 @@ jobs:
       - name: Test with race detection and coverage
         run: go test -race -coverprofile=coverage.out -covermode=atomic ./...
 
+      - name: Test self_update build tag
+        run: go test -race -tags self_update ./internal/update/...
+
       - name: Upload coverage to Codecov
         if: matrix.go-version == '1.27.x'
         uses: codecov/codecov-action@v7
@@ -70,7 +73,9 @@ jobs:
           test -z "$(goimports -l .)" || (goimports -d . && exit 1)
 
       - name: Vet
-        run: go vet ./...
+        run: |
+          go vet ./...
+          go vet -tags self_update ./...
 
       - name: Check go.mod tidiness
         run: |
