@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -141,6 +142,38 @@ func TestRunSimpleCommand(t *testing.T) {
 	}
 	if strings.TrimSpace(output) != "hello" {
 		t.Errorf("expected 'hello', got %q", strings.TrimSpace(output))
+	}
+}
+
+func TestRunInvalidWorkingDirectoryFailsWithoutPanic(t *testing.T) {
+	c := Cmd{
+		id:     "test-invalid-cwd",
+		method: "run",
+		params: map[string]interface{}{
+			"name": "echo hello",
+			"cwd":  filepath.Join(t.TempDir(), "missing"),
+		},
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	result, err := c.run(ctx, false)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !result.Failed || result.Succeeded {
+		t.Fatalf("expected failed result, got %+v", result)
+	}
+
+	var foundFailureNote bool
+	for _, note := range result.Notes {
+		if strings.HasPrefix(note.String(), "Command failed: ") {
+			foundFailureNote = true
+			break
+		}
+	}
+	if !foundFailureNote {
+		t.Fatalf("expected command failure note, got %+v", result.Notes)
 	}
 }
 

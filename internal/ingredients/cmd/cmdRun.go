@@ -153,6 +153,11 @@ func (c Cmd) run(ctx context.Context, test bool) (cook.Result, error) {
 		result.Notes = append(result.Notes,
 			cook.SimpleNote(fmt.Sprintf("Command failed: %s", err.Error())))
 	}
+	if command.ProcessState == nil {
+		result.Succeeded = false
+		result.Failed = true
+		return result, nil
+	}
 	if command.ProcessState.ExitCode() != 0 {
 		result.Succeeded = false
 		result.Failed = true
