@@ -52,8 +52,11 @@ var testCmdPing = &cobra.Command{
 		}
 		switch outputMode {
 		case "json":
-			// TODO: Unmarshall the array specifically instead of the results object
-			jw, _ := json.Marshal(results)
+			jw, err := marshalPingResults(results)
+			if err != nil {
+				util.OutputError(err, outputMode)
+				return
+			}
 			fmt.Println(string(jw))
 			return
 		case "":
@@ -79,4 +82,12 @@ var testCmdPing = &cobra.Command{
 			return
 		}
 	},
+}
+
+func marshalPingResults(results apitypes.TargetedResults) ([]byte, error) {
+	if results.Results == nil {
+		return json.Marshal(map[string]interface{}{})
+	}
+
+	return json.Marshal(results.Results)
 }

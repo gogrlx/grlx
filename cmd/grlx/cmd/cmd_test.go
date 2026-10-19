@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"encoding/json"
 	"io"
 	"os"
 	"strings"
@@ -11,6 +12,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/fatih/color"
 
+	apitypes "github.com/gogrlx/grlx/v2/internal/api/types"
 	"github.com/gogrlx/grlx/v2/internal/cook"
 	"github.com/gogrlx/grlx/v2/internal/jobs"
 )
@@ -1132,6 +1134,40 @@ func TestSSHArgs(t *testing.T) {
 func TestTestPingFlags(t *testing.T) {
 	if f := testCmdPing.Flags().Lookup("all"); f == nil {
 		t.Error("test ping missing --all flag")
+	}
+}
+
+func TestMarshalPingResultsReturnsResultsMap(t *testing.T) {
+	got, err := marshalPingResults(apitypes.TargetedResults{
+		Results: map[string]interface{}{
+			"sprout-a": map[string]interface{}{
+				"pong": true,
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("marshalPingResults returned error: %v", err)
+	}
+
+	var decoded map[string]apitypes.PingPong
+	if err := json.Unmarshal(got, &decoded); err != nil {
+		t.Fatalf("json.Unmarshal returned error: %v", err)
+	}
+	if !decoded["sprout-a"].Pong {
+		t.Fatalf("decoded sprout-a pong = false, want true")
+	}
+	if bytes.Contains(got, []byte("results")) {
+		t.Fatalf("marshalPingResults included results envelope: %s", got)
+	}
+}
+
+func TestMarshalPingResultsNilResultsReturnsEmptyObject(t *testing.T) {
+	got, err := marshalPingResults(apitypes.TargetedResults{})
+	if err != nil {
+		t.Fatalf("marshalPingResults returned error: %v", err)
+	}
+	if string(got) != "{}" {
+		t.Fatalf("marshalPingResults = %s, want {}", got)
 	}
 }
 
