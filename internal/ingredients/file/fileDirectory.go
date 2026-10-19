@@ -2,6 +2,7 @@ package file
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -105,6 +106,9 @@ func (f File) directory(ctx context.Context, test bool) (cook.Result, error) {
 			if val, ok := f.params["recurse"].(bool); ok && val {
 				walkErr := filepath.WalkDir(name, func(path string, _ fs.DirEntry, err error) error {
 					if err != nil {
+						if test && path == name && errors.Is(err, fs.ErrNotExist) {
+							return nil
+						}
 						return err
 					}
 					if test {
@@ -152,6 +156,9 @@ func (f File) directory(ctx context.Context, test bool) (cook.Result, error) {
 			if val, ok := f.params["recurse"].(bool); ok && val {
 				walkErr := filepath.WalkDir(name, func(path string, _ fs.DirEntry, err error) error {
 					if err != nil {
+						if test && path == name && errors.Is(err, fs.ErrNotExist) {
+							return nil
+						}
 						return err
 					}
 					if test {

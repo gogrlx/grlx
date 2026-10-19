@@ -11,6 +11,8 @@ import (
 	"sync"
 	"time"
 
+	log "github.com/gogrlx/grlx/v2/internal/log"
+
 	"github.com/gogrlx/grlx/v2/internal/config"
 	"github.com/gogrlx/grlx/v2/internal/cook"
 )
@@ -268,7 +270,7 @@ func (s *Store) DeleteJob(jid string) error {
 		os.Remove(metaFile) // best-effort, may not exist
 
 		if err := removeDirIfEmpty(sproutDir); err != nil {
-			return err
+			log.Errorf("delete job: cleaning %s: %v", sproutDir, err)
 		}
 
 		return nil

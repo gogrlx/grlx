@@ -46,7 +46,11 @@ func (lf LocalFile) Download(ctx context.Context) error {
 		return err
 	}
 	defer f.Close()
-	destinationDir := filepath.Dir(lf.Destination)
+	destination := lf.Destination
+	if resolved, resolveErr := filepath.EvalSymlinks(destination); resolveErr == nil {
+		destination = resolved
+	}
+	destinationDir := filepath.Dir(destination)
 	stagedFile, err := os.CreateTemp(destinationDir, downloadTempPattern)
 	if err != nil {
 		return err
@@ -68,13 +72,13 @@ func (lf LocalFile) Download(ctx context.Context) error {
 		return closeErr
 	}
 	mode := os.FileMode(0o644)
-	if info, statErr := os.Stat(lf.Destination); statErr == nil {
+	if info, statErr := os.Stat(destination); statErr == nil {
 		mode = info.Mode().Perm()
 	}
 	if err := os.Chmod(stagedPath, mode); err != nil {
 		return err
 	}
-	if err := os.Rename(stagedPath, lf.Destination); err != nil {
+	if err := os.Rename(stagedPath, destination); err != nil {
 		return err
 	}
 	cleanupStaged = false

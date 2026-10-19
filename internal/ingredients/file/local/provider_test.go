@@ -446,3 +446,44 @@ func TestDownloadWithSHA256(t *testing.T) {
 		t.Error("expected Verify to pass after Download")
 	}
 }
+
+func TestDownloadWritesThroughSymlinkDestination(t *testing.T) {
+	dir := t.TempDir()
+	src := filepath.Join(dir, "src")
+	target := filepath.Join(dir, "target")
+	link := filepath.Join(dir, "link")
+	if err := os.WriteFile(src, []byte("fresh"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(target, []byte("stale"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(target, link); err != nil {
+		t.Skipf("symlinks unsupported: %v", err)
+	}
+	sum := sha256.Sum256([]byte("fresh"))
+	lf := LocalFile{
+		ID:          "symlink",
+		Source:      src,
+		Destination: link,
+		Hash:        fmt.Sprintf("%x", sum),
+		Props:       map[string]interface{}{"hashType": "sha256"},
+	}
+	if err := lf.Download(context.Background()); err != nil {
+		t.Fatalf("download: %v", err)
+	}
+	info, err := os.Lstat(link)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Mode()&os.ModeSymlink == 0 {
+		t.Fatal("expected destination symlink to be preserved")
+	}
+	got, err := os.ReadFile(target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != "fresh" {
+		t.Fatalf("expected symlink target updated, got %q", got)
+	}
+}

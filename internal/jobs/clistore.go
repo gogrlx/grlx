@@ -12,6 +12,8 @@ import (
 	"sync"
 	"time"
 
+	log "github.com/gogrlx/grlx/v2/internal/log"
+
 	"github.com/gogrlx/grlx/v2/internal/cook"
 )
 
@@ -278,7 +280,7 @@ func (s *CLIStore) DeleteJob(jid string) error {
 			os.Remove(metaFile) // best-effort
 
 			if err := removeDirIfEmpty(sproutDir); err != nil {
-				return err
+				log.Errorf("delete job: cleaning %s: %v", sproutDir, err)
 			}
 		}
 	}
@@ -373,7 +375,7 @@ func (s *CLIStore) Purge(olderThan time.Duration) (int, error) {
 			}
 		}
 		if err := removeDirIfEmpty(sproutDir); err != nil {
-			return removed, err
+			log.Errorf("purge: cleaning %s: %v", sproutDir, err)
 		}
 	}
 

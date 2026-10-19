@@ -7,6 +7,9 @@ import (
 
 func removeDirIfEmpty(dir string) error {
 	remaining, err := os.ReadDir(dir)
+	if os.IsNotExist(err) {
+		return nil
+	}
 	if err != nil {
 		return fmt.Errorf("reading %s: %w", dir, err)
 	}

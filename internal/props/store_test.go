@@ -120,3 +120,33 @@ func TestGetPropsReturnsNilAfterAllPropsExpire(t *testing.T) {
 		t.Fatalf("expected nil props after all props expire, got %#v", got)
 	}
 }
+
+func TestLoadMigratesLegacyRawSproutIDFiles(t *testing.T) {
+	resetGlobals()
+	dir := t.TempDir()
+	legacyPath := filepath.Join(dir, "web 01.json")
+	if err := os.WriteFile(legacyPath, []byte(`{"role":"web"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	InitStore(dir)
+
+	if got := GetStringProp("web 01", "role"); got != "web" {
+		t.Fatalf("expected legacy props to load, got %q", got)
+	}
+	if _, err := os.Stat(legacyPath); !os.IsNotExist(err) {
+		t.Fatalf("expected legacy file to be migrated, got %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "web%2001.json")); err != nil {
+		t.Fatalf("expected escaped props file: %v", err)
+	}
+}
+
+func TestEscapeSproutIDEscapesBackslash(t *testing.T) {
+	if got := escapeSproutID(`..\x`); got != "..%5Cx" {
+		t.Fatalf("unexpected escape: %q", got)
+	}
+	if got := sproutIDFromPropsFile("..%5Cx.json"); got != `..\x` {
+		t.Fatalf("unexpected decode: %q", got)
+	}
+}
