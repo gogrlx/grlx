@@ -267,6 +267,10 @@ func (s *Store) DeleteJob(jid string) error {
 		metaFile := filepath.Join(sproutDir, fmt.Sprintf("%s.meta.json", jid))
 		os.Remove(metaFile) // best-effort, may not exist
 
+		if err := removeDirIfEmpty(sproutDir); err != nil {
+			return err
+		}
+
 		return nil
 	}
 
