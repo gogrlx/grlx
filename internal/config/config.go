@@ -115,27 +115,21 @@ func LoadConfig(binary string) {
 				if mkErr := os.MkdirAll(cfgPath, 0o755); mkErr != nil {
 					log.Fatal(mkErr)
 				}
-				cfgFile := filepath.Join(cfgPath, "grlx")
-				_, err = os.Create(cfgFile)
-				if err != nil {
+				if err = createConfigFile(filepath.Join(cfgPath, "grlx")); err != nil {
 					log.Fatal(err)
 				}
 			case "farmer":
 				if mkErr := os.MkdirAll(systemConfigRoot, 0o755); mkErr != nil {
 					log.Fatal(mkErr)
 				}
-				cfgFile := filepath.Join(systemConfigRoot, "farmer")
-				_, err = os.Create(cfgFile)
-				if err != nil {
+				if err = createConfigFile(filepath.Join(systemConfigRoot, "farmer")); err != nil {
 					log.Fatal(err)
 				}
 			case "sprout":
 				if mkErr := os.MkdirAll(systemConfigRoot, 0o755); mkErr != nil {
 					log.Fatal(mkErr)
 				}
-				cfgFile := filepath.Join(systemConfigRoot, "sprout")
-				_, err = os.Create(cfgFile)
-				if err != nil {
+				if err = createConfigFile(filepath.Join(systemConfigRoot, "sprout")); err != nil {
 					log.Fatal(err)
 				}
 			}
@@ -307,6 +301,17 @@ func LoadConfig(binary string) {
 	if RecipeDir == "" {
 		RecipeDir = filepath.Join("/", "srv", "grlx", "recipes", "prod")
 	}
+}
+
+func createConfigFile(path string) error {
+	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, 0o644)
+	if err != nil {
+		return err
+	}
+	if err := file.Close(); err != nil {
+		return fmt.Errorf("closing config file %s: %w", path, err)
+	}
+	return nil
 }
 
 // BasePathValid checks that the configured recipe directory exists.
