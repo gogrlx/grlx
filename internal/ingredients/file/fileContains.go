@@ -107,7 +107,7 @@ func lines(contents []byte) []string {
 
 	lines := make([]string, 0, len(split))
 	for _, line := range split {
-		lines = append(lines, string(line))
+		lines = append(lines, string(bytes.TrimSuffix(line, []byte("\r"))))
 	}
 	return lines
 }
