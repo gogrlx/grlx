@@ -4,8 +4,10 @@
 package selfupdate
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"net/http"
@@ -14,6 +16,9 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/ProtonMail/go-crypto/openpgp"
+	"github.com/ProtonMail/go-crypto/openpgp/armor"
 )
 
 func TestCheckForUpdatesUsesLatestReleaseSemver(t *testing.T) {
@@ -206,6 +211,73 @@ func TestVerifyArtifactChecksumRejectsMismatch(t *testing.T) {
 	}
 }
 
+func TestVerifyChecksumsSignatureAcceptsTrustedSigner(t *testing.T) {
+	t.Parallel()
+
+	publicKey, fingerprint, signature := testSignedChecksums(t, "checksum manifest")
+
+	err := verifyChecksumsSignature(
+		strings.NewReader(publicKey),
+		strings.NewReader("checksum manifest"),
+		bytes.NewReader(signature),
+		fingerprint,
+	)
+	if err != nil {
+		t.Fatalf("verifyChecksumsSignature returned error: %v", err)
+	}
+}
+
+func TestVerifyChecksumsSignatureRejectsTamperedChecksums(t *testing.T) {
+	t.Parallel()
+
+	publicKey, fingerprint, signature := testSignedChecksums(t, "checksum manifest")
+
+	err := verifyChecksumsSignature(
+		strings.NewReader(publicKey),
+		strings.NewReader("tampered manifest"),
+		bytes.NewReader(signature),
+		fingerprint,
+	)
+	if err == nil {
+		t.Fatal("verifyChecksumsSignature returned nil error for tampered checksums")
+	}
+	if !strings.Contains(err.Error(), "signature") {
+		t.Fatalf("verifyChecksumsSignature error = %q, want signature failure", err)
+	}
+}
+
+func TestVerifyChecksumsSignatureRejectsUnexpectedFingerprint(t *testing.T) {
+	t.Parallel()
+
+	publicKey, _, signature := testSignedChecksums(t, "checksum manifest")
+
+	err := verifyChecksumsSignature(
+		strings.NewReader(publicKey),
+		strings.NewReader("checksum manifest"),
+		bytes.NewReader(signature),
+		"3F62 7C68 8B72 ACC6 BC4C A9A7 1E0B 7A1D 33DC E4DD",
+	)
+	if err == nil {
+		t.Fatal("verifyChecksumsSignature returned nil error for unexpected signer")
+	}
+	if !strings.Contains(err.Error(), "unexpected key fingerprint") {
+		t.Fatalf("verifyChecksumsSignature error = %q, want unexpected fingerprint failure", err)
+	}
+}
+
+func TestFingerprintMatchesDocumentedFormat(t *testing.T) {
+	t.Parallel()
+
+	fingerprint, err := hex.DecodeString("3f627c688b72acc6bc4ca9a71e0b7a1d33dce4dd")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !fingerprintMatches(fingerprint, "3F62 7C68 8B72 ACC6 BC4C A9A7 1E0B 7A1D 33DC E4DD") {
+		t.Fatal("fingerprintMatches rejected documented spaced uppercase fingerprint format")
+	}
+}
+
 func TestChecksumForArtifactRejectsMissingName(t *testing.T) {
 	t.Parallel()
 
@@ -213,6 +285,34 @@ func TestChecksumForArtifactRejectsMissingName(t *testing.T) {
 	if err == nil {
 		t.Fatal("checksumForArtifact returned nil error for missing artifact name")
 	}
+}
+
+func testSignedChecksums(t *testing.T, checksums string) (string, string, []byte) {
+	t.Helper()
+
+	entity, err := openpgp.NewEntity("grlx signing key", "", "security@grlx.dev", nil)
+	if err != nil {
+		t.Fatalf("NewEntity returned error: %v", err)
+	}
+
+	var publicKey bytes.Buffer
+	keyWriter, err := armor.Encode(&publicKey, openpgp.PublicKeyType, nil)
+	if err != nil {
+		t.Fatalf("armor.Encode returned error: %v", err)
+	}
+	if err := entity.Serialize(keyWriter); err != nil {
+		t.Fatalf("Serialize returned error: %v", err)
+	}
+	if err := keyWriter.Close(); err != nil {
+		t.Fatalf("closing armored public key returned error: %v", err)
+	}
+
+	var signature bytes.Buffer
+	if err := openpgp.DetachSign(&signature, entity, strings.NewReader(checksums), nil); err != nil {
+		t.Fatalf("DetachSign returned error: %v", err)
+	}
+
+	return publicKey.String(), fingerprintString(entity.PrimaryKey.Fingerprint[:]), signature.Bytes()
 }
 
 func TestChecksumForArtifactRejectsMissingChecksum(t *testing.T) {
