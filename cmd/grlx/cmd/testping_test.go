@@ -107,11 +107,11 @@ func TestTestPingCommand_JSONOutput(t *testing.T) {
 		testCmdPing.Run(testCmdPing, nil)
 	})
 
-	var got apitypes.TargetedResults
+	var got map[string]any
 	if err := json.Unmarshal([]byte(strings.TrimSpace(out)), &got); err != nil {
 		t.Fatalf("decode json output: %v\n%s", err, out)
 	}
-	if _, ok := got.Results["web-01"]; !ok {
-		t.Fatalf("expected web-01 result in %#v", got.Results)
+	if _, ok := got["web-01"]; !ok {
+		t.Fatalf("expected web-01 result in %#v", got)
 	}
 }
