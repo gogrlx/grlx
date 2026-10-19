@@ -121,13 +121,13 @@ func TestAppend(t *testing.T) {
 			error: nil,
 		},
 		{
-			name:   "AppendFileWithoutContent",
-			params: map[string]interface{}{"name": fileWithoutContent, "text": "test"},
+			name:   "AppendFileWithContentAfterAppend",
+			params: map[string]interface{}{"name": anotherFileWithoutContent, "text": "test"},
 			expected: cook.Result{
 				Succeeded: true,
 				Failed:    false,
 				Changed:   false,
-				Notes:     []fmt.Stringer{cook.Snprintf("file %s does not contain all specified content", fileWithoutContent), cook.Snprintf("appended to %s", fileWithoutContent)},
+				Notes:     []fmt.Stringer{},
 			},
 			error: nil,
 		},

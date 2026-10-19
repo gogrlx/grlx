@@ -17,7 +17,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-
 	"github.com/ProtonMail/go-crypto/openpgp"
 	"github.com/ProtonMail/go-crypto/openpgp/armor"
 )
@@ -513,7 +512,6 @@ func TestStartUpdateCheckerInvokesCallbackOnInterval(t *testing.T) {
 		UpdateURL:      server.URL,
 		CheckInterval:  time.Millisecond,
 	})
-
 	called := make(chan string, 1)
 	updater.StartUpdateChecker(ctx, func(version string, available bool, err error) {
 		if err != nil {
