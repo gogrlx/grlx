@@ -147,7 +147,8 @@ func NewRegistry() *Registry {
 
 // Register adds a cohort to the registry, replacing any existing cohort
 // with the same name. It validates the cohort before registration and
-// checks for direct self-references.
+// checks for direct self-references. The registry owns an independent copy
+// of the definition; callers may modify their input after Register returns.
 func (r *Registry) Register(c *Cohort) error {
 	if err := c.Validate(); err != nil {
 		return err
@@ -161,7 +162,7 @@ func (r *Registry) Register(c *Cohort) error {
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.cohorts[c.Name] = c
+	r.cohorts[c.Name] = cloneCohort(c)
 	// Invalidate cache for this cohort since definition changed.
 	delete(r.cache, c.Name)
 	return nil
@@ -245,7 +246,7 @@ func (r *Registry) computeDepth(name string, visited map[string]bool) (int, erro
 	return 1 + maxChild, nil
 }
 
-// Get returns a cohort by name.
+// Get returns an independent snapshot of a cohort by name.
 func (r *Registry) Get(name string) (*Cohort, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -253,7 +254,23 @@ func (r *Registry) Get(name string) (*Cohort, error) {
 	if !ok {
 		return nil, fmt.Errorf("%w: %q", ErrCohortNotFound, name)
 	}
-	return c, nil
+	return cloneCohort(c), nil
+}
+
+// cloneCohort copies the definition, including all mutable nested fields.
+func cloneCohort(cohort *Cohort) *Cohort {
+	snapshot := *cohort
+	snapshot.Members = slices.Clone(cohort.Members)
+	if cohort.Match != nil {
+		match := *cohort.Match
+		snapshot.Match = &match
+	}
+	if cohort.Compound != nil {
+		compound := *cohort.Compound
+		compound.Operands = slices.Clone(cohort.Compound.Operands)
+		snapshot.Compound = &compound
+	}
+	return &snapshot
 }
 
 // List returns the names of all registered cohorts.
