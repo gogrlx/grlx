@@ -17,6 +17,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+
 	"github.com/ProtonMail/go-crypto/openpgp"
 	"github.com/ProtonMail/go-crypto/openpgp/armor"
 )
@@ -80,6 +81,9 @@ func TestCheckForUpdatesAcceptsLatestEndpointURL(t *testing.T) {
 	t.Parallel()
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("channel") != "stable" {
+			t.Errorf("request query = %q, want channel=stable", r.URL.RawQuery)
+		}
 		if r.URL.Path != "/repos/gogrlx/grlx/releases/latest" {
 			t.Fatalf("request path = %q, want /repos/gogrlx/grlx/releases/latest", r.URL.Path)
 		}
@@ -90,7 +94,7 @@ func TestCheckForUpdatesAcceptsLatestEndpointURL(t *testing.T) {
 
 	updater := NewUpdater(UpdateConfig{
 		CurrentVersion: "v1.2.2",
-		UpdateURL:      server.URL + "/repos/gogrlx/grlx/releases/latest",
+		UpdateURL:      server.URL + "/repos/gogrlx/grlx/releases/latest?channel=stable",
 	})
 
 	version, available, err := updater.CheckForUpdates(context.Background())
@@ -133,6 +137,26 @@ func TestLatestReleaseURL(t *testing.T) {
 			name:      "latest endpoint trailing slash",
 			updateURL: "https://api.github.com/repos/gogrlx/grlx/releases/latest/",
 			want:      "https://api.github.com/repos/gogrlx/grlx/releases/latest",
+		},
+		{
+			name:      "base URL with query and fragment",
+			updateURL: "https://example.com/releases/?channel=stable#release",
+			want:      "https://example.com/releases/latest?channel=stable#release",
+		},
+		{
+			name:      "latest endpoint with query",
+			updateURL: "https://example.com/releases/latest?channel=stable",
+			want:      "https://example.com/releases/latest?channel=stable",
+		},
+		{
+			name:      "escaped path with query",
+			updateURL: "https://example.com/team%2Frepo/releases/?channel=stable",
+			want:      "https://example.com/team%2Frepo/releases/latest?channel=stable",
+		},
+		{
+			name:      "malformed URL",
+			updateURL: "https://example.com/%zz",
+			wantErr:   true,
 		},
 		{
 			name:    "empty",

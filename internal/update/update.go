@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -126,12 +127,23 @@ func latestReleaseURL(updateURL string) (string, error) {
 		return "", errors.New("update URL is required")
 	}
 
-	updateURL = strings.TrimRight(updateURL, "/")
-	if strings.HasSuffix(updateURL, "/latest") {
-		return updateURL, nil
+	parsedURL, err := url.Parse(updateURL)
+	if err != nil {
+		return "", fmt.Errorf("invalid update URL: %w", err)
 	}
 
-	return updateURL + "/latest", nil
+	// Modify only the path, preserving query parameters, fragments and escaped
+	// path separators used by custom release endpoints.
+	escapedPath := strings.TrimRight(parsedURL.EscapedPath(), "/")
+	if !strings.HasSuffix(escapedPath, "/latest") {
+		escapedPath += "/latest"
+	}
+	parsedURL.Path, err = url.PathUnescape(escapedPath)
+	if err != nil {
+		return "", fmt.Errorf("invalid update URL path: %w", err)
+	}
+	parsedURL.RawPath = escapedPath
+	return parsedURL.String(), nil
 }
 
 func parseLatestVersion(body io.Reader) (string, error) {
