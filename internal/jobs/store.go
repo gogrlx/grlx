@@ -21,6 +21,7 @@ var (
 	ErrJobNotFound   = errors.New("job not found")
 	ErrSproutNoJobs  = errors.New("no jobs found for sprout")
 	ErrInvalidJobDir = errors.New("invalid job log directory")
+	ErrInvalidJobID  = errors.New("invalid job or sprout ID")
 )
 
 // JobStatus represents the aggregate status of a job across all its steps.
@@ -116,6 +117,10 @@ func NewStoreWithDir(dir string) *Store {
 
 // GetJob retrieves a job by its JID and sprout ID.
 func (s *Store) GetJob(sproutID, jid string) (*JobSummary, error) {
+	if !validStoreID(sproutID) || !validStoreID(jid) {
+		return nil, ErrInvalidJobID
+	}
+
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -136,6 +141,10 @@ func (s *Store) GetJob(sproutID, jid string) (*JobSummary, error) {
 
 // FindJob searches all sprouts for a job with the given JID.
 func (s *Store) FindJob(jid string) (*JobSummary, error) {
+	if !validStoreID(jid) {
+		return nil, ErrInvalidJobID
+	}
+
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -162,6 +171,10 @@ func (s *Store) FindJob(jid string) (*JobSummary, error) {
 // ListJobsForSprout returns all job summaries for a specific sprout,
 // sorted by start time (most recent first).
 func (s *Store) ListJobsForSprout(sproutID string) ([]JobSummary, error) {
+	if !validStoreID(sproutID) {
+		return nil, ErrInvalidJobID
+	}
+
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -246,6 +259,10 @@ func (s *Store) ListAllJobs(limit int) ([]JobSummary, error) {
 // It first searches all sprout directories to find the job, then deletes
 // both the .jsonl log file and the optional .meta.json file.
 func (s *Store) DeleteJob(jid string) error {
+	if !validStoreID(jid) {
+		return ErrInvalidJobID
+	}
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -289,6 +306,10 @@ func (s *Store) ListSprouts() ([]string, error) {
 
 // CountJobsForSprout returns the number of jobs recorded for a sprout.
 func (s *Store) CountJobsForSprout(sproutID string) (int, error) {
+	if !validStoreID(sproutID) {
+		return 0, ErrInvalidJobID
+	}
+
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -452,4 +473,10 @@ func determineJobStatus(steps []cook.StepCompletion) JobStatus {
 		return JobPending
 	}
 	return JobSucceeded
+}
+
+// validStoreID restricts caller-supplied IDs to one non-special path component.
+// Reject both separator styles so IDs remain safe across platforms.
+func validStoreID(identifier string) bool {
+	return identifier != "" && identifier != "." && identifier != ".." && !strings.ContainsAny(identifier, "/\\")
 }
