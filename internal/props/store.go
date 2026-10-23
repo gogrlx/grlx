@@ -16,6 +16,7 @@ import (
 var (
 	propsDir     string
 	propsDirOnce sync.Once
+	persistLock  sync.Mutex
 )
 
 // InitStore sets the directory for persistent props storage and loads
@@ -36,6 +37,11 @@ func persistSprout(sproutID string) {
 	if propsDir == "" {
 		return
 	}
+
+	// Serialize the snapshot and file operation together so an older snapshot
+	// cannot overwrite a newer one and concurrent writes cannot interleave.
+	persistLock.Lock()
+	defer persistLock.Unlock()
 
 	current := getProps(sproutID)
 	if len(current) == 0 {
