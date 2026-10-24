@@ -185,6 +185,7 @@ func (s *CLIStore) GetJob(jid string) (*JobSummary, *CLIJobMeta, error) {
 			var m CLIJobMeta
 			if json.Unmarshal(metaData, &m) == nil {
 				meta = &m
+				summary.InvokedBy = m.UserKey
 			}
 		}
 
@@ -223,17 +224,16 @@ func (s *CLIStore) ListJobs(limit int, userKey string, sproutFilter string) ([]J
 			}
 			jid := strings.TrimSuffix(entry.Name(), ".jsonl")
 
-			// Filter by user if requested.
-			if userKey != "" {
-				metaFile := filepath.Join(sproutDir, fmt.Sprintf("%s.meta.json", jid))
-				metaData, metaErr := os.ReadFile(metaFile)
-				if metaErr != nil {
-					continue
+			// Metadata is optional unless filtering by the initiating user.
+			var meta CLIJobMeta
+			metaFile := filepath.Join(sproutDir, fmt.Sprintf("%s.meta.json", jid))
+			if metaData, metaErr := os.ReadFile(metaFile); metaErr == nil {
+				if json.Unmarshal(metaData, &meta) != nil {
+					meta = CLIJobMeta{}
 				}
-				var meta CLIJobMeta
-				if json.Unmarshal(metaData, &meta) != nil || meta.UserKey != userKey {
-					continue
-				}
+			}
+			if userKey != "" && meta.UserKey != userKey {
+				continue
 			}
 
 			jobFile := filepath.Join(sproutDir, entry.Name())
@@ -241,7 +241,9 @@ func (s *CLIStore) ListJobs(limit int, userKey string, sproutFilter string) ([]J
 			if fileErr != nil {
 				continue
 			}
-			allSummaries = append(allSummaries, *buildSummary(jid, sproutID, steps))
+			summary := buildSummary(jid, sproutID, steps)
+			summary.InvokedBy = meta.UserKey
+			allSummaries = append(allSummaries, *summary)
 		}
 	}
 
