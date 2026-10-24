@@ -621,3 +621,62 @@ func splitLines(s string) []string {
 	}
 	return lines
 }
+
+func TestCLIStore_SummaryInvokedBy(t *testing.T) {
+	for _, metadata := range []string{"valid", "missing", "malformed", "invalid-field"} {
+		t.Run(metadata, func(t *testing.T) {
+			store, err := NewCLIStore(t.TempDir())
+			if err != nil {
+				t.Fatal(err)
+			}
+			meta := CLIJobMeta{JID: "job", SproutID: "sprout", UserKey: "USER_A"}
+			if err := store.RecordJobStart(meta); err != nil {
+				t.Fatal(err)
+			}
+			metaPath := filepath.Join(store.logDir, meta.SproutID, meta.JID+".meta.json")
+			want := meta.UserKey
+			switch metadata {
+			case "missing":
+				if err := os.Remove(metaPath); err != nil {
+					t.Fatal(err)
+				}
+				want = ""
+			case "invalid-field":
+				if err := os.WriteFile(metaPath, []byte(`{"user_key":"USER_A","created_at":42}`), 0o600); err != nil {
+					t.Fatal(err)
+				}
+				want = ""
+			case "malformed":
+				if err := os.WriteFile(metaPath, []byte("{"), 0o600); err != nil {
+					t.Fatal(err)
+				}
+				want = ""
+			}
+			summary, _, err := store.GetJob(meta.JID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if summary.InvokedBy != want {
+				t.Errorf("GetJob InvokedBy = %q, want %q", summary.InvokedBy, want)
+			}
+			for _, filter := range []string{"", meta.UserKey} {
+				summaries, err := store.ListJobs(0, filter, "")
+				if err != nil {
+					t.Fatal(err)
+				}
+				if filter != "" && want == "" {
+					if len(summaries) != 0 {
+						t.Fatal("metadata-free job passed user filter")
+					}
+					continue
+				}
+				if len(summaries) != 1 {
+					t.Fatalf("got %d summaries, want 1", len(summaries))
+				}
+				if summaries[0].InvokedBy != want {
+					t.Errorf("ListJobs InvokedBy = %q, want %q", summaries[0].InvokedBy, want)
+				}
+			}
+		})
+	}
+}
