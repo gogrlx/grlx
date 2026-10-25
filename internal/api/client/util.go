@@ -8,7 +8,7 @@ import (
 // Target matching behavior is as follows:
 // If the target string contains commas, it's considered to be a literal list
 // Otherwise, the target string will be treated as a regular expression with
-// an implicit '^' prepended and '$' appended.
+// an implicit full-string match around the entire expression.
 // To avoid RegExp matching, use a trailing or preceding comma in the target.
 func ResolveTargets(target string) ([]string, error) {
 	validKeys, err := ListKeys()
@@ -29,13 +29,9 @@ func ResolveTargets(target string) ([]string, error) {
 }
 
 func targetRegex(target string, accepted *[]string) ([]string, error) {
-	if !strings.HasPrefix(target, "^") {
-		target = "^" + target
-	}
-	if !strings.HasSuffix(target, "$") {
-		target = target + "$"
-	}
-	re, err := regexp.Compile(target)
+	// Group alternations before anchoring and use absolute text boundaries so
+	// inline multiline flags cannot broaden matching to part of a sprout ID.
+	re, err := regexp.Compile(`\A(?:` + target + `)\z`)
 	if err != nil {
 		return []string{}, err
 	}
