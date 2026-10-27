@@ -25,7 +25,8 @@ func (f File) absent(ctx context.Context, test bool) (cook.Result, error) {
 			Succeeded: false, Failed: true, Notes: notes,
 		}, ErrDeleteRoot
 	}
-	_, err = os.Stat(name)
+	// Inspect the directory entry itself so dangling symlinks are removed too.
+	_, err = os.Lstat(name)
 	if errors.Is(err, os.ErrNotExist) {
 		notes = append(notes, cook.Snprintf("%v is already absent", name))
 		return cook.Result{
