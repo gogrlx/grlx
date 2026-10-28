@@ -95,10 +95,10 @@ func TestSymlink(t *testing.T) {
 				"target": tempTarget,
 			},
 			expected: cook.Result{
-				Succeeded: false,
-				Failed:    true,
+				Succeeded: true,
+				Failed:    false,
 				Changed:   false,
-				Notes:     []fmt.Stringer{},
+				Notes:     []fmt.Stringer{cook.Snprintf("symlink %s already points to %s", existingSymlink, tempTarget)},
 			},
 			error: nil,
 		},
@@ -116,5 +116,34 @@ func TestSymlink(t *testing.T) {
 			}
 			compareResults(t, result, test.expected)
 		})
+	}
+}
+
+func TestSymlinkIdempotent(t *testing.T) {
+	for _, targetExists := range []bool{false, true} {
+		for _, dryRun := range []bool{false, true} {
+			t.Run(fmt.Sprintf("targetExists=%t/dryRun=%t", targetExists, dryRun), func(t *testing.T) {
+				directory := t.TempDir()
+				target := directory + "/target"
+				name := directory + "/link"
+				if targetExists {
+					if err := os.WriteFile(target, []byte("keep"), 0o600); err != nil {
+						t.Fatal(err)
+					}
+				}
+				if err := os.Symlink(target, name); err != nil {
+					t.Fatal(err)
+				}
+				file := File{method: "symlink", params: map[string]interface{}{"name": name, "target": target}}
+				result, err := file.symlink(context.Background(), dryRun)
+				if err != nil || !result.Succeeded || result.Failed || result.Changed {
+					t.Fatalf("result=%+v, error=%v", result, err)
+				}
+				actual, err := os.Readlink(name)
+				if err != nil || actual != target {
+					t.Fatalf("target=%q, error=%v", actual, err)
+				}
+			})
+		}
 	}
 }
