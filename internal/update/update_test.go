@@ -17,6 +17,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+
 	"github.com/ProtonMail/go-crypto/openpgp"
 	"github.com/ProtonMail/go-crypto/openpgp/armor"
 )
@@ -275,7 +276,7 @@ func TestVerifyArtifactChecksumAcceptsMatchingChecksum(t *testing.T) {
 	checksum := sha256.Sum256([]byte(artifact))
 	manifest := fmt.Sprintf("%x  dist/grlx-v1.2.3-linux-amd64\n", checksum)
 
-	err := verifyArtifactChecksum(strings.NewReader(manifest), strings.NewReader(artifact), "grlx-v1.2.3-linux-amd64")
+	err := verifyArtifactChecksum(strings.NewReader(manifest), strings.NewReader(artifact), "dist/grlx-v1.2.3-linux-amd64")
 	if err != nil {
 		t.Fatalf("verifyArtifactChecksum returned error: %v", err)
 	}
@@ -706,5 +707,37 @@ func TestNormalizeFingerprintRejectsMalformedPins(t *testing.T) {
 		if _, ok := normalizeFingerprint(bad); ok {
 			t.Errorf("expected %q to be rejected", bad)
 		}
+	}
+}
+
+func TestChecksumForArtifactRequiresExactName(t *testing.T) {
+	t.Parallel()
+
+	wrongChecksum := sha256.Sum256([]byte("wrong architecture"))
+	wantedChecksum := sha256.Sum256([]byte("wanted binary"))
+	for _, marker := range []string{"", "*"} {
+		t.Run("marker="+marker, func(t *testing.T) {
+			manifest := fmt.Sprintf("%x  %slinux/arm64/grlx\n", wrongChecksum, marker)
+			if _, err := checksumForArtifact(strings.NewReader(manifest), "grlx"); err == nil {
+				t.Fatal("accepted a different artifact with the same basename")
+			}
+
+			manifest += fmt.Sprintf("%x  %sgrlx\n", wantedChecksum, marker)
+			got, err := checksumForArtifact(strings.NewReader(manifest), "grlx")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if want := fmt.Sprintf("%x", wantedChecksum); got != want {
+				t.Fatalf("checksum = %q, want exact artifact checksum %q", got, want)
+			}
+
+			got, err = checksumForArtifact(strings.NewReader(manifest), "linux/arm64/grlx")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if want := fmt.Sprintf("%x", wrongChecksum); got != want {
+				t.Fatalf("path checksum = %q, want %q", got, want)
+			}
+		})
 	}
 }

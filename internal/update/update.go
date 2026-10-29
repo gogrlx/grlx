@@ -315,7 +315,8 @@ func checksumForArtifact(checksums io.Reader, artifactName string) (string, erro
 		}
 
 		name := strings.TrimPrefix(fields[1], "*")
-		if name == artifactName || filepath.Base(name) == artifactName {
+		// Manifest paths identify distinct artifacts, even when basenames match.
+		if name == artifactName {
 			return checksum, nil
 		}
 	}
