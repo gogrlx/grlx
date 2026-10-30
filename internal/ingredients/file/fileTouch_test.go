@@ -449,3 +449,50 @@ func TestTouchAlreadySet(t *testing.T) {
 		t.Errorf("expected atime to be %v, got %v", at.UTC(), tat.UTC())
 	}
 }
+
+func TestTouchDryRunDoesNotMutate(t *testing.T) {
+	for _, scenario := range []string{"missing file", "only mtime differs", "only atime differs"} {
+		t.Run(scenario, func(t *testing.T) {
+			name := filepath.Join(t.TempDir(), "target")
+			oldTime := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
+			newTime := oldTime.Add(time.Hour)
+			params := map[string]interface{}{"name": name}
+			if scenario != "missing file" {
+				if err := os.WriteFile(name, []byte("preserve"), 0o600); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Chtimes(name, oldTime, oldTime); err != nil {
+					t.Fatal(err)
+				}
+				params["atime"] = oldTime.Format(time.RFC3339)
+				params["mtime"] = oldTime.Format(time.RFC3339)
+				if scenario == "only mtime differs" {
+					params["mtime"] = newTime.Format(time.RFC3339)
+				} else {
+					params["atime"] = newTime.Format(time.RFC3339)
+				}
+			}
+			result, err := (File{params: params}).touch(context.Background(), true)
+			if err != nil || !result.Succeeded || !result.Changed || result.Failed {
+				t.Fatalf("result = %+v, error = %v", result, err)
+			}
+			info, err := os.Stat(name)
+			if scenario == "missing file" {
+				if !os.IsNotExist(err) {
+					t.Fatalf("dry run created file: %v", err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			accessTime, err := atime.Stat(name)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !info.ModTime().Equal(oldTime) || !accessTime.Equal(oldTime) {
+				t.Fatalf("dry run changed timestamps: mtime=%v atime=%v", info.ModTime(), accessTime)
+			}
+		})
+	}
+}
