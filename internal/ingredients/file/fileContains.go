@@ -41,7 +41,7 @@ func (f File) contains(ctx context.Context, test bool) (cook.Result, bytes.Buffe
 		content.WriteString(text)
 	} else if texti, ok := f.params["text"].([]interface{}); ok {
 		for _, v := range texti {
-			content.WriteString(fmt.Sprintf("%v", v))
+			content.WriteString(fmt.Sprintf("%v\n", v))
 		}
 	}
 
