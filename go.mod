@@ -17,8 +17,8 @@ require (
 	github.com/gogrlx/snack v0.4.5
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
-	github.com/nats-io/nats-server/v2 v2.15.1
-	github.com/nats-io/nats.go v1.54.0
+	github.com/nats-io/nats-server/v2 v2.15.2
+	github.com/nats-io/nats.go v1.55.0
 	github.com/nats-io/nkeys v0.4.16
 	github.com/spf13/cobra v1.10.2
 	github.com/taigrr/jety v0.4.3
