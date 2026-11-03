@@ -58,7 +58,19 @@ func (f File) symlink(ctx context.Context, test bool) (cook.Result, error) {
 		}, ErrMissingTarget
 	}
 
-	nameStat, err := os.Stat(name)
+	nameStat, err := os.Lstat(name)
+	if err == nil && nameStat.Mode()&os.ModeSymlink != 0 {
+		existingTarget, readErr := os.Readlink(name)
+		if readErr != nil {
+			return cook.Result{Failed: true}, readErr
+		}
+		if existingTarget == target {
+			return cook.Result{
+				Succeeded: true,
+				Notes:     []fmt.Stringer{cook.Snprintf("symlink %s already points to %s", name, target)},
+			}, nil
+		}
+	}
 	if os.IsNotExist(err) {
 		if test {
 			notes = append(notes, cook.Snprintf("would create symlink %s pointing to %s", name, target))
