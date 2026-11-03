@@ -198,3 +198,33 @@ func TestAppendWritesMissingContent(t *testing.T) {
 		t.Fatalf("unexpected content: %q", got)
 	}
 }
+
+func TestAppendLongLines(t *testing.T) {
+	longLine := strings.Repeat("x", 128*1024)
+	for _, text := range []string{longLine, "before\n" + longLine + "\nafter\n", longLine + "\r\nafter\r\n"} {
+		t.Run(fmt.Sprintf("bytes-%d", len(text)), func(t *testing.T) {
+			name := filepath.Join(t.TempDir(), "append.txt")
+			const original = "existing\n"
+			if err := os.WriteFile(name, []byte(original), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			file := File{params: map[string]interface{}{"name": name, "text": text}}
+			result, err := file.append(context.Background(), false)
+			if err != nil || !result.Succeeded || !result.Changed || result.Failed {
+				t.Fatalf("append = %+v, %v", result, err)
+			}
+			contents, err := os.ReadFile(name)
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := original + strings.TrimSuffix(strings.ReplaceAll(text, "\r\n", "\n"), "\n") + "\n"
+			if string(contents) != want {
+				t.Fatalf("appended content differs: got %d bytes, want %d", len(contents), len(want))
+			}
+			result, err = file.append(context.Background(), false)
+			if err != nil || !result.Succeeded || result.Changed || result.Failed {
+				t.Fatalf("second append = %+v, %v", result, err)
+			}
+		})
+	}
+}

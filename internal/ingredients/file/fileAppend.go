@@ -1,7 +1,6 @@
 package file
 
 import (
-	"bufio"
 	"context"
 	"errors"
 	"fmt"
@@ -113,9 +112,7 @@ func (f File) append(ctx context.Context, test bool) (cook.Result, error) {
 			}, fmt.Errorf("failed to open %s for appending: %w", name, openErr)
 		}
 		defer appendFile.Close()
-		scanner := bufio.NewScanner(&missing)
-		for scanner.Scan() {
-			line := scanner.Text()
+		for _, line := range lines(missing.Bytes()) {
 			_, writeErr := appendFile.WriteString(line + "\n")
 			if writeErr != nil {
 				return cook.Result{
