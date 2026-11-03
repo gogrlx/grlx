@@ -115,3 +115,41 @@ func TestLinesStripsCarriageReturns(t *testing.T) {
 		t.Fatalf("unexpected lines: %q", got)
 	}
 }
+
+func TestContainsTextListLines(t *testing.T) {
+	for _, contents := range []string{"first\nsecond\n", "second\r\nfirst\r\n", "firstsecond\n"} {
+		t.Run(contents, func(t *testing.T) {
+			name := filepath.Join(t.TempDir(), "content")
+			if err := os.WriteFile(name, []byte(contents), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			file := File{params: map[string]interface{}{"name": name, "text": []interface{}{"first", "second"}}}
+			result, missing, err := file.contains(context.Background(), false)
+			if contents == "firstsecond\n" {
+				if !errors.Is(err, ErrMissingContent) || !result.Failed || missing.String() != "first\nsecond\n" {
+					t.Fatalf("expected separate missing lines, got result=%+v content=%q err=%v", result, missing.String(), err)
+				}
+			} else if err != nil || !result.Succeeded || result.Changed {
+				t.Fatalf("expected existing lines to match, got %+v, %v", result, err)
+			}
+		})
+	}
+}
+
+func TestPrependTextListIdempotent(t *testing.T) {
+	name := filepath.Join(t.TempDir(), "content")
+	if err := os.WriteFile(name, []byte("existing\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	file := File{params: map[string]interface{}{"name": name, "text": []interface{}{"first", "second"}}}
+	for _, changed := range []bool{true, false} {
+		result, err := file.prepend(context.Background(), false)
+		if err != nil || !result.Succeeded || result.Changed != changed {
+			t.Fatalf("expected changed=%v, got %+v, %v", changed, result, err)
+		}
+	}
+	contents, err := os.ReadFile(name)
+	if err != nil || string(contents) != "first\nsecond\nexisting\n" {
+		t.Fatalf("unexpected content %q, error %v", contents, err)
+	}
+}
