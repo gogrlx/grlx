@@ -2,8 +2,11 @@ package props
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -148,5 +151,35 @@ func TestEscapeSproutIDEscapesBackslash(t *testing.T) {
 	}
 	if got := sproutIDFromPropsFile("..%5Cx.json"); got != `..\x` {
 		t.Fatalf("unexpected decode: %q", got)
+	}
+}
+
+func TestConcurrentPersistence(t *testing.T) {
+	resetGlobals()
+	t.Cleanup(resetGlobals)
+	InitStore(t.TempDir())
+	const writers = 64
+	var workers sync.WaitGroup
+	for index := 0; index < writers; index++ {
+		workers.Add(1)
+		go func() {
+			defer workers.Done()
+			key := fmt.Sprintf("key-%d", index)
+			if err := SetProp("concurrent", key, strings.Repeat(key, 1024)); err != nil {
+				t.Error(err)
+			}
+		}()
+	}
+	workers.Wait()
+	data, err := os.ReadFile(sproutPropsPath("concurrent"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var persisted map[string]interface{}
+	if err := json.Unmarshal(data, &persisted); err != nil {
+		t.Fatalf("corrupted persisted JSON: %v", err)
+	}
+	if !reflect.DeepEqual(persisted, GetProps("concurrent")) {
+		t.Fatalf("persisted properties do not match final cache: got %d keys, want %d", len(persisted), writers)
 	}
 }
