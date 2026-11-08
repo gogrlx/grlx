@@ -98,15 +98,13 @@ func (f File) touch(ctx context.Context, test bool) (cook.Result, error) {
 				},
 			}, ErrPathNotFound
 		}
+		if test {
+			return cook.Result{
+				Succeeded: true, Changed: true,
+				Notes: []fmt.Stringer{cook.Snprintf("file `%s` to be created with provided timestamps", name)},
+			}, nil
+		}
 		if needsMkdirs {
-			if test {
-				return cook.Result{
-					Succeeded: true, Failed: false,
-					Changed: true, Notes: []fmt.Stringer{
-						cook.Snprintf("file `%s` to be created with provided timestamps", name),
-					},
-				}, nil
-			}
 			dirErr = os.MkdirAll(fileDir, 0o755)
 			if dirErr != nil {
 				return cook.Result{
@@ -186,7 +184,7 @@ func (f File) touch(ctx context.Context, test bool) (cook.Result, error) {
 				Succeeded: true, Failed: false,
 				Changed: true, Notes: notes,
 			}, nil
-		} else if !omt.Equal(mTime) && !oat.Equal(aTime) {
+		} else {
 			notes = append(notes, cook.Snprintf("timestamps of `%s` will be changed", name))
 			return cook.Result{
 				Succeeded: true, Failed: false,
