@@ -24,18 +24,13 @@ func (f File) directory(ctx context.Context, test bool) (cook.Result, error) {
 		makeDirs bool
 	}
 	name, ok := f.params["name"].(string)
-	if !ok {
+	if !ok || name == "" {
 		return cook.Result{
 			Succeeded: false, Failed: true,
 			Notes: notes, Changed: false,
 		}, ingredients.ErrMissingName
 	}
 	name = filepath.Clean(name)
-	if name == "" {
-		return cook.Result{
-			Succeeded: false, Failed: true, Notes: notes,
-		}, ingredients.ErrMissingName
-	}
 	if name == "/" {
 		return cook.Result{
 			Succeeded: false, Failed: true, Notes: notes,

@@ -781,3 +781,19 @@ func TestDirectoryApplyAllParams(t *testing.T) {
 		t.Error("expected a directory")
 	}
 }
+
+// Empty names must not resolve to the current working directory.
+func TestDirectoryRejectsEmptyName(t *testing.T) {
+	for _, dryRun := range []bool{false, true} {
+		t.Run(fmt.Sprintf("dryRun=%t", dryRun), func(t *testing.T) {
+			target := File{params: map[string]interface{}{"name": ""}}
+			result, err := target.directory(context.Background(), dryRun)
+			if err != ingredients.ErrMissingName {
+				t.Fatalf("expected ErrMissingName, got %v", err)
+			}
+			if result.Succeeded || !result.Failed || result.Changed || len(result.Notes) != 0 {
+				t.Fatalf("expected failed result without actions, got %+v", result)
+			}
+		})
+	}
+}
